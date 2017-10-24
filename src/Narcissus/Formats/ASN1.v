@@ -132,8 +132,8 @@ Section ASN1_Format.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : QueueTransformerOpt transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   Import Coq.Vectors.VectorDef.VectorNotations.
 
@@ -213,31 +213,31 @@ Arguments ASN1_Format_Tag _ _ / . (* Always simplify this format*)
 Section ASN1_Decoder_Example.
 
   Require Import
-          Fiat.Narcissus.Formats.NoCache
+          Fiat.Narcissus.Stores.EmptyStore
           Fiat.Narcissus.Automation.Solver
           Fiat.Narcissus.BinLib.AlignedByteString
           Fiat.Narcissus.BinLib.AlignWord
           Fiat.Narcissus.BinLib.AlignedDecoders.
 
-  Instance ByteStringQueueTransformer : Transformer ByteString :=
-    ByteStringQueueTransformer.
+  Instance ByteStringQueueMonoid : Monoid ByteString :=
+    ByteStringQueueMonoid.
 
   Example Simple_Format : ASN1_Simple :=
     ASN_IA5String.
 
-  Ltac normalize_Compose Transformer :=
+  Ltac normalize_Compose Monoid :=
     eapply SetoidMorphisms.refine_refineEquiv_Proper;
     [ unfold flip;
       repeat first
-             [ etransitivity; [ apply refineEquiv_compose_compose with (transformer := Transformer) | idtac ]
-             | etransitivity; [ apply refineEquiv_compose_Done with (transformer := Transformer) | idtac ]
-             | apply refineEquiv_under_compose with (transformer := Transformer) ];
+             [ etransitivity; [ apply refineEquiv_compose_compose with (monoid := Monoid) | idtac ]
+             | etransitivity; [ apply refineEquiv_compose_Done with (monoid := Monoid) | idtac ]
+             | apply refineEquiv_under_compose with (monoid := Monoid) ];
       intros; first [reflexivity | higher_order_reflexivity]
     | reflexivity | ].
 
   Add Parametric Morphism
-      (E B : Type) (transformer : Transformer B)
-    : (@compose E B transformer)
+      (E B : Type) (monoid : Monoid B)
+    : (@compose E B monoid)
       with signature
       (pointwise_relation _ (@refine (B * E)))
         ==> (pointwise_relation _ (@refine (B * E)))
@@ -250,7 +250,7 @@ Section ASN1_Decoder_Example.
   Qed.
 
   Lemma refine_compose_compose
-     : forall (E B : Type) (transformer : Transformer B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E),
+     : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E),
       refine (((encode1 ThenC encode2) ThenC encode3) ctx)
              ((encode1 ThenC encode2 ThenC encode3) ctx).
   Proof.
@@ -259,7 +259,7 @@ Section ASN1_Decoder_Example.
   Qed.
 
   Lemma refine_ThenC_beta_reduce
-    : forall (E B : Type) (transformer : Transformer B) (encode1 encode2 : E -> Comp (B * E)) (ctx : E),
+    : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 : E -> Comp (B * E)) (ctx : E),
       refine ((encode1 ThenC (fun ctx' => encode2 ctx')) ctx)
              ((encode1 ThenC encode2) ctx).
   Proof.
@@ -267,7 +267,7 @@ Section ASN1_Decoder_Example.
   Qed.
 
   Lemma refine_If_Then_Else_beta_reduce
-    : forall (E B : Type) (transformer : Transformer B) (encode1 encode2 : E -> Comp (B * E)) (ctx : E) b,
+    : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 : E -> Comp (B * E)) (ctx : E) b,
       refine ((If b Then encode1 Else encode2) ctx)
              (If b Then encode1 ctx Else encode2 ctx).
   Proof.
@@ -278,7 +278,7 @@ Section ASN1_Decoder_Example.
             {numBytes}
     : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_nat 8 (transformerUnit := ByteString_QueueTransformerOpt) n)
+      -> refine (((format_nat 8 (monoidUnit := ByteString_QueueMonoidOpt) n)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (natToWord 8 n) _ v), ce')).
   Proof.
@@ -341,7 +341,7 @@ Section ASN1_Decoder_Example.
       {P  : CacheDecode -> Prop}
       {P_invT P_invE : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_invT P /\ P_invE P))
-      (transformer : Transformer B)
+      (monoid : Monoid B)
       (predicate predicateT predicateE : A -> Prop)
       (predicate_rest : A -> B -> Prop)
       (proj : A -> bool)
@@ -353,17 +353,17 @@ Section ASN1_Decoder_Example.
       (decodeT_pf :
          cache_inv_Property P P_invT
          -> CorrectDecoder
-              cache transformer predicateT predicate_rest
+              cache monoid predicateT predicate_rest
               encodeT decodeT P)
       (decodeE_pf :
          cache_inv_Property P P_invE
          -> CorrectDecoder
-              cache transformer predicateE predicate_rest
+              cache monoid predicateE predicate_rest
               encodeE decodeE P)
       (ICompb_OKT : forall data bin env xenv ext,
           predicateT data
           -> encodeT data env ↝ (bin, xenv)
-          -> ICompb (transform bin ext) = true)
+          -> ICompb (mappend bin ext) = true)
       (ICompb_OKT' : forall data bin env xenv ext,
           ICompb bin = true
           -> decodeT bin env = Some (data, ext, xenv)
@@ -371,7 +371,7 @@ Section ASN1_Decoder_Example.
       (ICompb_OKE : forall data bin env xenv ext,
           predicateE data
           -> encodeE data env ↝ (bin, xenv)
-          -> ICompb (transform bin ext) = false)
+          -> ICompb (mappend bin ext) = false)
       (ICompb_OKE' : forall data bin env xenv ext,
           ICompb bin = false
           -> decodeE bin env = Some (data, ext, xenv)
@@ -383,7 +383,7 @@ Section ASN1_Decoder_Example.
                                  -> (predicate a
                                  <-> predicateE a))
   : CorrectDecoder
-      cache transformer
+      cache monoid
       (fun a => predicate a)
       predicate_rest
       (fun (data : A) (ctx : CacheEncode) =>
@@ -440,9 +440,9 @@ Qed.
     eapply SetoidMorphisms.refine_refineEquiv_Proper;
       [ unfold flip;
         repeat first
-               [ etransitivity; [ apply refineEquiv_compose_compose with (transformer := ByteStringQueueTransformer) | idtac ]
-               | etransitivity; [ apply refineEquiv_compose_Done with (transformer := ByteStringQueueTransformer) | idtac ]
-               | apply refineEquiv_under_compose with (transformer := ByteStringQueueTransformer) ];
+               [ etransitivity; [ apply refineEquiv_compose_compose with (monoid := ByteStringQueueMonoid) | idtac ]
+               | etransitivity; [ apply refineEquiv_compose_Done with (monoid := ByteStringQueueMonoid) | idtac ]
+               | apply refineEquiv_under_compose with (monoid := ByteStringQueueMonoid) ];
         intros; higher_order_reflexivity
       | reflexivity | ];
       rewrite refine_ThenC_beta_reduce.
@@ -474,7 +474,7 @@ Qed.
     : CorrectDecoderFor Simple_Format_OK (ASN1_Format_Simple_DER Simple_Format).
   Proof.
     start_synthesizing_decoder.
-    normalize_compose ByteStringQueueTransformer.
+    normalize_compose ByteStringQueueMonoid.
     decode_step idtac.
     decode_step idtac.
     decode_step idtac.

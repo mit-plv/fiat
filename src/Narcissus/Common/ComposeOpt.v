@@ -7,19 +7,19 @@ Require Import
 Set Implicit Arguments.
 
 Definition compose E B
-           (transformer : Transformer B)
+           (monoid : Monoid B)
            (encode1 : E -> Comp (B * E))
            (encode2 : E -> Comp (B * E)) :=
   (fun e0 =>
      `(p, e1) <- encode1 e0;
        `(q, e2) <- encode2 e1;
-       ret (transform p q, e2))%comp.
+       ret (mappend p q, e2))%comp.
 
 Notation "x 'ThenC' y" := (compose _ x y) : binencoders_scope .
-Notation "x 'DoneC'"   := (x ThenC fun e => ret (transform_id, e)) : binencoders_scope.
+Notation "x 'DoneC'"   := (x ThenC fun e => ret (mempty, e)) : binencoders_scope.
 
 Lemma refineEquiv_compose_compose E B
-      (transformer : Transformer B)
+      (monoid : Monoid B)
       (encode1 encode2 encode3 : E -> Comp (B * E))
   : forall ctx,
     refineEquiv (compose _ (compose _ encode1 encode2) encode3 ctx)
@@ -35,27 +35,27 @@ Proof.
   rewrite refineEquiv_bind2_unit.
   eapply refineEquiv_bind; [ reflexivity | ].
   intro; rewrite refineEquiv_bind2_unit; simpl.
-  rewrite transform_assoc; reflexivity.
+  rewrite mappend_assoc; reflexivity.
 Qed.
 
 Lemma refineEquiv_compose_Done E B
-      (transformer : Transformer B)
+      (monoid : Monoid B)
       (encode2 : E -> Comp (B * E))
   : forall ctx,
-    refineEquiv (compose _ (fun ctx => ret (transform_id, ctx)) encode2 ctx)
+    refineEquiv (compose _ (fun ctx => ret (mempty, ctx)) encode2 ctx)
                 (encode2 ctx).
 Proof.
   unfold compose; simpl; intros.
   rewrite refineEquiv_bind2_unit; simpl.
   split; unfold Bind2; intros v Comp_v.
   - computes_to_econstructor; eauto; destruct v; simpl;
-      rewrite transform_id_left; eauto.
+      rewrite mempty_left; eauto.
   - computes_to_inv; subst; destruct v0;
-      rewrite transform_id_left; eauto.
+      rewrite mempty_left; eauto.
 Qed.
 
 Lemma refineEquiv_under_compose E B
-      (transformer : Transformer B)
+      (monoid : Monoid B)
       (encode1 encode2 encode2' : E -> Comp (B * E))
   : (forall ctx', refineEquiv (encode2 ctx') (encode2' ctx'))
     -> forall ctx,
@@ -74,7 +74,7 @@ Lemma compose_encode_correct
       {P  : CacheDecode -> Prop}
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P))
-      (transformer : Transformer B)
+      (monoid : Monoid B)
       (project : A -> A')
       (predicate : A -> Prop)
       (predicate' : A' -> Prop)
@@ -86,7 +86,7 @@ Lemma compose_encode_correct
       (decode1_pf :
          cache_inv_Property P P_inv1
          -> CorrectDecoder
-              cache transformer predicate'
+              cache monoid predicate'
               predicate_rest
               encode1 decode1 P)
       (pred_pf : forall data, predicate data -> predicate' (project data))
@@ -98,18 +98,18 @@ Lemma compose_encode_correct
            -> predicate a
            -> computes_to (encode2 a ce') (b'', ce'')
            -> predicate_rest' a b
-           -> predicate_rest a' (transform b'' b))
+           -> predicate_rest a' (mappend b'' b))
       (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
       (decode2_pf : forall proj,
           predicate' proj ->
           cache_inv_Property P P_inv2 ->
-          CorrectDecoder cache transformer
+          CorrectDecoder cache monoid
                                   (fun data => predicate data /\ project data = proj)
                                   predicate_rest'
                                   encode2
                                   (decode2 proj) P)
   : CorrectDecoder
-      cache transformer
+      cache monoid
       (fun a => predicate a)
       predicate_rest'
       (fun (data : A) (ctx : CacheEncode) =>
@@ -123,8 +123,8 @@ Proof.
   { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
       destruct v0.
-    destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
-    setoid_rewrite <- transform_assoc; rewrite H2.
+    destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend b0 ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
+    setoid_rewrite <- mappend_assoc; rewrite H2.
     simpl.
     destruct (fun H'' => proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H1)
                                _ _ _ _ _ ext H4 H (conj pred_pm (eq_refl _)) H'' com_pf');
@@ -139,7 +139,7 @@ Proof.
     destruct H2 as [? ?]; destruct_ex; intuition; subst.
     eexists; eexists; repeat split.
     repeat computes_to_econstructor; eauto.
-    simpl; rewrite transform_assoc; reflexivity.
+    simpl; rewrite mappend_assoc; reflexivity.
     eassumption.
     eassumption.
   }
@@ -162,7 +162,7 @@ Lemma compose_encode_correct_no_dep
       {P  : CacheDecode -> Prop}
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P))
-      (transformer : Transformer B)
+      (monoid : Monoid B)
       (a' : A')
       (predicate : A -> Prop)
       (predicate' : A' -> Prop)
@@ -173,7 +173,7 @@ Lemma compose_encode_correct_no_dep
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
-         -> CorrectDecoder cache transformer predicate' predicate_rest
+         -> CorrectDecoder cache monoid predicate' predicate_rest
                                     encode1 decode1 P)
       (predicate_a' : predicate' a')
       (predicate_rest_impl :
@@ -183,18 +183,18 @@ Lemma compose_encode_correct_no_dep
            -> predicate a
            -> computes_to (encode2 a ce') (b'', ce'')
            -> predicate_rest' a b
-           -> predicate_rest a' (transform b'' b))
+           -> predicate_rest a' (mappend b'' b))
       (decode2 : B -> CacheDecode -> option (A * B * CacheDecode))
       (decode2_pf :
          predicate' a' ->
          cache_inv_Property P P_inv2 ->
-         CorrectDecoder cache transformer
+         CorrectDecoder cache monoid
                                  (fun data => predicate data)
                                  predicate_rest'
                                  encode2
                                  decode2 P)
   : CorrectDecoder
-      cache transformer
+      cache monoid
       (fun a => predicate a)
       predicate_rest'
       (fun (data : A) (ctx : CacheEncode) =>
@@ -208,9 +208,9 @@ Proof.
   { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
       destruct v0.
-    destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_OK env_pm predicate_a' H com_pf); intuition; simpl in *; injections.
+    destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend b0 ext) env_OK env_pm predicate_a' H com_pf); intuition; simpl in *; injections.
     eapply predicate_rest_impl; eauto.
-    setoid_rewrite <- transform_assoc; rewrite H2.
+    setoid_rewrite <- mappend_assoc; rewrite H2.
     simpl.
     destruct (A_eq_dec a' a'); try congruence.
     subst.
@@ -228,7 +228,7 @@ Proof.
                 destruct H1; destruct_ex; intuition; subst.
     eexists; eexists; repeat split.
     repeat computes_to_econstructor; eauto.
-    simpl; rewrite transform_assoc; reflexivity.
+    simpl; rewrite mappend_assoc; reflexivity.
     eassumption.
     eassumption.
   }
@@ -236,7 +236,7 @@ Qed.
 
 Lemma CorrectDecoderinish {A B}
   : forall (cache : Cache)
-           (transformer : Transformer B)
+           (monoid : Monoid B)
            (predicate : A -> Prop)
            (rest_predicate : A -> B -> Prop)
            (decode_inv : CacheDecode -> Prop)
@@ -246,22 +246,22 @@ Lemma CorrectDecoderinish {A B}
     -> decides b (predicate a)
     -> CorrectDecoder
          cache
-         transformer
+         monoid
          predicate
          rest_predicate
-         (fun a' ctxE => ret (transform_id, ctxE))
+         (fun a' ctxE => ret (mempty, ctxE))
          (fun b' ctxD => if b then Some (a, b', ctxD) else None)
          decode_inv.
 Proof.
   unfold CorrectDecoder; split; intros.
   - eexists env'; pose proof (H _ H2); subst; find_if_inside;
       simpl in *; intuition eauto; computes_to_inv; injections.
-    rewrite transform_id_left; eauto.
+    rewrite mempty_left; eauto.
     eassumption.
   - find_if_inside; injections; try discriminate;
       simpl in *; intuition eauto.
     eexists; eexists; intuition eauto.
-    rewrite transform_id_left; reflexivity.
+    rewrite mempty_left; reflexivity.
 Qed.
 
 Lemma decides_and :
@@ -298,7 +298,7 @@ Proof.
 Qed.
 
 Lemma refine_If_Then_Else_ThenC
-  : forall (E B : Type) (transformer : Transformer B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E) b,
+  : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E) b,
     refine (((If b Then encode1 Else encode2) ThenC encode3) ctx)
            (If b Then ((encode1 ThenC encode3) ctx) Else ((encode2 ThenC encode3) ctx)).
 Proof.
@@ -306,7 +306,7 @@ Proof.
 Qed.
 
 Lemma refineEquiv_If_Then_Else_ThenC
-  : forall (E B : Type) (transformer : Transformer B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E) b,
+  : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E) b,
     refineEquiv (((If b Then encode1 Else encode2) ThenC encode3) ctx)
                 (If b Then ((encode1 ThenC encode3) ctx) Else ((encode2 ThenC encode3) ctx)).
 Proof.

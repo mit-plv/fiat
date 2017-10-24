@@ -20,7 +20,7 @@ Require Import
         Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.Formats.EnumOpt
@@ -66,10 +66,10 @@ Section TCPPacketDecoder.
              (n : nat)
              (b : ByteString)
     := IPChecksum_Valid (96 + n)
-       (transform (transform (IPChecksum.format_word srcAddr)
-                  (transform (IPChecksum.format_word destAddr)
-                  (transform (IPChecksum.format_word (wzero 8))
-                  (transform (IPChecksum.format_word (natToWord 8 6))
+       (mappend (mappend (IPChecksum.format_word srcAddr)
+                  (mappend (IPChecksum.format_word destAddr)
+                  (mappend (IPChecksum.format_word (wzero 8))
+                  (mappend (IPChecksum.format_word (natToWord 8 6))
                   (IPChecksum.format_word tcpLength)))))
                   b).
 
@@ -145,10 +145,10 @@ ThenCarryOn (format_option format_word (format_unused_word' 16 ByteString_id) tc
    (fun a0 : TCP_Packet =>
     16 + ((|a0!"Options"|) * 32 + ((|a0!"Payload" |) * 8 + length_ByteString ByteString_id))) tcp + 16 =
     (TCP_Length
-       (transform (transform b (transform (encode_checksum ByteString transformer ByteString_QueueTransformerOpt 16 c) b'')) ext)).
+       (mappend (mappend b (mappend (encode_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext)).
 Proof.
   intros.
-  intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
+  intros; change mempty with ByteString_id; rewrite length_ByteString_ByteString_id.
   unfold TCP_Length; rewrite (proj2 H1).
   match goal with
     |- context [ @length ?A ?l] => remember (@length A l)
@@ -163,7 +163,7 @@ Definition TCP_Packet_decoder'
   : CorrectDecoderFor TCP_Packet_OK encode_TCP_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
-  normalize_compose transformer.
+  normalize_compose monoid.
   apply_IPChecksum_dep TCP_Packet_Header_Len_OK.
 
   - unfold TCP_Packet_OK; intros ? H'; repeat split.

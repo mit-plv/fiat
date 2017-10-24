@@ -284,11 +284,11 @@ Lemma CharStringToByteString_ByteString_id_eq
 Proof.
 Admitted.
 
-Instance ByteStringQueueTransformer : Transformer ByteString.
+Instance ByteStringQueueMonoid : Monoid ByteString.
 Proof.
-  refine {| transform := ByteString_enqueue_ByteString;
+  refine {| mappend := ByteString_enqueue_ByteString;
             bin_measure := length_ByteString;
-            transform_id := ByteString_id |}.
+            mempty := ByteString_id |}.
   - abstract (intros; rewrite <- (ByteStringToCharString_CharStringToByteString_eq b),
                       <- (ByteStringToCharString_CharStringToByteString_eq b'),
                       ByteString_enqueue_ByteString_ByteStringToCharString,
@@ -346,8 +346,8 @@ Lemma ByteString_dequeue_ByteStringToCharString_eq'
 Proof.
 Admitted.
 
-Instance ByteString_QueueTransformerOpt
-  : QueueTransformerOpt ByteStringQueueTransformer bool.
+Instance ByteString_QueueMonoidOpt
+  : QueueMonoidOpt ByteStringQueueMonoid bool.
 Proof.
 refine {| B_measure f := 1;
           enqueue_opt := ByteString_enqueue;
@@ -375,7 +375,7 @@ refine {| B_measure f := 1;
     destruct (Core.ByteString_dequeue (CharStringToByteString b)) eqn : ?; simpl in *;
       try discriminate; destruct p; simpl in *.
     injection H; intros; subst.
-    apply ByteString_dequeue_transform_opt with (b'' := CharStringToByteString b'') in Heqo;
+    apply ByteString_dequeue_mappend_opt with (b'' := CharStringToByteString b'') in Heqo;
           simpl in *.
     admit.
   - abstract (simpl; intros; rewrite <- (ByteStringToCharString_CharStringToByteString_eq b'),
@@ -543,7 +543,7 @@ Require Import Fiat.Narcissus.Formats.WordOpt.
 Lemma aligned_decode_char_eq
       {numBytes}
   : forall (v : Vector.t byte (S numBytes)),
-    WordOpt.decode_word' (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v)
+    WordOpt.decode_word' (monoidUnit := ByteString_QueueMonoidOpt) 8 (build_aligned_ByteString v)
     = Some (byteToWord (Vector.hd v), build_aligned_ByteString (Vector.tl v)).
 Proof.
   simpl; intros.
@@ -557,7 +557,7 @@ Proof.
   rewrite <- (wordToByte_byteToWord_eq h).
   generalize (byteToWord h); intro; rewrite byteToWord_wordToByte_eq.
   shatter_word w.
-  pose proof (@dequeue_transform_opt _ _ _ ByteString_QueueTransformerOpt).
+  pose proof (@dequeue_mappend_opt _ _ _ ByteString_QueueMonoidOpt).
   rewrite build_aligned_ByteString_cons; simpl.
   simpl in H7.
   erewrite H7 with (t := x6)
@@ -598,7 +598,7 @@ Proof.
   unfold ByteString_dequeue; simpl.
   rewrite byteToWord_wordToByte_eq; simpl.
   repeat f_equal; apply Core.le_uniqueness_proof.
-  apply (@transform_id_left _ ByteStringQueueTransformer).
+  apply (@mempty_left _ ByteStringQueueMonoid).
 Qed.
 
 Fixpoint Vector_split {A} (n m : nat) (v : Vector.t A (n + m)) :
@@ -722,7 +722,7 @@ Qed.
 Lemma aligned_decode_char_eq'
           {numBytes numBytes'}
   : forall (v : Vector.t byte (S numBytes' + numBytes)),
-    WordOpt.decode_word' (transformerUnit := ByteString_QueueTransformerOpt) (8 * (S numBytes')) (build_aligned_ByteString v)
+    WordOpt.decode_word' (monoidUnit := ByteString_QueueMonoidOpt) (8 * (S numBytes')) (build_aligned_ByteString v)
     = let (v', v'') := Vector_split (S numBytes') numBytes v in
       Some (VectorByteToWord v', build_aligned_ByteString v'').
 Proof.

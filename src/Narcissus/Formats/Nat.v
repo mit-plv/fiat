@@ -10,8 +10,8 @@ Section Nat.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnit transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : MonoidUnit monoid bool}.
 
   Definition format_nat (n : nat) (ce : CacheEncode) : B * CacheEncode :=
     format_word (natToWord sz n) ce.
@@ -24,11 +24,11 @@ Section Nat.
   Local Open Scope nat.
 
   Theorem Nat_decode_correct :
-    encode_decode_correct cache transformer (fun n => n < pow2 sz) format_nat decode_nat.
+    encode_decode_correct cache monoid (fun n => n < pow2 sz) format_nat decode_nat.
   Proof.
     unfold encode_decode_correct, format_nat, decode_nat.
     intros env env' xenv xenv' n n' bin' ext ext' Eeq Ppred Penc Pdec.
-    destruct (decode_word (transform bin' ext) env') as [[? ?] ?] eqn: ?.
+    destruct (decode_word (mappend bin' ext) env') as [[? ?] ?] eqn: ?.
     inversion Pdec; subst; clear Pdec.
     pose proof (Word_decode_correct env env' xenv xenv' (natToWord sz n) w
                   bin' ext ext' Eeq I Penc Heqp).

@@ -23,14 +23,14 @@ Instance test_cache_add_nat : CacheAdd test_cache N :=
      add_correct := fun _ _ _ => id |}.
 
 Definition encode_test (t : test_t) (ce : CacheEncode) :=
-  compose btransformer (FixInt_encode (f1 t)) (
-  compose btransformer (FixInt_encode (FixList_getlength (f2 t))) (
-  compose btransformer (FixList_encode FixInt_encode (f2 t)) (
+  compose bmonoid (FixInt_encode (f1 t)) (
+  compose bmonoid (FixInt_encode (FixList_getlength (f2 t))) (
+  compose bmonoid (FixList_encode FixInt_encode (f2 t)) (
                        (fun e => (nil, e))))) ce.
 (* Commenting out until we update for new framework. *)
 (*
 Definition test_decoder
-  : { decode | encode_decode_correct test_cache btransformer (fun _ => True) encode_test decode }.
+  : { decode | encode_decode_correct test_cache bmonoid (fun _ => True) encode_test decode }.
 Proof.
   eexists.
   eapply compose_encode_correct. eapply FixInt_encode_correct. solve_predicate.

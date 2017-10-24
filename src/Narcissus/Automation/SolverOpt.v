@@ -18,7 +18,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector

@@ -18,7 +18,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
@@ -34,7 +34,7 @@ Open Scope Tuple_scope.
 Opaque pow2. (* Don't want to be evaluating this. *)
 Opaque natToWord. (* Or this. *)
 
-Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
+Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
 (* Start Example Derivation. *)
 Section EthernetPacketDecoder.
@@ -71,7 +71,7 @@ Section EthernetPacketDecoder.
   Definition ethernet_Header_OK (e : EthernetHeader) := True.
 
   Definition v1042_test (b : ByteString) : bool :=
-    match transformer_get_word 16 b with
+    match monoid_get_word 16 b with
     | Some w => if wlt_dec w (natToWord 16 1501) then true else false
     | _ => false
     end.
@@ -83,7 +83,7 @@ Section EthernetPacketDecoder.
                        ThenC format_word WO~0~1~0~1~0~1~0~1
                        ThenC format_word WO~1~1~0~0~0~0~0~0
                        ThenC format_word (wzero 24) ThenC format_enum EtherTypeCodes data!"Type" DoneC) env
-                                                                                                                  ↝ (bin, xenv) -> v1042_test (transform bin ext) = true.
+                                                                                                                  ↝ (bin, xenv) -> v1042_test (mappend bin ext) = true.
   Proof.
     intros.
     unfold compose at 1 in H; unfold Bind2 in H;
@@ -91,9 +91,9 @@ Section EthernetPacketDecoder.
         injections.
     unfold format_nat, format_word in H; computes_to_inv.
     pose proof (f_equal fst H) as H''; simpl in H''; rewrite <- H''.
-    pose proof transform_assoc as H'''; simpl in H'''; rewrite <- H'''.
+    pose proof mappend_assoc as H'''; simpl in H'''; rewrite <- H'''.
     unfold v1042_test.
-    pose transformer_get_format_word' as H''''; rewrite H''''; find_if_inside; eauto.
+    pose monoid_get_format_word' as H''''; rewrite H''''; find_if_inside; eauto.
     destruct n.
     eapply natToWord_wlt; eauto; try reflexivity.
     etransitivity.
@@ -107,16 +107,16 @@ Section EthernetPacketDecoder.
   Lemma v1042_OKE
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
       (format_enum EtherTypeCodes data!"Type" DoneC) env ↝ (bin, xenv)
-      -> v1042_test (transform bin ext) = false.
+      -> v1042_test (mappend bin ext) = false.
   Proof.
     intros; unfold compose at 1 in H; unfold Bind2 in H;
       computes_to_inv; destruct v; destruct v0; simpl in *;
         injections.
     unfold format_enum, format_word in H; computes_to_inv.
     pose proof (f_equal fst H) as H'; unfold fst in H'; rewrite <- H'.
-    pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
+    pose proof mappend_assoc as H''; simpl in H''; rewrite <- H''.
     unfold v1042_test.
-    pose transformer_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
+    pose monoid_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
     revert w; clear.
     match goal with
       |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear

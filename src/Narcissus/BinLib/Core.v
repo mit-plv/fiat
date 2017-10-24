@@ -11,14 +11,14 @@ Set Implicit Arguments.
 
 Notation bin := (list bool).
 
-Global Instance btransformer : Transformer bin :=
-  {| transform := @app _;
+Global Instance bmonoid : Monoid bin :=
+  {| mappend := @app _;
      bin_measure := (@length bool);
-     transform_measure b b' := app_length b b';
-     transform_id := nil;
-     transform_id_left := @app_nil_l _;
-     transform_id_right := @app_nil_r _;
-     transform_assoc := @app_assoc _ |}.
+     mappend_measure b b' := app_length b b';
+     mempty := nil;
+     mempty_left := @app_nil_l _;
+     mempty_right := @app_nil_r _;
+     mappend_assoc := @app_assoc _ |}.
 
 Definition char := word 8.
 
@@ -171,7 +171,7 @@ Proof.
   rewrite length_ByteString_push, IHn; eauto.
 Qed.
 
-Lemma transform_ByteString_measure
+Lemma mappend_ByteString_measure
   : forall bs bs' : ByteString,
    length_ByteString (ByteString_append bs bs') = length_ByteString bs + length_ByteString bs'.
 Proof.
@@ -231,7 +231,7 @@ Definition ByteString_id : ByteString.
   abstract omega.
 Defined.
 
-Lemma ByteString_transform_id_left
+Lemma ByteString_mempty_left
   : forall bs : ByteString,
    ByteString_append ByteString_id bs = bs.
 Proof.
@@ -725,7 +725,7 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma ByteString_transform_f_equal
+Lemma ByteString_mappend_f_equal
   : forall bs bs'
            (p_eq : padding bs' = padding bs),
     paddingOK bs = (@eq_rect nat (padding bs') (fun t => lt t 8) (paddingOK bs') _ p_eq)
@@ -791,7 +791,7 @@ Proof.
   eapply le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_transform_id_right
+Lemma ByteString_mempty_right
   : forall bs : ByteString,
     ByteString_append bs ByteString_id = bs.
 Proof.
@@ -812,7 +812,7 @@ Proof.
     f_equal; eauto using le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_transform_list_into
+Lemma ByteString_mappend_list_into
   : forall l l',
     ByteString_append (list_into_ByteString l) (list_into_ByteString l') = list_into_ByteString (app l l').
 Proof.
@@ -848,7 +848,7 @@ Proof.
         elimtype False; apply n.
         apply e.
       }
-      apply ByteString_transform_f_equal with (p_eq := H).
+      apply ByteString_mappend_f_equal with (p_eq := H).
       apply le_uniqueness_proof.
       destruct (fold_right
                    ByteString_push_char
@@ -909,7 +909,7 @@ Proof.
         simpl in *|-; congruence.
         reflexivity.
       }
-      apply ByteString_transform_f_equal with (p_eq := H).
+      apply ByteString_mappend_f_equal with (p_eq := H).
       apply le_uniqueness_proof.
       unfold front at 3; unfold padding at 2.
       destruct (ByteString_push_word
@@ -956,7 +956,7 @@ Proof.
         simpl; reflexivity.
         congruence.
       }
-      apply ByteString_transform_f_equal with (p_eq := H).
+      apply ByteString_mappend_f_equal with (p_eq := H).
       apply le_uniqueness_proof.
       destruct (fold_right
                    ByteString_push_char
@@ -1013,7 +1013,7 @@ Proof.
         simpl in *|-; congruence.
         reflexivity.
       }
-      apply ByteString_transform_f_equal with (p_eq := H).
+      apply ByteString_mappend_f_equal with (p_eq := H).
       apply le_uniqueness_proof.
       unfold front at 3; unfold padding at 2.
       destruct (ByteString_push_word
@@ -1047,7 +1047,7 @@ Lemma list_into_ByteString_append
 Proof.
   intros.
   rewrite (ByteString_into_list_eq b), (ByteString_into_list_eq b').
-  rewrite ByteString_transform_list_into.
+  rewrite ByteString_mappend_list_into.
   rewrite <- !ByteString_into_list_eq.
   rewrite list_into_ByteString_eq; reflexivity.
 Qed.
@@ -1076,7 +1076,7 @@ Proof.
     destruct (eq_nat_dec x y); eauto.
 Qed.
 
-Lemma ByteString_transform_assoc
+Lemma ByteString_mappend_assoc
   : forall l m n : ByteString,
     ByteString_append l (ByteString_append m n) =
     ByteString_append (ByteString_append l m) n.
@@ -1085,19 +1085,19 @@ Proof.
   rewrite (ByteString_into_list_eq m),
   (ByteString_into_list_eq n),
   (ByteString_into_list_eq l).
-  erewrite !ByteString_transform_list_into.
+  erewrite !ByteString_mappend_list_into.
   rewrite app_assoc.
   reflexivity.
 Qed.
 
-Global Instance ByteStringTransformer : Transformer ByteString :=
-  {| transform := ByteString_append;
+Global Instance ByteStringMonoid : Monoid ByteString :=
+  {| mappend := ByteString_append;
      bin_measure := length_ByteString;
-     transform_measure := transform_ByteString_measure;
-     transform_id := ByteString_id;
-     transform_id_left := ByteString_transform_id_left;
-     transform_id_right := ByteString_transform_id_right;
-     transform_assoc :=  ByteString_transform_assoc |}.
+     mappend_measure := mappend_ByteString_measure;
+     mempty := ByteString_id;
+     mempty_left := ByteString_mempty_left;
+     mempty_right := ByteString_mempty_right;
+     mappend_assoc :=  ByteString_mappend_assoc |}.
 
 Lemma ByteString_measure_push
   : forall (t : bool) (b : ByteString), bin_measure (ByteString_push t b) = bin_measure b + 1.
@@ -1166,7 +1166,7 @@ Proof.
   intros.
   rewrite (ByteString_into_list_eq b),
   (ByteString_into_list_eq b').
-  rewrite ByteString_transform_list_into.
+  rewrite ByteString_mappend_list_into.
   rewrite !padding_list_into_ByteString.
   rewrite app_length.
   rewrite NPeano.Nat.add_mod; eauto.
@@ -1195,7 +1195,7 @@ Proof.
   - rewrite ByteString_measure_push; simpl; rewrite IHl; omega.
 Qed.
 
-Lemma ByteString_transform_push_pop_opt
+Lemma ByteString_mappend_push_pop_opt
   : forall (t : bool) (m : ByteString), ByteString_pop (ByteString_push t m) = Some (t, m).
 Proof.
   destruct m; simpl.
@@ -1230,7 +1230,7 @@ Proof.
       rewrite length_ByteString_push in H;
       compute in H; discriminate.
   - apply (f_equal ByteString_pop) in H;
-      rewrite !ByteString_transform_push_pop_opt in H.
+      rewrite !ByteString_mappend_push_pop_opt in H.
     injections; f_equal; eauto.
 Qed.
 
@@ -1242,9 +1242,9 @@ Proof.
     eauto.
 Qed.
 
-Lemma ByteString_transform_push_eq
+Lemma ByteString_mappend_push_eq
   : forall t bs, exists pf,
-      ByteString_push t bs = transform {| front := WS t WO;
+      ByteString_push t bs = mappend {| front := WS t WO;
                                          paddingOK := pf;
                                          byteString := [ ] |} bs.
 Proof.
@@ -1254,20 +1254,20 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma ByteString_transform_push_step_opt
+Lemma ByteString_mappend_push_step_opt
   : forall (t : bool) (m n : ByteString),
-    transform (ByteString_push t m) n = ByteString_push t (transform m n).
+    mappend (ByteString_push t m) n = ByteString_push t (mappend m n).
 Proof.
-  intros t m n; destruct (ByteString_transform_push_eq t m).
-  simpl transform.
-  rewrite H, <- ByteString_transform_assoc.
-  destruct (ByteString_transform_push_eq t (transform m n)).
-  simpl transform in *; rewrite H0.
+  intros t m n; destruct (ByteString_mappend_push_eq t m).
+  simpl mappend.
+  rewrite H, <- ByteString_mappend_assoc.
+  destruct (ByteString_mappend_push_eq t (mappend m n)).
+  simpl mappend in *; rewrite H0.
   repeat f_equal.
   apply le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_transform_pop_opt_inj
+Lemma ByteString_mappend_pop_opt_inj
   : forall (t : bool) (m b b' : ByteString),
     ByteString_pop b = Some (t, m) -> ByteString_pop b' = Some (t, m) -> b = b'.
 Proof.
@@ -1316,16 +1316,16 @@ Proof.
     apply le_uniqueness_proof.
 Qed.
 
-Instance ByteString_TransformerUnitOpt
-  : TransformerUnitOpt ByteStringTransformer bool :=
+Instance ByteString_MonoidUnitOpt
+  : MonoidUnitOpt ByteStringMonoid bool :=
   {| T_measure f := 1;
-     transform_push_opt := ByteString_push;
-     transform_pop_opt := ByteString_pop;
+     mappend_push_opt := ByteString_push;
+     mappend_pop_opt := ByteString_pop;
      measure_push := ByteString_measure_push ;
      measure_pop_Some := ByteString_measure_pop_Some;
-     transform_push_pop_opt := ByteString_transform_push_pop_opt;
-     transform_push_step_opt := ByteString_transform_push_step_opt;
-     transform_pop_opt_inj := ByteString_transform_pop_opt_inj
+     mappend_push_pop_opt := ByteString_mappend_push_pop_opt;
+     mappend_push_step_opt := ByteString_mappend_push_step_opt;
+     mappend_pop_opt_inj := ByteString_mappend_pop_opt_inj
   |}.
 Proof.
   - abstract eauto.
@@ -2148,14 +2148,14 @@ Proof.
           <- app_assoc; eauto.
 Qed.
 
-Global Instance ByteStringQueueTransformer : Transformer ByteString :=
-  {| transform := ByteString_enqueue_ByteString;
+Global Instance ByteStringQueueMonoid : Monoid ByteString :=
+  {| mappend := ByteString_enqueue_ByteString;
      bin_measure := length_ByteString;
-     transform_id := ByteString_id;
-     transform_measure := ByteString_enqueue_ByteString_measure;
-     transform_id_left := ByteString_enqueue_ByteString_id_left;
-     transform_id_right := ByteString_transform_id_left;
-     transform_assoc := ByteString_enqueue_ByteString_assoc
+     mempty := ByteString_id;
+     mappend_measure := ByteString_enqueue_ByteString_measure;
+     mempty_left := ByteString_enqueue_ByteString_id_left;
+     mempty_right := ByteString_mempty_left;
+     mappend_assoc := ByteString_enqueue_ByteString_assoc
   |}.
 
 Lemma ByteString_measure_dequeue_Some
@@ -2171,7 +2171,7 @@ Proof.
     omega.
 Qed.
 
-Lemma ByteString_dequeue_transform_opt :
+Lemma ByteString_dequeue_mappend_opt :
   forall t b b' b'',
     ByteString_dequeue b = Some (t, b')
     -> ByteString_dequeue (ByteString_enqueue_ByteString b b'') = Some (t, ByteString_enqueue_ByteString b' b'').
@@ -2290,16 +2290,16 @@ Proof.
   app_assoc; reflexivity.
 Qed.
 
-Instance ByteString_QueueTransformerOpt
-  : QueueTransformerOpt ByteStringQueueTransformer bool
+Instance ByteString_QueueMonoidOpt
+  : QueueMonoidOpt ByteStringQueueMonoid bool
   :=
   { B_measure f := 1;
     enqueue_opt := ByteString_enqueue;
     dequeue_opt := ByteString_dequeue;
     measure_enqueue := length_ByteString_enqueue';
     measure_dequeue_Some := ByteString_measure_dequeue_Some;
-    dequeue_transform_opt := ByteString_dequeue_transform_opt;
-    enqueue_transform_opt := ByteString_enqueue_ByteString_enqueue_ByteString;
+    dequeue_mappend_opt := ByteString_dequeue_mappend_opt;
+    enqueue_mappend_opt := ByteString_enqueue_ByteString_enqueue_ByteString;
     dequeue_head_opt := ByteString_dequeue_head_opt;
     dequeue_None := ByteString_dequeue_None;
     dequeue_opt_inj := ByteString_dequeue_opt_inj

@@ -11,8 +11,8 @@ Section Ascii.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnit transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : MonoidUnit monoid bool}.
 
   Definition format_ascii (c : ascii) (ce : CacheEncode) : B * CacheEncode :=
     format_word (NToWord 8 (N_of_ascii c)) ce.
@@ -24,11 +24,11 @@ Section Ascii.
 
   Open Local Scope nat.
   Theorem Ascii_decode_correct :
-    encode_decode_correct cache transformer (fun n => True) format_ascii decode_ascii.
+    encode_decode_correct cache monoid (fun n => True) format_ascii decode_ascii.
   Proof.
     unfold encode_decode_correct, format_ascii, decode_ascii.
     intros env env' xenv xenv' c c' bin' ext ext' Eeq Ppred Penc Pdec.
-    destruct (decode_word (transform bin' ext) env') as [[? ?] ?] eqn: ?.
+    destruct (decode_word (mappend bin' ext) env') as [[? ?] ?] eqn: ?.
     inversion Pdec; subst; clear Pdec.
     pose proof (Word_decode_correct env env' xenv xenv' (NToWord 8 (N_of_ascii c)) w
                   bin' ext ext' Eeq I Penc Heqp).

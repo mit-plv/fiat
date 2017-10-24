@@ -18,7 +18,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
@@ -34,7 +34,7 @@ Open Scope Tuple_scope.
 Opaque pow2. (* Don't want to be evaluating this. *)
 Opaque natToWord. (* Or this. *)
 
-Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
+Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
 (* Start Example Derivation. *)
 

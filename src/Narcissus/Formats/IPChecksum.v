@@ -20,7 +20,7 @@ Require Import
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
@@ -44,9 +44,9 @@ Fixpoint append_bit {sz} (b : bool) (w : word sz) : word (S sz) :=
   | S n' => fun w => WS (whd w) (append_bit b (wtl w))
   end w.
 
-Fixpoint transformer_dequeue_word {B}
-         {transformer : Transformer B}
-         {transformer_opt : QueueTransformerOpt transformer bool}
+Fixpoint monoid_dequeue_word {B}
+         {monoid : Monoid B}
+         {monoid_opt : QueueMonoidOpt monoid bool}
          (sz : nat)
          (b : B)
   : (word sz * B) :=
@@ -55,15 +55,15 @@ Fixpoint transformer_dequeue_word {B}
   | S sz' =>
     match dequeue_opt b with
     | Some (v, b') =>
-      let (w', b'') := transformer_dequeue_word sz' b' in
+      let (w', b'') := monoid_dequeue_word sz' b' in
       (append_bit v w', b'')
     | _ => (wzero (S sz'), b)
     end
   end.
 
-Lemma transformer_dequeue_enqueue_word
+Lemma monoid_dequeue_enqueue_word
   : forall (w : word (0 + 1 * 8)) (ext : ByteString) OK,
-    transformer_dequeue_word _ (ByteString_enqueue_ByteString (word_into_ByteString OK w) ext) = (w, ext).
+    monoid_dequeue_word _ (ByteString_enqueue_ByteString (word_into_ByteString OK w) ext) = (w, ext).
 Proof.
   simpl; intros; shatter_word w.
   unfold word_into_ByteString; simpl.
@@ -72,7 +72,7 @@ Proof.
          let H := fresh in
          destruct (ByteString_dequeue z) as [ [? ?] | ] eqn:H;
            unfold ByteString_dequeue in H; simpl in H;
-             [ erewrite ByteString_dequeue_transform_opt; try eassumption;
+             [ erewrite ByteString_dequeue_mappend_opt; try eassumption;
                injections | discriminate ];
              match goal with
                |- context [ {| padding := _;
@@ -93,10 +93,10 @@ Fixpoint ByteString2ListOfChar (n : nat)
   match n with
   | 0 => nil
   | S (S (S (S (S (S (S (S n'))))))) =>
-    let (c, b') := transformer_dequeue_word 8 b in
+    let (c, b') := monoid_dequeue_word 8 b in
     cons c (ByteString2ListOfChar n' b')
   | S n' =>
-    let (c, b') := transformer_dequeue_word 8 b in
+    let (c, b') := monoid_dequeue_word 8 b in
     cons c (ByteString2ListOfChar n' b')
   end.
 
@@ -109,11 +109,11 @@ Lemma ByteString2ListOfChar_push_char
                                         byteString := [c] |}
                                      b) = (c :: (ByteString2ListOfChar n b))%list.
 Proof.
-  Local Opaque transformer_dequeue_word.
+  Local Opaque monoid_dequeue_word.
   intros.
   simpl.
   replace {| padding := 0; front := WO; paddingOK := PaddingOK; byteString := [c] |} with (word_into_ByteString ByteString_id_subproof (c : word (0 + 1 * 8))).
-  rewrite transformer_dequeue_enqueue_word.
+  rewrite monoid_dequeue_enqueue_word.
   reflexivity.
   unfold char in c; shatter_word c.
   unfold word_into_ByteString; simpl.
@@ -124,7 +124,7 @@ Qed.
 Lemma ByteString2ListOfChar_eq
   : forall (b ext : ByteString),
     padding b = 0 ->
-    ByteString2ListOfChar (bin_measure b) (transform b ext) =
+    ByteString2ListOfChar (bin_measure b) (mappend b ext) =
     byteString b.
 Proof.
   simpl; intros.
@@ -163,11 +163,11 @@ Corollary ByteString2ListOfChar_eq'
     byteString b.
 Proof.
   intros.
-  erewrite <- ByteString2ListOfChar_eq with (ext := transform_id); auto.
+  erewrite <- ByteString2ListOfChar_eq with (ext := mempty); auto.
 Qed.
 
-Definition transformer : Transformer ByteString :=
-  ByteStringQueueTransformer.
+Definition monoid : Monoid ByteString :=
+  ByteStringQueueMonoid.
 
 Lemma onesComplement_commute :
   forall b b',
@@ -212,11 +212,11 @@ Proof.
 Qed.
 
 Definition IPChecksum (b b' : ByteString) : ByteString :=
-  let b'' := if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
+  let b'' := if Peano_dec.eq_nat_dec (padding b) 0 then mempty
              else format_word (wzero (8 - (padding b))) in
-  transform b''
+  mappend b''
             (format_word (wnot (onesComplement
-                                  (ByteString2ListOfChar (bin_measure (transform b b')) (transform b b'))))).
+                                  (ByteString2ListOfChar (bin_measure (mappend b b')) (mappend b b'))))).
 
 Lemma length_ByteString_IPChecksum
   : forall b b',
@@ -232,7 +232,7 @@ Qed.
 
 (*Lemma format_word_S :
   forall n w, format_word (sz := S n) w =
-              transform (format_word (WS (whd w) WO))
+              mappend (format_word (WS (whd w) WO))
                         (format_word (wtl w)).
 Proof.
   intros; rewrite (shatter_word w); simpl.
@@ -250,14 +250,14 @@ Proof.
 Qed.
 
 Lemma format_word_WO :
-  forall w, format_word' 0 w = transform_id.
+  forall w, format_word' 0 w = mempty.
 Proof.
   intros; rewrite (shatter_word w); simpl; reflexivity.
 Qed. *)
 
 (*Lemma encode_char :
   forall n w, format_word (sz := 8 + n) w =
-            transform {| front := WO;
+            mappend {| front := WO;
                paddingOK := Lt.lt_0_Sn _;
                byteString := WS (whd w)
                              (WS (whd (wtl w))
@@ -277,18 +277,18 @@ Proof.
   rewrite (format_word_S (2 + n)).
   rewrite (format_word_S (1 + n)).
   rewrite (format_word_S (n)).
-  rewrite !transform_assoc.
+  rewrite !mappend_assoc.
   simpl; f_equal.
   unfold ByteString_push, ByteString_id; simpl.
   simpl.
-  unfold ByteString_transformer at 7. simpl.
-  unfold ByteString_transformer at 6. simpl.
-  unfold ByteString_transformer at 5. simpl.
-  unfold ByteString_transformer at 4. simpl.
-  unfold ByteString_transformer at 3. simpl.
-  unfold ByteString_transformer at 2. simpl.
-  unfold ByteString_transformer at 1. simpl.
-  unfold ByteString_transformer. simpl.
+  unfold ByteString_monoid at 7. simpl.
+  unfold ByteString_monoid at 6. simpl.
+  unfold ByteString_monoid at 5. simpl.
+  unfold ByteString_monoid at 4. simpl.
+  unfold ByteString_monoid at 3. simpl.
+  unfold ByteString_monoid at 2. simpl.
+  unfold ByteString_monoid at 1. simpl.
+  unfold ByteString_monoid. simpl.
   unfold ByteString_push at 7; simpl.
   unfold ByteString_push at 6; simpl.
   unfold ByteString_push at 5; simpl.
@@ -362,7 +362,7 @@ Qed.
 
 Lemma format_word'_padding :
   forall sz (w : word sz),
-    padding (format_word' _ w transform_id) = NPeano.modulo sz 8.
+    padding (format_word' _ w mempty) = NPeano.modulo sz 8.
 Proof.
   intros; rewrite (ByteString_into_list_eq _).
   rewrite padding_list_into_ByteString.
@@ -404,7 +404,7 @@ Definition decode_IPChecksum
   : ByteString -> CacheDecode -> option (() * ByteString * CacheDecode) :=
   decode_unused_word 16.
 
-(*Lemma ByteString_transformer_eq_app :
+(*Lemma ByteString_monoid_eq_app :
   forall (b b' : ByteString),
     padding b = 0
     -> padding b' = 0
@@ -419,7 +419,7 @@ Lemma ByteString2ListOfChar_Over :
   forall (b ext : ByteString),
     padding b = 0
     -> ByteString2ListOfChar (bin_measure b)
-                             (transform b ext) =
+                             (mappend b ext) =
        ByteString2ListOfChar (bin_measure b) b.
 Proof.
   intros; rewrite ByteString2ListOfChar_eq; eauto.
@@ -445,12 +445,12 @@ Qed.
 
 (*Lemma add_padding_OK
   : forall b,
-    padding (transform b
-                       (if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
+    padding (mappend b
+                       (if Peano_dec.eq_nat_dec (padding b) 0 then mempty
                        else format_word (wzero (8 - (padding b))))) = 0.
 Proof.
 Defined. *)
-(*  intros; rewrite transform_padding_eq.
+(*  intros; rewrite mappend_padding_eq.
   find_if_inside; subst; simpl.
   - rewrite e; simpl; eauto.
   - pose proof (paddingOK b).
@@ -464,13 +464,13 @@ Qed. *)
 
 (* Lemma IPChecksum_OK : *)
 (*   forall (b ext : ByteString), *)
-(*     IPChecksum_Valid (bin_measure (transform b (IPChecksum b))) *)
-(*                      (transform (transform b (IPChecksum b)) ext). *)
+(*     IPChecksum_Valid (bin_measure (mappend b (IPChecksum b))) *)
+(*                      (mappend (mappend b (IPChecksum b)) ext). *)
 (* Proof. *)
 (*   simpl; intros. *)
 (*   unfold IPChecksum, IPChecksum_Valid. *)
-(*   pose proof transform_assoc as H'; simpl in H'; rewrite H'. *)
-(*   rewrite ByteString_transformer_eq_app. *)
+(*   pose proof mappend_assoc as H'; simpl in H'; rewrite H'. *)
+(*   rewrite ByteString_monoid_eq_app. *)
 (*   rewrite ByteString2ListOfChar_Over. *)
 (*   rewrite !ByteString2ListOfChar_eq'; simpl. *)
 (*   apply onesComplement_onesComplement. *)
@@ -481,12 +481,12 @@ Qed. *)
 (*   rewrite format_word'_padding; reflexivity. *)
 (* Qed. *)
 
-(*Lemma padding_transform_commute
+(*Lemma padding_mappend_commute
   : forall b b',
-    padding (transform b b') = padding (transform b' b).
+    padding (mappend b b') = padding (mappend b' b).
 Proof.
 Defined. *)
-(*  intros; rewrite !transform_padding_eq.
+(*  intros; rewrite !mappend_padding_eq.
   rewrite Plus.plus_comm; eauto.
 Qed. *)
 
@@ -550,10 +550,10 @@ Proof.
     f_equal; eauto.
 Qed.
 
-Lemma transformer_dequeue_word_inj
+Lemma monoid_dequeue_word_inj
   : forall sz w w' p,
-    WordOpt.transformer_dequeue_word sz w = Some p
-    -> WordOpt.transformer_dequeue_word sz w' = Some p
+    WordOpt.monoid_dequeue_word sz w = Some p
+    -> WordOpt.monoid_dequeue_word sz w' = Some p
     -> w = w'.
 Proof.
   induction sz; simpl; intros.
@@ -562,8 +562,8 @@ Proof.
       destruct (ByteString_dequeue w') as [ [? ?] | ] eqn : ?;
                                                               try discriminate.
     simpl in *.
-    destruct (WordOpt.transformer_dequeue_word sz b0) as [ [? ?] | ] eqn : ? ;
-      destruct (WordOpt.transformer_dequeue_word sz b2) as [ [? ?] | ]  eqn : ? ;
+    destruct (WordOpt.monoid_dequeue_word sz b0) as [ [? ?] | ] eqn : ? ;
+      destruct (WordOpt.monoid_dequeue_word sz b2) as [ [? ?] | ]  eqn : ? ;
       try discriminate.
     destruct p as [? ?].
     injection H; injection H0; intros; subst.
@@ -575,30 +575,30 @@ Qed.
 
 (*Lemma decode_IPChecksum_pf'
   : forall (u : ()) (b b' : ByteString),
-    () -> forall ctxD ctxD' : (), True -> decode_IPChecksum b ctxD = Some (u, b', ctxD') -> True /\ (exists b'' : ByteString, b = ByteString_transformer b'' b').
+    () -> forall ctxD ctxD' : (), True -> decode_IPChecksum b ctxD = Some (u, b', ctxD') -> True /\ (exists b'' : ByteString, b = ByteString_monoid b'' b').
 Proof.
   unfold IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
-  intros; destruct (WordOpt.transformer_pop_word 16 b) eqn : ? ;
+  intros; destruct (WordOpt.monoid_pop_word 16 b) eqn : ? ;
     simpl in H1; try discriminate.
   intuition.
   destruct p; simpl in H1.
   injections.
   eexists (format_word' 16 w).
-  eapply transformer_pop_word_inj; eauto.
-  pose proof transformer_pop_format_word' as H'; simpl in H';
+  eapply monoid_pop_word_inj; eauto.
+  pose proof monoid_pop_format_word' as H'; simpl in H';
     eapply H'.
 Qed.
 
 Lemma decode_IPChecksum_pf
   : forall (b b' ext : ByteString) (ctx ctx' ctxD : ()),
     padding b = 0 ->
-    decode_IPChecksum (ByteString_transformer (ByteString_transformer (IPChecksum b b') b') ext) ctxD = Some ((), ByteString_transformer b' ext, ctxD).
+    decode_IPChecksum (ByteString_monoid (ByteString_monoid (IPChecksum b b') b') ext) ctxD = Some ((), ByteString_monoid b' ext, ctxD).
 Proof.
-  intros; pose proof transform_assoc as H'; simpl in H'; rewrite <- H'; clear H'.
+  intros; pose proof mappend_assoc as H'; simpl in H'; rewrite <- H'; clear H'.
   unfold IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
   find_if_inside.
-  rewrite transform_id_left.
-  pose proof transformer_pop_format_word' as H'; simpl in H'; rewrite H'; simpl; eauto.
+  rewrite mempty_left.
+  pose proof monoid_pop_format_word' as H'; simpl in H'; rewrite H'; simpl; eauto.
   congruence.
 Qed. *)
 
@@ -652,15 +652,15 @@ Qed.
     IPChecksum_ByteAligned b  (* Should be able to elide this assumption. *)
     -> IPChecksum_ByteAligned b'
     -> IPChecksum_Valid
-         (bin_measure (transform (transform b (IPChecksum b b')) b'))
-         (transform (transform (transform b (IPChecksum b b')) b') ext).
+         (bin_measure (mappend (mappend b (IPChecksum b b')) b'))
+         (mappend (mappend (mappend b (IPChecksum b b')) b') ext).
 Proof.
   simpl; intros.
   destruct H0; destruct H.
   unfold IPChecksum, IPChecksum_Valid.
-  pose proof transform_assoc as H'; simpl in H'; rewrite H'.
+  pose proof mappend_assoc as H'; simpl in H'; rewrite H'.
   rewrite ByteString2ListOfChar_Over with (ext := ext); try eassumption.
-  rewrite !ByteString_transformer_eq_app; try eassumption.
+  rewrite !ByteString_monoid_eq_app; try eassumption.
   pose proof ByteString2ListOfChar_eq' as H''; simpl in H''.
   rewrite H''.
   unfold byteString at 1.
@@ -685,16 +685,16 @@ Proof.
   reflexivity.
   congruence.
   rewrite H; find_if_inside; try congruence.
-  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
   rewrite format_word'_padding; reflexivity.
   rewrite H; find_if_inside; try congruence.
-  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
-  rewrite transform_padding_eq; rewrite H.
+  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite mappend_padding_eq; rewrite H.
   rewrite format_word'_padding; reflexivity.
   rewrite H; find_if_inside; try congruence.
-  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
-  rewrite transform_padding_eq.
-  rewrite transform_padding_eq; rewrite H.
+  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite mappend_padding_eq.
+  rewrite mappend_padding_eq; rewrite H.
   rewrite format_word'_padding.
   rewrite H0; reflexivity.
 Qed. *)
@@ -765,15 +765,15 @@ Arguments pow2 : simpl never.
     -> exists b' b'' ctx' ctx''' ,
       computes_to (rest' ctx') (b', ctx''')
       /\ computes_to (rest ctx''') (b'', ctx'')
-      /\ forall ext, decode_unused_word' sz (transform b ext) = Some ((), transform (transform b' (transform (checksum sz (transform (format_word' _ w) b') b'') b'')) ext).
+      /\ forall ext, decode_unused_word' sz (mappend b ext) = Some ((), mappend (mappend b' (mappend (checksum sz (mappend (format_word' _ w) b') b'') b'')) ext).
 Proof.
   unfold composeChecksum, compose, Bind2, format_word; intros; computes_to_inv; injections.
   destruct v0; destruct v2; simpl in *; do 4 eexists;
     repeat split; eauto.
   unfold decode_unused_word'.
   intros.
-  rewrite <- !ByteString_transform_assoc.
-  pose proof transformer_pop_format_word' as H''; simpl in H'';
+  rewrite <- !ByteString_mappend_assoc.
+  pose proof monoid_pop_format_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
 Qed. *)
 
@@ -785,14 +785,14 @@ Lemma computes_to_compose_decode_word
     -> exists b' ctx',
       computes_to (rest ctx') (b', ctx'')
       /\ forall ext,
-        decode_word' sz (transform b ext) = Some (w, transform b' ext).
+        decode_word' sz (mappend b ext) = Some (w, mappend b' ext).
 Proof.
   unfold composeChecksum, compose, Bind2, WordOpt.format_word; intros; computes_to_inv; injections.
   destruct v0; simpl in *; do 2 eexists;
     repeat split; eauto.
-  intros; rewrite <- transformer_dequeue_word_eq_decode_word'.
+  intros; rewrite <- monoid_dequeue_word_eq_decode_word'.
   rewrite <- !ByteString_enqueue_ByteString_assoc.
-  pose proof transformer_dequeue_format_word' as H''; simpl in H'';
+  pose proof monoid_dequeue_format_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
 Qed.
 
@@ -804,14 +804,14 @@ Lemma computes_to_compose_decode_unused_word
     -> exists b' ctx',
       computes_to (rest ctx') (b', ctx'')
       /\ forall ext,
-        decode_unused_word' sz (transform b ext) = Some ((), transform b' ext).
+        decode_unused_word' sz (mappend b ext) = Some ((), mappend b' ext).
 Proof.
   unfold composeChecksum, compose, Bind2, WordOpt.format_word; intros; computes_to_inv; injections.
   destruct v0; simpl in *; do 2 eexists;
     repeat split; eauto.
   unfold decode_unused_word'; intros.
   rewrite <- !ByteString_enqueue_ByteString_assoc.
-  pose proof transformer_dequeue_format_word' as H''; simpl in H'';
+  pose proof monoid_dequeue_format_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
 Qed.
 
@@ -950,9 +950,9 @@ Qed.
   : forall x x3 x1 ext u ctx ctx',
     IPChecksum_ByteAligned x
     -> IPChecksum_ByteAligned x1
-    -> IPChecksum_Valid (length_ByteString (ByteString_transformer x (ByteString_transformer x3 x1)))
-                     (ByteString_transformer x (ByteString_transformer x3 (ByteString_transformer x1 ext)))
-    -> decode_IPChecksum (ByteString_transformer x3 (ByteString_transformer x1 ext)) ctx = Some (u, (ByteString_transformer x1 ext), ctx')
+    -> IPChecksum_Valid (length_ByteString (ByteString_monoid x (ByteString_monoid x3 x1)))
+                     (ByteString_monoid x (ByteString_monoid x3 (ByteString_monoid x1 ext)))
+    -> decode_IPChecksum (ByteString_monoid x3 (ByteString_monoid x1 ext)) ctx = Some (u, (ByteString_monoid x1 ext), ctx')
     -> x3 = IPChecksum x x1.
 Proof.
 Defined. *)
@@ -960,9 +960,9 @@ Defined. *)
 Lemma compose_IPChecksum_encode_correct
   : forall (A : Type)
            (B := ByteString)
-           (trans : Transformer B := transformer)
-           (trans_opt : QueueTransformerOpt trans bool :=
-              ByteString_QueueTransformerOpt)
+           (trans : Monoid B := monoid)
+           (trans_opt : QueueMonoidOpt trans bool :=
+              ByteString_QueueMonoidOpt)
            (calculate_checksum := IPChecksum)
            (checksum_Valid := IPChecksum_Valid)
            (checksum_Valid_dec := IPChecksum_Valid_dec)
@@ -996,10 +996,10 @@ Lemma compose_IPChecksum_encode_correct
              encode1 (project a) ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ transformer predicate' predicate_rest encode1 decode1 P) ->
+         CorrectDecoder _ monoid predicate' predicate_rest encode1 decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1010,17 +1010,17 @@ Lemma compose_IPChecksum_encode_correct
             predicate_rest' a b ->
             {c0 : word 16 |
              forall ext : ByteString,
-               IPChecksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
-                                (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
-            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+               IPChecksum_Valid (bin_measure (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')))
+                                (mappend (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (mappend (mappend (encode_checksum _ _ _ _ c) b'') b)) ->
         forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ transformer
+              CorrectDecoder _ monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ transformer predicate predicate_rest'
+          CorrectDecoder _ monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 (project data) ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1033,7 +1033,7 @@ Lemma compose_IPChecksum_encode_correct
 Proof.
   intros; eapply composeChecksum_encode_correct.
   - eassumption.
-  - intros; rewrite !transform_measure.
+  - intros; rewrite !mappend_measure.
     simpl; rewrite (H0 _ _ _ _ H9).
     simpl; rewrite (H1 _ _ _ _ H10).
     erewrite <- H4; eauto; try omega.
@@ -1045,21 +1045,21 @@ Proof.
   - eassumption.
   - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
             decode_unused_word, decode_unused_word'.
-    rewrite <- !transform_assoc.
+    rewrite <- !mappend_assoc.
     unfold B in *.
     unfold encode_checksum.
-    rewrite transformer_dequeue_format_word'; simpl; eauto.
+    rewrite monoid_dequeue_format_word'; simpl; eauto.
   - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
-    intros; destruct (WordOpt.transformer_dequeue_word 16 b) eqn : ? ;
+    intros; destruct (WordOpt.monoid_dequeue_word 16 b) eqn : ? ;
       try discriminate; intuition.
     destruct p.
     injections.
     eexists w.
     simpl.
     unfold encode_checksum.
-    erewrite (transformer_dequeue_word_inj _ b);
+    erewrite (monoid_dequeue_word_inj _ b);
       [ | eauto
-        | pose proof transformer_dequeue_format_word' as H'; simpl in H';
+        | pose proof monoid_dequeue_format_word' as H'; simpl in H';
           eapply H'].
     reflexivity.
   - eassumption.
@@ -1098,9 +1098,9 @@ Qed.
 Lemma compose_IPChecksum_encode_correct'
   : forall (A : Type)
            (B := ByteString)
-           (trans : Transformer B := transformer)
-           (trans_opt : QueueTransformerOpt trans bool :=
-              ByteString_QueueTransformerOpt)
+           (trans : Monoid B := monoid)
+           (trans_opt : QueueMonoidOpt trans bool :=
+              ByteString_QueueMonoidOpt)
            (calculate_checksum := IPChecksum)
            (checksum_Valid := IPChecksum_Valid)
            (checksum_Valid_dec := IPChecksum_Valid_dec)
@@ -1137,10 +1137,10 @@ Lemma compose_IPChecksum_encode_correct'
              encode1 a ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ transformer predicate' predicate_rest encode1' decode1 P) ->
+         CorrectDecoder _ monoid predicate' predicate_rest encode1' decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1151,17 +1151,17 @@ Lemma compose_IPChecksum_encode_correct'
             predicate_rest' a b ->
             {c0 : word 16 |
              forall ext : ByteString,
-               IPChecksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
-                                (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
-            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+               IPChecksum_Valid (bin_measure (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')))
+                                (mappend (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (mappend (mappend (encode_checksum _ _ _ _ c) b'') b)) ->
         forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ transformer
+              CorrectDecoder _ monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ transformer predicate predicate_rest'
+          CorrectDecoder _ monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 data ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1210,15 +1210,15 @@ Qed.
     IPChecksum_ByteAligned b  (* Should be able to elide this assumption. *)
     -> IPChecksum_ByteAligned b'
     -> IPChecksum_Valid
-         (bin_measure (transform (transform b (IPChecksum b b')) b'))
-         (transform (transform (transform b (IPChecksum b b')) b') ext).
+         (bin_measure (mappend (mappend b (IPChecksum b b')) b'))
+         (mappend (mappend (mappend b (IPChecksum b b')) b') ext).
 Proof.
   simpl; intros.
   destruct H0; destruct H.
   unfold IPChecksum, IPChecksum_Valid.
-  pose proof transform_assoc as H'; simpl in H'; rewrite H'.
+  pose proof mappend_assoc as H'; simpl in H'; rewrite H'.
   rewrite ByteString2ListOfChar_Over with (ext := ext); try eassumption.
-  rewrite !ByteString_transformer_eq_app; try eassumption.
+  rewrite !ByteString_monoid_eq_app; try eassumption.
   pose proof ByteString2ListOfChar_eq' as H''; simpl in H''.
   rewrite H''.
   unfold byteString at 1.
@@ -1243,16 +1243,16 @@ Proof.
   reflexivity.
   congruence.
   rewrite H; find_if_inside; try congruence.
-  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
   rewrite format_word'_padding; reflexivity.
   rewrite H; find_if_inside; try congruence.
-  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
-  rewrite transform_padding_eq; rewrite H.
+  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite mappend_padding_eq; rewrite H.
   rewrite format_word'_padding; reflexivity.
   rewrite H; find_if_inside; try congruence.
-  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
-  rewrite transform_padding_eq.
-  rewrite transform_padding_eq; rewrite H.
+  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite mappend_padding_eq.
+  rewrite mappend_padding_eq; rewrite H.
   rewrite format_word'_padding.
   rewrite H0; reflexivity.
 Qed. *)
@@ -1260,13 +1260,13 @@ Qed. *)
 Lemma compose_IPChecksum_encode_correct_dep
   : forall (A : Type)
            (B := ByteString)
-           (trans : Transformer B := transformer)
-           (trans_opt : QueueTransformerOpt trans bool :=
-              ByteString_QueueTransformerOpt)
+           (trans : Monoid B := monoid)
+           (trans_opt : QueueMonoidOpt trans bool :=
+              ByteString_QueueMonoidOpt)
            (bextra : B)
            (bextra_len : nat)
-           (checksum_Valid := fun n b' => IPChecksum_Valid (bextra_len + n) (transform bextra b'))
-           (checksum_Valid_dec := fun n b' => IPChecksum_Valid_dec (bextra_len + n) (transform bextra b'))
+           (checksum_Valid := fun n b' => IPChecksum_Valid (bextra_len + n) (mappend bextra b'))
+           (checksum_Valid_dec := fun n b' => IPChecksum_Valid_dec (bextra_len + n) (mappend bextra b'))
            (A' : Type)
            (P : CacheDecode -> Prop)
            (P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop)
@@ -1299,10 +1299,10 @@ Lemma compose_IPChecksum_encode_correct_dep
              encode1 (project a) ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ transformer predicate' predicate_rest encode1 decode1 P) ->
+         CorrectDecoder _ monoid predicate' predicate_rest encode1 decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1313,17 +1313,17 @@ Lemma compose_IPChecksum_encode_correct_dep
             predicate_rest' a b ->
             {c0 : word 16 |
              forall ext : ByteString,
-               checksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
-                              (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
-            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+               checksum_Valid (bin_measure (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')))
+                              (mappend (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (mappend (mappend (encode_checksum _ _ _ _ c) b'') b)) ->
         forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ transformer
+              CorrectDecoder _ monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ transformer predicate predicate_rest'
+          CorrectDecoder _ monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 (project data) ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1339,7 +1339,7 @@ Proof.
             A B trans _ 16 checksum_Valid
             checksum_Valid_dec).
   - eassumption.
-  - intros; rewrite !transform_measure.
+  - intros; rewrite !mappend_measure.
     simpl; rewrite (H0 _ _ _ _ H9).
     simpl; rewrite (H1 _ _ _ _ H10).
     erewrite <- H4.
@@ -1354,30 +1354,30 @@ Proof.
   - eassumption.
   - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
             decode_unused_word, decode_unused_word'.
-    rewrite <- !transform_assoc.
+    rewrite <- !mappend_assoc.
     unfold B in *.
     unfold encode_checksum.
-    rewrite transformer_dequeue_format_word'; simpl; eauto.
+    rewrite monoid_dequeue_format_word'; simpl; eauto.
   - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
     unfold B in *.
-    intros; destruct (WordOpt.transformer_dequeue_word 16 b) eqn : ? ;
+    intros; destruct (WordOpt.monoid_dequeue_word 16 b) eqn : ? ;
       try discriminate; intuition.
     destruct p.
     simpl in H10.
     injection H10; intros.
     unfold encode_checksum.
     eexists w.
-    erewrite (transformer_dequeue_word_inj _ b);
+    erewrite (monoid_dequeue_word_inj _ b);
       [ | eapply Heqo
-        | pose proof (@transformer_dequeue_format_word' _ transformer _) as H';
+        | pose proof (@monoid_dequeue_format_word' _ monoid _) as H';
           simpl in H'; eapply H' ].
     rewrite H12; reflexivity.
   - eassumption.
   - intros.
     unfold checksum_Valid, IPChecksum_Valid in *.
     rewrite <- bextra_len_eq in *.
-    simpl bin_measure in *; simpl transform in *.
-    rewrite <- transform_ByteString_measure in *.
+    simpl bin_measure in *; simpl mappend in *.
+    rewrite <- mappend_ByteString_measure in *.
     replace
       (length_ByteString
          (ByteString_append bextra
@@ -1424,13 +1424,13 @@ Qed.
 Lemma compose_IPChecksum_encode_correct_dep'
   : forall (A : Type)
            (B := ByteString)
-           (trans : Transformer B := transformer)
-           (trans_opt : QueueTransformerOpt trans bool :=
-              ByteString_QueueTransformerOpt)
+           (trans : Monoid B := monoid)
+           (trans_opt : QueueMonoidOpt trans bool :=
+              ByteString_QueueMonoidOpt)
            (bextra : B)
            (bextra_len : nat)
-           (checksum_Valid := fun n b' => IPChecksum_Valid (bextra_len + n) (transform bextra b'))
-           (checksum_Valid_dec := fun n b' => IPChecksum_Valid_dec (bextra_len + n) (transform bextra b'))
+           (checksum_Valid := fun n b' => IPChecksum_Valid (bextra_len + n) (mappend bextra b'))
+           (checksum_Valid_dec := fun n b' => IPChecksum_Valid_dec (bextra_len + n) (mappend bextra b'))
            (A' : Type)
            (P : CacheDecode -> Prop)
            (P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop)
@@ -1466,10 +1466,10 @@ Lemma compose_IPChecksum_encode_correct_dep'
              encode1 a ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ transformer predicate' predicate_rest encode1' decode1 P) ->
+         CorrectDecoder _ monoid predicate' predicate_rest encode1' decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1480,17 +1480,17 @@ Lemma compose_IPChecksum_encode_correct_dep'
             predicate_rest' a b ->
             {c0 : word 16 |
              forall ext : ByteString,
-               checksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
-                              (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
-            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+               checksum_Valid (bin_measure (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')))
+                              (mappend (mappend b' (mappend (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (mappend (mappend (encode_checksum _ _ _ _ c) b'') b)) ->
         forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ transformer
+              CorrectDecoder _ monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ transformer predicate predicate_rest'
+          CorrectDecoder _ monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 data ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1507,7 +1507,7 @@ Proof.
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
              len_encode1 a + len_encode2 a + 16 =
-             encoded_A_measure (transform (transform b (transform (encode_checksum B trans trans_opt 16 c) b'')) ext)) as H4'
+             encoded_A_measure (mappend (mappend b (mappend (encode_checksum B trans trans_opt 16 c) b'')) ext)) as H4'
       by (intros; eapply H4; eauto; eapply refine_encode1; eauto).
     assert (forall a' b ctx ctx',
              computes_to (encode1' (project a') ctx) (b, ctx')
@@ -1546,11 +1546,11 @@ Ltac calculate_length_ByteString :=
   match goal with
   | H : computes_to _ _ |- _ =>
     first [ eapply (length_ByteString_composeChecksum _ _ _ _ _ _ _ _ _ H);
-            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+            try (simpl mempty; rewrite length_ByteString_ByteString_id)
           | eapply (length_ByteString_composeIf _ _ _ _ _ _ _ H);
-            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+            try (simpl mempty; rewrite length_ByteString_ByteString_id)
           | eapply (length_ByteString_compose _ _ _ _ _ _ _ H);
-            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+            try (simpl mempty; rewrite length_ByteString_ByteString_id)
           | eapply (fun H' H'' => length_ByteString_encode_option _ _ _ _ _ _ _ H' H'' H)
           | eapply (length_ByteString_unused_word _ _ _ _ H)
           | eapply (length_ByteString_bool _ _ _ _ H)
@@ -1635,7 +1635,7 @@ Qed.
 
 
 Ltac solve_mod_8 :=
-  intros; cbv beta; simpl transform_id;
+  intros; cbv beta; simpl mempty;
   repeat first [
            rewrite plus_32_mod_8
          | rewrite plus_16_mod_8
@@ -1648,7 +1648,7 @@ Ltac solve_mod_8 :=
          | reflexivity ].
 
 Lemma refineEquiv_ThenC_no_dep {B Env}
-      {transformer : Transformer B}
+      {monoid : Monoid B}
   : forall (encode1 : Env -> Comp (B * Env))
            {A}
            (encode2 : A -> Env -> Comp (B * Env))
@@ -1669,7 +1669,7 @@ Proof.
 Qed.
 
 Lemma refineEquiv_ThenC {A B Env}
-      {transformer : Transformer B}
+      {monoid : Monoid B}
   : forall (encode1 : A -> Env -> Comp (B * Env))
            (encode2 : A -> Env -> Comp (B * Env))
            {A' A''}
@@ -1778,7 +1778,7 @@ Ltac apply_IPChecksum_dep Len_OK :=
     [ apply H
     | repeat resolve_Checksum
     | cbv beta; unfold Domain; simpl;
-      simpl transform; unfold format_word;
+      simpl mappend; unfold format_word;
       rewrite !ByteString_enqueue_ByteString_measure,
       !length_format_word';
       reflexivity

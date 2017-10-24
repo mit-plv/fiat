@@ -18,8 +18,8 @@ Module Make (WS : WORDSIZE).
     Context {B : Type}.
     Context {cache : Cache}.
     Context {cacheAddNat : CacheAdd cache nat}.
-    Context {transformer : Transformer B}.
-    Context {transformerUnit : QueueTransformerOpt transformer bool}.
+    Context {monoid : Monoid B}.
+    Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
     Definition intToWord (sz : nat) (i : int) : word sz :=
       match intval i with
@@ -98,7 +98,7 @@ Module Make (WS : WORDSIZE).
             (sz_OK : le sz wordsize)
             {P : CacheDecode -> Prop}
             (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-      : CorrectDecoder cache transformer (fun i : int => BinInt.Z.lt (intval i) (BinInt.Z.of_N (Npow2 sz)))
+      : CorrectDecoder cache monoid (fun i : int => BinInt.Z.lt (intval i) (BinInt.Z.of_N (Npow2 sz)))
                                 (fun _ _ => True) (format_int sz) (decode_int sz) P.
   Proof.
     unfold CorrectDecoder, format_int, decode_int.

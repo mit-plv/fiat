@@ -18,7 +18,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.Formats.EnumOpt
@@ -53,10 +53,10 @@ Definition UDP_Checksum_Valid
            (n : nat)
            (b : ByteString)
   := IPChecksum_Valid (96 + n)
-                (transform (transform (IPChecksum.format_word srcAddr)
-                (transform (IPChecksum.format_word destAddr)
-                (transform (IPChecksum.format_word (wzero 8))
-                (transform (IPChecksum.format_word (natToWord 8 17))
+                (mappend (mappend (IPChecksum.format_word srcAddr)
+                (mappend (IPChecksum.format_word destAddr)
+                (mappend (IPChecksum.format_word (wzero 8))
+                (mappend (IPChecksum.format_word (natToWord 8 17))
                            (IPChecksum.format_word udpLength)))))
                 b).
 
@@ -95,10 +95,10 @@ Lemma UDP_Packet_Header_Len_OK
     (fun _ : UDP_Packet => 16 + (16 + (16 + length_ByteString ByteString_id))) a +
     (fun a0 : UDP_Packet => (|a0!"Payload" |) * 8 + length_ByteString ByteString_id) a + 16 =
     UDP_Packet_encoded_measure
-      (transform (transform b (transform (encode_checksum ByteString transformer ByteString_QueueTransformerOpt 16 c) b'')) ext).
+      (mappend (mappend b (mappend (encode_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
 Proof.
   unfold UDP_Packet_encoded_measure.
-  intros; rewrite <- !transform_assoc.
+  intros; rewrite <- !mappend_assoc.
   simpl in H0.
   eapply computes_to_compose_decode_unused_word in H;
     let H' := fresh in
@@ -129,7 +129,7 @@ Definition UDP_Packet_decoder
   : CorrectDecoderFor UDP_Packet_OK encode_UDP_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
-  normalize_compose transformer.
+  normalize_compose monoid.
   apply_IPChecksum_dep UDP_Packet_Header_Len_OK.
 
   unfold UDP_Packet_OK; clear; intros ? H'; simpl; intuition eauto using lt_minus_plus.

@@ -10,11 +10,11 @@ Section Bool.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : QueueTransformerOpt transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   Definition format_bool (b : bool) (ctx : CacheEncode) :=
-    ret (enqueue_opt b transform_id, addE ctx 1).
+    ret (enqueue_opt b mempty, addE ctx 1).
 
   Definition decode_bool (b : B) (ctx : CacheDecode) : option (bool * B * CacheDecode) :=
     Ifopt dequeue_opt b as decoded Then Some (decoded, addD ctx 1) Else None.
@@ -23,7 +23,7 @@ Section Bool.
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     :
-      CorrectDecoder cache transformer (fun _ => True)
+      CorrectDecoder cache monoid (fun _ => True)
                               (fun _ _ => True)
                               format_bool decode_bool P.
   Proof.
@@ -31,17 +31,17 @@ Section Bool.
     - intros env env' xenv w w' ext ? Eeq _ _ Penc.
       computes_to_inv; injections.
       unfold If_Opt_Then_Else.
-      erewrite dequeue_transform_opt;
+      erewrite dequeue_mappend_opt;
       try apply dequeue_head_opt.
-      rewrite transform_id_left.
+      rewrite mempty_left.
       injections; eexists; split; eauto using add_correct.
     - intros;
         destruct (dequeue_opt bin) as [ [? ?] | ] eqn: ? ;
         simpl in *; try discriminate; injections; intuition.
      eexists; eexists; repeat split.
      eapply dequeue_opt_inj; eauto.
-     rewrite <- (transform_id_left ext) at -1;
-       auto using dequeue_transform_opt, dequeue_head_opt.
+     rewrite <- (mempty_left ext) at -1;
+       auto using dequeue_mappend_opt, dequeue_head_opt.
      apply add_correct; eauto.
   Qed.
 

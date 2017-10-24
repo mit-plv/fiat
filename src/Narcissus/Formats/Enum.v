@@ -13,8 +13,8 @@ Section Enum.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnit transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : MonoidUnit monoid bool}.
 
   Context {sz : nat}.
   Context {ta : t A (S len)}.
@@ -99,11 +99,11 @@ Section Enum.
 
   Theorem Enum_decode_correct :
     NoDupVector tb
-    -> encode_decode_correct cache transformer (fun _ => True) format_enum decode_enum.
+    -> encode_decode_correct cache monoid (fun _ => True) format_enum decode_enum.
   Proof.
     unfold encode_decode_correct, format_enum, decode_enum.
     intros ? env env' xenv xenv' data data' bin' ext ext' Eeq PPred Penc Pdec.
-    destruct (decode_word (transform bin' ext) env') as [[? ?] ?] eqn: ?.
+    destruct (decode_word (mappend bin' ext) env') as [[? ?] ?] eqn: ?.
     pose proof (Word_decode_correct _ _ _ _ _ _ _ _ _ Eeq I Penc Heqp).
     inversion Pdec; subst; clear Pdec.
     destruct H0 as [? [? ?]].

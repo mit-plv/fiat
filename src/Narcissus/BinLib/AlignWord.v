@@ -13,8 +13,8 @@ Section AlignWord.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : QueueTransformerOpt transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   Variable addD_addD_plus :
     forall cd n m, addD (addD cd n) m = addD cd (n + m).
@@ -155,26 +155,26 @@ Section AlignWord.
     autorewrite with monad laws.
     simpl; rewrite addE_addE_plus.
     rewrite Plus.plus_comm; f_equiv; intro.
-    rewrite transform_assoc.
+    rewrite mappend_assoc.
     destruct a; simpl.
     f_equiv; f_equiv; f_equiv.
     revert sz' w'; induction w; simpl; intros.
-    - rewrite transform_id_left.
-      generalize transform_id; clear; induction w'; intros.
+    - rewrite mempty_left.
+      generalize mempty; clear; induction w'; intros.
       + reflexivity.
       + simpl; rewrite IHw'; reflexivity.
     - rewrite !enqueue_opt_format_word.
-      replace (format_word' (sz' + S n) (combine w' (WS b0 w)) transform_id)
-      with (format_word' (S sz' + n) (combine (SW_word b0 w') w) transform_id).
+      replace (format_word' (sz' + S n) (combine w' (WS b0 w)) mempty)
+      with (format_word' (S sz' + n) (combine (SW_word b0 w') w) mempty).
       + rewrite <- IHw.
         simpl; rewrite format_word_S.
-        rewrite <- transform_assoc, word_split_tl_SW_word, word_split_hd_SW_word.
+        rewrite <- mappend_assoc, word_split_tl_SW_word, word_split_hd_SW_word.
         f_equal. 
         clear; induction w'.
-        * simpl; rewrite transform_id_right; reflexivity.
+        * simpl; rewrite mempty_right; reflexivity.
         * simpl; rewrite !enqueue_opt_format_word.
           rewrite <- IHw'.
-          rewrite transform_assoc; reflexivity.
+          rewrite mappend_assoc; reflexivity.
       + clear; revert n w; induction w'; intros.
         * simpl; eauto.
         * simpl; rewrite <- IHw'; reflexivity.
@@ -184,25 +184,25 @@ Section AlignWord.
     : forall b (w : word n) ce,
           refine (format_word (SW_word b w) ce)
                  (`(bs, ce') <- format_word w (addE ce 1);
-                    ret (transform (enqueue_opt b transform_id) bs, ce')).
+                    ret (mappend (enqueue_opt b mempty) bs, ce')).
   Proof.
     induction n; simpl; intros.
     - shatter_word w; simpl.
       unfold format_word; simpl.
       autorewrite with monad laws.
-      simpl; rewrite addE_addE_plus; rewrite transform_id_right; reflexivity.
+      simpl; rewrite addE_addE_plus; rewrite mempty_right; reflexivity.
     - pose proof (shatter_word_S w); destruct_ex; subst.
       simpl.
       unfold format_word; simpl.
       autorewrite with monad laws; simpl.
-      assert (computes_to (`(bs, ce') <- ret (format_word' n x0 transform_id, addE (addE ce 1) n);
-                           ret (transform (enqueue_opt b transform_id) bs, ce'))
-                          (transform (enqueue_opt b transform_id) (format_word' n x0 transform_id), addE (addE ce 1) n)) by repeat computes_to_econstructor.
+      assert (computes_to (`(bs, ce') <- ret (format_word' n x0 mempty, addE (addE ce 1) n);
+                           ret (mappend (enqueue_opt b mempty) bs, ce'))
+                          (mappend (enqueue_opt b mempty) (format_word' n x0 mempty), addE (addE ce 1) n)) by repeat computes_to_econstructor.
       pose proof (IHn b x0 ce _ H).
       unfold format_word in H0.
       computes_to_inv; inversion H0; subst.
       rewrite H2.
-      rewrite enqueue_transform_opt.
+      rewrite enqueue_mappend_opt.
       rewrite addE_addE_plus.
       reflexivity.
   Qed.

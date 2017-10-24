@@ -11,8 +11,8 @@ Section Ascii.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : QueueTransformerOpt transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   Definition format_ascii (c : ascii) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
@@ -31,7 +31,7 @@ Section Ascii.
           {P : CacheDecode -> Prop}
           (P_OK : forall b cd, P cd -> P (addD cd b))
     :
-      CorrectDecoder cache transformer (fun n => True)
+      CorrectDecoder cache monoid (fun n => True)
                               (fun _ _ => True)
                               format_ascii decode_ascii P.
   Proof.

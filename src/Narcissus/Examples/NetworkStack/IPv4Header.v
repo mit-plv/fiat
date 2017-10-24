@@ -19,7 +19,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
@@ -136,14 +136,14 @@ Lemma IPv4_Packet_Header_Len_OK
     ThenC format_list format_word ip4!"Options"
     DoneC) ctx' ↝ (b'', ctx'') ->
     IPv4_Packet_OK ip4 ->
-    (fun _ => 128) ip4 + (fun a => 16 + |ip4!"Options"| * 32) ip4 + (bin_measure transform_id) + 16 = IPv4_Packet_encoded_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext).
+    (fun _ => 128) ip4 + (fun a => 16 + |ip4!"Options"| * 32) ip4 + (bin_measure mempty) + 16 = IPv4_Packet_encoded_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext).
 Proof.
   intros.
-  set (k := transform_id); simpl in k; subst k.
+  set (k := mempty); simpl in k; subst k.
   simpl bin_measure.
   rewrite length_ByteString_id.
   unfold IPv4_Packet_encoded_measure.
-  pose proof transform_assoc as H'; simpl in H';
+  pose proof mappend_assoc as H'; simpl in H';
     rewrite <- !H'.
   eapply computes_to_compose_decode_unused_word in H;
     let H' := fresh in
@@ -163,7 +163,7 @@ Qed.
 Hint Resolve IPv4_Packet_Header_Len_eq : data_inv_hints.
 
 
-Local Arguments transform_id / .
+Local Arguments mempty / .
 Local Arguments NPeano.modulo : simpl never.
 
 Definition EthernetHeader_decoder
@@ -171,7 +171,7 @@ Definition EthernetHeader_decoder
 Proof.
   start_synthesizing_decoder.
 
-  normalize_compose transformer.
+  normalize_compose monoid.
 
   apply_IPChecksum IPv4_Packet_Header_Len_OK.
 

@@ -8,7 +8,6 @@ Require Import
         Fiat.Computation.Core
         Fiat.Computation.FixComp
         Fiat.Computation.Notations
-        Fiat.Examples.DnsServer.Packet
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Formats.FixStringOpt
         Fiat.Narcissus.Formats.NatOpt
@@ -16,12 +15,46 @@ Require Import
         Fiat.Narcissus.Formats.AsciiOpt.
 
 Section DomainName.
+
+  Local Open Scope string_scope.
+
+  (* A label is a non-empty list of ascii characters (string) *)
+  Definition Label := string.
+  Definition ValidLabel label := index 0 "." label = None /\ lt 0 (String.length label).
+
+  (* A domain name is a sequence of labels separated by '.' *)
+  Definition DomainName : Type := Label.
+
+  (* A domain name is valid iff every substring not containing the '.' *)
+  (* separator (and thus all labels) is less than 64 characters long. *)
+  Definition ValidDomainName s :=
+    (forall pre label post, s = pre ++ label ++ post
+                            -> ValidLabel label
+                            -> String.length label <= 63)%string%nat
+    /\ (forall pre post,
+           s = pre ++ "." ++ post
+           -> post <> EmptyString
+              /\ pre <> EmptyString
+              /\ (~ exists s', post = String "." s')
+              /\ (~ exists s', pre = s' ++ ".")).
+
+  Definition beq_name (a b : DomainName) : bool :=
+    if (string_dec a b) then true else false.
+
+  Lemma beq_name_dec
+    : forall (a b : DomainName), beq_name a b = true <-> a = b.
+  Proof.
+    unfold beq_name; intros;
+      destruct (string_dec a b);
+      intuition; intros; congruence.
+  Qed.
+
   Context {B : Type}. (* bin type *)
   Context {cache : Cache}.
   Context {cache_inv : CacheDecode -> Prop}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : QueueTransformerOpt transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   (* The terminal character for domain names is the byte of all zeros. *)
   Definition terminal_char : ascii := zero.
@@ -188,7 +221,7 @@ Section DomainName.
     Ifopt position as position Then (* Nondeterministically pick whether to use a cached value. *)
              (`(ptr1b, env') <- format_word (proj1_sig (fst position)) env;
               `(ptr2b, env') <- format_word (snd position) env';
-              ret (transform ptr1b ptr2b, env'))
+              ret (mappend ptr1b ptr2b, env'))
     Else
     (`(label, domain') <- { labeldomain' |
                             (domain = (fst labeldomain') ++ String "." (snd labeldomain') \/ labeldomain' = (domain, ""))
@@ -200,7 +233,7 @@ Section DomainName.
        `(lenb, env') <- format_nat 8 (String.length label) env;
        `(labelb, env') <- format_string label env';
        `(domainb, env') <- format_DomainName domain' env';
-       ret (transform (transform lenb labelb) domainb,
+       ret (mappend (mappend lenb labelb) domainb,
             (* If the pointer would overflow, don't record *)
             Ifopt peekE env as curPtr Then addE_G env' (domain, curPtr)
                                       Else env'
@@ -585,7 +618,7 @@ Section DomainName.
         Ifopt position as position
           Then `(ptr1b, env') <- format_word (proj1_sig (fst position)) env0;
                     `(ptr2b, env'0) <- format_word (snd position) env';
-                    ret (transform ptr1b ptr2b, env'0)
+                    ret (mappend ptr1b ptr2b, env'0)
                Else (`(label, domain') <- {labeldomain' :
                                           string * string |
                                           (domain =
@@ -601,7 +634,7 @@ Section DomainName.
                      `(labelb, env'0) <- format_string label env';
                      `(domainb, env'1) <- rec domain' env'0;
                      ret
-                       (transform (transform lenb labelb) domainb,
+                       (mappend (mappend lenb labelb) domainb,
                         Ifopt peekE env0 as curPtr Then addE_G env'1 (domain, curPtr)
                                       Else env'1))))
    (fun (domain : DomainName) (env0 : CacheEncode) =>
@@ -611,7 +644,7 @@ Section DomainName.
         Ifopt position as position
                Then `(ptr1b, env') <- format_word (proj1_sig (fst position)) env0;
                     `(ptr2b, env'0) <- format_word (snd position) env';
-                    ret (transform ptr1b ptr2b, env'0)
+                    ret (mappend ptr1b ptr2b, env'0)
                Else (`(label, domain') <- {labeldomain' :
                                           string * string |
                                            (domain =
@@ -627,7 +660,7 @@ Section DomainName.
                      `(labelb, env'0) <- format_string label env';
                      `(domainb, env'1) <- rec' domain' env'0;
                      ret
-                       (transform (transform lenb labelb) domainb,
+                       (mappend (mappend lenb labelb) domainb,
                         Ifopt peekE env0 as curPtr Then addE_G env'1 (domain, curPtr)
                                       Else env'1)))).
   Proof.
@@ -645,7 +678,7 @@ Section DomainName.
   Qed.
 
   Lemma Decode_w_Measure_le_eq'
-    : forall (A B : Type) (cache : Cache) (transformer : Transformer B)
+    : forall (A B : Type) (cache : Cache) (monoid : Monoid B)
              (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
              (b : B) (cd : CacheDecode)
              (A_decode_le : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
@@ -664,7 +697,7 @@ Section DomainName.
   Qed.
 
   Lemma Decode_w_Measure_lt_eq'
-    : forall (A B : Type) (cache : Cache) (transformer : Transformer B)
+    : forall (A B : Type) (cache : Cache) (monoid : Monoid B)
              (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
              (b : B) (cd : CacheDecode)
              (A_decode_lt : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
@@ -1020,7 +1053,7 @@ Section DomainName.
             Ifopt position as position0
                                 Then `(ptr1b, env') <- format_word (` (fst position0)) env;
             `(ptr2b, env'0) <- format_word (snd position0) env';
-            ret (transform ptr1b ptr2b, env'0)
+            ret (mappend ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
                                             (domain = (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
@@ -1034,7 +1067,7 @@ Section DomainName.
                         `(labelb, env'0) <- format_string label env';
                         `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
-                          (transform (transform lenb labelb) domainb,
+                          (mappend (mappend lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
         ↝ (bin', xenv0) ->
       peekE xenv'' = None
@@ -1101,7 +1134,7 @@ Section DomainName.
             Ifopt position as position0
                                 Then `(ptr1b, env') <- format_word (` (fst position0)) env;
             `(ptr2b, env'0) <- format_word (snd position0) env';
-            ret (transform ptr1b ptr2b, env'0)
+            ret (mappend ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
                                             (domain = (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
@@ -1115,7 +1148,7 @@ Section DomainName.
                         `(labelb, env'0) <- format_string label env';
                         `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
-                          (transform (transform lenb labelb) domainb,
+                          (mappend (mappend lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
         ↝ (bin', xenv0) ->
       peekE xenv'' = None
@@ -1189,7 +1222,7 @@ Section DomainName.
             Ifopt position as position0
                                 Then `(ptr1b, env') <- format_word (` (fst position0)) env;
             `(ptr2b, env'0) <- format_word (snd position0) env';
-            ret (transform ptr1b ptr2b, env'0)
+            ret (mappend ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
                                             (domain = (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
@@ -1203,7 +1236,7 @@ Section DomainName.
                         `(labelb, env'0) <- format_string label env';
                         `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
-                          (transform (transform lenb labelb) domainb,
+                          (mappend (mappend lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
         ↝ (bin', xenv0) ->
       peekE xenv'' = Some p ->
@@ -1295,7 +1328,7 @@ Section DomainName.
             Ifopt position as position0
                                 Then `(ptr1b, env') <- format_word (` (fst position0)) env;
             `(ptr2b, env'0) <- format_word (snd position0) env';
-            ret (transform ptr1b ptr2b, env'0)
+            ret (mappend ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
                                             (domain = (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
@@ -1309,7 +1342,7 @@ Section DomainName.
                         `(labelb, env'0) <- format_string label env';
                         `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
-                          (transform (transform lenb labelb) domainb,
+                          (mappend (mappend lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
         ↝ (bin', xenv0) ->
       In p0 (getE xenv0 x9) ->
@@ -1502,7 +1535,7 @@ Section DomainName.
           ))
     :
     CorrectDecoder
-      cache transformer
+      cache monoid
       (fun domain => ValidDomainName domain)
       (fun s b => True)
       format_DomainName decode_DomainName cache_inv.
@@ -1544,7 +1577,7 @@ Section DomainName.
                             Ifopt (peekD cd) as curPtr Then addD_G e3 ((label ++ String "." domain)%string, curPtr)
                                                        Else e3))
                  end Else None
-        end) (transform l' ext) xenv = Some (l, ext, xenv'0) /\
+        end) (mappend l' ext) xenv = Some (l, ext, xenv'0) /\
      Equiv xenv' xenv'0 /\ cache_inv xenv'0).
       simpl in *.
       generalize dependent l';
@@ -1577,7 +1610,7 @@ Section DomainName.
         (* + erewrite peek_correct by eauto.
           eapply add_peekD_OK with (domain := ""%string) in Eeq; unfold add_ptr_OK in *; eauto.
           unfold decode_word in H0.
-          destruct (decode_word' 8 (transform l' x1)); simpl in *; try discriminate.
+          destruct (decode_word' 8 (mappend l' x1)); simpl in *; try discriminate.
           injections; rewrite IndependentCaches; eauto. *)
         + eauto.
         + unfold Frame.monotonic_function; simpl.
@@ -1622,20 +1655,20 @@ Section DomainName.
                 end.
                 simpl in H0;
                   unfold decode_word at 1 in H0;
-                  rewrite <- transform_assoc,
-                  <- transformer_dequeue_word_eq_decode_word',
-                  transformer_dequeue_format_word' in H0;
+                  rewrite <- mappend_assoc,
+                  <- monoid_dequeue_word_eq_decode_word',
+                  monoid_dequeue_format_word' in H0;
                   simpl in H0;
                   destruct (H0 _ _ _ (eq_refl _)) as [? H']; clear H0.
-                rewrite <- transform_assoc, H'; simpl.
+                rewrite <- mappend_assoc, H'; simpl.
                 destruct (wlt_dec WO~1~0~1~1~1~1~1~1 (proj1_sig ptr1)); simpl.
                 * match goal with
                     |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
                     pose proof (Decode_w_Measure_le_eq x y z m)
                   end.
                   simpl in H0; unfold decode_word at 1 in H0;
-                    rewrite <- transformer_dequeue_word_eq_decode_word' in H0.
-                  rewrite transformer_dequeue_format_word' in H0.
+                    rewrite <- monoid_dequeue_word_eq_decode_word' in H0.
+                  rewrite monoid_dequeue_format_word' in H0.
                   simpl in H0;
                     destruct (H0 _ _ _ (eq_refl _)) as [? H'']; clear H0;
                       rewrite H''; clear H''; simpl.
@@ -1671,10 +1704,10 @@ Section DomainName.
               destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
                 simpl in *; injections.
             destruct l_eq as [l_eq' | l_eq'].
-            - destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) I Eeq H I Penc'') as [xenv4 [? xenv_eqv] ].
+            - destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (mappend b'' (mappend b3 ext0)) I Eeq H I Penc'') as [xenv4 [? xenv_eqv] ].
             pose proof ((proj1 Valid_data) ""%string label1 _ l_eq' label1_OK).
             unfold pow2; omega.
-            destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length label1)) _ _ _ _ _ (transform b3 ext0) I (proj1 xenv_eqv) H I Penc''') as [xenv6 [? xenv6_eqv] ]; eauto.
+            destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length label1)) _ _ _ _ _ (mappend b3 ext0) I (proj1 xenv_eqv) H I Penc''') as [xenv6 [? xenv6_eqv] ]; eauto.
             pose proof (fun a b c d e =>
                           InCacheFixpoint (String.length label2) _ _ _ _ a b c d e Penc'''')
                  as xenv'0_OK.
@@ -1692,15 +1725,15 @@ Section DomainName.
               end.
               simpl in H4;
                 unfold decode_word at 1 in H4.
-              rewrite <- !transform_assoc in H4.
+              rewrite <- !mappend_assoc in H4.
               unfold decode_nat in H0.
               apply DecodeBindOpt2_inv in H0;
                 destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
               unfold decode_word in H0.
-              destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
+              destruct (decode_word' 8 (mappend b' (mappend b'' (mappend b3 ext0)))); simpl in H0; try discriminate; injections.
               simpl in H4.
               destruct (H4 _ _ _ (eq_refl _)).
-              rewrite <- !transform_assoc, H0; simpl; clear H0.
+              rewrite <- !mappend_assoc, H0; simpl; clear H0.
               pose proof ((proj1 Valid_data) ""%string label1 _ (eq_refl _) label1_OK) as w';
                 rewrite H8 in w'.
               destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
@@ -1771,7 +1804,7 @@ Section DomainName.
               unfold add_ptr_OK in *; simpl in *;
                 revert addPeekSome addPeekNone addZeroPeek addPeekNone' getDistinct IndependentCaches
                        boundPeekSome H2 H1 P P' P3; generalize xenv env p peekD_eq ; clear.
-              generalize (transform b3 ext0); intros b xenv env p peekD_eq.
+              generalize (mappend b3 ext0); intros b xenv env p peekD_eq.
               revert label2 xenv6 xenv7 ext0 x1.
               generalize env xenv (String.length label1); clear.
               eapply (@well_founded_induction _ _ well_founded_lt_b) with
@@ -1935,16 +1968,16 @@ Section DomainName.
                   rewrite H1; eauto.
             + subst; eauto using ValidDomainName_app.
             + subst; eauto using chomp_label_length.
-            + destruct (fun H H' => proj2 (Nat_decode_correct (P := cache_inv) 8 H') _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H H0) as [xenv'' [? xenv''_eqv] ]; eauto.
+            + destruct (fun H H' => proj2 (Nat_decode_correct (P := cache_inv) 8 H') _ _ _ _ _ (mappend b'' (mappend b3 ext0)) Eeq H H0) as [xenv'' [? xenv''_eqv] ]; eauto.
               unfold cache_inv_Property in *; intuition.
-              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length label1)) _ _ _ _ _ (transform b3 ext0) (proj1 xenv_eqv) H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto.
+              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length label1)) _ _ _ _ _ (mappend b3 ext0) (proj1 xenv_eqv) H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto.
               unfold cache_inv_Property in *; intuition.
             + intuition.
             - injections.
-              destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) I Eeq H I Penc'') as [xenv4 [? [xenv_eqv _] ] ].
+              destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (mappend b'' (mappend b3 ext0)) I Eeq H I Penc'') as [xenv4 [? [xenv_eqv _] ] ].
               pose proof (proj1 Valid_data ""%string l ""%string (append_EmptyString_r _) label1_OK).
               unfold pow2; simpl; omega.
-              destruct (fun H H' => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length l)) _ xenv4 _ _ _ (transform b3 ext0) I H' H I Penc''') as [xenv6 [? [xenv6_eqv _] ] ]; eauto.
+              destruct (fun H H' => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length l)) _ xenv4 _ _ _ (mappend b3 ext0) I H' H I Penc''') as [xenv6 [? [xenv6_eqv _] ] ]; eauto.
               intuition.
               simpl in Penc''''.
               pose proof (fun a b c d e =>
@@ -1964,15 +1997,15 @@ Section DomainName.
               end.
               simpl in H4;
                 unfold decode_word at 1 in H4.
-              rewrite <- !transform_assoc in H4.
+              rewrite <- !mappend_assoc in H4.
               unfold decode_nat in H0.
               apply DecodeBindOpt2_inv in H0;
                 destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
               unfold decode_word in H0.
-              destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
+              destruct (decode_word' 8 (mappend b' (mappend b'' (mappend b3 ext0)))); simpl in H0; try discriminate; injections.
               simpl in H4.
               destruct (H4 _ _ _ (eq_refl _)).
-              rewrite <- !transform_assoc, H0; simpl; clear H0.
+              rewrite <- !mappend_assoc, H0; simpl; clear H0.
               pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
                 rewrite H8 in w'.
               destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
@@ -2013,7 +2046,7 @@ Section DomainName.
                 unfold add_ptr_OK in *; simpl in *; revert getDistinct IndependentCaches H2 H1.
                 (*remember ""%string as s'; rewrite Heqs'; rewrite <- Heqs' at 1. *)
                 generalize env; clear.
-                generalize (transform b3 ext0) ; intro.
+                generalize (mappend b3 ext0) ; intro.
                 revert xenv6 xenv7 ext0 .
                 eapply (@well_founded_induction _ _ well_founded_lt_b) with
                 (a := b); intros.
@@ -2130,9 +2163,9 @@ Section DomainName.
                 omega.
                 destruct pre; simpl in *; try discriminate.
               * simpl; omega.
-              * destruct (fun H H' => proj2 (Nat_decode_correct (P := cache_inv) 8 H') _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H H0) as [xenv'' [? xenv''_eqv] ]; eauto.
+              * destruct (fun H H' => proj2 (Nat_decode_correct (P := cache_inv) 8 H') _ _ _ _ _ (mappend b'' (mappend b3 ext0)) Eeq H H0) as [xenv'' [? xenv''_eqv] ]; eauto.
               unfold cache_inv_Property in *; intuition.
-              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length l)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto.
+              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length l)) _ _ _ _ _ (mappend b3 ext0) xenv_eqv H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto.
               unfold cache_inv_Property in *; intuition.
               * intuition.
           }
@@ -2183,7 +2216,7 @@ Section DomainName.
         eauto.
         intuition eauto.
         rewrite x_eq' in x_eq.
-        simpl in *; rewrite <- transform_assoc; assumption.
+        simpl in *; rewrite <- mappend_assoc; assumption.
         eapply P_OK; [ | eassumption ].
         assumption.
         assumption.
@@ -2469,7 +2502,7 @@ Section DomainName.
           simpl.
           destruct x1; simpl in *; rewrite x_eq, x_eq', H11;
             intuition eauto.
-          rewrite !transform_assoc; auto.
+          rewrite !mappend_assoc; auto.
           destruct (string_dec x6 ""); injection H5; intros; subst x7;
             reflexivity.
           destruct (string_dec x6 ""); simpl in *; injection H5; intros; subst data.

@@ -18,7 +18,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
@@ -66,13 +66,13 @@ Ltac shelve_inv :=
                      unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
   end.
 
-Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
+Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
 Theorem decode_list_all_correct_ComposeOpt
   : CorrectDecoder
-      _ transformer
+      _ monoid
       (fun a => True)
-      (fun _ b => b = transform_id)
+      (fun _ b => b = mempty)
       (format_list format_word)
       (fun (bin : ByteString) (env : CacheDecode) =>
          Some (byteString bin, ByteString_id, tt))
@@ -155,7 +155,7 @@ Proof.
 Qed.
 
 Definition v1042_test (b : ByteString) : bool :=
-  match transformer_get_word 16 b with
+  match monoid_get_word 16 b with
   | Some w => if wlt_dec w (natToWord 16 1501) then true else false
   | _ => false
   end.
@@ -168,7 +168,7 @@ Lemma v1042_OKT
           ThenC format_word WO~0~1~0~1~0~1~0~1
                 ThenC format_word WO~1~1~0~0~0~0~0~0
                       ThenC format_word (wzero 24) ThenC format_enum EtherTypeCodes data!"Type" ThenC format_list format_word data!"Data" DoneC) env
-   ↝ (bin, xenv) -> v1042_test (transform bin ext) = true.
+   ↝ (bin, xenv) -> v1042_test (mappend bin ext) = true.
 Proof.
   unfold ethernet_Frame_OK; intros.
   unfold compose at 1 in H0; unfold Bind2 in H0;
@@ -176,9 +176,9 @@ Proof.
         injections.
   unfold format_nat, format_word in H0; computes_to_inv.
   pose proof (f_equal fst H0) as H'; simpl in H'; rewrite <- H'.
-  pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
+  pose proof mappend_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  pose transformer_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
+  pose monoid_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
   destruct n.
   eapply natToWord_wlt; eauto; try reflexivity.
   etransitivity.
@@ -193,7 +193,7 @@ Lemma v1042_OKE
   : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
     ethernet_Frame_OK data
     -> (format_enum EtherTypeCodes data!"Type" ThenC format_list format_word data!"Data" DoneC) env ↝ (bin, xenv)
-    -> v1042_test (transform bin ext) = false.
+    -> v1042_test (mappend bin ext) = false.
 Proof.
   unfold ethernet_Frame_OK; intros.
   unfold compose at 1 in H0; unfold Bind2 in H0;
@@ -201,9 +201,9 @@ Proof.
         injections.
   unfold format_enum, format_word in H0; computes_to_inv.
   pose proof (f_equal fst H0) as H'; unfold fst in H'; rewrite <- H'.
-  pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
+  pose proof mappend_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  pose transformer_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
+  pose monoid_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
   revert w; clear.
   match goal with
     |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear
@@ -253,7 +253,7 @@ Definition EthernetFrame_decoder
   : { decodePlusCacheInv |
       exists P_inv,
       (cache_inv_Property (snd decodePlusCacheInv) P_inv
-       -> CorrectDecoder _ transformer ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+       -> CorrectDecoder _ monoid ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
       /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
   start_synthesizing_decoder.
@@ -298,7 +298,7 @@ Proof.
   solve_data_inv.
   simpl; intros.
   computes_to_inv; injections.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'; reflexivity.
+  pose proof mempty_left as H'; simpl in H'; rewrite H'; reflexivity.
   simpl; intros;
     eapply CorrectDecoderinish.
   destruct a' as [? [? [? [? [ ] ] ] ] ] ;
@@ -324,7 +324,7 @@ Proof.
   solve_data_inv.
   simpl; intros.
   computes_to_inv; injections.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'; reflexivity.
+  pose proof mempty_left as H'; simpl in H'; rewrite H'; reflexivity.
   simpl; intros.
   simpl; intros;
     eapply CorrectDecoderinish.

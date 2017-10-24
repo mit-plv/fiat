@@ -11,23 +11,23 @@ Section FixList.
   Context {A : Type}.
   Context {B : Type}.
   Context {cache : Cache}.
-  Context {transformer : Transformer B}.
+  Context {monoid : Monoid B}.
 
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
   Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
-  Variable A_decode_pf : CorrectDecoder cache transformer A_predicate A_predicate_rest format_A A_decode A_cache_inv.
+  Variable A_decode_pf : CorrectDecoder cache monoid A_predicate A_predicate_rest format_A A_decode A_cache_inv.
 
   (* Ben: Should we do this with a FixComp instead? *)
   Fixpoint format_list (xs : list A) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
     match xs with
-    | nil => ret (transform_id, ce)
+    | nil => ret (mempty, ce)
     | x :: xs' => `(b1, env1) <- format_A x ce;
                   `(b2, env2) <- format_list xs' env1;
-                  ret (transform b1 b2, env2)
+                  ret (mappend b1 b2, env2)
     end%comp.
 
   Fixpoint encode_list_Impl
@@ -35,10 +35,10 @@ Section FixList.
            (xs : list A) (ce : CacheEncode)
     : B * CacheEncode :=
     match xs with
-    | nil => (transform_id, ce)
+    | nil => (mempty, ce)
     | x :: xs' =>  let (b1, env1) := A_encode_Impl x ce in
                    let (b2, env2) := encode_list_Impl A_encode_Impl xs' env1 in
-                   (transform b1 b2, env2)
+                   (mappend b1 b2, env2)
     end%comp.
 
   Fixpoint decode_list (s : nat) (b : B) (cd : CacheDecode) : option (list A * B * CacheDecode) :=
@@ -58,7 +58,7 @@ Section FixList.
     | cons a As' =>
       (forall b' ce ce',
           computes_to (format_list As' ce) (b', ce')
-          -> A_predicate_rest a (transform b' b))
+          -> A_predicate_rest a (mappend b' b))
       /\ FixList_predicate_rest As' b
     end.
 
@@ -66,7 +66,7 @@ Section FixList.
     :
     forall sz ,
       CorrectDecoder
-        cache transformer
+        cache monoid
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
         FixList_predicate_rest
         format_list (decode_list sz) A_cache_inv.
@@ -82,16 +82,16 @@ Section FixList.
       { intros.
         simpl in *; intuition; computes_to_inv;
           injections; simpl.
-        rewrite transform_id_left; eexists; eauto. }
+        rewrite mempty_left; eexists; eauto. }
       { intros; simpl in *.
         assert (A_predicate a) by eauto.
         unfold Bind2 in Penc; computes_to_inv; subst.
         destruct v; destruct v0; simpl in *.
         injections.
-        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
+        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (mappend b0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
         intuition; destruct_ex.
         eapply H1; eauto.
-        setoid_rewrite <- transform_assoc; setoid_rewrite H1;
+        setoid_rewrite <- mappend_assoc; setoid_rewrite H1;
           simpl.
         destruct (IHl (proj2 Ppred_rest) b0 xenv x xenv_OK c); intuition eauto.
         setoid_rewrite H6; simpl.
@@ -100,7 +100,7 @@ Section FixList.
     }
     { induction sz; simpl; intros.
       - injections; simpl; repeat eexists; intuition eauto.
-        symmetry; apply transform_id_left.
+        symmetry; apply mempty_left.
       - destruct (A_decode bin env') as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         destruct (decode_list sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
@@ -113,7 +113,7 @@ Section FixList.
         eexists; eexists; intuition eauto.
         computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
-        rewrite transform_assoc; reflexivity.
+        rewrite mappend_assoc; reflexivity.
         subst; eauto.
     }
   Qed.
@@ -124,31 +124,31 @@ Section FixList.
 := (fun (acc: B * CacheEncode) x =>
                                     let (bacc, env) := acc in
                                        let (b1, env1) := A_encode_Impl x env in
-                                       (transform bacc b1, env1)).
+                                       (mappend bacc b1, env1)).
 
   Lemma encode_list_body_characterization A_encode_Impl :
     forall xs base env,
       fold_left (encode_list_body A_encode_Impl) xs (base, env) =
-      (let (b2, env2) := fold_left (encode_list_body A_encode_Impl) xs (transform_id, env) in
-       (transform base b2, env2)).
+      (let (b2, env2) := fold_left (encode_list_body A_encode_Impl) xs (mempty, env) in
+       (mappend base b2, env2)).
   Proof.
     induction xs; simpl.
-    + intros; rewrite transform_id_right; reflexivity.
+    + intros; rewrite mempty_right; reflexivity.
     + intros; destruct (A_encode_Impl _ _).
-      rewrite IHxs, transform_id_left, (IHxs b).
+      rewrite IHxs, mempty_left, (IHxs b).
       destruct (fold_left _ _ _).
-      rewrite transform_assoc; reflexivity.
+      rewrite mappend_assoc; reflexivity.
   Qed.
 
   Lemma encode_list_as_foldl A_encode_Impl :
     forall xs env,
       encode_list_Impl A_encode_Impl xs env =
-      fold_left (encode_list_body A_encode_Impl) xs (transform_id, env).
+      fold_left (encode_list_body A_encode_Impl) xs (mempty, env).
   Proof.
     induction xs; simpl.
     + reflexivity.
     + intros; destruct (A_encode_Impl _ _).
-      rewrite IHxs, transform_id_left, (encode_list_body_characterization A_encode_Impl xs b c).
+      rewrite IHxs, mempty_left, (encode_list_body_characterization A_encode_Impl xs b c).
       destruct (fold_left _ _ _); reflexivity.
   Qed.
 
@@ -162,12 +162,12 @@ Section FixList.
   Proof.
     induction l; simpl; intros.
     - computes_to_inv; injections.
-      pose proof (transform_measure transform_id transform_id) as H';
-        rewrite transform_id_left in H'.
-      simpl bin_measure in H'; simpl transform_id in H'; omega.
+      pose proof (mappend_measure mempty mempty) as H';
+        rewrite mempty_left in H'.
+      simpl bin_measure in H'; simpl mempty in H'; omega.
     - unfold Bind2 in *; computes_to_inv; injections.
       destruct v; destruct v0; simpl in *.
-      rewrite transform_measure.
+      rewrite mappend_measure.
       apply H in H0; rewrite H0.
       apply IHl in H0'; rewrite H0'.
       rewrite Mult.mult_succ_r.
@@ -178,7 +178,7 @@ End FixList.
 
 Lemma FixedList_predicate_rest_True {A B}
       {cache : Cache}
-      {transformer : Transformer B}
+      {monoid : Monoid B}
       (format_A : A -> CacheEncode -> Comp (B * CacheEncode))
   : forall (l : list A) (b : B),
     FixList_predicate_rest (fun a b => True) format_A l b.

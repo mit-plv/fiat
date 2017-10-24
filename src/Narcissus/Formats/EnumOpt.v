@@ -13,8 +13,8 @@ Section Enum.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : QueueTransformerOpt transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   Context {sz : nat}.
   Context {ta : t A (S len)}.
@@ -109,7 +109,7 @@ Section Enum.
           (tb_OK : NoDupVector tb)
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : CorrectDecoder cache transformer (fun _ => True) (fun _ _ => True) format_enum decode_enum P.
+    : CorrectDecoder cache monoid (fun _ => True) (fun _ _ => True) format_enum decode_enum P.
   Proof.
     split; unfold format_enum, decode_enum.
     { intros env env' xenv c c' ext ? Eeq Ppred Ppred_rest Penc.

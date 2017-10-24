@@ -13,7 +13,8 @@ Require Import
         Fiat.Common.EnumType
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple.
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.Narcissus.Formats.DomainNameOpt.
 
 Require Import
         Bedrock.Word
@@ -146,37 +147,6 @@ Section RData.
   (* of the record. This field is a combination of primitive *)
   (* types, such as words, strings and domain names. We only define *)
   (* types here for non-obsolete record types from RFC 1035. *)
-
-  (* A label is a non-empty list of ascii characters (string) *)
-  Definition Label := string.
-  Definition ValidLabel label := index 0 "." label = None /\ lt 0 (String.length label).
-
-  (* A domain name is a sequence of labels separated by '.' *)
-  Definition DomainName : Type := Label.
-
-  (* A domain name is valid iff every substring not containing the '.' *)
-  (* separator (and thus all labels) is less than 64 characters long. *)
-  Definition ValidDomainName s :=
-    (forall pre label post, s = pre ++ label ++ post
-                            -> ValidLabel label
-                            -> String.length label <= 63)%string%nat
-    /\ (forall pre post,
-           s = pre ++ "." ++ post
-           -> post <> EmptyString
-              /\ pre <> EmptyString
-              /\ (~ exists s', post = String "." s')
-              /\ (~ exists s', pre = s' ++ ".")).
-
-  Definition beq_name (a b : DomainName) : bool :=
-    if (string_dec a b) then true else false.
-
-  Lemma beq_name_dec
-    : forall (a b : DomainName), beq_name a b = true <-> a = b.
-  Proof.
-    unfold beq_name; intros;
-      destruct (string_dec a b);
-      intuition; intros; congruence.
-  Qed.
 
   (* Start of Authority (SOA) Records *)
   (* The start of authority record stores information about *)

@@ -4,7 +4,6 @@ Require Import
         Coq.Vectors.Vector.
 
 Require Import
-        Fiat.Examples.DnsServer.Packet
         Fiat.Common.SumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
@@ -789,7 +788,7 @@ Section DnsPacket.
       try solve [instantiate (1 := fun _ => True); exact I]
     end.
 
-  Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
+  Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
   Opaque pow2. (* Don't want to be evaluating this. *)
 
@@ -1073,7 +1072,7 @@ Section DnsPacket.
   Definition packet_decoder
     : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
   Proof.
-    synthesize_decoder_ext transformer
+    synthesize_decoder_ext monoid
                            decode_DNS_rules
                            decompose_parsed_data
                            solve_GoodCache_inv.

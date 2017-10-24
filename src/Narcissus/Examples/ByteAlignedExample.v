@@ -16,7 +16,7 @@ Require Import
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.FixListOpt.
 
-Instance ByteStringQueueTransformer : Transformer ByteString := ByteStringQueueTransformer.
+Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
 
 Definition simple_record := ((word 16) * list (word 8))%type.
 
@@ -81,7 +81,7 @@ Definition Simple_Format_decoder
   : CorrectDecoderFor Simply_OK Simple_Format_Spec.
 Proof.
   start_synthesizing_decoder.
-  normalize_compose transformer.
+  normalize_compose monoid.
   repeat decode_step idtac.
   intros; eauto using FixedList_predicate_rest_True.
   synthesize_cache_invariant.

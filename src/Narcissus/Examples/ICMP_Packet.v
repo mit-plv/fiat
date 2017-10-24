@@ -20,13 +20,13 @@ Require Import
         Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Formats.NoCache
-        Fiat.Narcissus.Formats.WordOpt
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.IPChecksum.
+        Fiat.Narcissus.Formats.IPChecksum
+        Fiat.Narcissus.Formats.WordOpt.
 
 Require Import Bedrock.Word.
 
@@ -109,7 +109,7 @@ Definition ICMP_Message_Codes :=
 Definition ICMP_Message :=
   @Tuple <"Code" :: char, "Message" :: SumType ICMP_Message_Types>.
 
-Definition transformer : Transformer ByteString := ByteStringTransformer.
+Definition monoid : Monoid ByteString := ByteStringMonoid.
 
 Definition encode_ICMP_Echo_Spec
            (icmp : ICMP_Echo) :=

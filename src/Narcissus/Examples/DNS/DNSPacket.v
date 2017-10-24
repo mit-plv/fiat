@@ -26,7 +26,7 @@ Local Open Scope string_scope.
 Local Open Scope Tuple_scope.
 Local Open Scope vector_scope.
 
-Require Export Fiat.Examples.DnsServer.RRecordTypes.
+Require Export Fiat.Narcissus.Examples.DNS.RRecordTypes.
 
 Section QTypes.
 

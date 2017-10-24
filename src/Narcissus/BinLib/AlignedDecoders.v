@@ -39,7 +39,7 @@ Section AlignedDecoders.
 
   Lemma aligned_encode_char_eq
     : forall (w : word 8) cd,
-      refine (format_word (transformerUnit := ByteString_QueueTransformerOpt) w cd)
+      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w cd)
              (ret (build_aligned_ByteString (Vector.cons _ w _ (Vector.nil _)), addE cd 8)).
   Proof.
     intros; shatter_word w; simpl.
@@ -68,7 +68,7 @@ Section AlignedDecoders.
              (e : C)
              cd,
       Ifopt (decode_word
-               (transformerUnit := ByteString_QueueTransformerOpt) (sz := 8) (build_aligned_ByteString v) cd)
+               (monoidUnit := ByteString_QueueMonoidOpt) (sz := 8) (build_aligned_ByteString v) cd)
       as w Then t w Else e
          =
          LetIn (Vector.nth v Fin.F1)
@@ -85,7 +85,7 @@ Section AlignedDecoders.
   Lemma AlignedEncodeChar {numBytes}
     : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_word (transformerUnit := ByteString_QueueTransformerOpt) w)
+      -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ w _ v), ce')).
   Proof.
@@ -106,7 +106,7 @@ Section AlignedDecoders.
              (e : C)
              cd,
       Ifopt (decode_word
-               (transformerUnit := ByteString_QueueTransformerOpt) (sz := 16) (build_aligned_ByteString v) cd) as w
+               (monoidUnit := ByteString_QueueMonoidOpt) (sz := 16) (build_aligned_ByteString v) cd) as w
                                                                                                                     Then t w Else e=
                                                                                                                   Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
         t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
@@ -135,9 +135,9 @@ Section AlignedDecoders.
 
   Lemma encode_words {n m}
     : forall (w : word (n + m)) ce,
-      refine (format_word (transformerUnit := ByteString_QueueTransformerOpt) w ce)
-             ((format_word (transformerUnit := ByteString_QueueTransformerOpt) (split1' _ _ w)
-                                ThenC (format_word (transformerUnit := ByteString_QueueTransformerOpt) (split2' _ _ w)))
+      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
+             ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1' _ _ w)
+                                ThenC (format_word (monoidUnit := ByteString_QueueMonoidOpt) (split2' _ _ w)))
                 ce).
   Proof.
     induction n.
@@ -145,7 +145,7 @@ Section AlignedDecoders.
       unfold format_word at 2; simpl.
       autorewrite with monad laws.
       simpl; rewrite addE_addE_plus.
-      pose proof transform_id_left as H'; simpl in H'; rewrite H'.
+      pose proof mempty_left as H'; simpl in H'; rewrite H'.
       reflexivity.
     - simpl; intros.
       rewrite (word_split_SW w) at 1.
@@ -156,7 +156,7 @@ Section AlignedDecoders.
       unfold format_word; autorewrite with monad laws.
       simpl.
       rewrite format_word_S.
-      pose proof transform_assoc as H'; simpl in H'.
+      pose proof mappend_assoc as H'; simpl in H'.
       rewrite !H'.
       rewrite !addE_addE_plus; simpl.
       f_equiv.
@@ -168,10 +168,10 @@ Section AlignedDecoders.
         generalize (split1' n m (word_split_tl w))
                    (ByteString_enqueue (word_split_hd w) ByteString_id).
       induction w0; simpl in *.
-      + intros; pose proof (transform_id_right b) as H; simpl in H; rewrite H; eauto.
+      + intros; pose proof (mempty_right b) as H; simpl in H; rewrite H; eauto.
       + intros.
         rewrite <- (IHw0 (wtl w) b0).
-        pose proof enqueue_transform_opt as H'''; simpl in H'''.
+        pose proof enqueue_mappend_opt as H'''; simpl in H'''.
         rewrite <- H'''; eauto.
       + eauto.
   Qed.
@@ -179,7 +179,7 @@ Section AlignedDecoders.
   Lemma AlignedEncode2Char {numBytes}
     : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_word (transformerUnit := ByteString_QueueTransformerOpt) w)
+      -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons
                                                   _ (split1' 8 8 w) _
@@ -216,7 +216,7 @@ Section AlignedDecoders.
              (t : _ -> C)
              e
              cd,
-      Ifopt (decode_nat (transformerUnit := ByteString_QueueTransformerOpt) 16 (build_aligned_ByteString v) cd) as w
+      Ifopt (decode_nat (monoidUnit := ByteString_QueueMonoidOpt) 16 (build_aligned_ByteString v) cd) as w
                                                                                                                      Then t w Else e
                                                                                                                    =
                                                                                                                    Let n := wordToNat (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1)) in
@@ -233,7 +233,7 @@ Section AlignedDecoders.
             {numBytes}
     : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_nat 16 (transformerUnit := ByteString_QueueTransformerOpt) n)
+      -> refine (((format_nat 16 (monoidUnit := ByteString_QueueMonoidOpt) n)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons
                                                   _ (split1' 8 8 (natToWord 16 n)) _
@@ -1012,7 +1012,7 @@ Section AlignedDecoders.
              (e : C)
              cd,
       Ifopt (decode_word
-               (transformerUnit := ByteString_QueueTransformerOpt) (sz := 32) (build_aligned_ByteString v) cd) as w
+               (monoidUnit := ByteString_QueueMonoidOpt) (sz := 32) (build_aligned_ByteString v) cd) as w
                                                                                                                     Then t w Else e  =
                                                                                                                   Let n := Core.append_word (Vector.nth v (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
                                                                                                                                             (Core.append_word (Vector.nth v (Fin.FS (Fin.FS Fin.F1)))
@@ -1068,7 +1068,7 @@ Section AlignedDecoders.
   Lemma AlignedEncode32Char {numBytes}
     : forall (w : word 32) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 32)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_word (transformerUnit := ByteString_QueueTransformerOpt) w)
+      -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString
                         (Vector.cons
@@ -1091,8 +1091,8 @@ Section AlignedDecoders.
     rewrite H.
     simplify with monad laws.
     unfold fst.
-    unfold transform.
-    unfold ByteStringQueueTransformer.
+    unfold mappend.
+    unfold ByteStringQueueMonoid.
     rewrite <- build_aligned_ByteString_append.
     instantiate (1 := Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _)))).
     unfold append.
@@ -1243,19 +1243,19 @@ Section AlignedDecoders.
       destruct (ByteString_dequeue v) as [ [? ?] | ]; try reflexivity.
       simpl.
       pose proof (IHn m b0).
-      destruct (transformer_dequeue_word (n + m) b0) as [ [? ?] | ];
+      destruct (monoid_dequeue_word (n + m) b0) as [ [? ?] | ];
         simpl in *; try congruence.
       simpl in *.
-      destruct (transformer_dequeue_word n b0) as [ [? ?] | ];
+      destruct (monoid_dequeue_word n b0) as [ [? ?] | ];
         simpl in *; try congruence.
-      destruct (transformer_dequeue_word n b0) as [ [? ?] | ];
+      destruct (monoid_dequeue_word n b0) as [ [? ?] | ];
         simpl in *; try congruence.
   Qed.
 
 Lemma aligned_decode_unused_char_eq
       {numBytes}
   : forall (v : Vector.t _ (S numBytes)),
-    WordOpt.decode_unused_word' (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v)
+    WordOpt.decode_unused_word' (monoidUnit := ByteString_QueueMonoidOpt) 8 (build_aligned_ByteString v)
     = Some ((), build_aligned_ByteString (Vector.tl v)).
 Proof.
   unfold decode_unused_word'; simpl; intros.
@@ -1269,7 +1269,7 @@ Proof.
   replace (build_aligned_ByteString t) with (ByteString_enqueue_ByteString ByteString_id (build_aligned_ByteString t)).
   unfold Core.char in h.
   shatter_word h.
-  pose proof (@dequeue_transform_opt _ _ _ ByteString_QueueTransformerOpt).
+  pose proof (@dequeue_mappend_opt _ _ _ ByteString_QueueMonoidOpt).
   rewrite build_aligned_ByteString_cons; simpl.
   simpl in H7.
   erewrite H7 with (t := x6)
@@ -1309,7 +1309,7 @@ Proof.
   unfold build_aligned_ByteString.
   unfold ByteString_dequeue; simpl.
   repeat f_equal; apply Core.le_uniqueness_proof.
-  apply (@transform_id_left _ ByteStringQueueTransformer).
+  apply (@mempty_left _ ByteStringQueueMonoid).
 Qed.
 
 Lemma decode_unused_word_aligned_ByteString_overflow
@@ -1345,7 +1345,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
              (e : C)
              cd,
       Ifopt (decode_unused_word
-               (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v) cd)
+               (monoidUnit := ByteString_QueueMonoidOpt) 8 (build_aligned_ByteString v) cd)
       as w Then t w Else e
          =
 
@@ -1363,7 +1363,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
              (k : _ -> option C)
              cd,
       BindOpt (decode_unused_word
-                 (transformerUnit := ByteString_QueueTransformerOpt) (8 * numBytes') (build_aligned_ByteString v) cd) k =
+                 (monoidUnit := ByteString_QueueMonoidOpt) (8 * numBytes') (build_aligned_ByteString v) cd) k =
       k ((), build_aligned_ByteString (snd (Vector_split numBytes' _ v)), addD cd (8 * numBytes')).
   Proof.
     induction numBytes'.
@@ -1405,7 +1405,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
 
   Lemma aligned_encode_unused_char_eq
     : forall cd,
-      refine (format_unused_word (transformerUnit := ByteString_QueueTransformerOpt) 8 cd)
+      refine (format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8 cd)
              (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.nil _)), addE cd 8)).
   Proof.
     unfold format_unused_word, format_unused_word'; simpl.
@@ -1429,7 +1429,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
   Lemma AlignedEncodeUnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_unused_word (transformerUnit := ByteString_QueueTransformerOpt) 8)
+      -> refine (((format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ v), ce')).
   Proof.
@@ -1445,7 +1445,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
   Lemma AlignedEncode2UnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_unused_word (transformerUnit := ByteString_QueueTransformerOpt) 16)
+      -> refine (((format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 16)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ (wzero 8) _ v)), ce')).
   Proof.
@@ -1737,7 +1737,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
              (t : _ -> C)
              e
              cd,
-      Ifopt (decode_nat (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v) cd) as w
+      Ifopt (decode_nat (monoidUnit := ByteString_QueueMonoidOpt) 8 (build_aligned_ByteString v) cd) as w
                                                                                                                     Then t w Else e
                                                                                                                   =
                                                                                                                   Let n := wordToNat (Vector.nth v Fin.F1) in

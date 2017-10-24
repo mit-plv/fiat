@@ -18,18 +18,14 @@ Require Import
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.Bool
-        Fiat.Narcissus.Formats.NoCache
+        Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.StringOpt
-        Fiat.Narcissus.Common.Sig
-        Fiat.Narcissus.BinLib.FixInt
-        Fiat.Narcissus.BinLib.Char
-        Fiat.Narcissus.BinLib.Bool
-        Fiat.Narcissus.BinLib.Enum.
+        Fiat.Narcissus.Common.Sig.
 
 Ltac apply_compose :=
   intros;
@@ -596,11 +592,11 @@ Ltac normalize_compose BitStringT :=
   (* Normalize formats by performing algebraic simplification. *)
   intros; eapply encode_decode_correct_refineEquiv;
   [intros ? ?; symmetry;
-     repeat first [ etransitivity; [apply refineEquiv_compose_compose with (transformer := BitStringT)| ]
-               | etransitivity; [apply refineEquiv_compose_Done with (transformer := BitStringT) | ]
-               | etransitivity; [apply refineEquiv_If_Then_Else_ThenC with (transformer := BitStringT) | ]
+     repeat first [ etransitivity; [apply refineEquiv_compose_compose with (monoid := BitStringT)| ]
+               | etransitivity; [apply refineEquiv_compose_Done with (monoid := BitStringT) | ]
+               | etransitivity; [apply refineEquiv_If_Then_Else_ThenC with (monoid := BitStringT) | ]
                | apply refineEquiv_If_Then_Else_Proper
-               | apply refineEquiv_under_compose with (transformer := BitStringT) ];
+               | apply refineEquiv_under_compose with (monoid := BitStringT) ];
    intros; higher_order_reflexivity
   | pose_string_ids ].
 
@@ -733,13 +729,13 @@ Ltac synthesize_decoder :=
 
 
 Ltac synthesize_decoder_ext
-     transformer
+     monoid
      decode_step'
      determineHooks
      synthesize_cache_invariant' :=
   (* Combines tactics into one-liner. *)
   start_synthesizing_decoder;
-  [ normalize_compose transformer;
+  [ normalize_compose monoid;
     repeat first [decode_step' idtac | decode_step determineHooks]
   | cbv beta; synthesize_cache_invariant' idtac
   | cbv beta; optimize_decoder_impl ].
@@ -776,7 +772,7 @@ Ltac idtac' :=
   | |- _ => idtac (* I actually need this idtac for some unknown reason *)
   end.
 
-Definition FixInt_eq_dec (size : nat) (n m : {n | (N.lt n (exp2 size))%N }) : {n = m} + {~ n = m}.
+(* Definition FixInt_eq_dec (size : nat) (n m : {n | (N.lt n (exp2 size))%N }) : {n = m} + {~ n = m}.
   refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);
     destruct n; destruct m; try congruence; simpl in *; rewrite <- sig_equivalence; eauto.
 Defined.
@@ -795,7 +791,7 @@ Ltac solve_done :=
                                             | H : _ /\ _ |- _ => inversion H; subst; clear H
                                             end; intuition eauto; fail 0.
 
-(*Ltac solve_predicate :=
+Ltac solve_predicate :=
  unfold IList_predicate, FixList_predicate;
   intuition eauto; instantiate (1:=fun _ => True); solve_predicate.
 

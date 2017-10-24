@@ -4,7 +4,6 @@ Require Import
         Coq.Vectors.Vector.
 
 Require Import
-        Fiat.Examples.DnsServer.SimplePacket
         Fiat.Common.SumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
@@ -28,6 +27,8 @@ Require Import
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Common.IterateBoundedIndex
+        Fiat.Common.Tactics.HintDbExtra
+        Fiat.Common.Tactics.TransparentAbstract
         Fiat.Common.Tactics.CacheStringConstant.
 
 Require Import
@@ -35,845 +36,7 @@ Require Import
 
 Section DnsPacket.
 
-  Open Scope Tuple_scope.
-
-  Definition association_list K V := list (K * V).
-
-  Fixpoint association_list_find_first {K V}
-           {K_eq : Query_eq K}
-           (l : association_list K V)
-           (k : K) : option V :=
-    match l with
-    | (k', v) :: l' => if A_eq_dec k k' then Some v else association_list_find_first l' k
-    | _ => None
-    end.
-
-  Fixpoint association_list_find_all {K V}
-           {K_eq : Query_eq K}
-           (l : association_list K V)
-           (k : K) : list V :=
-    match l with
-    | (k', v) :: l' => if A_eq_dec k k' then v :: association_list_find_all l' k
-                       else association_list_find_all l' k
-    | _ => nil
-    end.
-
-  Fixpoint association_list_add {K V}
-           {K_eq : DecideableEnsembles.Query_eq K}
-           (l : association_list K V)
-           (k : K) (v : V) : list (K * V)  :=
-    (k, v) :: l.
-
-  Instance dns_list_cache : Cache :=
-    {| CacheEncode := option (word 17) * association_list string pointerT;
-       CacheDecode := option (word 17) * association_list pointerT string;
-       Equiv ce cd := fst ce = fst cd
-                      /\ (snd ce) = (map (fun ps => match ps with (p, s) => (s, p) end) (snd cd))
-                      /\ NoDup (map fst (snd cd))
-    |}%type.
-
-  Definition list_CacheEncode_empty : CacheEncode := (Some (wzero _), nil).
-  Definition list_CacheDecode_empty : CacheDecode := (Some (wzero _), nil).
-
-  Lemma list_cache_empty_Equiv : Equiv list_CacheEncode_empty list_CacheDecode_empty.
-  Proof.
-    simpl; intuition; simpl; econstructor.
-  Qed.
-
-  Local Opaque pow2.
-  Arguments natToWord : simpl never.
-  Arguments wordToNat : simpl never.
-
-  (* pointerT2Nat (Nat2pointerT (NPeano.div (wordToNat w) 8)) *)
-
-  Instance cacheAddNat : CacheAdd _ nat :=
-    {| addE ce n := (Ifopt (fst ce) as m Then
-                                         let n' := (wordToNat m) + n in
-                                         if Compare_dec.lt_dec n' (pow2 17)
-                                         then Some (natToWord _ n')
-                                         else None
-                                                Else None, snd ce);
-       addD cd n := (Ifopt (fst cd) as m Then
-                                         let n' := (wordToNat m) + n in
-                                         if Compare_dec.lt_dec n' (pow2 17)
-                                         then Some (natToWord _ n')
-                                         else None
-                                                Else None, snd cd) |}.
-  Proof.
-    simpl; intuition eauto; destruct a; destruct a0;
-      simpl in *; eauto; try congruence.
-    injections.
-    find_if_inside; eauto.
-  Defined.
-
-  Variable AlgebraicDataType : Set.
-  Inductive FiatType : Set :=
-  | FiatList : FiatType
-  | FiatUnit : FiatType
-  | FiatNat : FiatType
-  | ArrowType : FiatType -> FiatType -> FiatType.
-
-  Fixpoint DenoteFiatType (tau : FiatType) : Set :=
-    match tau with
-    | FiatList => list nat
-    | FiatUnit => unit
-    | FiatNat => nat
-    | ArrowType tau1 tau2 => (DenoteFiatType tau1) -> (DenoteFiatType tau2)
-    end.
-
-  Inductive fiatTerm : Type :=
-  | Choice : forall (tau : FiatType), (DenoteFiatType tau -> Prop) -> fiatTerm.
-
-  Instance Query_eq_string : Query_eq string :=
-    {| A_eq_dec := string_dec |}.
-
-  Instance : Query_eq pointerT :=
-    {| A_eq_dec := pointerT_eq_dec |}.
-
-  Instance cachePeekDNPointer : CachePeek _ (option pointerT) :=
-    {| peekE ce := Ifopt (fst ce) as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None;
-       peekD cd := Ifopt (fst cd) as m Then Some
-                                       (Nat2pointerT (wordToNat (wtl (wtl (wtl m)))))
-                                       Else None |}.
-  Proof.
-    abstract (simpl; intros; intuition; rewrite H0; auto).
-  Defined.
-
-  Lemma cacheGetDNPointer_pf
-    : forall (ce : CacheEncode) (cd : CacheDecode)
-             (p : string) (q : pointerT),
-      Equiv ce cd ->
-      (association_list_find_first (snd cd) q = Some p <-> List.In q (association_list_find_all (snd ce) p)).
-  Proof.
-    intros [? ?] [? ?] ? ?; simpl; intuition eauto; subst.
-    - subst; induction a0; simpl in *; try congruence.
-      destruct a; simpl in *; find_if_inside; subst.
-      + inversion H2; subst; intros.
-        find_if_inside; subst; simpl; eauto.
-      + inversion H2; subst; intros.
-        find_if_inside; subst; simpl; eauto; congruence.
-    - subst; induction a0; simpl in *; intuition.
-      destruct a; simpl in *; find_if_inside.
-      + inversion H2; subst; intros.
-        find_if_inside; subst; simpl; eauto; try congruence.
-        apply IHa0 in H1; eauto.
-        elimtype False; apply H3; revert H1; clear.
-        induction a0; simpl; intros; try congruence.
-        destruct a; find_if_inside; injections; auto.
-      + inversion H2; subst; intros.
-        find_if_inside; subst; simpl; eauto; try congruence.
-        simpl in H1; intuition eauto; subst.
-        congruence.
-  Qed.
-
-  Instance cacheGetDNPointer : CacheGet dns_list_cache string pointerT :=
-    {| getE ce p := @association_list_find_all string _ _ (snd ce) p;
-       getD ce p := association_list_find_first (snd ce) p;
-       get_correct := cacheGetDNPointer_pf |}.
-
-  Lemma cacheAddDNPointer_pf
-    : forall (ce : CacheEncode) (cd : CacheDecode) (t : string * pointerT),
-      Equiv ce cd ->
-      add_ptr_OK t ce cd ->
-      Equiv (fst ce, association_list_add (snd ce) (fst t) (snd t))
-            (fst cd, association_list_add (snd cd) (snd t) (fst t)).
-  Proof.
-    simpl; intuition eauto; simpl in *; subst; eauto.
-    unfold add_ptr_OK in *.
-    destruct t; simpl in *; simpl; econstructor; eauto.
-    clear H3; induction b0; simpl.
-    - intuition.
-    - simpl in H0; destruct a; find_if_inside;
-        try discriminate.
-      intuition.
-  Qed.
-
-  Instance cacheAddDNPointer
-    : CacheAdd_Guarded _ add_ptr_OK :=
-    {| addE_G ce sp := (fst ce, association_list_add (snd ce) (fst sp) (snd sp));
-       addD_G cd sp := (fst cd, association_list_add (snd cd) (snd sp) (fst sp));
-       add_correct_G := cacheAddDNPointer_pf
-    |}.
-
-  Lemma IndependentCaches :
-    forall env p (b : nat),
-      getD (addD env b) p = getD env p.
-  Proof.
-    simpl; intros; eauto.
-  Qed.
-
-  Lemma IndependentCaches' :
-    forall env p (b : nat),
-      getE (addE env b) p = getE env p.
-  Proof.
-    simpl; intros; eauto.
-  Qed.
-
-  Lemma IndependentCaches''' :
-    forall env b,
-      peekE (addE_G env b) = peekE env.
-  Proof.
-    simpl; intros; eauto.
-  Qed.
-
-  Lemma getDistinct :
-    forall env l p p',
-      p <> p'
-      -> getD (addD_G env (l, p)) p' = getD env p'.
-  Proof.
-    simpl; intros; eauto.
-    find_if_inside; try congruence.
-  Qed.
-
-  Lemma getDistinct' :
-    forall env l p p' l',
-      List.In p (getE (addE_G env (l', p')) l)
-      -> p = p' \/ List.In p (getE env l).
-  Proof.
-    simpl in *; intros; intuition eauto.
-    find_if_inside; simpl in *; intuition eauto.
-  Qed.
-
-  Arguments NPeano.div : simpl never.
-
-  Lemma mult_pow2 :
-    forall m n,
-      pow2 m * pow2 n = pow2 (m + n).
-  Proof.
-    Local Transparent pow2.
-    induction m; simpl; intros.
-    - omega.
-    - rewrite <- IHm.
-      rewrite <- !plus_n_O.
-      rewrite Mult.mult_plus_distr_r; omega.
-  Qed.
-
-  Corollary mult_pow2_8 : forall n,
-      8 * (pow2 n) = pow2 (3 + n).
-  Proof.
-    intros; rewrite <- mult_pow2.
-    reflexivity.
-  Qed.
-
-  Local Opaque pow2.
-
-  Lemma pow2_div
-    : forall m n,
-      lt (m + n * 8) (pow2 17)
-      -> lt (NPeano.div m 8) (pow2 14).
-  Proof.
-    intros.
-    eapply (NPeano.Nat.mul_lt_mono_pos_l 8); try omega.
-    rewrite mult_pow2_8.
-    eapply le_lt_trans.
-    apply NPeano.Nat.mul_div_le; try omega.
-    simpl.
-    omega.
-  Qed.
-
-  Lemma addPeekNone :
-    forall env n,
-      peekD env = None
-      -> peekD (addD env n) = None.
-  Proof.
-    simpl; intros.
-    destruct (fst env); simpl in *; congruence.
-  Qed.
-
-  Lemma wtl_div
-    : forall n (w : word (S (S (S n)))),
-      wordToNat (wtl (wtl (wtl w))) = NPeano.div (wordToNat w) 8.
-  Proof.
-    intros.
-    pose proof (shatter_word_S w); destruct_ex; subst.
-    pose proof (shatter_word_S x0); destruct_ex; subst.
-    pose proof (shatter_word_S x2); destruct_ex; subst.
-    simpl wtl.
-    rewrite <- (NPeano.Nat.div_div _ 2 4) by omega.
-    rewrite <- (NPeano.Nat.div_div _ 2 2) by omega.
-    rewrite <- !NPeano.Nat.div2_div.
-    rewrite !div2_WS.
-    reflexivity.
-  Qed.
-
-  Lemma mult_lt_compat_l'
-    : forall (m n p : nat),
-      lt 0 p
-      -> lt (p * n)  (p * m)
-      -> lt n m.
-  Proof.
-    induction m; simpl; intros; try omega.
-    rewrite (mult_comm p 0) in H0; simpl in *; try omega.
-    destruct p; try (elimtype False; auto with arith; omega).
-    inversion H0.
-    rewrite (mult_comm p (S m)) in H0.
-    simpl in H0.
-    destruct n; try omega.
-    rewrite (mult_comm p (S n)) in H0; simpl in H0.
-    apply plus_lt_reg_l in H0.
-    rewrite <- NPeano.Nat.succ_lt_mono.
-    eapply (IHm n p); try eassumption; try omega.
-    rewrite mult_comm.
-    rewrite (mult_comm p m); auto.
-  Qed.
-
-  Lemma mult_lt_compat_l''
-    : forall (p m k n : nat),
-      lt 0 p
-      -> lt n m
-      -> lt k p
-      -> lt ((p * n) + k) (p * m).
-  Proof.
-    induction p; intros; try omega.
-    simpl.
-    inversion H; subst; simpl.
-    inversion H1; subst; omega.
-    destruct k; simpl.
-    - rewrite <- plus_n_O.
-      eapply (mult_lt_compat_l n m (S p)); auto.
-    - assert (lt (p * n + k) (p * m)) by
-          (apply IHp; try omega).
-      omega.
-  Qed.
-
-  Lemma addPeekNone' :
-    forall env n m,
-      peekD env = Some m
-      -> ~ lt (n + (pointerT2Nat m)) (pow2 14)
-      -> peekD (addD env (n * 8)) = None.
-  Proof.
-    simpl; intros; subst.
-    destruct (fst env); simpl in *; try discriminate.
-    injections.
-    find_if_inside; try reflexivity.
-    unfold If_Opt_Then_Else.
-    rewrite !wtl_div in *.
-    elimtype False; apply H0.
-    rewrite pointerT2Nat_Nat2pointerT in *;
-      try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    destruct n; try omega.
-    elimtype False; apply H0.
-    simpl.
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    - eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      simpl in l.
-      rewrite mult_pow2_8; simpl; omega.
-    - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
-      pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
-      apply le_lt_trans with (8 * S n + (wordToNat w)).
-      omega.
-      rewrite mult_pow2_8; simpl; omega.
-  Qed.
-
-  Lemma addPeekSome :
-    forall env n m,
-      peekD env = Some m
-      -> lt (n + (pointerT2Nat m)) (pow2 14)
-      -> exists p',
-          peekD (addD env (n * 8)) = Some p'
-          /\ pointerT2Nat p' = n + (pointerT2Nat m).
-  Proof.
-    simpl; intros; subst.
-    destruct (fst env); simpl in *; try discriminate.
-    injections.
-    find_if_inside.
-    - rewrite !wtl_div in *.
-      rewrite pointerT2Nat_Nat2pointerT in *;
-        try (eapply pow2_div; eassumption).
-      unfold If_Opt_Then_Else.
-      eexists; split; try reflexivity.
-      rewrite wtl_div.
-      rewrite wordToNat_natToWord_idempotent.
-      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
-      apply Nomega.Nlt_in.
-      rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    - elimtype False; apply n0.
-      rewrite !wtl_div in *.
-      rewrite pointerT2Nat_Nat2pointerT in *.
-      rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
-      pose proof (mult_pow2_8 14) as H'; simpl plus in H'; rewrite <- H'.
-      replace (8 * NPeano.div (wordToNat w) 8 + NPeano.modulo (wordToNat w) 8 + n * 8)
-      with (8 * (NPeano.div (wordToNat w) 8 + n) + NPeano.modulo (wordToNat w) 8)
-        by omega.
-      eapply mult_lt_compat_l''; try omega.
-      apply NPeano.Nat.mod_upper_bound; omega.
-      eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl.
-      apply wordToNat_bound.
-  Qed.
-
-  Lemma addZeroPeek :
-    forall xenv,
-      peekD xenv = peekD (addD xenv 0).
-  Proof.
-    simpl; intros.
-    destruct (fst xenv); simpl; eauto.
-    find_if_inside; unfold If_Opt_Then_Else.
-    rewrite <- plus_n_O, natToWord_wordToNat; auto.
-    elimtype False; apply n.
-    rewrite <- plus_n_O.
-    apply wordToNat_bound.
-  Qed.
-
-  Local Opaque wordToNat.
-  Local Opaque natToWord.
-
-  Lemma boundPeekSome :
-    forall env n m m',
-      peekD env = Some m
-      -> peekD (addD env (n * 8)) = Some m'
-      -> lt (n + (pointerT2Nat m)) (pow2 14).
-  Proof.
-    simpl; intros; subst.
-    destruct (fst env); simpl in *; try discriminate.
-    injections.
-    find_if_inside; unfold If_Opt_Then_Else in *; try congruence.
-    injections.
-    rewrite !wtl_div in *.
-    rewrite pointerT2Nat_Nat2pointerT in *;
-      try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
-      pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
-      apply le_lt_trans with (8 * n + (wordToNat w)).
-      omega.
-      rewrite mult_pow2_8.
-      simpl plus at -1.
-      omega.
-  Qed.
-
-  Lemma addPeekESome :
-    forall env n m,
-      peekE env = Some m
-      -> lt (n + (pointerT2Nat m)) (pow2 14)%nat
-      -> exists p',
-          peekE (addE env (n * 8)) = Some p'
-          /\ pointerT2Nat p' = n + (pointerT2Nat m).
-  Proof.
-    simpl; intros; subst.
-    destruct (fst env); simpl in *; try discriminate.
-    injections.
-    find_if_inside.
-    - rewrite !wtl_div in *.
-      rewrite pointerT2Nat_Nat2pointerT in *;
-        try (eapply pow2_div; eassumption).
-      unfold If_Opt_Then_Else.
-      eexists; split; try reflexivity.
-      rewrite wtl_div.
-      rewrite wordToNat_natToWord_idempotent.
-      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
-      apply Nomega.Nlt_in.
-      rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    - elimtype False; apply n0.
-      rewrite !wtl_div in *.
-      rewrite pointerT2Nat_Nat2pointerT in *.
-      rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
-      pose proof (mult_pow2_8 14) as H'; simpl plus in H'; rewrite <- H'.
-      replace (8 * NPeano.div (wordToNat w) 8 + NPeano.modulo (wordToNat w) 8 + n * 8)
-      with (8 * (NPeano.div (wordToNat w) 8 + n) + NPeano.modulo (wordToNat w) 8)
-        by omega.
-      eapply mult_lt_compat_l''; try omega.
-      apply NPeano.Nat.mod_upper_bound; omega.
-      eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl.
-      apply wordToNat_bound.
-  Qed.
-
-  Lemma boundPeekESome :
-    forall env n m m',
-      peekE env = Some m
-      -> peekE (addE env (n * 8)) = Some m'
-      -> lt (n + (pointerT2Nat m)) (pow2 14).
-  Proof.
-    simpl; intros; subst.
-    destruct (fst env); simpl in *; try discriminate.
-    injections.
-    find_if_inside; unfold If_Opt_Then_Else in *; try congruence.
-    injections.
-    rewrite !wtl_div in *.
-    rewrite pointerT2Nat_Nat2pointerT in *;
-      try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
-      pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
-      apply le_lt_trans with (8 * n + (wordToNat w)).
-      omega.
-      rewrite mult_pow2_8.
-      simpl plus at -1.
-      omega.
-  Qed.
-
-  Lemma addPeekENone :
-    forall env n,
-      peekE env = None
-      -> peekE (addE env n) = None.
-  Proof.
-    simpl; intros.
-    destruct (fst env); simpl in *; congruence.
-  Qed.
-
-  Lemma addPeekENone' :
-    forall env n m,
-      peekE env = Some m
-      -> ~ lt (n + (pointerT2Nat m)) (pow2 14)%nat
-      -> peekE (addE env (n * 8)) = None.
-  Proof.
-    simpl; intros; subst.
-    destruct (fst env); simpl in *; try discriminate.
-    injections.
-    find_if_inside; try reflexivity.
-    unfold If_Opt_Then_Else.
-    rewrite !wtl_div in *.
-    elimtype False; apply H0.
-    rewrite pointerT2Nat_Nat2pointerT in *;
-      try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    destruct n; try omega.
-    elimtype False; apply H0.
-    simpl.
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    - eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      simpl in l.
-      rewrite mult_pow2_8; simpl; omega.
-    - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
-      pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
-      apply le_lt_trans with (8 * S n + (wordToNat w)).
-      omega.
-      rewrite mult_pow2_8; simpl; omega.
-  Qed.
-
-  Lemma addZeroPeekE :
-    forall xenv,
-      peekE xenv = peekE (addE xenv 0).
-  Proof.
-    simpl; intros.
-    destruct (fst xenv); simpl; eauto.
-    find_if_inside; unfold If_Opt_Then_Else.
-    rewrite <- plus_n_O, natToWord_wordToNat; auto.
-    elimtype False; apply n.
-    rewrite <- plus_n_O.
-    apply wordToNat_bound.
-  Qed.
-
-  Import Vectors.VectorDef.VectorNotations.
-
-  Definition GoodCache (env : CacheDecode) :=
-    forall domain p,
-      getD env p = Some domain
-      -> ValidDomainName domain
-         /\ (String.length domain > 0)%nat
-         /\ (getD env p = Some domain
-             -> forall p' : pointerT, peekD env = Some p' -> lt (pointerT2Nat p) (pointerT2Nat p')).
-
-  Lemma cacheIndependent_add
-    : forall (b : nat) (cd : CacheDecode),
-      GoodCache cd -> GoodCache (addD cd b).
-  Proof.
-    unfold GoodCache; intros.
-    rewrite IndependentCaches in *;
-      eapply H in H0; intuition eauto.
-    simpl in *.
-    destruct (fst cd); simpl in *; try discriminate.
-    find_if_inside; simpl in *; try discriminate.
-    injections.
-    pose proof (H4 _ (eq_refl _)).
-    eapply lt_le_trans; eauto.
-    rewrite !pointerT2Nat_Nat2pointerT in *;
-      rewrite !wtl_div in *.
-    rewrite wordToNat_natToWord_idempotent.
-    apply NPeano.Nat.div_le_mono; omega.
-    apply Nomega.Nlt_in.
-    rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    + eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite wordToNat_natToWord_idempotent.
-      rewrite mult_pow2_8; simpl; omega.
-      apply Nomega.Nlt_in.
-      rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
-  Qed.
-
-  Lemma cacheIndependent_add_2
-    : forall cd p (b : nat) domain,
-      GoodCache cd
-      -> getD (addD cd b) p = Some domain
-      -> forall pre label post : string,
-          domain = (pre ++ label ++ post)%string ->
-          ValidLabel label -> (String.length label <= 63)%nat.
-  Proof.
-    unfold GoodCache; intros.
-    rewrite IndependentCaches in *; eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_3
-    : forall cd p (b : nat) domain,
-      GoodCache cd
-      -> getD (addD cd b) p = Some domain
-      -> ValidDomainName domain.
-  Proof.
-    unfold GoodCache; intros.
-    rewrite IndependentCaches in *; eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_4
-    : forall cd p (b : nat) domain,
-      GoodCache cd
-      -> getD (addD cd b) p = Some domain
-      -> gt (String.length domain) 0.
-  Proof.
-    unfold GoodCache; intros.
-    rewrite IndependentCaches in *; eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_5
-    : forall cd p domain,
-      GoodCache cd
-      -> getD cd p = Some domain
-      -> ValidDomainName domain.
-  Proof.
-    unfold GoodCache; intros.
-    eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_6
-    : forall cd p domain,
-      GoodCache cd
-      -> getD cd p = Some domain
-      -> gt (String.length domain) 0.
-  Proof.
-    unfold GoodCache; intros.
-    eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_7
-    : forall cd p domain,
-      GoodCache cd
-      -> getD cd p = Some domain
-      -> forall pre label post : string,
-          domain = (pre ++ label ++ post)%string ->
-          ValidLabel label -> (String.length label <= 63)%nat.
-  Proof.
-    unfold GoodCache; intros.
-    eapply H; eauto.
-  Qed.
-
-  Lemma ptr_eq_dec :
-    forall (p p' : pointerT),
-      {p = p'} + {p <> p'}.
-  Proof.
-    decide equality.
-    apply weq.
-    destruct a; destruct s; simpl in *.
-    destruct (weq x x0); subst.
-    left; apply ptr_eq; reflexivity.
-    right; unfold not; intros; apply n.
-    congruence.
-  Qed.
-
-  Lemma cacheIndependent_add_8
-    : forall cd p p0 domain domain',
-      GoodCache cd
-      -> ValidDomainName domain' /\ (String.length domain' > 0)%nat
-      -> getD (addD_G cd (domain', p0)) p = Some domain
-      -> forall pre label post : string,
-          domain = (pre ++ label ++ post)%string ->
-          ValidLabel label -> (String.length label <= 63)%nat.
-  Proof.
-    unfold GoodCache; simpl; intros.
-    destruct (pointerT_eq_dec p p0); subst.
-    - injections; intuition.
-      eapply H1; eauto.
-    - eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_9
-    : forall cd p p0 domain domain',
-      GoodCache cd
-      -> ValidDomainName domain' /\ (String.length domain' > 0)%nat
-      -> getD (addD_G cd (domain', p0)) p = Some domain
-      -> ValidDomainName domain.
-  Proof.
-    unfold GoodCache; simpl; intros.
-    destruct (pointerT_eq_dec p p0); subst.
-    - injections; intuition.
-    - eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_10
-    : forall cd p p0 domain domain',
-      GoodCache cd
-      -> ValidDomainName domain' /\ (String.length domain' > 0)%nat
-      -> getD (addD_G cd (domain', p0)) p = Some domain
-      -> gt (String.length domain) 0.
-  Proof.
-    unfold GoodCache; simpl; intros.
-    destruct (pointerT_eq_dec p p0); subst.
-    - injections; intuition.
-    - eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_11
-    : forall (b : nat)
-             (cd : CacheDecode)
-             (domain : string)
-             (p : pointerT),
-      GoodCache cd
-      -> getD (addD cd b) p = Some domain ->
-      forall p' : pointerT, peekD (addD cd b) = Some p' -> lt (pointerT2Nat p) (pointerT2Nat p').
-  Proof.
-    intros.
-    eapply (cacheIndependent_add b) in H.
-    eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_12
-    : forall (p : pointerT) (cd : CacheDecode) (domain : string),
-      GoodCache cd ->
-      getD cd p = Some domain
-      -> forall p' : pointerT,
-          peekD cd = Some p'
-          -> lt (pointerT2Nat p) (pointerT2Nat p').
-  Proof.
-    unfold GoodCache; simpl; intros; intuition eauto.
-    eapply H; eauto.
-  Qed.
-
-  Lemma cacheIndependent_add_13
-    : forall  (env : CacheDecode)
-              (p : pointerT)
-              (domain : string)
-              (H : GoodCache env)
-              (H0 : ValidDomainName domain /\ (String.length domain > 0)%nat)
-              (H1 : getD env p = None)
-              (H2 : forall p' : pointerT, peekD env = Some p' -> lt (pointerT2Nat p) (pointerT2Nat p'))
-              (domain0 : string)
-              (p0 : pointerT)
-              (H3 : getD (addD_G env (domain, p)) p0 = Some domain0)
-              (p' : pointerT),
-      peekD (addD_G env (domain, p)) = Some p'
-      -> lt (pointerT2Nat p0) (pointerT2Nat p').
-  Proof.
-    simpl; intros.
-    destruct (fst env) eqn: ?; simpl in *; try discriminate.
-    find_if_inside; subst.
-    - injections.
-      apply (H2 _ (eq_refl _)).
-    - injections.
-      pose proof (H2 _ (eq_refl _)).
-      unfold GoodCache in *; intuition.
-      eapply H; simpl.
-      eassumption.
-      eassumption.
-      rewrite Heqo; simpl; reflexivity.
-  Qed.
-
-  Lemma addD_addD_plus :
-    forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
-  Proof.
-    simpl; intros.
-    destruct (fst cd); simpl; eauto.
-    repeat (find_if_inside; simpl); eauto.
-    f_equal; f_equal.
-    rewrite !natToWord_plus.
-    rewrite !natToWord_wordToNat.
-    rewrite wplus_assoc; reflexivity.
-    rewrite !natToWord_plus in l0.
-    rewrite !natToWord_wordToNat in l0.
-    elimtype False.
-    apply n0.
-    rewrite <- (natToWord_wordToNat w) in l0.
-    rewrite <- natToWord_plus in l0.
-    rewrite wordToNat_natToWord_idempotent in l0.
-    omega.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
-    elimtype False.
-    apply n0.
-    rewrite <- (natToWord_wordToNat w).
-    rewrite !natToWord_plus.
-    rewrite !wordToNat_natToWord_idempotent.
-    rewrite <- natToWord_plus.
-    rewrite !wordToNat_natToWord_idempotent.
-    omega.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; omega.
-    omega.
-  Qed.
-
-  Lemma addE_addE_plus :
-    forall (cd : CacheEncode) (n m : nat), addE (addE cd n) m = addE cd (n + m).
-  Proof.
-    simpl; intros.
-    destruct (fst cd); simpl; eauto.
-    repeat (find_if_inside; simpl); eauto.
-    f_equal; f_equal.
-    rewrite !natToWord_plus.
-    rewrite !natToWord_wordToNat.
-    rewrite wplus_assoc; reflexivity.
-    rewrite !natToWord_plus in l0.
-    rewrite !natToWord_wordToNat in l0.
-    elimtype False.
-    apply n0.
-    rewrite <- (natToWord_wordToNat w) in l0.
-    rewrite <- natToWord_plus in l0.
-    rewrite wordToNat_natToWord_idempotent in l0.
-    omega.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
-    elimtype False.
-    apply n0.
-    rewrite <- (natToWord_wordToNat w).
-    rewrite !natToWord_plus.
-    rewrite !wordToNat_natToWord_idempotent.
-    rewrite <- natToWord_plus.
-    rewrite !wordToNat_natToWord_idempotent.
-    omega.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; omega.
-    omega.
-  Qed.
-
-  Ltac solve_GoodCache_inv foo :=
-    lazymatch goal with
-      |- cache_inv_Property ?Z _ =>
-      unify Z GoodCache;
-      unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10, cacheIndependent_add_11, cacheIndependent_add_12, cacheIndependent_add_13;
-      try match goal with
-            H : _ = _ |- _ =>
-            try solve [ eapply cacheIndependent_add_3 in H; intuition eauto ];
-            try solve [ eapply cacheIndependent_add_9 in H; intuition eauto ];
-            try solve [ eapply cacheIndependent_add_5 in H; intuition eauto ]
-          end;
-      try solve [instantiate (1 := fun _ => True); exact I]
-    end.
-
-  Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
+  Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
   Opaque pow2. (* Don't want to be evaluating this. *)
 
@@ -1086,13 +249,13 @@ Section DnsPacket.
     end.
 
   Ltac synthesize_decoder_ext
-       transformer
+       monoid
        decode_step'
        determineHooks
        synthesize_cache_invariant' :=
     (* Combines tactics into one-liner. *)
     start_synthesizing_decoder;
-    [ normalize_compose transformer;
+    [ normalize_compose monoid;
       repeat first [decode_step' idtac | decode_step determineHooks]
     | cbv beta; synthesize_cache_invariant' idtac
     |  ].
@@ -1231,7 +394,33 @@ Section DnsPacket.
     eapply H; eauto.
     rewrite Heqp; reflexivity.
     reflexivity.
-  Qed.
+Qed.
+    (*intros. 8.6 script.
+    unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
+    simpl.
+    replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
+    revert ce; pattern (existT (fun a0 : A => A_OK a0) a a_OK); eapply (well_founded_ind wf_lt_A).
+    simpl; intros.
+    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheEncode] (ByteString * CacheEncode)) _ (body_monotone))); etransitivity.
+    eapply H0; eauto.
+    destruct (Fix wf_lt_A
+               (fun _ : {a0 : A & A_OK a0} =>
+                option (word 17) * association_list string pointerT ->
+                {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT)) body' x ce) eqn: ?.
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
+    rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
+    etransitivity.
+    eapply refine_body_OK.
+    instantiate (1 := fun (a' : {a0 : A & A_OK a0}) (_ : lt_A a' x) =>
+            (fix Fix_F_sub (x0 : {a0 : A & A_OK a0}) (r : Acc lt_A x0) {struct r} :
+               option (word 17) * association_list string pointerT ->
+               {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT) :=
+               body' x0 (fun (a'0 : {a0 : A & A_OK a0}) (lt_a'0 : lt_A a'0 x0) => Fix_F_sub a'0 (Acc_inv r lt_a'0))) a'
+              (wf_lt_A a')).
+    simpl; intros; rewrite H; eauto;  reflexivity.
+    rewrite Heqp; try reflexivity. *)
+  (*Qed. *)
 
   Fixpoint split_string (s : string) : (string * string) :=
     match s with
@@ -1403,7 +592,7 @@ Section DnsPacket.
     intros; destruct (string_dec s s'); auto.
   Qed.
 
-  Lemma align_encode_DomainName
+Lemma align_encode_DomainName
     : forall d ce
       (d_OK : ValidDomainName d),
       refine (format_DomainName d ce)
@@ -1577,7 +766,188 @@ Section DnsPacket.
     end.
     destruct (aligned_encode_DomainName d ce); reflexivity.
     simpl. admit.
-  Qed.
+Qed.
+
+(*  Lemma align_encode_DomainName
+    : forall d ce
+      (d_OK : ValidDomainName d),
+      refine (format_DomainName d ce)
+             (ret (build_aligned_ByteString (projT2 (fst (aligned_encode_DomainName d ce))),
+                   (snd (aligned_encode_DomainName d ce)))).
+  Proof.
+    intros.
+    etransitivity.
+    eapply (byte_align_Fix_encoder_inv ValidDomainName) with
+    (lt_A := fun a a' => lt (String.length (projT1 a)) (String.length (projT1 a')));
+      eauto using encode_body_monotone.
+    intros.
+    etransitivity.
+    match goal with
+      |- refine (If_Then_Else (bool_of_sumbool (string_dec ?s ?s')) _ _) _ =>
+      subst_refine_evar; eapply (refine_If_string_dec s s');
+        let H := fresh in
+        intro H; set_refine_evar; try rewrite H; simpl
+    end.
+    unfold AsciiOpt.format_ascii; rewrite aligned_encode_char_eq.
+    subst_refine_evar; higher_order_reflexivity.
+    refine pick val None; try congruence.
+    simplify with monad laws; simpl.
+    unfold Bind2.
+    refine pick val (split_string (projT1 r)).
+    simplify with monad laws.
+    unfold format_nat.
+    rewrite aligned_encode_char_eq.
+    simplify with monad laws.
+    rewrite encode_string_ByteString.
+    simplify with monad laws.
+    unfold snd at 2; unfold snd at 2.
+    unfold fst at 2; unfold fst at 2.
+    unfold fst at 2.
+    rewrite (H (exist _ _ (split_string_ValidDomainName _ (projT2 r)))
+                   (split_string_ValidDomainName_length _ H0)).
+    simplify with monad laws.
+    Arguments mult : simpl never.
+    simpl.
+    subst_refine_evar; higher_order_reflexivity.
+    auto using addE_addE_plus.
+    destruct r; apply split_string_OK.
+    simpl; eauto.
+    instantiate (1 := (fun (r : {a : string & ValidDomainName a})
+                     (y : forall r' : {a : string & ValidDomainName a},
+                          lt (String.length (projT1 r')) (String.length (projT1 r))%nat ->
+                          CacheEncode -> {n : nat & t (word 8) n} * CacheEncode)
+                     (ce : CacheEncode) =>
+                   match string_dec (projT1 r) "" with
+                   | left _ =>  (existT (fun n : nat => t (word 8) n) 1 [NToWord 8 (Ascii.N_of_ascii terminal_char)], addE ce 8)
+                   | right n' =>  (existT (fun n : nat => t (word 8) n)
+                           (1 + String.length (fst (split_string (projT1 r))) +
+                            projT1
+                              (fst
+                                 (y
+                                    (existT ValidDomainName
+                                       (snd (split_string (projT1 r)))
+                                       (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (Ifopt Ifopt fst ce as m
+                                           Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                     Then if Compare_dec.lt_dec
+                                               (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                               (pow2 17)
+                                          then
+                                           Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                          else None Else None,
+                                    snd ce))))
+                           (([natToWord 8 (String.length (let (x0, _) := split_string (projT1 r) in x0))] ++
+                             StringToBytes (fst (split_string (projT1 r)))) ++
+                            projT2
+                              (fst
+                                 (y
+                                    (existT ValidDomainName
+                                       (snd (split_string (projT1 r)))
+                                       (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (Ifopt Ifopt fst ce as m
+                                           Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                     Then if Compare_dec.lt_dec
+                                               (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                               (pow2 17)
+                                          then
+                                           Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                          else None Else None,
+                                    snd ce)))),
+                        Ifopt Ifopt fst ce as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None as curPtr
+                        Then (fst
+                                (snd
+                                   (y
+                                      (existT ValidDomainName
+                                         (snd (split_string (projT1 r)))
+                                         (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                      (split_string_ValidDomainName_length (projT1 r) n')
+                                      (Ifopt Ifopt
+                                             fst ce as m
+                                             Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                  then Some (natToWord 17 (wordToNat m + 8))
+                                                  else None Else None as m
+                                       Then if Compare_dec.lt_dec
+                                                 (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                                 (pow2 17)
+                                            then
+                                             Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                            else None Else None,
+                                      snd ce))),
+                             ((projT1 r, curPtr)
+                              :: snd
+                                   (snd
+                                      (y
+                                         (existT ValidDomainName
+                                            (snd (split_string (projT1 r)))
+                                            (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                         (split_string_ValidDomainName_length (projT1 r) n')
+                                         (Ifopt Ifopt
+                                                fst ce as m
+                                                Then
+                                                if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                          Then if Compare_dec.lt_dec
+                                                  (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                                  (pow2 17)
+                                               then
+                                                Some
+                                                  (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                               else None Else None,
+                                         snd ce))))%list)
+                        Else snd
+                               (y
+                                  (existT ValidDomainName
+                                     (snd (split_string (projT1 r)))
+                                     (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                  (split_string_ValidDomainName_length (projT1 r) n')
+                                  (Ifopt Ifopt fst ce as m
+                                         Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                              then Some (natToWord 17 (wordToNat m + 8))
+                                              else None Else None as m
+                                   Then if Compare_dec.lt_dec
+                                             (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                             (pow2 17)
+                                        then Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                        else None Else None,
+                                  snd ce))) end)).
+    simpl.
+    destruct (string_dec (projT1 r) ""); simpl.
+    reflexivity.
+    rewrite <- !build_aligned_ByteString_append.
+    progress destruct (y (existT ValidDomainName (snd (split_string (projT1 r))) (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                (split_string_ValidDomainName_length (projT1 r) n)
+                (Ifopt Ifopt fst ce0 as m
+                       Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17) then Some (natToWord 17 (wordToNat m + 8)) else None
+                       Else None as m
+                 Then if Compare_dec.lt_dec (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))) (pow2 17)
+                      then Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                      else None Else None, snd ce0)) eqn:?; simpl.
+    match goal with
+      |- context [y ?A ?B ?C] => set (H4 := y A B C)
+    end.
+  Admitted.
+  (*    rewrite Heqp in H4.
+    rewrite <- !build_aligned_ByteString_append.
+    reflexivity.
+    intros; apply functional_extensionality; intros.
+    destruct (string_dec (projT1 x0) ""); simpl; try rewrite H; reflexivity.
+    instantiate (2 := well_founded_string_length').
+    instantiate (1 := d_OK).
+    match goal with
+      |- context [let (_,_) := ?z in _] =>
+      replace z with
+      (aligned_encode_DomainName d ce)
+    end.
+    destruct (aligned_encode_DomainName d ce); reflexivity.
+    simpl. admit.
+  Qed. *) *)
 
     Lemma optimize_align_encode_list
           {A}
@@ -1695,7 +1065,7 @@ Section DnsPacket.
 
   Arguments addE : simpl never.
 
-  Ltac pose_string_hyps :=
+  (*Ltac pose_string_hyps :=
   fold_string_hyps;
    repeat
     match goal with
@@ -1708,9 +1078,11 @@ Section DnsPacket.
     | |- context [{| bindex := ?bindex'; indexb := ?indexb' |}] =>
       let str := fresh "BStringId" in
       cache_term ``(bindex') as str run fun id => fold id in *; add id to stringCache
-    end.
+    end. *)
 
-  Create HintDb encoderCache.
+  Create HintDb encodeCache.
+
+  Print Ltac fold_string_hyps.
 
   Ltac fold_encoders :=
     (repeat foreach [ encodeCache ] run (fun id => progress fold id in *)).
@@ -1747,9 +1119,9 @@ Section DnsPacket.
     eapply refine_refineEquiv_Proper;
       [ unfold flip;
         repeat first
-               [ etransitivity; [ apply refineEquiv_compose_compose with (transformer := transformer) | idtac ]
-               | etransitivity; [ apply refineEquiv_compose_Done with (transformer := transformer) | idtac ]
-               | apply refineEquiv_under_compose with (transformer := transformer) ];
+               [ etransitivity; [ apply refineEquiv_compose_compose with (monoid := monoid) | idtac ]
+               | etransitivity; [ apply refineEquiv_compose_Done with (monoid := monoid) | idtac ]
+               | apply refineEquiv_under_compose with (monoid := monoid) ];
         intros; higher_order_reflexivity
       | reflexivity | ].
     pose_string_hyps.
@@ -1846,7 +1218,7 @@ Section DnsPacket.
       apply (@AlignedEncode2UnusedChar dns_list_cache).
       eauto using addE_addE_plus.
       apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
-      replace transform_id
+      replace mempty
       with (build_aligned_ByteString (Vector.nil _)).
       reflexivity.
       eapply ByteString_f_equal;
@@ -1898,7 +1270,7 @@ Section DnsPacket.
       apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
       apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
       apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
-      replace transform_id
+      replace mempty
       with (build_aligned_ByteString (Vector.nil _)).
       reflexivity.
       eapply ByteString_f_equal;
@@ -1917,48 +1289,48 @@ Section DnsPacket.
       instantiate (1 := fun t ce0 => (existT _ _ _, _)).
       simpl; reflexivity.
     }
-    intros.
+    { intros; unfold Bind2; simplify with monad laws.
+      simpl; higher_order_reflexivity.
+    }
+
+    cache_encoders.
+    simplify with monad laws.
+    simpl.
+    replace ByteString_id
+    with (build_aligned_ByteString (Vector.nil _)).
+    rewrite <- build_aligned_ByteString_append.
+    reflexivity.
+    eapply ByteString_f_equal;
+      instantiate (1 := eq_refl _); reflexivity.
+    intros; higher_order_reflexivity.
+    match goal with
+      |- context [ @align_encode_sumtype ?cache ?m ?types ?encoders ?p ?ce] =>
+      pose (@align_encode_sumtype cache m types encoders) as H'; fold H'
+    end.
+
+    simpl.
+    simplify with monad laws.
+    simpl.
+    rewrite <- build_aligned_ByteString_append.
+    instantiate (1 := fun t ce0 =>
+                        (existT _ _ _, _)).
+    simpl.
+    reflexivity.
+    apply H0.
+    apply H.
     intros; unfold Bind2; simplify with monad laws.
     simpl; higher_order_reflexivity.
-
-       cache_encoders.
-       simplify with monad laws.
-       simpl.
-       replace ByteString_id
-       with (build_aligned_ByteString (Vector.nil _)).
-       rewrite <- build_aligned_ByteString_append.
-       reflexivity.
-       eapply ByteString_f_equal;
-         instantiate (1 := eq_refl _); reflexivity.
-       intros; higher_order_reflexivity.
-       match goal with
-         |- context [ @align_encode_sumtype ?cache ?m ?types ?encoders ?p ?ce] =>
-         pose (@align_encode_sumtype cache m types encoders) as H'; fold H'
-       end.
-
-       simpl.
-       simplify with monad laws.
-       simpl.
-       rewrite <- build_aligned_ByteString_append.
-       instantiate (1 := fun t ce0 =>
-                           (existT _ _ _, _)).
-       simpl.
-       reflexivity.
-       apply H0.
-       apply H.
-       intros; unfold Bind2; simplify with monad laws.
-       simpl; higher_order_reflexivity.
        cache_encoders.
        simpl.
        Time match goal with
-              |- context [let (v, c) := ?z in ret (@?b v c)] =>
+              |- context [let (v, c) := ?z in ret (@?b c v)] =>
               rewrite (zeta_inside_ret z b)
             end.
        simplify with monad laws.
        replace ByteString_id
        with (build_aligned_ByteString (Vector.nil _)).
        Time match goal with
-              |- context [let (v, c) := ?z in (@?b v c)] =>
+              |- context [let (v, c) := ?z in (@?b c v)] =>
               pose proof (zeta_to_fst z b)
             end.
        simpl in H.
@@ -1995,7 +1367,7 @@ Qed.
     { decodePlusCacheInv |
       exists P_inv,
       (cache_inv_Property (snd decodePlusCacheInv) P_inv
-       -> CorrectDecoder (A := A) cache transformer Invariant (fun _ _ => True)
+       -> CorrectDecoder (A := A) cache monoid Invariant (fun _ _ => True)
                                   FormatSpec
                                   (fst decodePlusCacheInv)
                                   (snd decodePlusCacheInv))
@@ -2009,7 +1381,7 @@ Qed.
   Definition packet_decoder
     : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
   Proof.
-    synthesize_decoder_ext transformer
+    synthesize_decoder_ext monoid
                            decode_DNS_rules
                            decompose_parsed_data
                            solve_GoodCache_inv.
@@ -2032,7 +1404,8 @@ Qed.
         | rewrite H in * ]
       end).
     destruct prim_fst7 as [? [? [? [ ] ] ] ]; simpl in *.
-    decompose_parsed_data.
+    try decompose_parsed_data.
+    (*destruct H17. *)
     reflexivity.
     decide_data_invariant.
     simpl; intros;
@@ -2273,6 +1646,7 @@ Qed.
     set_refine_evar.
     etransitivity;
       [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
+
     apply optimize_under_match; intros.
     simpl.
 
@@ -2730,7 +2104,7 @@ Qed.
           simpl in H'; rewrite H'; try reflexivity; auto.
         }
         { intros; etransitivity.
-          unfold DecodeBindOpt2 at 1; rewrite (@AlignedDecodeUnusedChars dns_list_cache _ addD_addD_plus _ _ 2). 
+          unfold DecodeBindOpt2 at 1; rewrite (@AlignedDecodeUnusedChars dns_list_cache _ addD_addD_plus _ _ 2).
           rewrite byte_align_decode_DomainName.
           reflexivity.
           higher_order_reflexivity.

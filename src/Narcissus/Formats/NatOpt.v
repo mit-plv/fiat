@@ -10,8 +10,8 @@ Section Nat.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : QueueTransformerOpt transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   Definition format_nat (n : nat) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
@@ -35,7 +35,7 @@ Section Nat.
   Theorem Nat_decode_correct
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : CorrectDecoder cache transformer (fun n => n < pow2 sz)
+    : CorrectDecoder cache monoid (fun n => n < pow2 sz)
                               (fun _ _ => True) format_nat decode_nat P.
   Proof.
     unfold CorrectDecoder, format_nat, decode_nat.

@@ -12,15 +12,15 @@ Section String.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnit transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : MonoidUnit monoid bool}.
 
   Fixpoint format_string (xs : string) (ce : CacheEncode) : B * CacheEncode :=
     match xs with
-    | EmptyString => (transform_id, ce)
+    | EmptyString => (mempty, ce)
     | String x xs' => let (b1, env1) := format_ascii x ce in
                       let (b2, env2) := format_string xs' env1 in
-                          (transform b1 b2, env2)
+                          (mappend b1 b2, env2)
     end.
 
   Fixpoint decode_string (s : nat) (b : B) (cd : CacheDecode) : string * B * CacheDecode :=
@@ -37,7 +37,7 @@ Section String.
   Theorem String_decode_correct :
     forall sz,
       encode_decode_correct
-        cache transformer
+        cache monoid
         (fun ls => length ls = sz)
         format_string (decode_string sz).
   Proof.
@@ -48,7 +48,7 @@ Section String.
     generalize dependent l'. generalize dependent ext'. induction l.
     { intros.
       inversion Penc; subst; clear Penc.
-      rewrite transform_id_left in Pdec. simpl in *.
+      rewrite mempty_left in Pdec. simpl in *.
       inversion Pdec. subst. intuition eauto. }
     { intros.
       destruct sz. inversion Ppred.
@@ -57,10 +57,10 @@ Section String.
       destruct (format_string l c) eqn: ?.
       inversion Penc; subst; clear Penc.
       inversion Ppred; subst; clear Ppred.
-      rewrite <- transform_assoc in Pdec.
-      destruct (decode_ascii (transform b (transform b0 ext)) env') as [[? ?] ?] eqn: ?.
+      rewrite <- mappend_assoc in Pdec.
+      destruct (decode_ascii (mappend b (mappend b0 ext)) env') as [[? ?] ?] eqn: ?.
       destruct (Ascii_decode_correct _ _ _ _ _ _ _ _ _ Eeq I Heqp Heqp1) as [? [? ?]]. subst.
-      destruct (decode_string (length l) (transform b0 ext) c0) as [[? ?] ?] eqn: ?.
+      destruct (decode_string (length l) (mappend b0 ext) c0) as [[? ?] ?] eqn: ?.
       specialize (IHl _ _ _ _ _ _ _ H Heqp0 _ eq_refl Heqp2).
       inversion Pdec; subst; clear Pdec.
       intuition eauto. subst. eauto. }

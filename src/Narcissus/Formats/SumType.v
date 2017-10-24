@@ -1,7 +1,6 @@
 Require Import
         Fiat.Common.ilist
         Fiat.Common.SumType
-        Fiat.Examples.DnsServer.Packet
         Fiat.Narcissus.Common.Specs.
 
 Require Import
@@ -13,8 +12,8 @@ Section SumType.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnit transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : MonoidUnit monoid bool}.
 
   Definition encode_SumType {m}
              (types : Vector.t Type m)
@@ -49,13 +48,13 @@ Section SumType.
           (invariants : forall idx, Vector.nth types idx -> Prop)
           (encoders_decoders_correct : forall idx,
               encode_decode_correct
-                cache transformer
+                cache monoid
                 (fun st => invariants idx st)
                 (ith encoders idx)
                 (ith decoders idx))
           idx
     :
-    encode_decode_correct cache transformer (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
+    encode_decode_correct cache monoid (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
                           (encode_SumType types encoders)
                           (decode_SumType types decoders idx).
   Proof.
@@ -76,8 +75,8 @@ Section SumType.
           repeat split; try f_equal;
           eapply (encoders_decoders_correct Fin.F1) with
           (ext := ext)
-            (ext' := snd (fst (prim_fst decoders (transform bin ext) env')))
-            (data' := fst (fst (prim_fst decoders (transform bin ext) env'))); intuition eauto; apply tri_proj_eq; eauto.
+            (ext' := snd (fst (prim_fst decoders (mappend bin ext) env')))
+            (data' := fst (fst (prim_fst decoders (mappend bin ext) env'))); intuition eauto; apply tri_proj_eq; eauto.
       + (* Second element *)
         destruct types; try discriminate.
         destruct data as [s | s]; try discriminate.

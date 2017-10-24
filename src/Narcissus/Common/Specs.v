@@ -4,8 +4,8 @@ Require Export
         Fiat.Computation.Core
         Fiat.Computation.Notations
         Fiat.Narcissus.Common.Notations
-        Fiat.Narcissus.Common.Transformer
-        Fiat.Narcissus.Common.Cache.
+        Fiat.Narcissus.Common.Monoid
+        Fiat.Narcissus.Stores.Cache.
 
 Set Implicit Arguments.
 
@@ -15,7 +15,7 @@ Section Specifications.
 
   Definition encode_decode_correct
              (cache : Cache)
-             (transformer : Transformer B)
+             (monoid : Monoid B)
              (predicate : A -> Prop)
              (encode : A -> CacheEncode -> B * CacheEncode)
              (decode : B -> CacheDecode -> A * B * CacheDecode) :=
@@ -23,12 +23,12 @@ Section Specifications.
       Equiv env env' ->
       predicate data ->
       encode data env = (bin, xenv) ->
-      decode (transform bin ext) env' = (data', ext', xenv') ->
+      decode (mappend bin ext) env' = (data', ext', xenv') ->
       Equiv xenv xenv' /\ data = data' /\ ext = ext'.
 
   Definition CorrectDecoder
              (cache : Cache)
-             (transformer : Transformer B)
+             (monoid : Monoid B)
              (predicate : A -> Prop)
              (rest_predicate : A -> B -> Prop)
              (encode : A -> CacheEncode -> Comp (B * CacheEncode))
@@ -41,7 +41,7 @@ Section Specifications.
         rest_predicate data ext ->
         encode data env ↝ (bin, xenv) ->
         exists xenv',
-          decode (transform bin ext) env' = Some (data, ext, xenv')
+          decode (mappend bin ext) env' = Some (data, ext, xenv')
           /\ Equiv xenv xenv' /\ decode_inv xenv') /\
     (forall env env' xenv' data bin ext,
         Equiv env env'
@@ -50,7 +50,7 @@ Section Specifications.
         -> decode_inv xenv'
            /\ exists bin' xenv,
             encode data env ↝ (bin', xenv)
-            /\ bin = transform bin' ext
+            /\ bin = mappend bin' ext
             /\ predicate data
             /\ Equiv xenv xenv').
 
@@ -63,22 +63,22 @@ Section Specifications.
 
   Lemma decode_None :
     forall (cache : Cache)
-           (transformer : Transformer B)
+           (monoid : Monoid B)
            (predicate : A -> Prop)
            (rest_predicate : A -> B -> Prop)
            (encode : A -> CacheEncode -> Comp (B * CacheEncode))
            (decode : B -> CacheDecode -> option (A * B * CacheDecode))
            (decode_inv : CacheDecode -> Prop)
            (predicate_dec : forall a, {predicate a} + {~ predicate a})
-           (rest_predicate_dec : forall data, {rest_predicate data transform_id} + {~rest_predicate data transform_id}),
-      CorrectDecoder cache transformer predicate rest_predicate encode decode decode_inv
+           (rest_predicate_dec : forall data, {rest_predicate data mempty} + {~rest_predicate data mempty}),
+      CorrectDecoder cache monoid predicate rest_predicate encode decode decode_inv
       -> forall b env' env,
         Equiv env env'
         -> decode b env' = None
         -> decode_inv env'
         -> forall data,
           ~ predicate data
-          \/ ~ rest_predicate data transform_id
+          \/ ~ rest_predicate data mempty
           \/ ~ exists xenv, encode data env ↝ (b, xenv).
   Proof.
     intros.
@@ -88,7 +88,7 @@ Section Specifications.
     right.
     intros [? ?].
     destruct ((proj1 H) env env' _ data _ _ H2 H0 p r H3); intuition.
-    rewrite transform_id_right in H5; congruence.
+    rewrite mempty_right in H5; congruence.
   Qed.
 
     Definition BindOpt {A' A''}
@@ -321,13 +321,13 @@ Qed.
 Add Parametric Morphism
     A B
     (cache : Cache)
-    (transformer : Transformer B)
+    (monoid : Monoid B)
     (predicate : A -> Prop)
     rest_predicate
     (decode : B -> CacheDecode -> option (A * B * CacheDecode))
     (decode_inv : CacheDecode -> Prop)
   : (fun encoder =>
-       @CorrectDecoder A B cache transformer predicate
+       @CorrectDecoder A B cache monoid predicate
                                 rest_predicate encoder decode decode_inv)
     with signature (pointwise_relation _ (pointwise_relation _ refineEquiv) ==> impl)
       as encode_decode_correct_refineEquiv.
@@ -345,7 +345,7 @@ Section DecodeWMeasure.
   Context {A : Type}. (* data type *)
   Context {B : Type}. (* bin type *)
   Context {cache : Cache}.
-  Context {transformer : Transformer B}.
+  Context {monoid : Monoid B}.
 
   Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
@@ -508,11 +508,11 @@ End DecodeWMeasure.
 Global Unset Implicit Arguments.
 
 Definition CorrectDecoderFor {A B} {cache : Cache}
-           {transformer : Transformer B} Invariant FormatSpec :=
+           {monoid : Monoid B} Invariant FormatSpec :=
   { decodePlusCacheInv |
     exists P_inv,
     (cache_inv_Property (snd decodePlusCacheInv) P_inv
-     -> CorrectDecoder (A := A) cache transformer Invariant (fun _ _ => True)
+     -> CorrectDecoder (A := A) cache monoid Invariant (fun _ _ => True)
                                 FormatSpec
                                 (fst decodePlusCacheInv)
                                 (snd decodePlusCacheInv))
@@ -520,7 +520,7 @@ Definition CorrectDecoderFor {A B} {cache : Cache}
 
 Lemma Start_CorrectDecoderFor
       {A B} {cache : Cache}
-      {transformer : Transformer B}
+      {monoid : Monoid B}
       Invariant
       FormatSpec
       (decoder decoder_opt : B -> CacheDecode -> option (A * B * CacheDecode))
@@ -528,11 +528,11 @@ Lemma Start_CorrectDecoderFor
       (P_inv : (CacheDecode -> Prop) -> Prop)
       (decoder_OK :
          cache_inv_Property cache_inv P_inv
-         -> CorrectDecoder (A := A) cache transformer Invariant (fun _ _ => True)
+         -> CorrectDecoder (A := A) cache monoid Invariant (fun _ _ => True)
                                     FormatSpec decoder cache_inv)
       (cache_inv_OK : cache_inv_Property cache_inv P_inv)
       (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)
-  : @CorrectDecoderFor A B cache transformer Invariant FormatSpec.
+  : @CorrectDecoderFor A B cache monoid Invariant FormatSpec.
 Proof.
   exists (decoder_opt, cache_inv); exists P_inv; split; simpl; eauto.
   unfold CorrectDecoder in *; intuition; intros.
@@ -545,7 +545,7 @@ Defined.
 (* Shorthand for nondeterministically decoding a value. *)
 Definition Pick_Decoder_For
            {A B} {cache : Cache}
-           {transformer : Transformer B}
+           {monoid : Monoid B}
            Invariant
            FormatSpec
            (b : B)
@@ -555,14 +555,14 @@ Definition Pick_Decoder_For
         a = Some a' <->
         (exists b1 b2 (ce' : CacheEncode),
             computes_to (FormatSpec a' ce) (b1, ce')
-            /\ b = transform b1 b2
+            /\ b = mappend b1 b2
             /\ Invariant a')}%comp.
 
 Lemma refine_Pick_Decoder_For
       {A B} {cache : Cache}
-      {transformer : Transformer B} {Invariant}
+      {monoid : Monoid B} {Invariant}
       {FormatSpec}
-      (decoderImpl : @CorrectDecoderFor A B cache transformer Invariant FormatSpec)
+      (decoderImpl : @CorrectDecoderFor A B cache monoid Invariant FormatSpec)
   : forall b ce cd,
     Equiv ce cd
     -> snd (projT1 decoderImpl) cd

@@ -11,7 +11,7 @@ Section Vector.
   Context {A : Type}.
   Context {B : Type}.
   Context {cache : Cache}.
-  Context {transformer : Transformer B}.
+  Context {monoid : Monoid B}.
 
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
@@ -19,17 +19,17 @@ Section Vector.
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_decode_pf
-    : CorrectDecoder cache transformer A_predicate
+    : CorrectDecoder cache monoid A_predicate
                               A_predicate_rest
                               format_A A_decode A_cache_inv.
 
   Fixpoint format_Vector {n} (xs : Vector.t A n) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
     match xs with
-    | Vector.nil => ret (transform_id, ce)
+    | Vector.nil => ret (mempty, ce)
     | Vector.cons x _ xs' => `(b1, env1) <- format_A x ce;
                     `(b2, env2) <- format_Vector xs' env1;
-                    ret (transform b1 b2, env2)
+                    ret (mappend b1 b2, env2)
     end%comp.
 
   Fixpoint encode_Vector_Impl
@@ -37,11 +37,11 @@ Section Vector.
            {n} (xs : Vector.t A n) (ce : CacheEncode)
     : B * CacheEncode :=
     match xs with
-    | Vector.nil => (transform_id, ce)
+    | Vector.nil => (mempty, ce)
     | Vector.cons x _ xs' =>
       let (b1, env1) := A_encode_Impl x ce in
       let (b2, env2) := encode_Vector_Impl A_encode_Impl xs' env1 in
-      (transform b1 b2, env2)
+      (mappend b1 b2, env2)
     end%comp.
 
   Fixpoint decode_Vector (n : nat) (b : B) (cd : CacheDecode)
@@ -61,16 +61,16 @@ Section Vector.
       format_Vector l env ↝ (l', xenv) ->
       (forall x : A, Vector.In x l -> A_predicate x) ->
       A_predicate_rest a ext ->
-      A_predicate_rest a' (transform l' ext).
+      A_predicate_rest a' (mappend l' ext).
   Proof.
     induction l.
     - simpl in *; intuition; computes_to_inv;
-        injections; simpl; rewrite transform_id_left; eauto.
+        injections; simpl; rewrite mempty_left; eauto.
     - intros; simpl in *.
       unfold Bind2 in H; computes_to_inv; subst.
       destruct v; destruct v0; simpl in *.
       injections.
-      rewrite <- transform_assoc.
+      rewrite <- mappend_assoc.
       eapply A_predicate_rest_inv; eauto.
       eapply H0; econstructor.
       eapply (IHl _ _ _ _ _ H' (fun x H'' => H0 x (Vector.In_cons_tl _ _ _ H''))); intuition eauto.
@@ -86,7 +86,7 @@ Section Vector.
     | Vector.cons a _ As' =>
       (forall b' ce ce',
           computes_to (format_Vector As' ce) (b', ce')
-          -> A_predicate_rest a (transform b' b))
+          -> A_predicate_rest a (mappend b' b))
       /\ Vector_predicate_rest _ As' b
     end.
 
@@ -94,7 +94,7 @@ Section Vector.
     :
     forall sz,
       CorrectDecoder
-        cache transformer
+        cache monoid
         (fun ls => forall x, Vector.In x ls -> A_predicate x)
         (Vector_predicate_rest sz)
         format_Vector (decode_Vector sz) A_cache_inv.
@@ -107,17 +107,17 @@ Section Vector.
       generalize dependent l'. induction l.
       { intros.
         simpl in *; intuition; computes_to_inv;
-          injections; simpl; rewrite transform_id_left; eauto.
+          injections; simpl; rewrite mempty_left; eauto.
       }
       { intros; simpl in *.
         assert (A_predicate h) by (eapply Ppred; econstructor).
         unfold Bind2 in Penc; computes_to_inv; subst.
         destruct v; destruct v0; simpl in *.
         injections.
-        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
+        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (mappend b0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
         intuition; destruct_ex.
         eapply H0; eauto.
-        setoid_rewrite <- transform_assoc; setoid_rewrite H0;
+        setoid_rewrite <- mappend_assoc; setoid_rewrite H0;
           simpl.
         destruct (fun H' => IHl (fun x H => Ppred x (Vector.In_cons_tl _ _ _ H)) H' b0 xenv x xenv_OK c); intuition eauto.
         setoid_rewrite H5; simpl.
@@ -126,7 +126,7 @@ Section Vector.
     }
     { induction sz; simpl; intros.
       - injections; simpl; repeat eexists; intuition eauto.
-        symmetry; apply transform_id_left.
+        symmetry; apply mempty_left.
         inversion H1.
       - destruct (A_decode bin env') as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate.
@@ -140,7 +140,7 @@ Section Vector.
         eexists; eexists; intuition eauto.
         computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
-        rewrite transform_assoc; reflexivity.
+        rewrite mappend_assoc; reflexivity.
         inversion H5; subst; eauto.
         apply inj_pair2_eq_dec in H13; subst; eauto using eq_nat_dec.
     }
@@ -150,7 +150,7 @@ End Vector.
 
 Lemma Vector_predicate_rest_True {A B}
       {cache : Cache}
-      {transformer : Transformer B}
+      {monoid : Monoid B}
       (format_A : A -> CacheEncode -> Comp (B * CacheEncode))
   : forall {n} (v : Vector.t A n) (b : B),
     Vector_predicate_rest (fun a b => True) format_A n v b.

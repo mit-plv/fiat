@@ -20,7 +20,7 @@ Module IntEncoder := CInt.Make(Wordsize_32).
 
 Import IntEncoder.
 
-Instance ByteStringQueueTransformer : Transformer ByteString := ByteStringQueueTransformer.
+Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
 
 Definition Simple_Format_Spec
            (p : int * list int) :=
@@ -36,7 +36,7 @@ Definition Simple_Format_decoder
   : CorrectDecoderFor Simply_OK Simple_Format_Spec.
 Proof.
   start_synthesizing_decoder.
-  normalize_compose transformer.
+  normalize_compose monoid.
   repeat first [apply innt_decode_correct; auto
                | solve [ intros; apply intrange]
                | intros; simpl; match goal with |- _ /\ _ => split; intuition eauto end
@@ -54,7 +54,7 @@ Print Simple_Format_decoder_impl.
 Lemma foo {C} {numBytes}
   : forall (v : Vector.t byte (S numBytes)) (k : int -> ByteString -> unit -> option (C * ByteString * unit)),
     (`(a, b0, d) <- decode_int
-      (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v) tt;
+      (monoidUnit := ByteString_QueueMonoidOpt) 8 (build_aligned_ByteString v) tt;
        k a b0 d) =
     Let n := byteToInt32 (Vector.nth v Fin.F1) in
     k n (build_aligned_ByteString (Vector.tl v)) ().
@@ -76,7 +76,7 @@ Qed.
 Lemma foo2 {C} {numBytes}
   : forall (v : Vector.t byte (S numBytes)) (k : nat -> ByteString -> unit -> option (C * ByteString * unit)),
     (`(a, b0, d) <- decode_nat
-      (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v) tt;
+      (monoidUnit := ByteString_QueueMonoidOpt) 8 (build_aligned_ByteString v) tt;
        k a b0 d) =
     Let n := BinInt.Z.to_nat (Byte.intval (Vector.nth v Fin.F1)) in
     k n (build_aligned_ByteString (Vector.tl v)) ().
@@ -96,7 +96,7 @@ Qed.
 Lemma foo3 {C} {numBytes}
   : forall (v : Vector.t byte (S (S (S (S numBytes))))) (k : int -> ByteString -> unit -> option (C * ByteString * unit)),
     (`(a, b0, d) <- decode_int
-      (transformerUnit := ByteString_QueueTransformerOpt) Int.wordsize (build_aligned_ByteString v) tt;
+      (monoidUnit := ByteString_QueueMonoidOpt) Int.wordsize (build_aligned_ByteString v) tt;
        k a b0 d) =
     Let n := wordToInt (Core.append_word (byteToWord (Vector.nth v (Fin.FS (Fin.FS (Fin.FS Fin.F1)))))
                                          (Core.append_word (byteToWord (Vector.nth v (Fin.FS (Fin.FS Fin.F1))))
@@ -155,7 +155,7 @@ Admitted.
 Lemma foo4 {C} {numBytes}
   : forall (v : Vector.t byte (S (S (S (S numBytes))))) (k : int -> ByteString -> unit -> option (C * ByteString * unit)),
     (`(a, b0, d) <- decode_int
-      (transformerUnit := ByteString_QueueTransformerOpt) Int.wordsize (build_aligned_ByteString v) tt;
+      (monoidUnit := ByteString_QueueMonoidOpt) Int.wordsize (build_aligned_ByteString v) tt;
        k a b0 d) =
     Let n := ofbytes (Vector.nth v Fin.F1)
                      (Vector.nth v (Fin.FS Fin.F1))

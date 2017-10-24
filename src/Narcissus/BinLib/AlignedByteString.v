@@ -348,11 +348,11 @@ Proof.
   apply le_uniqueness_proof.
 Qed.
 
-Instance ByteStringQueueTransformer : Transformer ByteString.
+Instance ByteStringQueueMonoid : Monoid ByteString.
 Proof.
-  refine {| transform := ByteString_enqueue_ByteString;
+  refine {| mappend := ByteString_enqueue_ByteString;
             bin_measure := length_ByteString;
-            transform_id := ByteString_id |}.
+            mempty := ByteString_id |}.
   - abstract (intros; rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b),
                       <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b'),
                       ByteString_enqueue_ByteString_ByteStringToBoundedByteString,
@@ -836,14 +836,14 @@ Proof.
   setoid_rewrite Heqn at 1; clear Heqn; revert l';
     induction n.
   - intros; destruct l'; simpl; intros.
-    + rewrite ByteStringQueueTransformer_subproof1,
+    + rewrite ByteStringQueueMonoid_subproof1,
       app_nil_r; reflexivity.
     + inversion H.
   - intros; rewrite queue_into_ByteString_app.
     rewrite <- (rev_involutive l') in *.
     clear IHn H.
     induction (rev l'); simpl.
-    + rewrite ByteStringQueueTransformer_subproof1; reflexivity.
+    + rewrite ByteStringQueueMonoid_subproof1; reflexivity.
     + rewrite <- ByteString_enqueue_into_list.
       rewrite fold_left_app; simpl.
       rewrite <- IHl0.
@@ -1274,7 +1274,7 @@ Qed.
 Lemma AlignedByteString_dequeue_opt
   : forall (t : bool) (b b' b'' : ByteString),
     ByteString_dequeue b = Some (t, b')
-    -> ByteString_dequeue (transform b b'') = Some (t, transform b' b'').
+    -> ByteString_dequeue (mappend b b'') = Some (t, mappend b' b'').
 Proof.
    simpl; intros; rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b),
                    <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b') in *;
@@ -1283,7 +1283,7 @@ Proof.
     destruct (Core.ByteString_dequeue (BoundedByteStringToByteString b)) eqn : ?; simpl in *;
       try discriminate; destruct p; simpl in *.
     injection H; intros; subst.
-    apply ByteString_dequeue_transform_opt with (b'' := BoundedByteStringToByteString b'') in Heqo;
+    apply ByteString_dequeue_mappend_opt with (b'' := BoundedByteStringToByteString b'') in Heqo;
           simpl in *.
     rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
     rewrite ByteString_dequeue_ByteStringToBoundedByteString_eq.
@@ -1295,8 +1295,8 @@ Proof.
     rewrite BoundedByteStringToByteString_ByteStringToBoundedByteString_eq; reflexivity.
 Qed.
 
-Instance ByteString_QueueTransformerOpt
-  : QueueTransformerOpt ByteStringQueueTransformer bool.
+Instance ByteString_QueueMonoidOpt
+  : QueueMonoidOpt ByteStringQueueMonoid bool.
 Proof.
 refine {| B_measure f := 1;
           enqueue_opt := ByteString_enqueue;
@@ -1392,7 +1392,7 @@ Require Import Fiat.Narcissus.Formats.WordOpt.
 Lemma aligned_decode_char_eq
       {numBytes}
   : forall (v : Vector.t char (S numBytes)),
-    WordOpt.decode_word' (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v)
+    WordOpt.decode_word' (monoidUnit := ByteString_QueueMonoidOpt) 8 (build_aligned_ByteString v)
     = Some (Vector.hd v, build_aligned_ByteString (Vector.tl v)).
 Proof.
   simpl; intros.
@@ -1405,7 +1405,7 @@ Proof.
   replace (build_aligned_ByteString t) with (ByteString_enqueue_ByteString ByteString_id (build_aligned_ByteString t)).
   unfold char in h.
   shatter_word h.
-  pose proof (@dequeue_transform_opt _ _ _ ByteString_QueueTransformerOpt).
+  pose proof (@dequeue_mappend_opt _ _ _ ByteString_QueueMonoidOpt).
   rewrite build_aligned_ByteString_cons; simpl.
   simpl in H7.
   erewrite H7 with (t := x6)
@@ -1445,7 +1445,7 @@ Proof.
   unfold build_aligned_ByteString.
   unfold ByteString_dequeue; simpl.
   repeat f_equal; apply Core.le_uniqueness_proof.
-  apply (@transform_id_left _ ByteStringQueueTransformer).
+  apply (@mempty_left _ ByteStringQueueMonoid).
 Qed.
 
 
@@ -1575,7 +1575,7 @@ Qed.
 Lemma aligned_decode_char_eq'
           {numBytes numBytes'}
   : forall (v : Vector.t char (S numBytes' + numBytes)),
-    WordOpt.decode_word' (transformerUnit := ByteString_QueueTransformerOpt) (8 * (S numBytes')) (build_aligned_ByteString v)
+    WordOpt.decode_word' (monoidUnit := ByteString_QueueMonoidOpt) (8 * (S numBytes')) (build_aligned_ByteString v)
     = let (v', v'') := Vector_split (S numBytes') numBytes v in
       Some (VectorByteToWord v', build_aligned_ByteString v'').
 Proof.

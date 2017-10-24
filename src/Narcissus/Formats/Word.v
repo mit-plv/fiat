@@ -9,13 +9,13 @@ Section Word.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnit transformer bool}.
+  Context {monoid : Monoid B}.
+  Context {monoidUnit : MonoidUnit monoid bool}.
 
   Fixpoint format_word' (s : nat) (w : word s) : B :=
     match w with
-    | WO => transform_id
-    | WS b s' w' => transform_push b (format_word' s' w')
+    | WO => mempty
+    | WS b s' w' => mappend_push b (format_word' s' w')
     end.
 
   Definition format_word (w : word sz) (ce : CacheEncode) : B * CacheEncode :=
@@ -25,7 +25,7 @@ Section Word.
     match s with
     | O => (WO, b)
     | S s' =>
-      let (c, b') := transform_pop b in
+      let (c, b') := mappend_pop b in
       let (w, bx) := decode_word' s' b' in
           (WS c w, bx)
     end.
@@ -34,7 +34,7 @@ Section Word.
     (decode_word' sz b, addD cd sz).
 
   Theorem Word_decode_correct :
-    encode_decode_correct cache transformer (fun _ => True) format_word decode_word.
+    encode_decode_correct cache monoid (fun _ => True) format_word decode_word.
   Proof.
     unfold encode_decode_correct, format_word, decode_word.
     intros env env' xenv xenv' w w' bin' ext ext' Eeq _ Penc Pdec.
@@ -42,12 +42,12 @@ Section Word.
     generalize dependent sz.
     induction w; simpl in *.
     { intuition; inversion H0; subst; clear H0;
-      [ eapply add_correct | rewrite transform_id_left ]; eauto. }
-    { rewrite transform_push_step.
-      rewrite transform_push_pop.
+      [ eapply add_correct | rewrite mempty_left ]; eauto. }
+    { rewrite mappend_push_step.
+      rewrite mappend_push_pop.
       intro. destruct (shatter_word_S w') as [? [? ?]].
       rewrite H. specialize (IHw x0).
-      destruct (decode_word' n (transform (format_word' n w) ext)) eqn: ?.
+      destruct (decode_word' n (mappend (format_word' n w) ext)) eqn: ?.
       intro. inversion H0; subst; clear H0.
       apply Eqdep_dec.inj_pair2_eq_dec in H3. subst.
       intuition eauto. eapply add_correct. eauto. subst. eauto. eapply Peano_dec.eq_nat_dec. }
