@@ -1,9 +1,9 @@
 COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
-.PHONY: fiat fiat-core querystructures parsers parsers-examples parsers-examples-verbose parsers-all finitesets dns compiler facade-test ics fiat4monitors examples binencoders \
-	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-examples-quick parsers-examples-verbose-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick binencoders-quick \
-	install install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-examples-verbose install-parsers-all install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples install-binencoders \
+.PHONY: fiat fiat-core querystructures parsers parsers-examples parsers-examples-verbose parsers-all finitesets dns compiler facade-test ics fiat4monitors examples narcissus \
+	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-examples-quick parsers-examples-verbose-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick narcissus-quick \
+	install install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-examples-verbose install-parsers-all install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples install-narcissus \
 	pdf doc clean-doc \
 	test-parsers test-parsers-profile test-parsers-profile-graph
 
@@ -143,12 +143,30 @@ EXAMPLES_UNMADE_VO := \
 EXTRACTION_UNMADE_VO := \
 	src/CertifiedExtraction/Benchmarks/DNS.vo \
 
-BINENCODERS_UNMADE_VO := \
-	src/BinEncoders/Env/Examples/EthernetFrame.vo \
-	src/BinEncoders/Env/Examples/Dns.vo \
-	src/BinEncoders/Env/Examples/DnsMap.vo \
-	src/BinEncoders/Env/Examples/Toy.vo \
-	src/BinEncoders/Env/Examples/Toy2.vo
+NARCISSUS_EXAMPLES_VO := \
+	src/Narcissus/Examples/ByteAlignedExample.vo \
+	src/Narcissus/Examples/ICMP_Packet.vo \
+	src/Narcissus/Examples/IntExample.vo \
+	src/Narcissus/Examples/NetworkStack/ARPPacket.vo \
+	src/Narcissus/Examples/NetworkStack/EthernetFrame.vo \
+	src/Narcissus/Examples/NetworkStack/EthernetHeader.vo \
+	src/Narcissus/Examples/NetworkStack/Fiat4Mirage.vo \
+	src/Narcissus/Examples/NetworkStack/TCP_Packet.vo \
+	src/Narcissus/Examples/NetworkStack/UDP_Packet.vo \
+	src/Narcissus/Examples/NetworkStack/IPv4Header.vo \
+	src/Narcissus/Examples/DNS/DNSPacket.vo \
+	src/Narcissus/Examples/DNS/DnsOpt.vo \
+	src/Narcissus/Examples/DNS/RRecordTypes.vo \
+	src/Narcissus/Examples/DNS/SimpleDNSPacket.vo \
+	src/Narcissus/Examples/DNS/SimpleDnsOpt.vo \
+	src/Narcissus/Examples/DNS/SimpleRRecordTypes.vo
+
+NARCISSUS_UNMADE_VO := \
+	src/Narcissus/Examples/Toy.vo \
+	src/Narcissus/Examples/Toy2.vo \
+	src/Narcissus/Formats/CInt.vo \
+	src/Narcissus/BinLib/CharString.vo \
+	$(NARCISSUS_EXAMPLES_VO)
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
@@ -168,7 +186,8 @@ TUTORIAL_VO := src/Examples/Tutorial/Tutorial.vo src/Examples/Tutorial/NotInList
 HACMSDEMO_VO := src/Examples/HACMSDemo/DuplicateFree.vo src/Examples/HACMSDemo/HACMSDemo.vo src/Examples/HACMSDemo/WheelSensor.vo src/Examples/HACMSDemo/WheelSensorEncoder.vo src/Examples/HACMSDemo/WheelSensorDecoder.vo src/Examples/HACMSDemo/WheelSensorExtraction.vo
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
 EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(TUTORIAL_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
-BINENCODERS_VO := $(filter-out $(BINENCODERS_UNMADE_VO), $(filter src/BinEncoders/%.vo,$(VOFILES)))
+NARCISSUS_VO := $(filter-out $(NARCISSUS_UNMADE_VO), $(filter src/Narcissus/%.vo,$(VOFILES)))
+
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
 TACTICS_TARGETS := $(filter src/Common/Tactics/%,$(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)))
 
@@ -188,7 +207,8 @@ tutorial: $(TUTORIAL_VO)
 hacms-demo: $(HACMSDEMO_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)
 examples: $(EXAMPLES_VO)
-binencoders: $(BINENCODERS_VO)
+narcissus: $(NARCISSUS_VO)
+narcissus-examples: $(NARCISSUS_EXAMPLES_VO)
 
 fiat-quick: $(addsuffix .vio,$(basename $(FIAT_VO))) $(TACTICS_TARGETS)
 fiat-core-quick: $(addsuffix .vio,$(basename $(FIAT_CORE_VO))) $(TACTICS_TARGETS)
@@ -203,7 +223,7 @@ facade-test-quick: $(addsuffix .vio,$(basename $(FACADE_TEST_VO)))
 ics-quick: $(addsuffix .vio,$(basename $(ICS_VO)))
 fiat4monitors-quick: $(addsuffix .vio,$(basename $(FIAT4MONITORS_VO)))
 examples-quick: $(addsuffix .vio,$(basename $(EXAMPLES_VO)))
-binencoders-quick: $(addsuffix .vio,$(basename $(BINENCODERS_VO)))
+narcissus-quick: $(addsuffix .vio,$(basename $(NARCISSUS_VO)))
 
 install-fiat: T = $(FIAT_VO)
 install-fiat-core: T = $(FIAT_CORE_VO)
@@ -217,9 +237,9 @@ install-dns: T = $(DNS_VO)
 install-ics: T = $(ICS_VO)
 install-fiat4monitors: T = $(FIAT4MONITORS_VO)
 install-examples: T = $(EXAMPLES_VO)
-install-binencoders: T = $(BINENCODERS_VO)
+install-narcissus: T = $(NARCISSUS_VO)
 
-install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-examples-verbose install-parsers-all install-finitesets install-dns install-compiler install-fiat4monitors install-examples install-binencoders:
+install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-examples-verbose install-parsers-all install-finitesets install-dns install-compiler install-fiat4monitors install-examples install-narcissus:
 	$(SHOW)'MAKE -f Makefile.coq INSTALL'
 	$(HIDE)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
