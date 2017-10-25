@@ -14,7 +14,7 @@ Section FixList.
   Variable A_predicate : A -> Prop.
   Variable A_encode : A -> CacheEncode -> B * CacheEncode.
   Variable A_decode : B -> CacheDecode -> A * B * CacheDecode.
-  Variable A_decode_pf : encode_decode_correct cache monoid A_predicate A_encode A_decode.
+  Variable A_decode_pf : encode_decode_correct monoid A_predicate A_encode A_decode.
 
   Fixpoint encode_list (xs : list A) (ce : CacheEncode) : B * CacheEncode :=
     match xs with
@@ -37,7 +37,7 @@ Section FixList.
   Theorem FixList_decode_correct :
     forall sz,
       encode_decode_correct
-        cache monoid
+        monoid
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
         encode_list (decode_list sz).
   Proof.
@@ -97,6 +97,5 @@ Section FixList.
       rewrite IHxs, mempty_left, (encode_list_body_characterization xs b c).
       destruct (fold_left _ _ _); reflexivity.
   Qed.
-
 
 End FixList.

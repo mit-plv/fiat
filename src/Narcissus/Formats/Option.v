@@ -50,15 +50,15 @@ Section Option.
       (decode_Some_pf :
          cache_inv_Property P P_invT
          -> CorrectDecoder
-              cache monoid predicate_Some predicate_rest_Some
+              monoid predicate_Some predicate_rest_Some
               encode_Some decode_Some P)
       (decode_None_pf :
          cache_inv_Property P P_invE
          -> CorrectDecoder
-              cache monoid predicate_None predicate_rest_None
+              monoid predicate_None predicate_rest_None
               encode_None decode_None P)
   : CorrectDecoder
-      cache monoid
+      monoid
       predicate
       predicate_rest
       (format_option encode_Some encode_None)%comp

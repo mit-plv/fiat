@@ -24,7 +24,7 @@ Section Nat.
   Local Open Scope nat.
 
   Theorem Nat_decode_correct :
-    encode_decode_correct cache monoid (fun n => n < pow2 sz) format_nat decode_nat.
+    encode_decode_correct monoid (fun n => n < pow2 sz) format_nat decode_nat.
   Proof.
     unfold encode_decode_correct, format_nat, decode_nat.
     intros env env' xenv xenv' n n' bin' ext ext' Eeq Ppred Penc Pdec.

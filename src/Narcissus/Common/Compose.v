@@ -21,14 +21,14 @@ Lemma compose_encode_correct A A' B
       (encode1 : A' -> CacheEncode -> B * CacheEncode)
       (encode2 : A -> CacheEncode -> B * CacheEncode)
       (decode1 : B -> CacheDecode -> A' * B * CacheDecode)
-      (decode1_pf : encode_decode_correct cache monoid predicate' encode1 decode1)
+      (decode1_pf : encode_decode_correct monoid predicate' encode1 decode1)
       (decode2 : A' -> B -> CacheDecode -> A * B * CacheDecode)
       (decode2_pf : forall proj,
-          encode_decode_correct cache monoid
+          encode_decode_correct monoid
             (fun data => predicate data /\ project data = proj)
             encode2
             (decode2 proj))
-  : encode_decode_correct cache monoid (fun a => predicate' (project a) /\ predicate a)
+  : encode_decode_correct monoid (fun a => predicate' (project a) /\ predicate a)
      (fun (data : A) (ctx : CacheEncode) =>
       compose monoid (encode1 (project data)) (encode2 data) ctx)
      (fun (bin : B) (env : CacheDecode) =>

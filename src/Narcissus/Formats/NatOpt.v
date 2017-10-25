@@ -35,7 +35,7 @@ Section Nat.
   Theorem Nat_decode_correct
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : CorrectDecoder cache monoid (fun n => n < pow2 sz)
+    : CorrectDecoder monoid (fun n => n < pow2 sz)
                               (fun _ _ => True) format_nat decode_nat P.
   Proof.
     unfold CorrectDecoder, format_nat, decode_nat.

@@ -99,7 +99,7 @@ Section Enum.
 
   Theorem Enum_decode_correct :
     NoDupVector tb
-    -> encode_decode_correct cache monoid (fun _ => True) format_enum decode_enum.
+    -> encode_decode_correct monoid (fun _ => True) format_enum decode_enum.
   Proof.
     unfold encode_decode_correct, format_enum, decode_enum.
     intros ? env env' xenv xenv' data data' bin' ext ext' Eeq PPred Penc Pdec.

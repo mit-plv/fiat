@@ -31,7 +31,7 @@ Section Ascii.
           {P : CacheDecode -> Prop}
           (P_OK : forall b cd, P cd -> P (addD cd b))
     :
-      CorrectDecoder cache monoid (fun n => True)
+      CorrectDecoder monoid (fun n => True)
                               (fun _ _ => True)
                               format_ascii decode_ascii P.
   Proof.

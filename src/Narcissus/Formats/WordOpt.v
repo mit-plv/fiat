@@ -181,7 +181,7 @@ Section Word.
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     :
-      CorrectDecoder cache monoid (fun _ => True)
+      CorrectDecoder monoid (fun _ => True)
                               (fun _ _ => True)
                               format_word decode_word P.
   Proof.
@@ -313,7 +313,7 @@ Section Word.
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     :
-      CorrectDecoder cache monoid (fun _ => True)
+      CorrectDecoder monoid (fun _ => True)
                               (fun _ _ => True)
                               (format_unused_word' sz' mempty) (decode_unused_word sz') P.
   Proof.

@@ -82,7 +82,7 @@ Section SumType.
           (encoders_decoders_correct : forall idx,
               cache_inv_Property P (cache_invariants idx)
               -> CorrectDecoder
-                cache monoid
+                monoid
                 (fun st => invariants idx st)
                 (invariants_rest idx)
                 (ith encoders idx)
@@ -91,7 +91,7 @@ Section SumType.
           idx
     :
       cache_inv_Property P (fun P => forall idx, cache_invariants idx P)
-      -> CorrectDecoder cache monoid (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
+      -> CorrectDecoder monoid (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
                                  (fun st b => invariants_rest _ (SumType_proj _ st) b)
                           (format_SumType types encoders)
                           (decode_SumType types decoders idx)
@@ -137,7 +137,7 @@ Section SumType.
              Iterate_Ensemble_BoundedIndex (fun idx =>
               cache_inv_Property P (Vector.nth cache_invariants idx)
               -> CorrectDecoder
-                cache monoid
+                monoid
                 (ith invariants idx)
                 (ith invariants_rest idx)
                 (ith encoders idx)
@@ -146,7 +146,7 @@ Section SumType.
           idx
     :
       cache_inv_Property P (fun P => Iterate_Ensemble_BoundedIndex (fun idx => Vector.nth cache_invariants idx P))
-      -> CorrectDecoder cache monoid (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
+      -> CorrectDecoder monoid (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
                                  (fun st b => (ith invariants_rest) _ (SumType_proj _ st) b)
                           (format_SumType types encoders)
                           (decode_SumType types decoders idx)

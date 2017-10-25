@@ -86,7 +86,7 @@ Lemma compose_encode_correct
       (decode1_pf :
          cache_inv_Property P P_inv1
          -> CorrectDecoder
-              cache monoid predicate'
+              monoid predicate'
               predicate_rest
               encode1 decode1 P)
       (pred_pf : forall data, predicate data -> predicate' (project data))
@@ -103,13 +103,13 @@ Lemma compose_encode_correct
       (decode2_pf : forall proj,
           predicate' proj ->
           cache_inv_Property P P_inv2 ->
-          CorrectDecoder cache monoid
+          CorrectDecoder monoid
                                   (fun data => predicate data /\ project data = proj)
                                   predicate_rest'
                                   encode2
                                   (decode2 proj) P)
   : CorrectDecoder
-      cache monoid
+      monoid
       (fun a => predicate a)
       predicate_rest'
       (fun (data : A) (ctx : CacheEncode) =>
@@ -173,7 +173,7 @@ Lemma compose_encode_correct_no_dep
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
-         -> CorrectDecoder cache monoid predicate' predicate_rest
+         -> CorrectDecoder monoid predicate' predicate_rest
                                     encode1 decode1 P)
       (predicate_a' : predicate' a')
       (predicate_rest_impl :
@@ -188,13 +188,13 @@ Lemma compose_encode_correct_no_dep
       (decode2_pf :
          predicate' a' ->
          cache_inv_Property P P_inv2 ->
-         CorrectDecoder cache monoid
+         CorrectDecoder monoid
                                  (fun data => predicate data)
                                  predicate_rest'
                                  encode2
                                  decode2 P)
   : CorrectDecoder
-      cache monoid
+      monoid
       (fun a => predicate a)
       predicate_rest'
       (fun (data : A) (ctx : CacheEncode) =>
@@ -245,7 +245,6 @@ Lemma CorrectDecoderinish {A B}
     (forall a', predicate a' -> a' = a)
     -> decides b (predicate a)
     -> CorrectDecoder
-         cache
          monoid
          predicate
          rest_predicate

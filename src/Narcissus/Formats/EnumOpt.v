@@ -109,7 +109,7 @@ Section Enum.
           (tb_OK : NoDupVector tb)
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : CorrectDecoder cache monoid (fun _ => True) (fun _ _ => True) format_enum decode_enum P.
+    : CorrectDecoder monoid (fun _ => True) (fun _ _ => True) format_enum decode_enum P.
   Proof.
     split; unfold format_enum, decode_enum.
     { intros env env' xenv c c' ext ? Eeq Ppred Ppred_rest Penc.

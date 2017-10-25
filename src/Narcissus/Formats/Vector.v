@@ -19,7 +19,7 @@ Section Vector.
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_decode_pf
-    : CorrectDecoder cache monoid A_predicate
+    : CorrectDecoder monoid A_predicate
                               A_predicate_rest
                               format_A A_decode A_cache_inv.
 
@@ -94,7 +94,7 @@ Section Vector.
     :
     forall sz,
       CorrectDecoder
-        cache monoid
+        monoid
         (fun ls => forall x, Vector.In x ls -> A_predicate x)
         (Vector_predicate_rest sz)
         format_Vector (decode_Vector sz) A_cache_inv.

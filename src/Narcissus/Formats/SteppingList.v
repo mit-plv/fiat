@@ -17,17 +17,17 @@ Section SteppingList.
   Variable A_predicate : A -> Prop.
   Variable A_encode : A -> CacheEncode -> B * CacheEncode.
   Variable A_decode : B -> CacheDecode -> A * B * CacheDecode.
-  Variable A_decode_pf : encode_decode_correct cache monoid A_predicate A_encode A_decode.
+  Variable A_decode_pf : encode_decode_correct monoid A_predicate A_encode A_decode.
 
   Variable P_predicate : P -> Prop.
   Variable P_predicate_dec : forall p, {P_predicate p} + {~ P_predicate p}.
   Variable P_encode : P -> CacheEncode -> B * CacheEncode.
   Variable P_decode : B -> CacheDecode -> P * B * CacheDecode.
-  Variable P_decode_pf : encode_decode_correct cache monoid P_predicate P_encode P_decode.
+  Variable P_decode_pf : encode_decode_correct monoid P_predicate P_encode P_decode.
 
   Variable X_encode : bool -> CacheEncode -> B * CacheEncode.
   Variable X_decode : B -> CacheDecode -> bool * B * CacheDecode.
-  Variable X_decode_pf : encode_decode_correct cache monoid (fun _ => True) X_encode X_decode.
+  Variable X_decode_pf : encode_decode_correct monoid (fun _ => True) X_encode X_decode.
 
   Variable cacheAdd : CacheAdd cache (list A * P).
   Variable cacheGet : CacheGet cache (list A) P.

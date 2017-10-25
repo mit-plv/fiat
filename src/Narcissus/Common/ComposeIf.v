@@ -34,12 +34,12 @@ Lemma composeIf_encode_correct
       (decodeT_pf :
          cache_inv_Property P P_invT
          -> CorrectDecoder
-              cache monoid predicate predicate_rest
+              monoid predicate predicate_rest
               encodeT decodeT P)
       (decodeE_pf :
          cache_inv_Property P P_invE
          -> CorrectDecoder
-              cache monoid predicate predicate_rest
+              monoid predicate predicate_rest
               encodeE decodeE P)
       (ICompb_OKT : forall data bin env xenv ext,
           predicate data
@@ -50,7 +50,7 @@ Lemma composeIf_encode_correct
           -> encodeE data env ↝ (bin, xenv)
           -> ICompb (mappend bin ext) = false)
   : CorrectDecoder
-      cache monoid
+      monoid
       (fun a => predicate a)
       predicate_rest
       (fun (data : A) =>
@@ -128,14 +128,14 @@ Lemma composeIf'_encode_correct
       (decode1_pf :
          cache_inv_Property P P_inv1
          -> CorrectDecoder
-              cache monoid predicate' predicate_rest
+              monoid predicate' predicate_rest
               encode1 decode1 P)
       (decodeT_pf : forall proj,
           ICompb proj = true ->
           predicate' proj ->
           cache_inv_Property P P_invT ->
           CorrectDecoder
-            cache monoid
+            monoid
             (fun data => predicate data /\ projectT data = proj)
             predicate_rest'
             encodeT
@@ -145,7 +145,7 @@ Lemma composeIf'_encode_correct
           predicate' proj ->
           cache_inv_Property P P_invE ->
           CorrectDecoder
-            cache monoid
+            monoid
             (fun data => predicate data /\ projectE data = proj)
             predicate_rest'
             encodeE
@@ -173,7 +173,7 @@ Lemma composeIf'_encode_correct
       (ICombT_OK : forall data, ICompb (projectT data) = true)
       (ICombE_OK : forall data, ICompb (projectE data) = false)
   : CorrectDecoder
-      cache monoid
+      monoid
       (fun a => predicate a)
       predicate_rest'
       (fun (data : A) (ctx : CacheEncode) =>

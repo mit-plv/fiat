@@ -18,7 +18,7 @@ Section FixList.
   Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
-  Variable A_decode_pf : CorrectDecoder cache monoid A_predicate A_predicate_rest format_A A_decode A_cache_inv.
+  Variable A_decode_pf : CorrectDecoder monoid A_predicate A_predicate_rest format_A A_decode A_cache_inv.
 
   (* Ben: Should we do this with a FixComp instead? *)
   Fixpoint format_list (xs : list A) (ce : CacheEncode)
@@ -66,7 +66,7 @@ Section FixList.
     :
     forall sz ,
       CorrectDecoder
-        cache monoid
+         monoid
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
         FixList_predicate_rest
         format_list (decode_list sz) A_cache_inv.

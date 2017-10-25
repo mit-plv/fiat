@@ -84,7 +84,7 @@ Section Checksum.
         (decode1_pf :
            cache_inv_Property P P_inv1
            -> CorrectDecoder
-                cache monoid predicate'
+                monoid predicate'
                 predicate_rest
                 encode1 decode1 P)
         (pred_pf : forall data, predicate data -> predicate' (project data))
@@ -125,7 +125,7 @@ Section Checksum.
         (decode2_pf : forall proj,
             predicate' proj ->
             cache_inv_Property P P_inv2 ->
-            CorrectDecoder cache monoid
+            CorrectDecoder monoid
                                     (fun data => predicate data /\ project data = proj)
                                     predicate_rest'
                                     encode2
@@ -150,7 +150,7 @@ Section Checksum.
              -> encode2 data (snd (x, x0)) ↝ (x1, x2)
              -> mappend x (mappend x3 (mappend x1 ext)) = mappend x (mappend (calculate_checksum x x1) (mappend x1 ext))*)
     : CorrectDecoder
-        cache monoid
+        monoid
         predicate
         predicate_rest'
         (fun (data : A) =>

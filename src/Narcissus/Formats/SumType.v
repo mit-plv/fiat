@@ -48,13 +48,13 @@ Section SumType.
           (invariants : forall idx, Vector.nth types idx -> Prop)
           (encoders_decoders_correct : forall idx,
               encode_decode_correct
-                cache monoid
+                monoid
                 (fun st => invariants idx st)
                 (ith encoders idx)
                 (ith decoders idx))
           idx
     :
-    encode_decode_correct cache monoid (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
+    encode_decode_correct monoid (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
                           (encode_SumType types encoders)
                           (decode_SumType types decoders idx).
   Proof.

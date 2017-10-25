@@ -34,7 +34,7 @@ Section Word.
     (decode_word' sz b, addD cd sz).
 
   Theorem Word_decode_correct :
-    encode_decode_correct cache monoid (fun _ => True) format_word decode_word.
+    encode_decode_correct monoid (fun _ => True) format_word decode_word.
   Proof.
     unfold encode_decode_correct, format_word, decode_word.
     intros env env' xenv xenv' w w' bin' ext ext' Eeq _ Penc Pdec.

@@ -1563,7 +1563,7 @@ Section DomainName.
           ))
     :
     CorrectDecoder
-      cache monoid
+      monoid
       (fun domain => ValidDomainName domain)
       (fun s b => True)
       format_DomainName decode_DomainName cache_inv.

@@ -37,7 +37,7 @@ Section String.
   Theorem String_decode_correct :
     forall sz,
       encode_decode_correct
-        cache monoid
+        monoid
         (fun ls => length ls = sz)
         format_string (decode_string sz).
   Proof.

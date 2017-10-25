@@ -10,11 +10,27 @@ Require Export
 Set Implicit Arguments.
 
 Section Specifications.
-  Variable A : Type.
-  Variable B : Type.
 
+  Variable A : Type. (* Source Type. (in-memory data) *)
+  Variable B : Type. (* Target Type. (usually ByteStrings) *)
+  Context {store : Cache}. (* Store Type. *)
+
+  (* Formats are a quaternary relation on an source value, initial store, 
+     target value, and final store. *)
+  Definition FormatM : Type := 
+    A -> CacheEncode -> Comp (B * CacheEncode).
+
+  (* Decoders consume a target value and store and produce either 
+     - a source value, remaining target value, and updated store
+     - or an error value, i.e. None. *)
+
+  Definition DecodeM : Type :=
+    B -> CacheDecode -> option (A * B * CacheDecode).
+  
+  Local Notation "a ∋ b" := (@computes_to _ a b) (at level 90).
+  Local Notation "a ∌ b" := (~ @computes_to _ a b) (at level 90).
+  
   Definition encode_decode_correct
-             (cache : Cache)
              (monoid : Monoid B)
              (predicate : A -> Prop)
              (encode : A -> CacheEncode -> B * CacheEncode)
@@ -27,19 +43,18 @@ Section Specifications.
       Equiv xenv xenv' /\ data = data' /\ ext = ext'.
 
   Definition CorrectDecoder
-             (cache : Cache)
              (monoid : Monoid B)
              (predicate : A -> Prop)
              (rest_predicate : A -> B -> Prop)
-             (encode : A -> CacheEncode -> Comp (B * CacheEncode))
-             (decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (encode : FormatM)
+             (decode : DecodeM)
              (decode_inv : CacheDecode -> Prop) :=
     (forall env env' xenv data bin ext
             (env_OK : decode_inv env'),
         Equiv env env' ->
         predicate data ->
         rest_predicate data ext ->
-        encode data env ↝ (bin, xenv) ->
+        encode data env ∋ (bin, xenv) ->
         exists xenv',
           decode (mappend bin ext) env' = Some (data, ext, xenv')
           /\ Equiv xenv xenv' /\ decode_inv xenv') /\
@@ -49,21 +64,68 @@ Section Specifications.
         -> decode bin env' = Some (data, ext, xenv')
         -> decode_inv xenv'
            /\ exists bin' xenv,
-            encode data env ↝ (bin', xenv)
+            (encode data env ∋ (bin', xenv))
             /\ bin = mappend bin' ext
             /\ predicate data
             /\ Equiv xenv xenv').
 
   (* Definition that identifies properties of cache invariants for automation. *)
   Definition cache_inv_Property
-             {cache : Cache}
              (P : CacheDecode -> Prop)
              (P_inv : (CacheDecode -> Prop) -> Prop) :=
     P_inv P.
 
+  Lemma CorrectDecoderNone
+        (monoid : Monoid B)
+    : forall (predicate : A -> Prop)
+             (rest_predicate : A -> B -> Prop)
+             (format : FormatM)
+             (decode : DecodeM)
+             (decode_inv : CacheDecode -> Prop),
+      CorrectDecoder _ predicate rest_predicate format decode decode_inv
+      -> forall b b' s_d,
+        decode_inv s_d
+        -> decode (mappend b b') s_d = None
+        -> forall a s_e s_e',
+            Equiv s_e s_d
+            -> predicate a
+            -> rest_predicate a b'
+            -> format a s_e ∌ (b, s_e').
+  Proof.
+    unfold not, CorrectDecoder; intros.
+    eapply H in H4; eauto.
+    destruct H4 as [? [? [? ?] ] ].
+    rewrite H1 in H4; discriminate.
+  Qed.
+
+  Corollary CorrectDecoderNone_dec_predicates
+            (monoid : Monoid B)
+    : forall (predicate : A -> Prop)
+             (rest_predicate : A -> B -> Prop)
+             (predicate_dec : forall a, predicate a \/ ~ predicate a)
+             (rest_predicate_dec : forall a b, rest_predicate a b \/ ~ rest_predicate a b)
+             (format : FormatM)
+             (decode : DecodeM)
+             (decode_inv : CacheDecode -> Prop),
+      CorrectDecoder _ predicate rest_predicate format decode decode_inv
+      -> forall b b' s_d,
+        decode_inv s_d
+        -> decode (mappend b b') s_d = None
+        -> forall a ,
+            (~ predicate a)
+            \/ (~ rest_predicate a b')
+            \/ forall s_e s_e',
+                Equiv s_e s_d
+                -> format a s_e ∌ (b, s_e').
+  Proof.
+    intros.
+    destruct (predicate_dec a); intuition.
+    destruct (rest_predicate_dec a b'); intuition.
+    right; right; intros; eapply CorrectDecoderNone; eauto.
+  Qed.
+  
   Lemma decode_None :
-    forall (cache : Cache)
-           (monoid : Monoid B)
+    forall (monoid : Monoid B)
            (predicate : A -> Prop)
            (rest_predicate : A -> B -> Prop)
            (encode : A -> CacheEncode -> Comp (B * CacheEncode))
@@ -71,7 +133,7 @@ Section Specifications.
            (decode_inv : CacheDecode -> Prop)
            (predicate_dec : forall a, {predicate a} + {~ predicate a})
            (rest_predicate_dec : forall data, {rest_predicate data mempty} + {~rest_predicate data mempty}),
-      CorrectDecoder cache monoid predicate rest_predicate encode decode decode_inv
+      CorrectDecoder monoid predicate rest_predicate encode decode decode_inv
       -> forall b env' env,
         Equiv env env'
         -> decode b env' = None
@@ -79,7 +141,7 @@ Section Specifications.
         -> forall data,
           ~ predicate data
           \/ ~ rest_predicate data mempty
-          \/ ~ exists xenv, encode data env ↝ (b, xenv).
+          \/ ~ exists xenv, encode data env ∋ (b, xenv).
   Proof.
     intros.
     destruct (predicate_dec data); try (solve [intuition]).
@@ -534,7 +596,7 @@ Definition CorrectDecoderFor {A B} {cache : Cache}
   { decodePlusCacheInv |
     exists P_inv,
     (cache_inv_Property (snd decodePlusCacheInv) P_inv
-     -> CorrectDecoder (A := A) cache monoid Invariant (fun _ _ => True)
+     -> CorrectDecoder (A := A) monoid Invariant (fun _ _ => True)
                                 FormatSpec
                                 (fst decodePlusCacheInv)
                                 (snd decodePlusCacheInv))
@@ -550,7 +612,7 @@ Lemma Start_CorrectDecoderFor
       (P_inv : (CacheDecode -> Prop) -> Prop)
       (decoder_OK :
          cache_inv_Property cache_inv P_inv
-         -> CorrectDecoder (A := A) cache monoid Invariant (fun _ _ => True)
+         -> CorrectDecoder (A := A) monoid Invariant (fun _ _ => True)
                                     FormatSpec decoder cache_inv)
       (cache_inv_OK : cache_inv_Property cache_inv P_inv)
       (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)

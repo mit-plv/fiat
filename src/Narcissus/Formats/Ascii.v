@@ -24,7 +24,7 @@ Section Ascii.
 
   Open Local Scope nat.
   Theorem Ascii_decode_correct :
-    encode_decode_correct cache monoid (fun n => True) format_ascii decode_ascii.
+    encode_decode_correct monoid (fun n => True) format_ascii decode_ascii.
   Proof.
     unfold encode_decode_correct, format_ascii, decode_ascii.
     intros env env' xenv xenv' c c' bin' ext ext' Eeq Ppred Penc Pdec.

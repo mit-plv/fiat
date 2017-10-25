@@ -999,7 +999,7 @@ Lemma compose_IPChecksum_encode_correct
              len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ monoid predicate' predicate_rest encode1 decode1 P) ->
+         CorrectDecoder monoid predicate' predicate_rest encode1 decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1017,10 +1017,10 @@ Lemma compose_IPChecksum_encode_correct
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ monoid
+              CorrectDecoder monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ monoid predicate predicate_rest'
+          CorrectDecoder monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 (project data) ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1140,7 +1140,7 @@ Lemma compose_IPChecksum_encode_correct'
              len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ monoid predicate' predicate_rest encode1' decode1 P) ->
+         CorrectDecoder monoid predicate' predicate_rest encode1' decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1158,10 +1158,10 @@ Lemma compose_IPChecksum_encode_correct'
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ monoid
+              CorrectDecoder monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ monoid predicate predicate_rest'
+          CorrectDecoder monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 data ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1302,7 +1302,7 @@ Lemma compose_IPChecksum_encode_correct_dep
              len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ monoid predicate' predicate_rest encode1 decode1 P) ->
+         CorrectDecoder monoid predicate' predicate_rest encode1 decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1320,10 +1320,10 @@ Lemma compose_IPChecksum_encode_correct_dep
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ monoid
+              CorrectDecoder monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ monoid predicate predicate_rest'
+          CorrectDecoder monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 (project data) ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1469,7 +1469,7 @@ Lemma compose_IPChecksum_encode_correct_dep'
              len_encode1 a + len_encode2 a + 16 = encoded_A_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
-         CorrectDecoder _ monoid predicate' predicate_rest encode1' decode1 P) ->
+         CorrectDecoder  monoid predicate' predicate_rest encode1' decode1 P) ->
         (forall data : A, predicate data -> predicate' (project data)) ->
         (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
                 (b' b'' : ByteString) c,
@@ -1487,10 +1487,10 @@ Lemma compose_IPChecksum_encode_correct_dep'
           (forall proj : A',
               predicate' proj ->
               cache_inv_Property P P_inv2 ->
-              CorrectDecoder _ monoid
+              CorrectDecoder  monoid
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
                                       (decode2 proj) P) ->
-          CorrectDecoder _ monoid predicate predicate_rest'
+          CorrectDecoder  monoid predicate predicate_rest'
                                   (fun data : A =>
                                      encode1 data ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
                                   (fun (bin : B) (env : CacheDecode) =>
@@ -1745,7 +1745,7 @@ Ltac apply_IPChecksum Len_OK :=
   match goal with
     H : cache_inv_Property _ _
     |- context[
-           CorrectDecoder _ _ _ _
+           CorrectDecoder  _ _ _
                                    (fun data c =>
                                       (_ ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn _) c) _ _] =>
     eapply compose_IPChecksum_encode_correct';
@@ -1771,7 +1771,7 @@ Ltac apply_IPChecksum_dep Len_OK :=
   match goal with
     H : cache_inv_Property _ _
     |- context[
-           CorrectDecoder _ _ _ _
+           CorrectDecoder  _ _ _
                                    (fun data c =>
                                       (_ ThenChecksum _ OfSize 16 ThenCarryOn _) c) _ _] =>
     eapply compose_IPChecksum_encode_correct_dep';

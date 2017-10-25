@@ -23,7 +23,7 @@ Section Bool.
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     :
-      CorrectDecoder cache monoid (fun _ => True)
+      CorrectDecoder monoid (fun _ => True)
                               (fun _ _ => True)
                               format_bool decode_bool P.
   Proof.

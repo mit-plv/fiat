@@ -47,7 +47,7 @@ Section String.
           (P_OK : forall b cd, P cd -> P (addD cd b))
     : forall sz,
       CorrectDecoder
-        cache monoid
+        monoid
         (fun ls => length ls = sz)
         (fun _ _ => True)
         format_string (decode_string sz) P.
