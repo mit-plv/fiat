@@ -21,10 +21,6 @@ module TRANSPARENT_ABSTRACT =
     let ltac_lcall tac args =
       Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag (Misctypes.ArgVar(Loc.tag @@ Names.Id.of_string tac),args)))
 
-    (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
-    let ltac_letin (x, e1) e2 =
-      Tacexpr.TacLetIn(false,[(Loc.tag @@ Names.Id.of_string x),e1],e2)
-
     (* [ltac_apply] : Run a tactic with arguments... *)
     let ltac_apply (f: Tacinterp.Value.t) (arg:Tacinterp.Value.t) =
       let open Geninterp in
