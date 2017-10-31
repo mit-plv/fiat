@@ -13,7 +13,7 @@ Section Bool.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Definition format_bool (b : bool) (ctx : CacheEncode) :=
+  Definition format_bool (b : bool) (ctx : CacheFormat) :=
     ret (enqueue_opt b mempty, addE ctx 1).
 
   Definition decode_bool (b : B) (ctx : CacheDecode) : option (bool * B * CacheDecode) :=

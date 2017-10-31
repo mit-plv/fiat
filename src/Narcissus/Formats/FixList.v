@@ -12,15 +12,15 @@ Section FixList.
   Context {monoid : Monoid B}.
 
   Variable A_predicate : A -> Prop.
-  Variable A_encode : A -> CacheEncode -> B * CacheEncode.
+  Variable A_format : A -> CacheFormat -> B * CacheFormat.
   Variable A_decode : B -> CacheDecode -> A * B * CacheDecode.
-  Variable A_decode_pf : encode_decode_correct monoid A_predicate A_encode A_decode.
+  Variable A_decode_pf : format_decode_correct monoid A_predicate A_format A_decode.
 
-  Fixpoint encode_list (xs : list A) (ce : CacheEncode) : B * CacheEncode :=
+  Fixpoint format_list (xs : list A) (ce : CacheFormat) : B * CacheFormat :=
     match xs with
     | nil => (mempty, ce)
-    | x :: xs' => let (b1, env1) := A_encode x ce in
-                  let (b2, env2) := encode_list xs' env1 in
+    | x :: xs' => let (b1, env1) := A_format x ce in
+                  let (b2, env2) := format_list xs' env1 in
                       (mappend b1 b2, env2)
     end.
 
@@ -36,12 +36,12 @@ Section FixList.
 
   Theorem FixList_decode_correct :
     forall sz,
-      encode_decode_correct
+      format_decode_correct
         monoid
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
-        encode_list (decode_list sz).
+        format_list (decode_list sz).
   Proof.
-    unfold encode_decode_correct.
+    unfold format_decode_correct.
     intros sz env env' xenv xenv' l l' bin' ext ext' Eeq Ppred Penc Pdec.
     generalize dependent sz. generalize dependent env. generalize dependent env'.
     generalize dependent xenv. generalize dependent xenv'. generalize dependent bin'.
@@ -54,8 +54,8 @@ Section FixList.
       destruct sz. inversion Ppred. inversion H.
       simpl in *. destruct Ppred.
       assert (A_predicate a) by eauto.
-      destruct (A_encode a env) eqn: ?.
-      destruct (encode_list l c) eqn: ?.
+      destruct (A_format a env) eqn: ?.
+      destruct (format_list l c) eqn: ?.
       inversion H; subst; clear H.
       inversion Penc; subst; clear Penc.
       rewrite <- mappend_assoc in Pdec.
@@ -67,34 +67,34 @@ Section FixList.
       intuition eauto. subst. eauto. }
   Qed.
 
-  Definition encode_list_body := (fun (acc: B * CacheEncode) x =>
+  Definition format_list_body := (fun (acc: B * CacheFormat) x =>
                                        let (bacc, env) := acc in
-                                       let (b1, env1) := A_encode x env in
+                                       let (b1, env1) := A_format x env in
                                        (mappend bacc b1, env1)).
 
-  Lemma encode_list_body_characterization :
+  Lemma format_list_body_characterization :
     forall xs base env,
-      fold_left encode_list_body xs (base, env) =
-      (let (b2, env2) := fold_left encode_list_body xs (mempty, env) in
+      fold_left format_list_body xs (base, env) =
+      (let (b2, env2) := fold_left format_list_body xs (mempty, env) in
        (mappend base b2, env2)).
   Proof.
     induction xs; simpl.
     + intros; rewrite mempty_right; reflexivity.
-    + intros; destruct (A_encode _ _).
+    + intros; destruct (A_format _ _).
       rewrite IHxs, mempty_left, (IHxs b).
       destruct (fold_left _ _ _).
       rewrite mappend_assoc; reflexivity.
   Qed.
 
-  Lemma encode_list_as_foldl :
+  Lemma format_list_as_foldl :
     forall xs env,
-      encode_list xs env =
-      fold_left encode_list_body xs (mempty, env).
+      format_list xs env =
+      fold_left format_list_body xs (mempty, env).
   Proof.
     induction xs; simpl.
     + reflexivity.
-    + intros; destruct (A_encode _ _).
-      rewrite IHxs, mempty_left, (encode_list_body_characterization xs b c).
+    + intros; destruct (A_format _ _).
+      rewrite IHxs, mempty_left, (format_list_body_characterization xs b c).
       destruct (fold_left _ _ _); reflexivity.
   Qed.
 

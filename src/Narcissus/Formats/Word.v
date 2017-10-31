@@ -18,7 +18,7 @@ Section Word.
     | WS b s' w' => mappend_push b (format_word' s' w')
     end.
 
-  Definition format_word (w : word sz) (ce : CacheEncode) : B * CacheEncode :=
+  Definition format_word (w : word sz) (ce : CacheFormat) : B * CacheFormat :=
     (format_word' sz w, addE ce sz).
 
   Fixpoint decode_word' (s : nat) (b : B) : word s * B :=
@@ -34,9 +34,9 @@ Section Word.
     (decode_word' sz b, addD cd sz).
 
   Theorem Word_decode_correct :
-    encode_decode_correct monoid (fun _ => True) format_word decode_word.
+    format_decode_correct monoid (fun _ => True) format_word decode_word.
   Proof.
-    unfold encode_decode_correct, format_word, decode_word.
+    unfold format_decode_correct, format_word, decode_word.
     intros env env' xenv xenv' w w' bin' ext ext' Eeq _ Penc Pdec.
     inversion Penc; subst; clear Penc; inversion Pdec; subst; clear Pdec.
     generalize dependent sz.

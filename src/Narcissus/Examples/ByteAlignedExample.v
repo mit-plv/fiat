@@ -21,7 +21,7 @@ Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
 
 Definition simple_record := ((word 16) * list (word 8))%type.
 
-Definition Simple_Format_Spec
+Definition Simple_Format
            (p : simple_record) :=
         format_nat 8 (|snd p|)
   ThenC format_word (fst p)
@@ -38,21 +38,57 @@ Arguments natToWord : simpl never.
 Arguments Guarded_Vector_split : simpl never.
 Arguments Core.append_word : simpl never.
 
-Definition refine_simple_encode
-  : { b : _ & forall (p : simple_record)
-                     (p_OK : Simply_OK p),
-          refine (Simple_Format_Spec p ())
-                 (ret (b p)) }.
+(*Lemma AlignedFormatList {A}
+      format_A
+      (encode_A : A -> CacheFormat -> {n : nat & t (word 8) n} * CacheFormat)
+  : forall (l : list A) ce (c : _ -> Comp _)
+           (v' : _ -> {n : nat & t (word 8) n})
+           (ce' : _ -> CacheFormat),
+    (forall (a : A) (ce : CacheFormat),
+        refine (format_A a ce) (ret (let (v', ce') := encode_A a ce in (build_aligned_ByteString (projT2 v'), ce'))))
+    -> refine (((format_list format_A l)
+                  ThenC c) ce)
+              (ret (let (v, ce'') := align_format_list encode_A l ce in
+                    build_aligned_ByteString
+                      (Vector.append (projT2 v) (projT2 (v' ce''))),
+               let (v, ce'') := align_format_list encode_A l ce in
+               ce' ce'')).
 Proof.
-  unfold Simple_Format_Spec.
-  eexists; intros.
-  eapply AlignedEncodeChar; eauto.
-  eapply AlignedEncode2Char; eauto.
+  unfold compose; intros.
+  unfold Bind2.
   etransitivity.
   apply refine_under_bind_both.
-  eapply optimize_align_encode_list.
+  eapply (optimize_align_format_list format_A encode_A); eassumption.
+  eassumption.
+  destruct (align_format_list encode_A l ce) eqn: ?.
+  simplify with monad laws; simpl.
+
+
+
+  setoid_rewrite aligned_format_char_eq; simplify with monad laws.
+
+  simpl; rewrite H; simplify with monad laws.
+
+  simpl.
+  rewrite <- build_aligned_ByteString_append.
+  reflexivity.
+Qed. *)
+
+Definition refine_simple_format
+  : { b : _ & forall (p : simple_record)
+                     (p_OK : Simply_OK p),
+          refine (Simple_Format p ())
+                 (ret (b p)) }.
+Proof.
+  unfold Simple_Format.
+  eexists; intros.
+  eapply AlignedFormatChar; eauto.
+  eapply AlignedFormat2Char; eauto.
   etransitivity.
-  eapply aligned_encode_char_eq.
+  apply refine_under_bind_both.
+  eapply optimize_align_format_list.
+  etransitivity.
+  eapply aligned_format_char_eq.
   instantiate (1 := fun a ce => (existT _ _ _, _)); simpl.
   reflexivity.
   intros; unfold Bind2; simplify with monad laws; higher_order_reflexivity.
@@ -73,13 +109,13 @@ Defined.
 
 Definition byte_aligned_simple_encoder
              (r : simple_record)
-  := Eval simpl in (projT1 refine_simple_encode r).
+  := Eval simpl in (projT1 refine_simple_format r).
 
 Import Vectors.VectorDef.VectorNotations.
 Print byte_aligned_simple_encoder.
 
 Definition Simple_Format_decoder
-  : CorrectDecoderFor Simply_OK Simple_Format_Spec.
+  : CorrectDecoderFor Simply_OK Simple_Format.
 Proof.
   start_synthesizing_decoder.
   normalize_compose monoid.

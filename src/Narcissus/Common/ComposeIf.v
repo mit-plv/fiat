@@ -7,17 +7,17 @@ Require Import
 Definition composeIf E B
            (monoid : Monoid B)
            (iComp : Comp bool)
-           (encodeT : E -> Comp (B * E))
-           (encodeE : E -> Comp (B * E))
+           (formatT : E -> Comp (B * E))
+           (formatE : E -> Comp (B * E))
            (e : E)
   := b <- iComp;
-       If b Then encodeT e
-          Else encodeE e.
+       If b Then formatT e
+          Else formatE e.
 
 Notation "'Either' t 'Or' e " :=
-  (composeIf _ _ _ { _ : bool | True} t e) : binencoders_scope.
+  (composeIf _ _ _ { _ : bool | True} t e) : format_scope.
 
-Lemma composeIf_encode_correct
+Lemma composeIf_format_correct
       {A B}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
@@ -27,27 +27,27 @@ Lemma composeIf_encode_correct
       (predicate : A -> Prop)
       (predicate_rest : A -> B -> Prop)
       (ICompb : B -> bool)
-      (encodeT : A -> CacheEncode -> Comp (B * CacheEncode))
+      (formatT : A -> CacheFormat -> Comp (B * CacheFormat))
       (decodeT : B -> CacheDecode -> option (A * B * CacheDecode))
-      (encodeE : A -> CacheEncode -> Comp (B * CacheEncode))
+      (formatE : A -> CacheFormat -> Comp (B * CacheFormat))
       (decodeE : B -> CacheDecode -> option (A * B * CacheDecode))
       (decodeT_pf :
          cache_inv_Property P P_invT
          -> CorrectDecoder
               monoid predicate predicate_rest
-              encodeT decodeT P)
+              formatT decodeT P)
       (decodeE_pf :
          cache_inv_Property P P_invE
          -> CorrectDecoder
               monoid predicate predicate_rest
-              encodeE decodeE P)
+              formatE decodeE P)
       (ICompb_OKT : forall data bin env xenv ext,
           predicate data
-          -> encodeT data env ↝ (bin, xenv)
+          -> formatT data env ↝ (bin, xenv)
           -> ICompb (mappend bin ext) = true)
       (ICompb_OKE : forall data bin env xenv ext,
           predicate data
-          -> encodeE data env ↝ (bin, xenv)
+          -> formatE data env ↝ (bin, xenv)
           -> ICompb (mappend bin ext) = false)
   : CorrectDecoder
       monoid
@@ -55,8 +55,8 @@ Lemma composeIf_encode_correct
       predicate_rest
       (fun (data : A) =>
          composeIf _ _ _ {b : bool | True }
-                   (encodeT data)
-                   (encodeE data)
+                   (formatT data)
+                   (formatE data)
       )%comp
       (fun (b : B) (env : CacheDecode) =>
          If ICompb b Then
@@ -88,24 +88,24 @@ Qed.
 
 Definition composeIf' E B
            (monoid : Monoid B)
-           (encode1 : E -> Comp (B * E))
-           (encode2 : E -> Comp (B * E))
+           (format1 : E -> Comp (B * E))
+           (format2 : E -> Comp (B * E))
            (iComp : Comp bool)
-           (encodeT : E -> Comp (B * E))
-           (encodeE : E -> Comp (B * E))
+           (formatT : E -> Comp (B * E))
+           (formatE : E -> Comp (B * E))
   :=
     (fun e0 =>
          b <- iComp;
            If b Then
-              `(p, e1) <- encode1 e0;
-            `(q, e2) <- encodeT e1;
+              `(p, e1) <- format1 e0;
+            `(q, e2) <- formatT e1;
             ret (mappend p q, e2)
-                Else (`(p, e1) <- encode2 e0;
-                      `(q, e2) <- encodeE e1;
+                Else (`(p, e1) <- format2 e0;
+                      `(q, e2) <- formatE e1;
                       ret (mappend p q, e2))
     )%comp.
 
-Lemma composeIf'_encode_correct
+Lemma composeIf'_format_correct
       {A A' B}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
@@ -118,18 +118,18 @@ Lemma composeIf'_encode_correct
       (predicate_rest : A' -> B -> Prop)
       (predicate_rest' : A -> B -> Prop)
       (predicate' : A' -> Prop)
-      (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
+      (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (ICompb : A' -> bool)
-      (encodeT : A -> CacheEncode -> Comp (B * CacheEncode))
+      (formatT : A -> CacheFormat -> Comp (B * CacheFormat))
       (decodeT : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
-      (encodeE : A -> CacheEncode -> Comp (B * CacheEncode))
+      (formatE : A -> CacheFormat -> Comp (B * CacheFormat))
       (decodeE : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
          -> CorrectDecoder
               monoid predicate' predicate_rest
-              encode1 decode1 P)
+              format1 decode1 P)
       (decodeT_pf : forall proj,
           ICompb proj = true ->
           predicate' proj ->
@@ -138,7 +138,7 @@ Lemma composeIf'_encode_correct
             monoid
             (fun data => predicate data /\ projectT data = proj)
             predicate_rest'
-            encodeT
+            formatT
             (decodeT proj) P)
       (decodeE_pf : forall proj,
           ICompb proj = false ->
@@ -148,24 +148,24 @@ Lemma composeIf'_encode_correct
             monoid
             (fun data => predicate data /\ projectE data = proj)
             predicate_rest'
-            encodeE
+            formatE
             (decodeE proj) P)
       (predicate_rest_implT : forall a' b b'',
           (ICompb a' = true /\
            exists a ce ce' ce'' b' b'',
-             computes_to (encode1 a' ce) (b', ce')
+             computes_to (format1 a' ce) (b', ce')
              /\ projectT a = a'
              /\ predicate a
-             /\ computes_to (encodeT a ce') (b'', ce'')
+             /\ computes_to (formatT a ce') (b'', ce'')
              /\ predicate_rest' a b)
           -> predicate_rest a' (mappend b'' b))
       (predicate_rest_implE : forall a' b b'',
           (ICompb a' = false /\
            exists a ce ce' ce'' b',
-             computes_to (encode1 a' ce) (b', ce')
+             computes_to (format1 a' ce) (b', ce')
              /\ projectE a = a'
              /\ predicate a
-             /\ computes_to (encodeE a ce') (b'', ce'')
+             /\ computes_to (formatE a ce') (b'', ce'')
              /\ predicate_rest' a b)
           -> predicate_rest a' (mappend b'' b))
       (pred_pf : forall data, predicate data -> predicate' (projectT data))
@@ -176,9 +176,9 @@ Lemma composeIf'_encode_correct
       monoid
       (fun a => predicate a)
       predicate_rest'
-      (fun (data : A) (ctx : CacheEncode) =>
-         composeIf' _ _ _ (encode1 (projectT data))
-                   (encode1 (projectE data)) {b : bool | True } (encodeT data) (encodeE data)  ctx
+      (fun (data : A) (ctx : CacheFormat) =>
+         composeIf' _ _ _ (format1 (projectT data))
+                   (format1 (projectE data)) {b : bool | True } (formatT data) (formatE data)  ctx
       )%comp
       (fun (bin : B) (env : CacheDecode) =>
          `(proj, rest, env') <- decode1 bin env;

@@ -78,7 +78,7 @@ Definition OperationCodes : Vector.t (word 16) 4 :=
    WO~0~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0
   ].
 
-Definition encode_ARPPacket_Spec (arp : ARPPacket) :=
+Definition format_ARPPacket_Spec (arp : ARPPacket) :=
           format_enum HardTypeCodes arp!"HardType"
     ThenC format_enum EtherTypeCodes arp!"ProtType"
     ThenC format_word HardSizeCodes[@arp!"HardType"]
@@ -99,7 +99,7 @@ Definition ARP_Packet_OK (arp : ARPPacket) :=
 Arguments Vector.nth : simpl never.
 
 Definition ARPPacket_decoder
-  : CorrectDecoderFor ARP_Packet_OK encode_ARPPacket_Spec.
+  : CorrectDecoderFor ARP_Packet_OK format_ARPPacket_Spec.
 Proof.
   synthesize_decoder.
 Defined.

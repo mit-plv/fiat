@@ -15,8 +15,8 @@ Section String.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Fixpoint format_string (xs : string) (ce : CacheEncode)
-    : Comp (B * CacheEncode) :=
+  Fixpoint format_string (xs : string) (ce : CacheFormat)
+    : Comp (B * CacheFormat) :=
     match xs with
     | EmptyString => ret (mempty, ce)
     | String x xs' => `(b1, env1) <- format_ascii x ce;
@@ -24,10 +24,10 @@ Section String.
                       ret (mappend b1 b2, env2)
     end%comp.
 
-    Fixpoint encode_string (xs : string) (ce : CacheEncode) : B * CacheEncode :=
+    Fixpoint encode_string (xs : string) (ce : CacheFormat) : B * CacheFormat :=
     match xs with
     | EmptyString => (mempty, ce)
-    | String x xs' => let (b1, env1) := encode_ascii_Impl x ce in
+    | String x xs' => let (b1, env1) := encode_ascii x ce in
                       let (b2, env2) := encode_string xs' env1 in
                           (mappend b1 b2, env2)
     end.
@@ -41,7 +41,7 @@ Section String.
     end.
 
   Local Opaque format_ascii.
-  Local Opaque encode_ascii_Impl.
+  Local Opaque encode_ascii.
 
   Theorem String_decode_correct
           {P : CacheDecode -> Prop}

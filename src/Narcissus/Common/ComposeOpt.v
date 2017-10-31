@@ -8,22 +8,22 @@ Set Implicit Arguments.
 
 Definition compose E B
            (monoid : Monoid B)
-           (encode1 : E -> Comp (B * E))
-           (encode2 : E -> Comp (B * E)) :=
+           (format1 : E -> Comp (B * E))
+           (format2 : E -> Comp (B * E)) :=
   (fun e0 =>
-     `(p, e1) <- encode1 e0;
-       `(q, e2) <- encode2 e1;
+     `(p, e1) <- format1 e0;
+       `(q, e2) <- format2 e1;
        ret (mappend p q, e2))%comp.
 
-Notation "x 'ThenC' y" := (compose _ x y) : binencoders_scope .
-Notation "x 'DoneC'"   := (x ThenC fun e => ret (mempty, e)) : binencoders_scope.
+Notation "x 'ThenC' y" := (compose _ x y) : format_scope .
+Notation "x 'DoneC'"   := (x ThenC fun e => ret (mempty, e)) : format_scope.
 
 Lemma refineEquiv_compose_compose E B
       (monoid : Monoid B)
-      (encode1 encode2 encode3 : E -> Comp (B * E))
+      (format1 format2 format3 : E -> Comp (B * E))
   : forall ctx,
-    refineEquiv (compose _ (compose _ encode1 encode2) encode3 ctx)
-                (compose _ encode1 (compose _ encode2 encode3) ctx).
+    refineEquiv (compose _ (compose _ format1 format2) format3 ctx)
+                (compose _ format1 (compose _ format2 format3) ctx).
 Proof.
   unfold compose; intros.
   rewrite refineEquiv_bind2_bind.
@@ -40,10 +40,10 @@ Qed.
 
 Lemma refineEquiv_compose_Done E B
       (monoid : Monoid B)
-      (encode2 : E -> Comp (B * E))
+      (format2 : E -> Comp (B * E))
   : forall ctx,
-    refineEquiv (compose _ (fun ctx => ret (mempty, ctx)) encode2 ctx)
-                (encode2 ctx).
+    refineEquiv (compose _ (fun ctx => ret (mempty, ctx)) format2 ctx)
+                (format2 ctx).
 Proof.
   unfold compose; simpl; intros.
   rewrite refineEquiv_bind2_unit; simpl.
@@ -56,11 +56,11 @@ Qed.
 
 Lemma refineEquiv_under_compose E B
       (monoid : Monoid B)
-      (encode1 encode2 encode2' : E -> Comp (B * E))
-  : (forall ctx', refineEquiv (encode2 ctx') (encode2' ctx'))
+      (format1 format2 format2' : E -> Comp (B * E))
+  : (forall ctx', refineEquiv (format2 ctx') (format2' ctx'))
     -> forall ctx,
-      refineEquiv (compose _ encode1 encode2 ctx)
-                  (compose _ encode1 encode2' ctx).
+      refineEquiv (compose _ format1 format2 ctx)
+                  (compose _ format1 format2' ctx).
 Proof.
   unfold compose; intros.
   eapply refineEquiv_bind; [ reflexivity | ].
@@ -68,7 +68,7 @@ Proof.
   eapply refineEquiv_bind; [ apply H | reflexivity ].
 Qed.
 
-Lemma compose_encode_correct
+Lemma compose_format_correct
       {A A' B}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
@@ -80,23 +80,23 @@ Lemma compose_encode_correct
       (predicate' : A' -> Prop)
       (predicate_rest' : A -> B -> Prop)
       (predicate_rest : A' -> B -> Prop)
-      (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
-      (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+      (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
+      (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
          -> CorrectDecoder
               monoid predicate'
               predicate_rest
-              encode1 decode1 P)
+              format1 decode1 P)
       (pred_pf : forall data, predicate data -> predicate' (project data))
       (predicate_rest_impl :
          forall a' b
                 a ce ce' ce'' b' b'',
-           computes_to (encode1 a' ce) (b', ce')
+           computes_to (format1 a' ce) (b', ce')
            -> project a = a'
            -> predicate a
-           -> computes_to (encode2 a ce') (b'', ce'')
+           -> computes_to (format2 a ce') (b'', ce'')
            -> predicate_rest' a b
            -> predicate_rest a' (mappend b'' b))
       (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
@@ -106,14 +106,14 @@ Lemma compose_encode_correct
           CorrectDecoder monoid
                                   (fun data => predicate data /\ project data = proj)
                                   predicate_rest'
-                                  encode2
+                                  format2
                                   (decode2 proj) P)
   : CorrectDecoder
       monoid
       (fun a => predicate a)
       predicate_rest'
-      (fun (data : A) (ctx : CacheEncode) =>
-         compose _ (encode1 (project data)) (encode2 data)  ctx
+      (fun (data : A) (ctx : CacheFormat) =>
+         compose _ (format1 (project data)) (format2 data)  ctx
       )%comp
       (fun (bin : B) (env : CacheDecode) =>
          `(proj, rest, env') <- decode1 bin env;
@@ -146,15 +146,15 @@ Proof.
 Qed.
 
 (* For decoding fixed fields that do no depend on the object *)
-(* being encoded, e.g. version numbers in an IP packet. This *)
+(* being formatd, e.g. version numbers in an IP packet. This *)
 (* allows us to avoid polluting the data invariant with  *)
 (* extraneous clauses. *)
 
-(* SUGGESTION: If we're using a deterministic encoder, we *)
+(* SUGGESTION: If we're using a deterministic formatr, we *)
 (* could compare the binary values of the field instead of *)
 (* decoding and comparing. *)
 
-Lemma compose_encode_correct_no_dep
+Lemma compose_format_correct_no_dep
       {A A' B}
       (* Need decideable equality on the type of the fixed field. *)
       (A'_eq_dec : Query_eq A')
@@ -168,20 +168,20 @@ Lemma compose_encode_correct_no_dep
       (predicate' : A' -> Prop)
       (predicate_rest' : A -> B -> Prop)
       (predicate_rest : A' -> B -> Prop)
-      (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
-      (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+      (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
+      (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
          -> CorrectDecoder monoid predicate' predicate_rest
-                                    encode1 decode1 P)
+                                    format1 decode1 P)
       (predicate_a' : predicate' a')
       (predicate_rest_impl :
          forall a' b
                 a ce ce' ce'' b' b'',
-           computes_to (encode1 a' ce) (b', ce')
+           computes_to (format1 a' ce) (b', ce')
            -> predicate a
-           -> computes_to (encode2 a ce') (b'', ce'')
+           -> computes_to (format2 a ce') (b'', ce'')
            -> predicate_rest' a b
            -> predicate_rest a' (mappend b'' b))
       (decode2 : B -> CacheDecode -> option (A * B * CacheDecode))
@@ -191,14 +191,14 @@ Lemma compose_encode_correct_no_dep
          CorrectDecoder monoid
                                  (fun data => predicate data)
                                  predicate_rest'
-                                 encode2
+                                 format2
                                  decode2 P)
   : CorrectDecoder
       monoid
       (fun a => predicate a)
       predicate_rest'
-      (fun (data : A) (ctx : CacheEncode) =>
-         compose _ (encode1 a') (encode2 data)  ctx
+      (fun (data : A) (ctx : CacheFormat) =>
+         compose _ (format1 a') (format2 data)  ctx
       )%comp
       (fun (bin : B) (env : CacheDecode) =>
          `(a, rest, env') <- decode1 bin env;
@@ -297,17 +297,17 @@ Proof.
 Qed.
 
 Lemma refine_If_Then_Else_ThenC
-  : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E) b,
-    refine (((If b Then encode1 Else encode2) ThenC encode3) ctx)
-           (If b Then ((encode1 ThenC encode3) ctx) Else ((encode2 ThenC encode3) ctx)).
+  : forall (E B : Type) (monoid : Monoid B) (format1 format2 format3 : E -> Comp (B * E)) (ctx : E) b,
+    refine (((If b Then format1 Else format2) ThenC format3) ctx)
+           (If b Then ((format1 ThenC format3) ctx) Else ((format2 ThenC format3) ctx)).
 Proof.
   intros; destruct b; reflexivity.
 Qed.
 
 Lemma refineEquiv_If_Then_Else_ThenC
-  : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E) b,
-    refineEquiv (((If b Then encode1 Else encode2) ThenC encode3) ctx)
-                (If b Then ((encode1 ThenC encode3) ctx) Else ((encode2 ThenC encode3) ctx)).
+  : forall (E B : Type) (monoid : Monoid B) (format1 format2 format3 : E -> Comp (B * E)) (ctx : E) b,
+    refineEquiv (((If b Then format1 Else format2) ThenC format3) ctx)
+                (If b Then ((format1 ThenC format3) ctx) Else ((format2 ThenC format3) ctx)).
 Proof.
   intros; destruct b; reflexivity.
 Qed.

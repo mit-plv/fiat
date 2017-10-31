@@ -27,6 +27,8 @@ Require Import
 
 Require Import Bedrock.Word.
 
+(* This is a deprecated example. *)
+
 Import Vectors.VectorDef.VectorNotations.
 Open Scope string_scope.
 Open Scope Tuple_scope.
@@ -38,9 +40,9 @@ Ltac apply_compose :=
   intros;
   match goal with
     H : cache_inv_Property ?P ?P_inv |- _ =>
-    first [eapply (compose_encode_correct_no_dep _ H); clear H
-          | eapply (compose_encode_correct H); clear H
-          | eapply (composeIf_encode_correct H); clear H;
+    first [eapply (compose_format_correct_no_dep _ H); clear H
+          | eapply (compose_format_correct H); clear H
+          | eapply (composeIf_format_correct H); clear H;
             [ |
               | solve [intros; intuition (eauto with bin_split_hints) ]
               | solve [intros; intuition (eauto with bin_split_hints) ] ]
@@ -70,7 +72,7 @@ Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
 Theorem decode_list_all_correct_ComposeOpt
   : CorrectDecoder
-      _ monoid
+      monoid
       (fun a => True)
       (fun _ b => b = mempty)
       (format_list format_word)
@@ -122,7 +124,7 @@ Definition EtherTypeCodes : Vector.t (word 16) 3 :=
    WO~0~0~0~0~1~0~0~0~0~0~1~1~0~1~0~1
   ].
 
-Definition encode_EthernetFrame_Spec (eth : EthernetFrame) :=
+Definition format_EthernetFrame_Spec (eth : EthernetFrame) :=
           format_Vector format_word eth!"Destination"
     ThenC (format_Vector format_word eth!"Source")
     ThenC Either
@@ -161,7 +163,7 @@ Definition v1042_test (b : ByteString) : bool :=
   end.
 
 Lemma v1042_OKT
-  : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
+  : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
    ethernet_Frame_OK data ->
    (format_nat 16 (|data!"Data" |)
     ThenC format_word WO~0~1~0~1~0~1~0~1
@@ -178,7 +180,7 @@ Proof.
   pose proof (f_equal fst H0) as H'; simpl in H'; rewrite <- H'.
   pose proof mappend_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  pose monoid_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
+  pose monoid_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
   destruct n.
   eapply natToWord_wlt; eauto; try reflexivity.
   etransitivity.
@@ -190,7 +192,7 @@ Qed.
 Hint Resolve v1042_OKT : bin_split_hints.
 
 Lemma v1042_OKE
-  : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
+  : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
     ethernet_Frame_OK data
     -> (format_enum EtherTypeCodes data!"Type" ThenC format_list format_word data!"Data" DoneC) env ↝ (bin, xenv)
     -> v1042_test (mappend bin ext) = false.
@@ -203,7 +205,7 @@ Proof.
   pose proof (f_equal fst H0) as H'; unfold fst in H'; rewrite <- H'.
   pose proof mappend_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  pose monoid_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
+  pose monoid_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
   revert w; clear.
   match goal with
     |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear
@@ -216,13 +218,13 @@ Qed.
 Hint Resolve v1042_OKE : bin_split_hints.
 
 Ltac start_synthesizing_decoder :=
-  (* Unfold encoder specification and the data and packet invariants *)
+  (* Unfold formatr specification and the data and packet invariants *)
   repeat
     match goal with
-      |- appcontext [CorrectDecoder _ _ ?dataInv ?restInv ?encodeSpec] =>
+      |- appcontext [CorrectDecoder _ ?dataInv ?restInv ?formatSpec] =>
       first [unfold dataInv
             | unfold restInv
-            | unfold encodeSpec ]
+            | unfold formatSpec ]
     end;
   (* Memoize any string constants *)
   pose_string_hyps;
@@ -232,16 +234,16 @@ Ltac start_synthesizing_decoder :=
 Ltac decode_step :=
   match goal with
   | |- _ => apply_compose
-  | |- appcontext [CorrectDecoder _ _ _ _ (format_Vector _) _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ (format_Vector _) _ _] =>
     intros; eapply Vector_decode_correct
   | H : cache_inv_Property _ _
-    |- appcontext [CorrectDecoder _ _ _ _ format_word _ _] =>
+    |- appcontext [CorrectDecoder _ _ _ format_word _ _] =>
     intros; revert H; eapply Word_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ _ format_word _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ format_word _ _] =>
     eapply Word_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ _ (format_nat _) _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ (format_nat _) _ _] =>
     eapply Nat_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ _ (format_enum _) _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ (format_enum _) _ _] =>
     eapply Enum_decode_correct
   | |- NoDupVector _ => Discharge_NoDupVector
   | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
@@ -249,11 +251,11 @@ Ltac decode_step :=
   | _ => solve [solve_data_inv ethernet_Frame_OK_good_Len]
   end.
 
-Definition EthernetFrame_decoder
+(*Definition EthernetFrame_decoder
   : { decodePlusCacheInv |
       exists P_inv,
       (cache_inv_Property (snd decodePlusCacheInv) P_inv
-       -> CorrectDecoder _ monoid ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+       -> CorrectDecoder monoid ethernet_Frame_OK (fun _ b => b = ByteString_id) format_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
       /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
   start_synthesizing_decoder.
@@ -295,7 +297,7 @@ Proof.
   decode_step.
   decode_step.
   intros; eapply decode_list_all_correct_ComposeOpt.
-  solve_data_inv.
+  solve_data_inv bin_split_hints.
   simpl; intros.
   computes_to_inv; injections.
   pose proof mempty_left as H'; simpl in H'; rewrite H'; reflexivity.
@@ -353,4 +355,4 @@ Proof.
 Defined.
 
 Definition frame_decoder := Eval simpl in proj1_sig EthernetFrame_decoder.
-Print frame_decoder.
+Print frame_decoder. *)

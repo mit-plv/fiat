@@ -53,14 +53,14 @@ Definition UDP_Checksum_Valid
            (n : nat)
            (b : ByteString)
   := IPChecksum_Valid (96 + n)
-                (mappend (mappend (IPChecksum.format_word srcAddr)
-                (mappend (IPChecksum.format_word destAddr)
-                (mappend (IPChecksum.format_word (wzero 8))
-                (mappend (IPChecksum.format_word (natToWord 8 17))
-                           (IPChecksum.format_word udpLength)))))
+                (mappend (mappend (IPChecksum.encode_word srcAddr)
+                (mappend (IPChecksum.encode_word destAddr)
+                (mappend (IPChecksum.encode_word (wzero 8))
+                (mappend (IPChecksum.encode_word (natToWord 8 17))
+                           (IPChecksum.encode_word udpLength)))))
                 b).
 
-Definition encode_UDP_Packet_Spec
+Definition format_UDP_Packet_Spec
            (udp : UDP_Packet) :=
           (format_word (udp!"SourcePort")
     ThenC format_word (udp!"DestPort")
@@ -71,7 +71,7 @@ Definition encode_UDP_Packet_Spec
 Definition UDP_Packet_OK (udp : UDP_Packet) :=
 lt (|udp!"Payload"|) (pow2 16 - 8).
 
-Definition UDP_Packet_encoded_measure (udp_b : ByteString)
+Definition UDP_Packet_formatd_measure (udp_b : ByteString)
   : nat :=
   match (`(u, b') <- decode_unused_word' 16 udp_b;
          `(u, b') <- decode_unused_word' 16 b';
@@ -85,7 +85,7 @@ Arguments NPeano.modulo : simpl never.
 Opaque pow2.
 
 Lemma UDP_Packet_Header_Len_OK
-  : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheEncode) (c : word 16) (b b'' ext : ByteString),
+  : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
     (format_word (a!"SourcePort")
                       ThenC format_word (a!"DestPort")
                       ThenC format_nat 16 (8 + |a!"Payload"|) DoneC) ctx ↝
@@ -94,10 +94,10 @@ Lemma UDP_Packet_Header_Len_OK
     (lt (|a!"Payload"|) (pow2 16 - 8))%nat ->
     (fun _ : UDP_Packet => 16 + (16 + (16 + length_ByteString ByteString_id))) a +
     (fun a0 : UDP_Packet => (|a0!"Payload" |) * 8 + length_ByteString ByteString_id) a + 16 =
-    UDP_Packet_encoded_measure
-      (mappend (mappend b (mappend (encode_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
+    UDP_Packet_formatd_measure
+      (mappend (mappend b (mappend (format_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
 Proof.
-  unfold UDP_Packet_encoded_measure.
+  unfold UDP_Packet_formatd_measure.
   intros; rewrite <- !mappend_assoc.
   simpl in H0.
   eapply computes_to_compose_decode_unused_word in H;
@@ -126,7 +126,7 @@ Proof.
 Qed.
 
 Definition UDP_Packet_decoder
-  : CorrectDecoderFor UDP_Packet_OK encode_UDP_Packet_Spec.
+  : CorrectDecoderFor UDP_Packet_OK format_UDP_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
   normalize_compose monoid.

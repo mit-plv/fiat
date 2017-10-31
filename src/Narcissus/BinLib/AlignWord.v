@@ -113,12 +113,12 @@ Section AlignWord.
   Qed.
 
   Variable addE_addE_plus :
-    forall (ce : CacheEncode) (n m : nat), addE (addE ce n) m = addE ce (n + m).
+    forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).
 
   Lemma format_word_S {n}
     : forall (w : word (S n)) (bs : B),
-      format_word' (S n) w bs =
-      format_word' n (word_split_tl w) (enqueue_opt (word_split_hd w) bs).
+      encode_word' (S n) w bs =
+      encode_word' n (word_split_tl w) (enqueue_opt (word_split_hd w) bs).
   Proof.
     intros; pose proof (shatter_word_S w); destruct_ex; subst.
     simpl.
@@ -143,7 +143,7 @@ Section AlignWord.
     f_equal; eauto.
   Qed.
 
-  Lemma CollapseEncodeWord
+  Lemma CollapseFormatWord
     : forall {sz sz'} (w : word sz) (w' : word sz') k ce,
       refine (((format_word w)
                 ThenC (format_word w')
@@ -164,8 +164,8 @@ Section AlignWord.
       + reflexivity.
       + simpl; rewrite IHw'; reflexivity.
     - rewrite !enqueue_opt_format_word.
-      replace (format_word' (sz' + S n) (combine w' (WS b0 w)) mempty)
-      with (format_word' (S sz' + n) (combine (SW_word b0 w') w) mempty).
+      replace (encode_word' (sz' + S n) (combine w' (WS b0 w)) mempty)
+      with (encode_word' (S sz' + n) (combine (SW_word b0 w') w) mempty).
       + rewrite <- IHw.
         simpl; rewrite format_word_S.
         rewrite <- mappend_assoc, word_split_tl_SW_word, word_split_hd_SW_word.
@@ -180,7 +180,7 @@ Section AlignWord.
         * simpl; rewrite <- IHw'; reflexivity.
   Qed.
 
-  Lemma encode_SW_word {n}
+  Lemma format_SW_word {n}
     : forall b (w : word n) ce,
           refine (format_word (SW_word b w) ce)
                  (`(bs, ce') <- format_word w (addE ce 1);
@@ -195,9 +195,9 @@ Section AlignWord.
       simpl.
       unfold format_word; simpl.
       autorewrite with monad laws; simpl.
-      assert (computes_to (`(bs, ce') <- ret (format_word' n x0 mempty, addE (addE ce 1) n);
+      assert (computes_to (`(bs, ce') <- ret (encode_word' n x0 mempty, addE (addE ce 1) n);
                            ret (mappend (enqueue_opt b mempty) bs, ce'))
-                          (mappend (enqueue_opt b mempty) (format_word' n x0 mempty), addE (addE ce 1) n)) by repeat computes_to_econstructor.
+                          (mappend (enqueue_opt b mempty) (encode_word' n x0 mempty), addE (addE ce 1) n)) by repeat computes_to_econstructor.
       pose proof (IHn b x0 ce _ H).
       unfold format_word in H0.
       computes_to_inv; inversion H0; subst.

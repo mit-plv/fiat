@@ -16,9 +16,9 @@ Require Import
         Fiat.Narcissus.Formats.FixListOpt
         compcert.lib.Integers.
 
-Module IntEncoder := CInt.Make(Wordsize_32).
+Module IntFormatr := CInt.Make(Wordsize_32).
 
-Import IntEncoder.
+Import IntFormatr.
 
 Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
 

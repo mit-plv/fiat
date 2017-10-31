@@ -212,7 +212,7 @@ Section DomainName.
   Context {cachePeek : CachePeek cache (option pointerT)}.
   Definition add_ptr_OK
              (t : string * pointerT)
-             (ce : CacheEncode)
+             (ce : CacheFormat)
              (cd : CacheDecode) :=
     getD cd (snd t) = None.
 
@@ -237,10 +237,10 @@ Section DomainName.
 
   Import FixComp.LeastFixedPointFun.
 
-  Definition format_DomainName (domain : DomainName) (env : CacheEncode)
-    : Comp (B * CacheEncode) :=
+  Definition format_DomainName (domain : DomainName) (env : CacheFormat)
+    : Comp (B * CacheFormat) :=
     LeastFixedPoint
-      (fDom := [DomainName; CacheEncode])
+      (fDom := [DomainName; CacheFormat])
       (fun format_DomainName domain env =>
     If (string_dec domain "") Then
          format_ascii terminal_char env
@@ -635,11 +635,11 @@ Section DomainName.
     reflexivity.
   Qed.
 
-  Lemma encode_body_monotone
-    : forall rec rec' : funType [DomainName; CacheEncode] (B * CacheEncode),
+  Lemma format_body_monotone
+    : forall rec rec' : funType [DomainName; CacheFormat] (B * CacheFormat),
  refineFun rec rec' ->
- refineFun (fDom := [DomainName; CacheEncode])
-   (fun (domain : DomainName) (env0 : CacheEncode) =>
+ refineFun (fDom := [DomainName; CacheFormat])
+   (fun (domain : DomainName) (env0 : CacheFormat) =>
     If string_dec domain "" Then format_ascii terminal_char env0
     Else (
       position <- { position | forall p, position = Some p -> In p (getE env0 domain)};
@@ -665,7 +665,7 @@ Section DomainName.
                        (mappend (mappend lenb labelb) domainb,
                         Ifopt peekE env0 as curPtr Then addE_G env'1 (domain, curPtr)
                                       Else env'1))))
-   (fun (domain : DomainName) (env0 : CacheEncode) =>
+   (fun (domain : DomainName) (env0 : CacheFormat) =>
     If string_dec domain "" Then format_ascii terminal_char env0
     Else (
       position <- { position | forall p, position = Some p -> In p (getE env0 domain)};
@@ -939,7 +939,7 @@ Section DomainName.
       rewrite IndependentCaches; eauto.
   Qed.
 
-  Lemma encode_nat_add_ptr_OK
+  Lemma format_nat_add_ptr_OK
     : forall n env b b' env' p z,
       ~ In p (getE env z)
       -> computes_to (format_nat n b env) (b', env')
@@ -950,7 +950,7 @@ Section DomainName.
     rewrite IndependentCaches' in H0; eauto.
   Qed.
 
-  Lemma encode_string_add_ptr_OK
+  Lemma format_string_add_ptr_OK
     : forall s env b' env' p z,
       ~ In p (getE env z)
       -> computes_to (format_string s env) (b', env')
@@ -1003,7 +1003,7 @@ Section DomainName.
     - right; eapply addPeekENone' in H; eauto.
   Qed.
 
-  Lemma encode_nat_peekE
+  Lemma format_nat_peekE
     : forall n env b b' env',
       computes_to (format_nat n b env) (b', env')
       -> peekE env' = peekE (addE env n).
@@ -1012,7 +1012,7 @@ Section DomainName.
     injections; reflexivity.
   Qed.
 
-  Lemma encode_string_peekE
+  Lemma format_string_peekE
     : forall l env b' env',
       computes_to (format_string l env) (b', env')
       -> peekE env' = peekE (addE env (String.length l * 8)).
@@ -1062,18 +1062,18 @@ Section DomainName.
     : forall
       (n : nat)
       (x6 : DomainName)
-      (xenv'' : CacheEncode)
+      (xenv'' : CacheFormat)
       (bin' : B)
-      (xenv0 : CacheEncode)
+      (xenv0 : CacheFormat)
       (x9 : string)
       (p0 : pointerT),
-      (forall (env : CacheEncode) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
-      (forall (env : CacheEncode) (l : string) (p p' : pointerT) (l' : string),
+      (forall (env : CacheFormat) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
+      (forall (env : CacheFormat) (l : string) (p p' : pointerT) (l' : string),
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
-             (domain : DomainName) (env : CacheEncode) =>
+        (fun (format_DomainName : funType [DomainName; CacheFormat] (B * CacheFormat))
+             (domain : DomainName) (env : CacheFormat) =>
            If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
@@ -1102,8 +1102,8 @@ Section DomainName.
       -> peekE xenv0 = None.
   Proof.
     induction n; intros;
-      apply (@unroll_LeastFixedPoint [DomainName; CacheEncode]
-                                     (B * CacheEncode)%type _ encode_body_monotone) in H2;
+      apply (@unroll_LeastFixedPoint [DomainName; CacheFormat]
+                                     (B * CacheFormat)%type _ format_body_monotone) in H2;
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
@@ -1125,9 +1125,9 @@ Section DomainName.
             destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
               simpl in *; injections.
           generalize H2'' H2'''.
-          apply encode_nat_peekE in H2'';
+          apply format_nat_peekE in H2'';
             subst.
-          apply encode_string_peekE in H2'''; subst; intros.
+          apply format_string_peekE in H2'''; subst; intros.
           rewrite H3; simpl.
           eapply addPeekENone in H3; rewrite H3 in H2''.
           eapply addPeekENone in H2''; rewrite H2'' in H2'''.
@@ -1143,18 +1143,18 @@ Section DomainName.
     : forall
       (n : nat)
       (x6 : DomainName)
-      (xenv'' : CacheEncode)
+      (xenv'' : CacheFormat)
       (bin' : B)
-      (xenv0 : CacheEncode)
+      (xenv0 : CacheFormat)
       (x9 : string)
       (p0 : pointerT),
-      (forall (env : CacheEncode) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
-      (forall (env : CacheEncode) (l : string) (p p' : pointerT) (l' : string),
+      (forall (env : CacheFormat) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
+      (forall (env : CacheFormat) (l : string) (p p' : pointerT) (l' : string),
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
-             (domain : DomainName) (env : CacheEncode) =>
+        (fun (format_DomainName : funType [DomainName; CacheFormat] (B * CacheFormat))
+             (domain : DomainName) (env : CacheFormat) =>
            If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
@@ -1184,8 +1184,8 @@ Section DomainName.
       -> In p0 (getE xenv'' x9).
   Proof.
     induction n; intros;
-      apply (@unroll_LeastFixedPoint [DomainName; CacheEncode]
-                                     (B * CacheEncode)%type _ encode_body_monotone) in H2;
+      apply (@unroll_LeastFixedPoint [DomainName; CacheFormat]
+                                     (B * CacheFormat)%type _ format_body_monotone) in H2;
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
@@ -1208,16 +1208,16 @@ Section DomainName.
               simpl in *; injections.
           rewrite H3 in H4; simpl in H4.
           generalize H2'' H2'''.
-          apply encode_nat_peekE in H2'';
+          apply format_nat_peekE in H2'';
             subst.
-          apply encode_string_peekE in H2'''; subst; intros.
+          apply format_string_peekE in H2'''; subst; intros.
           eapply addPeekENone in H3; rewrite H3 in H2''.
           eapply addPeekENone in H2''; rewrite H2'' in H2'''.
           eapply IHn in H2''''; eauto.
           destruct (fun H => in_dec H p0 (getE xenv'' x9)); eauto.
           apply pointerT_eq_dec.
-          eapply encode_nat_add_ptr_OK in n0; eauto.
-          eapply encode_string_add_ptr_OK in n0; eauto; intuition.
+          eapply format_nat_add_ptr_OK in n0; eauto.
+          eapply format_string_add_ptr_OK in n0; eauto; intuition.
           destruct H2' as [ [? | ?] [? ?] ].
           generalize (f_equal String.length H5); simpl;
             rewrite !length_append; simpl; omega.
@@ -1231,18 +1231,18 @@ Section DomainName.
     : forall
       (n : nat)
       (x6 : DomainName)
-      (xenv'' : CacheEncode)
+      (xenv'' : CacheFormat)
       (bin' : B)
-      (xenv0 : CacheEncode)
+      (xenv0 : CacheFormat)
       (x9 : string)
       (p' p : pointerT),
-      (forall (env : CacheEncode) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
-      (forall (env : CacheEncode) (l : string) (p p' : pointerT) (l' : string),
+      (forall (env : CacheFormat) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
+      (forall (env : CacheFormat) (l : string) (p p' : pointerT) (l' : string),
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
-             (domain : DomainName) (env : CacheEncode) =>
+        (fun (format_DomainName : funType [DomainName; CacheFormat] (B * CacheFormat))
+             (domain : DomainName) (env : CacheFormat) =>
            If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
@@ -1272,8 +1272,8 @@ Section DomainName.
       (pointerT2Nat p <= pointerT2Nat p')%nat.
   Proof.
     induction n; intros;
-      apply (@unroll_LeastFixedPoint [DomainName; CacheEncode]
-                                     (B * CacheEncode)%type _ encode_body_monotone) in H2;
+      apply (@unroll_LeastFixedPoint [DomainName; CacheFormat]
+                                     (B * CacheFormat)%type _ format_body_monotone) in H2;
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
@@ -1310,8 +1310,8 @@ Section DomainName.
           destruct H2' as [ ? [? ?] ].
           destruct (peekE xenv'') eqn: ?; simpl in *; eauto;
             try discriminate; injections.
-          apply encode_nat_peekE in H2''.
-          apply encode_string_peekE in H2'''.
+          apply format_nat_peekE in H2''.
+          apply format_string_peekE in H2'''.
           apply (addPeekE _ 1) in Heqy; destruct Heqy as [ [? ?] | ? ];
             simpl in H3; rewrite H3 in H2''; try discriminate; injections.
           eapply (addPeekE) in H2''; destruct H2'' as [ [? ?] | ? ];
@@ -1337,18 +1337,18 @@ Section DomainName.
     : forall
       (n : nat)
       (x6 : DomainName)
-      (xenv'' : CacheEncode)
+      (xenv'' : CacheFormat)
       (bin' : B)
-      (xenv0 : CacheEncode)
+      (xenv0 : CacheFormat)
       (x9 : string)
       (p0 : pointerT),
-      (forall (env : CacheEncode) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
-      (forall (env : CacheEncode) (l : string) (p p' : pointerT) (l' : string),
+      (forall (env : CacheFormat) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
+      (forall (env : CacheFormat) (l : string) (p p' : pointerT) (l' : string),
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
-             (domain : DomainName) (env : CacheEncode) =>
+        (fun (format_DomainName : funType [DomainName; CacheFormat] (B * CacheFormat))
+             (domain : DomainName) (env : CacheFormat) =>
            If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
@@ -1381,8 +1381,8 @@ Section DomainName.
       /\ (peekE xenv'' = None -> In p0 (getE xenv'' x9)).
   Proof.
     induction n; intros;
-      apply (@unroll_LeastFixedPoint [DomainName; CacheEncode]
-                                     (B * CacheEncode)%type _ encode_body_monotone) in H2;
+      apply (@unroll_LeastFixedPoint [DomainName; CacheFormat]
+                                     (B * CacheFormat)%type _ format_body_monotone) in H2;
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
@@ -1412,10 +1412,10 @@ Section DomainName.
           auto with arith.
           eapply IHn in H2''''; eauto.
           destruct H2''''.
-          eapply encode_nat_add_ptr_OK in H7; eauto.
-          eapply encode_string_add_ptr_OK in H7; eauto.
-          apply encode_nat_peekE in H2''; subst.
-          apply encode_string_peekE in H2'''; subst.
+          eapply format_nat_add_ptr_OK in H7; eauto.
+          eapply format_string_add_ptr_OK in H7; eauto.
+          apply format_nat_peekE in H2''; subst.
+          apply format_string_peekE in H2'''; subst.
           apply (addPeekE _ 1) in Heqy; destruct Heqy as [ [? ?] | ? ].
           simpl in H11; rewrite H11 in H2''; injections.
           eapply (addPeekE) in H2''; destruct H2'' as [ [? ?] | ? ].
@@ -1435,15 +1435,15 @@ Section DomainName.
           congruence.
           split; intros. try congruence.
           generalize H2'' H2'''.
-          apply encode_nat_peekE in H2''; subst.
-          apply encode_string_peekE in H2'''; subst; intros.
+          apply format_nat_peekE in H2''; subst.
+          apply format_string_peekE in H2'''; subst; intros.
           eapply addPeekENone in Heqy; rewrite Heqy in H2''.
           eapply addPeekENone in H2''; rewrite H2'' in H2'''.
           eapply InCacheFixpoint_Overflow in H2''''; eauto.
           destruct (fun H => in_dec H p0 (getE xenv'' x9)); eauto.
           apply pointerT_eq_dec.
-          eapply encode_nat_add_ptr_OK in n0; eauto.
-          eapply encode_string_add_ptr_OK in n0; eauto; intuition.
+          eapply format_nat_add_ptr_OK in n0; eauto.
+          eapply format_string_add_ptr_OK in n0; eauto; intuition.
   Qed.
 
   Lemma decode_string_peek_distinct
@@ -1618,7 +1618,7 @@ Section DomainName.
       clear Heqn; generalize dependent l.
       induction n; intros; simpl in *.
       destruct l; simpl in *; try omega.
-      { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheEncode]) (fCod := (B * CacheEncode))) in Penc; auto using encode_body_monotone; simpl in Penc.
+      { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheFormat]) (fCod := (B * CacheFormat))) in Penc; auto using format_body_monotone; simpl in Penc.
          destruct (proj1 (Ascii_decode_correct (proj1 (proj2 (proj2 P_OK))))
                         _ _ _ _ _ ext0 env_OK Eeq I I Penc) as [? [? [? x2_OK] ] ].
         apply DecodeBindOpt2_inv in H0;
@@ -1642,12 +1642,12 @@ Section DomainName.
           injections; rewrite IndependentCaches; eauto. *)
         + eauto.
         + unfold Frame.monotonic_function; simpl.
-          intros; eapply encode_body_monotone; assumption.
+          intros; eapply format_body_monotone; assumption.
       }
-      { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheEncode]) (fCod := (B * CacheEncode))) in Penc;
+      { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheFormat]) (fCod := (B * CacheFormat))) in Penc;
         try solve [unfold Frame.monotonic_function; simpl;
-                   intros; eapply encode_body_monotone; assumption];
-        auto using encode_body_monotone.
+                   intros; eapply format_body_monotone; assumption];
+        auto using format_body_monotone.
         { destruct (string_dec l ""); simpl in Penc.
           (* Base case for domain name. *)
           - destruct (proj1 (Ascii_decode_correct (proj1 (proj2 (proj2 P_OK))))
@@ -1669,7 +1669,7 @@ Section DomainName.
             + assumption.
           - simpl in Penc; computes_to_inv.
             destruct v as [ [ptr1 ptr2] | ]; simpl in Penc'; computes_to_inv.
-            { (* Encoder used compression. *)
+            { (* Formatr used compression. *)
               simpl in Penc'; unfold Bind2 in Penc'; computes_to_inv.
               destruct v as [b xenv'']; destruct v0 as [b' xenv'''];
                 simpl in *; injections.
@@ -1685,7 +1685,7 @@ Section DomainName.
                   unfold decode_word at 1 in H0;
                   rewrite <- mappend_assoc,
                   <- monoid_dequeue_word_eq_decode_word',
-                  monoid_dequeue_format_word' in H0;
+                  monoid_dequeue_encode_word' in H0;
                   simpl in H0;
                   destruct (H0 _ _ _ (eq_refl _)) as [? H']; clear H0.
                 rewrite <- mappend_assoc, H'; simpl.
@@ -1696,7 +1696,7 @@ Section DomainName.
                   end.
                   simpl in H0; unfold decode_word at 1 in H0;
                     rewrite <- monoid_dequeue_word_eq_decode_word' in H0.
-                  rewrite monoid_dequeue_format_word' in H0.
+                  rewrite monoid_dequeue_encode_word' in H0.
                   simpl in H0;
                     destruct (H0 _ _ _ (eq_refl _)) as [? H'']; clear H0;
                       rewrite H''; clear H''; simpl.
@@ -1725,7 +1725,7 @@ Section DomainName.
               + repeat apply add_correct; eauto.
               + eapply P_OK. eapply P_OK; eassumption .
             }
-          { (* Encoder did not to compress *)
+          { (* Formatr did not to compress *)
             simpl in Penc'; unfold Bind2 in Penc'; computes_to_inv.
             destruct Penc' as [l_eq [label1_OK label1_OK'] ].
             destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
@@ -1951,10 +1951,10 @@ Section DomainName.
                   eapply P_OK in Heqy; eauto.
                   omega.
                 }
-                pose proof (encode_nat_peekE _ _ _ _ _ Penc'').
-                pose proof (encode_string_peekE _ _ _ _ Penc''').
-                eapply encode_nat_add_ptr_OK in Penc''; eauto.
-                eapply encode_string_add_ptr_OK in Penc'''; eauto.
+                pose proof (format_nat_peekE _ _ _ _ _ Penc'').
+                pose proof (format_string_peekE _ _ _ _ Penc''').
+                eapply format_nat_add_ptr_OK in Penc''; eauto.
+                eapply format_string_add_ptr_OK in Penc'''; eauto.
                 destruct (peekE xenv'''') eqn: ?; intuition.
                 pose proof (H8 _ Penc''' (eq_refl _)).
                 erewrite <- peek_correct in Heqy by eauto.
@@ -2141,10 +2141,10 @@ Section DomainName.
                   eapply P_OK in Heqy; eauto.
                   omega.
                 }
-                pose proof (encode_nat_peekE _ _ _ _ _ Penc'').
-                pose proof (encode_string_peekE _ _ _ _ Penc''').
-                eapply encode_nat_add_ptr_OK in Penc''; eauto.
-                eapply encode_string_add_ptr_OK in Penc'''; eauto.
+                pose proof (format_nat_peekE _ _ _ _ _ Penc'').
+                pose proof (format_string_peekE _ _ _ _ Penc''').
+                eapply format_nat_add_ptr_OK in Penc''; eauto.
+                eapply format_string_add_ptr_OK in Penc'''; eauto.
                 destruct (peekE xenv'''') eqn: ?; intuition.
                 pose proof (H4 _ Penc''' (eq_refl _)).
                 erewrite <- peek_correct in Heqy by eauto.
@@ -2228,11 +2228,11 @@ Section DomainName.
             [? [b'' [xenv' [enc_x0' [x_eq' [_ xenv_eqv'] ] ] ] ] ].
         split; eauto; eexists _, _; split; eauto.
         apply (unroll_LeastFixedPoint'
-                 (fDom := [DomainName; CacheEncode])
-                 (fCod := (B * CacheEncode)%type));
+                 (fDom := [DomainName; CacheFormat])
+                 (fCod := (B * CacheFormat)%type));
           unfold Frame.monotonic_function; simpl;
-            auto using encode_body_monotone.
-        intros; eapply encode_body_monotone.
+            auto using format_body_monotone.
+        intros; eapply format_body_monotone.
         simpl; auto.
         rewrite get_correct in getD_eq; eauto.
         computes_to_econstructor.
@@ -2260,11 +2260,11 @@ Section DomainName.
               [? [b' [xenv [enc_x0 [x_eq [_ xenv_eqv] ] ] ] ] ]; split; eauto.
           eexists _, _; split; eauto.
           apply (unroll_LeastFixedPoint'
-                   (fDom := [DomainName; CacheEncode])
-                   (fCod := (B * CacheEncode)%type));
-            auto using encode_body_monotone.
+                   (fDom := [DomainName; CacheFormat])
+                   (fCod := (B * CacheFormat)%type));
+            auto using format_body_monotone.
           unfold Frame.monotonic_function; simpl;
-            intros; eapply encode_body_monotone; assumption.
+            intros; eapply format_body_monotone; assumption.
           simpl.
           econstructor.
           unfold format_word in enc_x0; computes_to_inv;
@@ -2334,7 +2334,7 @@ Section DomainName.
             destruct (fun H => in_dec H p (getE xenv'' s)).
             apply pointerT_eq_dec.
             elimtype False.
-            eapply encode_string_add_ptr_OK; eauto.
+            eapply format_string_add_ptr_OK; eauto.
             unfold format_word in enc_x0; computes_to_inv;
               injection enc_x0; intros H' H''; rewrite <- H', H'' in *.
             rewrite IndependentCaches'.
@@ -2411,7 +2411,7 @@ Section DomainName.
             destruct (fun H => in_dec H p (getE xenv'' s)).
             apply pointerT_eq_dec .
             elimtype False.
-            eapply encode_string_add_ptr_OK; eauto.
+            eapply format_string_add_ptr_OK; eauto.
             unfold format_word in enc_x0; computes_to_inv;
               injection enc_x0; intros H' H''; rewrite <- H', H'' in *.
             rewrite IndependentCaches'.
@@ -2474,11 +2474,11 @@ Section DomainName.
           destruct H11 as [bin' [xenv0 [? [? [? ? ] ] ] ] ].
           eexists _, _; split; eauto.
           apply (unroll_LeastFixedPoint'
-                   (fDom := [DomainName; CacheEncode])
-                   (fCod := (B * CacheEncode)%type));
-            auto using encode_body_monotone.
+                   (fDom := [DomainName; CacheFormat])
+                   (fCod := (B * CacheFormat)%type));
+            auto using format_body_monotone.
           unfold Frame.monotonic_function; simpl;
-            intros; eapply encode_body_monotone; assumption.
+            intros; eapply format_body_monotone; assumption.
           simpl.
           destruct (string_dec (x3 ++ x6) ""); simpl.
           destruct x3; simpl in e; try discriminate.

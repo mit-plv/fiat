@@ -15,7 +15,7 @@ Section Vector.
 
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
-  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheFormat -> Comp (B * CacheFormat).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_decode_pf
@@ -23,8 +23,8 @@ Section Vector.
                               A_predicate_rest
                               format_A A_decode A_cache_inv.
 
-  Fixpoint format_Vector {n} (xs : Vector.t A n) (ce : CacheEncode)
-    : Comp (B * CacheEncode) :=
+  Fixpoint format_Vector {n} (xs : Vector.t A n) (ce : CacheFormat)
+    : Comp (B * CacheFormat) :=
     match xs with
     | Vector.nil => ret (mempty, ce)
     | Vector.cons x _ xs' => `(b1, env1) <- format_A x ce;
@@ -32,15 +32,15 @@ Section Vector.
                     ret (mappend b1 b2, env2)
     end%comp.
 
-  Fixpoint encode_Vector_Impl
-           (A_encode_Impl : A -> CacheEncode -> B * CacheEncode)
-           {n} (xs : Vector.t A n) (ce : CacheEncode)
-    : B * CacheEncode :=
+  Fixpoint format_Vector_Impl
+           (A_format_Impl : A -> CacheFormat -> B * CacheFormat)
+           {n} (xs : Vector.t A n) (ce : CacheFormat)
+    : B * CacheFormat :=
     match xs with
     | Vector.nil => (mempty, ce)
     | Vector.cons x _ xs' =>
-      let (b1, env1) := A_encode_Impl x ce in
-      let (b2, env2) := encode_Vector_Impl A_encode_Impl xs' env1 in
+      let (b1, env1) := A_format_Impl x ce in
+      let (b2, env2) := format_Vector_Impl A_format_Impl xs' env1 in
       (mappend b1 b2, env2)
     end%comp.
 
@@ -53,11 +53,11 @@ Section Vector.
               Some (Vector.cons _ x _ xs, b2, e2)
     end.
 
-(*  Lemma Vector_encode_preserves_rest_predicate
+(*  Lemma Vector_format_preserves_rest_predicate
     : forall (sz : nat)
              (l : Vector.t A sz)
              (ext : B)
-             (env xenv : CacheEncode) (l' : B) a a',
+             (env xenv : CacheFormat) (l' : B) a a',
       format_Vector l env ↝ (l', xenv) ->
       (forall x : A, Vector.In x l -> A_predicate x) ->
       A_predicate_rest a ext ->
@@ -151,7 +151,7 @@ End Vector.
 Lemma Vector_predicate_rest_True {A B}
       {cache : Cache}
       {monoid : Monoid B}
-      (format_A : A -> CacheEncode -> Comp (B * CacheEncode))
+      (format_A : A -> CacheFormat -> Comp (B * CacheFormat))
   : forall {n} (v : Vector.t A n) (b : B),
     Vector_predicate_rest (fun a b => True) format_A n v b.
 Proof.

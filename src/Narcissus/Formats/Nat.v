@@ -13,7 +13,7 @@ Section Nat.
   Context {monoid : Monoid B}.
   Context {monoidUnit : MonoidUnit monoid bool}.
 
-  Definition format_nat (n : nat) (ce : CacheEncode) : B * CacheEncode :=
+  Definition format_nat (n : nat) (ce : CacheFormat) : B * CacheFormat :=
     format_word (natToWord sz n) ce.
 
   Definition decode_nat (b : B) (cd : CacheDecode) : nat * B * CacheDecode :=
@@ -24,9 +24,9 @@ Section Nat.
   Local Open Scope nat.
 
   Theorem Nat_decode_correct :
-    encode_decode_correct monoid (fun n => n < pow2 sz) format_nat decode_nat.
+    format_decode_correct monoid (fun n => n < pow2 sz) format_nat decode_nat.
   Proof.
-    unfold encode_decode_correct, format_nat, decode_nat.
+    unfold format_decode_correct, format_nat, decode_nat.
     intros env env' xenv xenv' n n' bin' ext ext' Eeq Ppred Penc Pdec.
     destruct (decode_word (mappend bin' ext) env') as [[? ?] ?] eqn: ?.
     inversion Pdec; subst; clear Pdec.

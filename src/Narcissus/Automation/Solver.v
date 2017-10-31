@@ -31,9 +31,9 @@ Ltac apply_compose :=
   intros;
   match goal with
     H : cache_inv_Property ?P ?P_inv |- _ =>
-    first [eapply (compose_encode_correct_no_dep _ H); clear H
-          | eapply (compose_encode_correct H); clear H
-          | eapply (composeIf_encode_correct H); clear H;
+    first [eapply (compose_format_correct_no_dep _ H); clear H
+          | eapply (compose_format_correct H); clear H
+          | eapply (composeIf_format_correct H); clear H;
             [ |
               | solve [intros; intuition (eauto with bin_split_hints) ]
               | solve [intros; intuition (eauto with bin_split_hints) ] ]
@@ -101,14 +101,14 @@ Ltac start_synthesizing_decoder :=
   match goal with
   | |- CorrectDecoderFor ?Invariant ?Spec =>
     try unfold Spec; try unfold Invariant
-  | |- appcontext [CorrectDecoder _ ?dataInv ?restInv ?encodeSpec] =>
+  | |- appcontext [CorrectDecoder _ ?dataInv ?restInv ?formatSpec] =>
     first [unfold dataInv
           | unfold restInv
-          | unfold encodeSpec ]
-  | |- appcontext [CorrectDecoder _ ?dataInv ?restInv (?encodeSpec _)] =>
+          | unfold formatSpec ]
+  | |- appcontext [CorrectDecoder _ ?dataInv ?restInv (?formatSpec _)] =>
     first [unfold dataInv
           | unfold restInv
-          | unfold encodeSpec ]
+          | unfold formatSpec ]
   end;
 
   (* Memoize any string constants *)
@@ -120,7 +120,7 @@ Ltac build_fully_determined_type cleanup_tac :=
   (* from previously parsed terms and that and that the *)
   (* byte string was a valid encoding of this object. *)
   (* Start by doing some simplification and *)
-  (* destructing the encoded object  *)
+  (* destructing the formatd object  *)
   unfold Domain, GetAttribute, GetAttributeRaw in *;
   simpl in *;
   let a' := fresh in
@@ -491,7 +491,7 @@ Ltac decode_step cleanup_tac :=
     eapply bool_decode_correct
 
   | |- appcontext [CorrectDecoder _ _ _ (format_option _ _) _ _] =>
-    intros; eapply option_encode_correct;
+    intros; eapply option_format_correct;
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]
@@ -507,9 +507,9 @@ Ltac decode_step cleanup_tac :=
     first
       [let types' := (eval unfold types in types) in
        ilist_of_evar
-         (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
+         (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache))
          types'
-         ltac:(fun encoders' =>
+         ltac:(fun formatrs' =>
                  ilist_of_evar
                    (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
                    types'
@@ -527,16 +527,16 @@ Ltac decode_step cleanup_tac :=
                                                  (Ensembles.Ensemble (CacheDecode -> Prop))
                                                  ltac:(fun cache_invariants' =>
                                                          eapply (SumType_decode_correct (m := n) types) with
-                                                         (encoders := encoders')
+                                                         (formatrs := formatrs')
                                                            (decoders := decoders')
                                                            (invariants := invariants')
                                                            (invariants_rest := invariants_rest')
                                                            (cache_invariants :=  cache_invariants')
               )))))
       |          ilist_of_evar
-                   (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
+                   (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache))
                    types
-                   ltac:(fun encoders' =>
+                   ltac:(fun formatrs' =>
                            ilist_of_evar
                              (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
                              types
@@ -554,7 +554,7 @@ Ltac decode_step cleanup_tac :=
                                                            (Ensembles.Ensemble (CacheDecode -> Prop))
                                                            ltac:(fun cache_invariants' =>
                                                                    eapply (SumType_decode_correct (m := n) types) with
-                                                                   (encoders := encoders')
+                                                                   (formatrs := formatrs')
                                                                      (decoders := decoders')
                                                                      (invariants := invariants')
                                                                      (invariants_rest := invariants_rest')
@@ -590,7 +590,7 @@ Qed.
 
 Ltac normalize_compose BitStringT :=
   (* Normalize formats by performing algebraic simplification. *)
-  intros; eapply encode_decode_correct_refineEquiv;
+  intros; eapply format_decode_correct_refineEquiv;
   [intros ? ?; symmetry;
      repeat first [ etransitivity; [apply refineEquiv_compose_compose with (monoid := BitStringT)| ]
                | etransitivity; [apply refineEquiv_compose_Done with (monoid := BitStringT) | ]
@@ -797,20 +797,20 @@ Ltac solve_predicate :=
 
 Ltac eauto_typeclass :=
   match goal with
-  | |- context [ Bool_encode ] => eapply Bool_encode_correct
-  | |- context [ Char_encode ] => eapply Char_encode_correct
-  | |- context [ FixInt_encode ] => eapply FixInt_encode_correct
-  | |- context [ FixList_encode _ ] => eapply FixList_encode_correct
-  | |- context [ IList_encode _ ] => eapply IList_encode_correct
-                                            (*| |- context [ SteppingList_encode _ _ _ ] => eapply SteppingList_encode_correct *)
+  | |- context [ Bool_format ] => eapply Bool_format_correct
+  | |- context [ Char_format ] => eapply Char_format_correct
+  | |- context [ FixInt_format ] => eapply FixInt_format_correct
+  | |- context [ FixList_format _ ] => eapply FixList_format_correct
+  | |- context [ IList_format _ ] => eapply IList_format_correct
+                                            (*| |- context [ SteppingList_format _ _ _ ] => eapply SteppingList_format_correct *)
   end; eauto.
 
 Ltac solve_decoder :=
   match goal with
   | |- _ => solve [ eauto_typeclass; solve_decoder ]
-  | |- _ => solve [ eapply Enum_encode_correct; solve_enum ]
+  | |- _ => solve [ eapply Enum_format_correct; solve_enum ]
   | |- _ => solve [ solve_done ]
-  | |- _ => eapply compose_encode_correct; [ solve_decoder | solve_predicate | intro; solve_decoder ]
+  | |- _ => eapply compose_format_correct; [ solve_decoder | solve_predicate | intro; solve_decoder ]
   end.
 
 *)

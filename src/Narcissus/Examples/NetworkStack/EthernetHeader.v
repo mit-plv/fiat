@@ -51,10 +51,10 @@ Section EthernetPacketDecoder.
     ].
 
   Variable packet_len : nat. (* The length of the ethernet packet, *)
-  (* which is a parameter to the encoder and decoder. *)
+  (* which is a parameter to the formatr and decoder. *)
   Variable packet_len_OK : lt packet_len 1501.
 
-  Definition encode_EthernetHeader_Spec (eth : EthernetHeader) :=
+  Definition format_EthernetHeader_Spec (eth : EthernetHeader) :=
     format_Vector format_word eth!"Destination"
                        ThenC (format_Vector format_word eth!"Source")
                        ThenC Either
@@ -77,7 +77,7 @@ Section EthernetPacketDecoder.
     end.
 
   Lemma v1042_OKT
-    : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
+    : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
       (format_nat 16 packet_len
                        ThenC format_word WO~0~1~0~1~0~1~0~1
                        ThenC format_word WO~0~1~0~1~0~1~0~1
@@ -93,7 +93,7 @@ Section EthernetPacketDecoder.
     pose proof (f_equal fst H) as H''; simpl in H''; rewrite <- H''.
     pose proof mappend_assoc as H'''; simpl in H'''; rewrite <- H'''.
     unfold v1042_test.
-    pose monoid_get_format_word' as H''''; rewrite H''''; find_if_inside; eauto.
+    pose monoid_get_encode_word' as H''''; rewrite H''''; find_if_inside; eauto.
     destruct n.
     eapply natToWord_wlt; eauto; try reflexivity.
     etransitivity.
@@ -105,7 +105,7 @@ Section EthernetPacketDecoder.
   Hint Resolve v1042_OKT : bin_split_hints.
 
   Lemma v1042_OKE
-    : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
+    : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
       (format_enum EtherTypeCodes data!"Type" DoneC) env ↝ (bin, xenv)
       -> v1042_test (mappend bin ext) = false.
   Proof.
@@ -116,7 +116,7 @@ Section EthernetPacketDecoder.
     pose proof (f_equal fst H) as H'; unfold fst in H'; rewrite <- H'.
     pose proof mappend_assoc as H''; simpl in H''; rewrite <- H''.
     unfold v1042_test.
-    pose monoid_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
+    pose monoid_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
     revert w; clear.
     match goal with
       |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear
@@ -141,7 +141,7 @@ Section EthernetPacketDecoder.
   Hint Resolve valid_packet_len_OK_good_Len : data_inv_hints.
 
   Definition EthernetHeader_decoder
-    : CorrectDecoderFor ethernet_Header_OK encode_EthernetHeader_Spec.
+    : CorrectDecoderFor ethernet_Header_OK format_EthernetHeader_Spec.
   Proof.
     synthesize_decoder.
   Defined.

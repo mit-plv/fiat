@@ -18,7 +18,7 @@ Require Export
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
   Variable A_predicate_halt : A_predicate A_halt.
-  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheFormat -> Comp (B * CacheFormat).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_decode_pf : CorrectDecoder cache monoid A_predicate format_A A_decode cache_inv.
   Variable A_decode_lt
@@ -32,9 +32,9 @@ Require Export
 
   Variable P_predicate : P -> Prop.
   Variable P_predicate_dec : forall p, {P_predicate p} + {~ P_predicate p}.
-  Variable P_encode_Spec : P -> CacheEncode -> Comp (B * CacheEncode).
+  Variable P_format_Spec : P -> CacheFormat -> Comp (B * CacheFormat).
   Variable P_decode : B -> CacheDecode -> option (P * B * CacheDecode).
-  Variable P_decode_pf : CorrectDecoder cache monoid P_predicate P_encode_Spec P_decode cache_inv.
+  Variable P_decode_pf : CorrectDecoder cache monoid P_predicate P_format_Spec P_decode cache_inv.
   Variable P_decode_le :
     forall (b1 : B)
            (cd1 : CacheDecode)
@@ -43,9 +43,9 @@ Require Export
            (cd' : CacheDecode),
       P_decode b1 cd1 = Some (a, b', cd') -> le_B b' b1.
 
-  Variable X_encode_Spec : bool -> CacheEncode -> Comp (B * CacheEncode).
+  Variable X_format_Spec : bool -> CacheFormat -> Comp (B * CacheFormat).
   Variable X_decode : B -> CacheDecode -> option (bool * B * CacheDecode).
-  Variable X_decode_pf : CorrectDecoder cache monoid (fun _ => True) X_encode_Spec X_decode cache_inv.
+  Variable X_decode_pf : CorrectDecoder cache monoid (fun _ => True) X_format_Spec X_decode cache_inv.
   Variable X_decode_le :
     forall (b1 : B)
            (cd1 : CacheDecode)
@@ -74,10 +74,10 @@ Require Export
              -> A_predicate x /\ ~ x = A_halt)
         -> cache_inv (addD env (l, p)).
 
-  Fixpoint format_list_step (l : list A ) (ce : CacheEncode)
-    : Comp (B * CacheEncode) :=
+  Fixpoint format_list_step (l : list A ) (ce : CacheFormat)
+    : Comp (B * CacheFormat) :=
     match l with
-    | nil => `(b1, e1) <- X_encode_Spec false ce;
+    | nil => `(b1, e1) <- X_format_Spec false ce;
              `(b2, e2) <- format_A A_halt e1;
              ret (mappend b1 b2, e2)
     | cons x l' =>
@@ -86,19 +86,19 @@ Require Export
         b <- {b : bool | True};
           If b Then (* Nondeterministically pick whether to use a cached value. *)
            If (P_predicate_dec position)
-           Then (`(b1, e1) <- X_encode_Spec true ce;
-                `(b2, e2) <- P_encode_Spec position e1;
+           Then (`(b1, e1) <- X_format_Spec true ce;
+                `(b2, e2) <- P_format_Spec position e1;
                   ret (mappend b1 b2, e2))
-           Else (`(b1, e1) <- X_encode_Spec false ce;
+           Else (`(b1, e1) <- X_format_Spec false ce;
              `(b2, e2) <- format_A x e1;
              `(b3, e3) <- format_list_step l' e2;
              ret (mappend (mappend b1 b2) b3, addE e3 (l, peekE ce)))
            Else
-           (`(b1, e1) <- X_encode_Spec false ce;
+           (`(b1, e1) <- X_format_Spec false ce;
               `(b2, e2) <- format_A x e1;
               `(b3, e3) <- format_list_step l' e2;
               ret (mappend (mappend b1 b2) b3, addE e3 (l, peekE ce)))
-      | None => `(b1, e1) <- X_encode_Spec false ce;
+      | None => `(b1, e1) <- X_format_Spec false ce;
                      `(b2, e2) <- format_A x e1;
                      `(b3, e3) <- format_list_step l' e2;
                      ret (mappend (mappend b1 b2) b3, addE e3 (l, peekE ce))
@@ -176,7 +176,7 @@ Require Export
       rewrite Coq.Init.Wf.Fix_eq; simpl.
       computes_to_inv.
       destruct v; simpl in Penc'.
-      { (* Case where the encoder decided to use compression. *)
+      { (* Case where the formatr decided to use compression. *)
         destruct (P_predicate_dec p); simpl in Penc';
         unfold Bind2 in Penc'; computes_to_inv; injections;
         subst; destruct v; destruct v0.

@@ -8,10 +8,10 @@ Require Import
 (* Tactics for caching intermediate encoder definitions. *)
 (* The current use case is for the various encoders for sums. *)
 
-Create HintDb encodeCache.
+Create HintDb formatCache.
 
 Ltac fold_encoders :=
-  (repeat foreach [ encodeCache ] run (fun id => progress fold id in *)).
+  (repeat foreach [ formatCache ] run (fun id => progress fold id in *)).
 
 Ltac cache_encoders :=
   repeat match goal with
@@ -20,13 +20,13 @@ Ltac cache_encoders :=
            let H'' := fresh in
            assert True as H'' by
                  (clear;
-                  (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to encodeCache)) ; exact I);
+                  (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to formatCache)) ; exact I);
            fold_encoders; clear H''
-         | |- context [align_encode_list (fun (a : ?z) => @?f a) _ _] =>
+         | |- context [align_format_list (fun (a : ?z) => @?f a) _ _] =>
            let p' := fresh "encoder" in
            let H'' := fresh in
            assert True as H'' by
                  (clear;
-                  (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to encodeCache)) ; exact I);
+                  (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to formatCache)) ; exact I);
            fold_encoders; clear H''
          end.

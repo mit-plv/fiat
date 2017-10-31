@@ -111,32 +111,32 @@ Definition ICMP_Message :=
 
 Definition monoid : Monoid ByteString := ByteStringMonoid.
 
-Definition encode_ICMP_Echo_Spec
+Definition format_ICMP_Echo_Spec
            (icmp : ICMP_Echo) :=
         format_word icmp!"ID"
   ThenC format_word icmp!"SeqNum"
   ThenC format_list format_word icmp!"Payload"
   DoneC.
 
-Definition encode_ICMP_Unreachable_Spec
+Definition format_ICMP_Unreachable_Spec
            (icmp : ICMP_Unreachable) :=
         format_word (wzero 32)
   ThenC format_list format_word icmp!"Payload"
   DoneC.
 
-Definition encode_ICMP_SourceQuench_Spec
+Definition format_ICMP_SourceQuench_Spec
            (icmp : ICMP_SourceQuench) :=
         format_word (wzero 32)
   ThenC format_list format_word icmp!"Payload"
   DoneC.
 
-Definition encode_ICMP_Redirect_Spec
+Definition format_ICMP_Redirect_Spec
            (icmp : ICMP_Redirect) :=
         format_word icmp!"RouterIP"
   ThenC format_list format_word icmp!"Payload"
   DoneC.
 
-Definition encode_ICMP_RouterAdvertisement_Spec
+Definition format_ICMP_RouterAdvertisement_Spec
            (icmp : ICMP_RouterAdvertisement) :=
         format_nat 8 (|icmp!"RoutersPlusPreferences"|)
   ThenC format_nat 8 2
@@ -144,25 +144,25 @@ Definition encode_ICMP_RouterAdvertisement_Spec
   ThenC format_list (fun p => format_word (fst p) ThenC format_word (snd p)) icmp!"RoutersPlusPreferences"
   DoneC.
 
-Definition encode_ICMP_RouterSolicitation_Spec
+Definition format_ICMP_RouterSolicitation_Spec
            (icmp : unit) :=
   format_word (wzero 32)
   DoneC.
 
-Definition encode_ICMP_TimeExceeded_Spec
+Definition format_ICMP_TimeExceeded_Spec
            (icmp : ICMP_TimeExceeded) :=
         format_word (wzero 32)
   ThenC format_list format_word icmp!"Payload"
   DoneC.
 
-Definition encode_ICMP_ParameterProblem_Spec
+Definition format_ICMP_ParameterProblem_Spec
            (icmp : ICMP_ParameterProblem) :=
         format_word icmp!"Pointer"
   ThenC format_word (wzero 24)
   ThenC format_list format_word icmp!"Payload"
   DoneC.
 
-Definition encode_ICMP_Timestamp_Spec
+Definition format_ICMP_Timestamp_Spec
            (icmp : ICMP_Timestamp) :=
         format_word icmp!"ID"
   ThenC format_word icmp!"SeqNum"
@@ -171,30 +171,30 @@ Definition encode_ICMP_Timestamp_Spec
   ThenC format_word icmp!"Transmit"
   DoneC.
 
-Definition encode_ICMP_AddressMask_Spec
+Definition format_ICMP_AddressMask_Spec
            (icmp : ICMP_AddressMask) :=
         format_word icmp!"ID"
   ThenC format_word icmp!"SeqNum"
   ThenC format_word icmp!"SubnetMask".
 
-Definition encode_ICMP_Message_Spec
+Definition format_ICMP_Message_Spec
            (icmp : ICMP_Message) :=
           format_enum ICMP_Message_Codes (SumType_index ICMP_Message_Types icmp!"Message")
     ThenC format_word (icmp!"Code")
     ThenChecksum IPChecksum_Valid OfSize 16
     ThenCarryOn
     format_SumType ICMP_Message_Types
-                        (icons encode_ICMP_Echo_Spec
-                        (icons encode_ICMP_Unreachable_Spec
-                        (icons encode_ICMP_SourceQuench_Spec
-                        (icons encode_ICMP_Redirect_Spec
-                        (icons encode_ICMP_Echo_Spec
-                        (icons encode_ICMP_RouterAdvertisement_Spec
-                        (icons encode_ICMP_RouterSolicitation_Spec
-                        (icons encode_ICMP_TimeExceeded_Spec
-                        (icons encode_ICMP_ParameterProblem_Spec
-                        (icons encode_ICMP_Timestamp_Spec
-                        (icons encode_ICMP_Timestamp_Spec
-                        (icons encode_ICMP_AddressMask_Spec
-                        (icons encode_ICMP_AddressMask_Spec inil)))))))))))))
+                        (icons format_ICMP_Echo_Spec
+                        (icons format_ICMP_Unreachable_Spec
+                        (icons format_ICMP_SourceQuench_Spec
+                        (icons format_ICMP_Redirect_Spec
+                        (icons format_ICMP_Echo_Spec
+                        (icons format_ICMP_RouterAdvertisement_Spec
+                        (icons format_ICMP_RouterSolicitation_Spec
+                        (icons format_ICMP_TimeExceeded_Spec
+                        (icons format_ICMP_ParameterProblem_Spec
+                        (icons format_ICMP_Timestamp_Spec
+                        (icons format_ICMP_Timestamp_Spec
+                        (icons format_ICMP_AddressMask_Spec
+                        (icons format_ICMP_AddressMask_Spec inil)))))))))))))
     icmp!"Message".

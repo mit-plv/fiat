@@ -149,7 +149,7 @@ Section ASN1_Format.
            (tag : BoundedString Tag_Classes)
            (primitive : bool)
            (identifier : nat)
-    : CacheEncode -> Comp (B * CacheEncode) :=
+    : CacheFormat -> Comp (B * CacheFormat) :=
           format_enum Tag_Class_Codes (ibound (indexb tag))
     ThenC format_word (WS primitive WO)
     ThenC (If (NPeano.ltb identifier 31) Then
@@ -161,7 +161,7 @@ Section ASN1_Format.
 
   Definition ASN1_Format_Definite_Length
              (length : nat)
-    : CacheEncode -> Comp (B * CacheEncode) :=
+    : CacheFormat -> Comp (B * CacheFormat) :=
     If (NPeano.ltb length 127) Then
        format_nat 8 length
     Else
@@ -172,11 +172,11 @@ Section ASN1_Format.
 
   Fixpoint ASN1_Format_Simple_DER
          (desc : ASN1_Simple)
-  : ASN1_Simple_denote desc -> CacheEncode -> Comp (B * CacheEncode) :=
+  : ASN1_Simple_denote desc -> CacheFormat -> Comp (B * CacheFormat) :=
   match desc return
         ASN1_Simple_denote desc
-        -> CacheEncode
-        -> Comp (B * CacheEncode) with
+        -> CacheFormat
+        -> Comp (B * CacheFormat) with
 
   | ASN_Boolean =>
     fun data =>
@@ -250,31 +250,31 @@ Section ASN1_Decoder_Example.
   Qed.
 
   Lemma refine_compose_compose
-     : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 encode3 : E -> Comp (B * E)) (ctx : E),
-      refine (((encode1 ThenC encode2) ThenC encode3) ctx)
-             ((encode1 ThenC encode2 ThenC encode3) ctx).
+     : forall (E B : Type) (monoid : Monoid B) (format1 format2 format3 : E -> Comp (B * E)) (ctx : E),
+      refine (((format1 ThenC format2) ThenC format3) ctx)
+             ((format1 ThenC format2 ThenC format3) ctx).
   Proof.
     unfold pointwise_relation; intros.
     apply refineEquiv_compose_compose.
   Qed.
 
   Lemma refine_ThenC_beta_reduce
-    : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 : E -> Comp (B * E)) (ctx : E),
-      refine ((encode1 ThenC (fun ctx' => encode2 ctx')) ctx)
-             ((encode1 ThenC encode2) ctx).
+    : forall (E B : Type) (monoid : Monoid B) (format1 format2 : E -> Comp (B * E)) (ctx : E),
+      refine ((format1 ThenC (fun ctx' => format2 ctx')) ctx)
+             ((format1 ThenC format2) ctx).
   Proof.
     intros; reflexivity.
   Qed.
 
   Lemma refine_If_Then_Else_beta_reduce
-    : forall (E B : Type) (monoid : Monoid B) (encode1 encode2 : E -> Comp (B * E)) (ctx : E) b,
-      refine ((If b Then encode1 Else encode2) ctx)
-             (If b Then encode1 ctx Else encode2 ctx).
+    : forall (E B : Type) (monoid : Monoid B) (format1 format2 : E -> Comp (B * E)) (ctx : E) b,
+      refine ((If b Then format1 Else format2) ctx)
+             (If b Then format1 ctx Else format2 ctx).
   Proof.
     intros; destruct b; reflexivity.
   Qed.
 
-  Corollary AlignedEncodeNat
+  Corollary AlignedFormatNat
             {numBytes}
     : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
@@ -283,7 +283,7 @@ Section ASN1_Decoder_Example.
                 (ret (build_aligned_ByteString (Vector.cons _ (natToWord 8 n) _ v), ce')).
   Proof.
     unfold format_nat; cbv beta; intros.
-    rewrite <- AlignedEncodeChar; eauto.
+    rewrite <- AlignedFormatChar; eauto.
     reflexivity.
   Qed.
 
@@ -300,17 +300,17 @@ Section ASN1_Decoder_Example.
     | false => vE
     end.
 
-  Lemma AlignedEncode_If_Then_Else
+  Lemma AlignedFormat_If_Then_Else
             {numBytesT numBytesE}
     : forall (b : bool) ctx ctxT ctxE
              (vT : Vector.t Core.char numBytesT)
              (vE : Vector.t Core.char numBytesE)
-             (encode1 encode2 : CacheEncode -> Comp (_ * CacheEncode)),
+             (format1 format2 : CacheFormat -> Comp (_ * CacheFormat)),
       (b = true
-       -> refine (encode1 ctx) (ret (build_aligned_ByteString vT, ctxT)))
+       -> refine (format1 ctx) (ret (build_aligned_ByteString vT, ctxT)))
       -> (b = false
-          -> refine (encode2 ctx) (ret (build_aligned_ByteString vE, ctxE)))
-      -> refine (If b Then (encode1 ctx) Else (encode2 ctx))
+          -> refine (format2 ctx) (ret (build_aligned_ByteString vE, ctxE)))
+      -> refine (If b Then (format1 ctx) Else (format2 ctx))
                 (ret (build_aligned_ByteString (Variational_Vector b vT vE)
 
                       , If b Then ctxT Else ctxE)).
@@ -335,7 +335,7 @@ Section ASN1_Decoder_Example.
              (t : ASN1_Simple_denote Simple_Format)
     := NPeano.Nat.ltb (String.length t) 127 = true.
 
-  Lemma If_Then_Else_encode_correct
+  Lemma If_Then_Else_format_correct
       {A B}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
@@ -346,23 +346,23 @@ Section ASN1_Decoder_Example.
       (predicate_rest : A -> B -> Prop)
       (proj : A -> bool)
       (ICompb : B -> bool)
-      (encodeT : A -> CacheEncode -> Comp (B * CacheEncode))
+      (formatT : A -> CacheFormat -> Comp (B * CacheFormat))
       (decodeT : B -> CacheDecode -> option (A * B * CacheDecode))
-      (encodeE : A -> CacheEncode -> Comp (B * CacheEncode))
+      (formatE : A -> CacheFormat -> Comp (B * CacheFormat))
       (decodeE : B -> CacheDecode -> option (A * B * CacheDecode))
       (decodeT_pf :
          cache_inv_Property P P_invT
          -> CorrectDecoder
               cache monoid predicateT predicate_rest
-              encodeT decodeT P)
+              formatT decodeT P)
       (decodeE_pf :
          cache_inv_Property P P_invE
          -> CorrectDecoder
               cache monoid predicateE predicate_rest
-              encodeE decodeE P)
+              formatE decodeE P)
       (ICompb_OKT : forall data bin env xenv ext,
           predicateT data
-          -> encodeT data env ↝ (bin, xenv)
+          -> formatT data env ↝ (bin, xenv)
           -> ICompb (mappend bin ext) = true)
       (ICompb_OKT' : forall data bin env xenv ext,
           ICompb bin = true
@@ -370,7 +370,7 @@ Section ASN1_Decoder_Example.
           -> proj data = true)
       (ICompb_OKE : forall data bin env xenv ext,
           predicateE data
-          -> encodeE data env ↝ (bin, xenv)
+          -> formatE data env ↝ (bin, xenv)
           -> ICompb (mappend bin ext) = false)
       (ICompb_OKE' : forall data bin env xenv ext,
           ICompb bin = false
@@ -386,10 +386,10 @@ Section ASN1_Decoder_Example.
       cache monoid
       (fun a => predicate a)
       predicate_rest
-      (fun (data : A) (ctx : CacheEncode) =>
+      (fun (data : A) (ctx : CacheFormat) =>
          (If (proj data)
-            Then (encodeT data ctx)
-            Else (encodeE data ctx))
+            Then (formatT data ctx)
+            Else (formatE data ctx))
       )%comp
       (fun (b' : B) (env : CacheDecode) =>
          If ICompb b' Then
@@ -428,12 +428,12 @@ Proof.
   }
 Qed.
 
-  Definition Correct_simple_encoder
-    : { simple_encoder : _ &
+  Definition Correct_simple_formatr
+    : { simple_formatr : _ &
                          forall (t : ASN1_Simple_denote Simple_Format),
                            Simple_Format_OK t
                            -> refine (ASN1_Format_Simple_DER Simple_Format t ())
-                     (ret (simple_encoder t)) }.
+                     (ret (simple_formatr t)) }.
   Proof.
     simpl; eexists; intros.
     unfold format_nat at 1, format_enum; simpl.
@@ -446,15 +446,15 @@ Qed.
         intros; higher_order_reflexivity
       | reflexivity | ];
       rewrite refine_ThenC_beta_reduce.
-    rewrite (@CollapseEncodeWord _ test_cache); simpl; eauto.
+    rewrite (@CollapseFormatWord _ test_cache); simpl; eauto.
     rewrite !refine_ThenC_beta_reduce.
-    rewrite (@CollapseEncodeWord _ test_cache); simpl; eauto.
+    rewrite (@CollapseFormatWord _ test_cache); simpl; eauto.
     rewrite !refine_ThenC_beta_reduce.
-    eapply (@AlignedEncodeChar test_cache); eauto.
+    eapply (@AlignedFormatChar test_cache); eauto.
     rewrite refine_If_Then_Else_ThenC.
-    eapply AlignedEncode_If_Then_Else; intros.
-    eapply (@AlignedEncodeNat _).
-    eapply (@encode_string_aligned_ByteString test_cache); eauto.
+    eapply AlignedFormat_If_Then_Else; intros.
+    eapply (@AlignedFormatNat _).
+    eapply (@format_string_aligned_ByteString test_cache); eauto.
     apply build_aligned_ByteString_id.
     congruence.
     Grab Existential Variables.
@@ -464,11 +464,11 @@ Qed.
 
   Arguments natToWord : simpl never.
 
-  Definition byte_aligned_simple_encoder
+  Definition byte_aligned_simple_formatr
              (t :  ASN1_Simple_denote Simple_Format)
-    := Eval simpl in (projT1 Correct_simple_encoder t).
+    := Eval simpl in (projT1 Correct_simple_formatr t).
 
-  Print byte_aligned_simple_encoder.
+  Print byte_aligned_simple_formatr.
 
   Definition Simple_Format_decoder
     : CorrectDecoderFor Simple_Format_OK (ASN1_Format_Simple_DER Simple_Format).
@@ -488,7 +488,7 @@ Qed.
     decode_step idtac.
     simpl; omega.
     decode_step idtac.
-    intros; eapply If_Then_Else_encode_correct.
+    intros; eapply If_Then_Else_format_correct.
     decode_step idtac.
     decode_step idtac.
     decode_step idtac.

@@ -1,7 +1,7 @@
 Require Import  Fiat.Narcissus.Stores.Cache.
 
 Instance test_cache : Cache :=
-  {| CacheEncode := unit;
+  {| CacheFormat := unit;
      CacheDecode := unit;
      Equiv := fun _ _ => True |}.
 

@@ -14,7 +14,7 @@ Section Ascii.
   Context {monoid : Monoid B}.
   Context {monoidUnit : MonoidUnit monoid bool}.
 
-  Definition format_ascii (c : ascii) (ce : CacheEncode) : B * CacheEncode :=
+  Definition format_ascii (c : ascii) (ce : CacheFormat) : B * CacheFormat :=
     format_word (NToWord 8 (N_of_ascii c)) ce.
 
   Definition decode_ascii (b : B) (cd : CacheDecode) : ascii * B * CacheDecode :=
@@ -24,9 +24,9 @@ Section Ascii.
 
   Open Local Scope nat.
   Theorem Ascii_decode_correct :
-    encode_decode_correct monoid (fun n => True) format_ascii decode_ascii.
+    format_decode_correct monoid (fun n => True) format_ascii decode_ascii.
   Proof.
-    unfold encode_decode_correct, format_ascii, decode_ascii.
+    unfold format_decode_correct, format_ascii, decode_ascii.
     intros env env' xenv xenv' c c' bin' ext ext' Eeq Ppred Penc Pdec.
     destruct (decode_word (mappend bin' ext) env') as [[? ?] ?] eqn: ?.
     inversion Pdec; subst; clear Pdec.

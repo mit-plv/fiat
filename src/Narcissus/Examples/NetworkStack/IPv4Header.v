@@ -57,7 +57,7 @@ Definition ProtocolTypeCodes : Vector.t char 3 :=
 
 Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4!"Options"|.
 
-Definition encode_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
+Definition format_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
           (format_word (natToWord 4 4)
     ThenC format_nat 4 (IPv4_Packet_Header_Len ip4)
     ThenC format_unused_word 8 (* TOS Field! *)
@@ -80,7 +80,7 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
   lt (|ipv4!"Options"|) 11 /\
   lt (20 + 4 * |ipv4!"Options"|) (wordToNat ipv4!"TotalLength").
 
-Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
+Definition IPv4_Packet_formatd_measure (ipv4_b : ByteString)
   : nat :=
   match (`(u, b') <- decode_unused_word' 4 ipv4_b;
            decode_word' 4 b') with
@@ -118,7 +118,7 @@ Proof.
 Qed.
 
 Lemma IPv4_Packet_Header_Len_OK
-  : forall ip4 (ctx ctx' ctx'' : CacheEncode) c b b'' ext,
+  : forall ip4 (ctx ctx' ctx'' : CacheFormat) c b b'' ext,
     (format_word (natToWord 4 4)
     ThenC format_nat 4 (IPv4_Packet_Header_Len ip4)
     ThenC format_unused_word 8 (* TOS Field! *)
@@ -136,13 +136,13 @@ Lemma IPv4_Packet_Header_Len_OK
     ThenC format_list format_word ip4!"Options"
     DoneC) ctx' ↝ (b'', ctx'') ->
     IPv4_Packet_OK ip4 ->
-    (fun _ => 128) ip4 + (fun a => 16 + |ip4!"Options"| * 32) ip4 + (bin_measure mempty) + 16 = IPv4_Packet_encoded_measure (mappend (mappend b (mappend (encode_checksum _ _ _ 16 c) b'')) ext).
+    (fun _ => 128) ip4 + (fun a => 16 + |ip4!"Options"| * 32) ip4 + (bin_measure mempty) + 16 = IPv4_Packet_formatd_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext).
 Proof.
   intros.
   set (k := mempty); simpl in k; subst k.
   simpl bin_measure.
   rewrite length_ByteString_id.
-  unfold IPv4_Packet_encoded_measure.
+  unfold IPv4_Packet_formatd_measure.
   pose proof mappend_assoc as H'; simpl in H';
     rewrite <- !H'.
   eapply computes_to_compose_decode_unused_word in H;
@@ -167,7 +167,7 @@ Local Arguments mempty / .
 Local Arguments NPeano.modulo : simpl never.
 
 Definition EthernetHeader_decoder
-  : CorrectDecoderFor IPv4_Packet_OK encode_IPv4_Packet_Spec.
+  : CorrectDecoderFor IPv4_Packet_OK format_IPv4_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
 

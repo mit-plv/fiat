@@ -15,7 +15,7 @@ Section String.
   Context {monoid : Monoid B}.
   Context {monoidUnit : MonoidUnit monoid bool}.
 
-  Fixpoint format_string (xs : string) (ce : CacheEncode) : B * CacheEncode :=
+  Fixpoint format_string (xs : string) (ce : CacheFormat) : B * CacheFormat :=
     match xs with
     | EmptyString => (mempty, ce)
     | String x xs' => let (b1, env1) := format_ascii x ce in
@@ -36,12 +36,12 @@ Section String.
   Local Opaque format_ascii.
   Theorem String_decode_correct :
     forall sz,
-      encode_decode_correct
+      format_decode_correct
         monoid
         (fun ls => length ls = sz)
         format_string (decode_string sz).
   Proof.
-    unfold encode_decode_correct.
+    unfold format_decode_correct.
     intros sz env env' xenv xenv' l l' bin' ext ext' Eeq Ppred Penc Pdec.
     generalize dependent sz. generalize dependent env. generalize dependent env'.
     generalize dependent xenv. generalize dependent xenv'. generalize dependent bin'.

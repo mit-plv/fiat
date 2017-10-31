@@ -16,12 +16,12 @@ Section Option.
   Context {monoid : Monoid B}.
 
   Definition format_option
-             (encode_Some : A -> CacheEncode -> Comp (B * CacheEncode))
-             (encode_None : () -> CacheEncode -> Comp (B * CacheEncode))
+             (format_Some : A -> CacheFormat -> Comp (B * CacheFormat))
+             (format_None : () -> CacheFormat -> Comp (B * CacheFormat))
              (a_opt : option A)
-    := If_Opt_Then_Else a_opt encode_Some (encode_None ()).
+    := If_Opt_Then_Else a_opt format_Some (format_None ()).
 
-  Lemma option_encode_correct
+  Lemma option_format_correct
       {P  : CacheDecode -> Prop}
       {P_invT P_invE : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_invT P /\ P_invE P))
@@ -43,25 +43,25 @@ Section Option.
            | Some a => predicate_rest_Some a
            | None => predicate_rest_None ()
            end)
-      (encode_Some : A -> CacheEncode -> Comp (B * CacheEncode))
+      (format_Some : A -> CacheFormat -> Comp (B * CacheFormat))
       (decode_Some : B -> CacheDecode -> option (A * B * CacheDecode))
-      (encode_None : () -> CacheEncode -> Comp (B * CacheEncode))
+      (format_None : () -> CacheFormat -> Comp (B * CacheFormat))
       (decode_None : B -> CacheDecode -> option (() * B * CacheDecode))
       (decode_Some_pf :
          cache_inv_Property P P_invT
          -> CorrectDecoder
               monoid predicate_Some predicate_rest_Some
-              encode_Some decode_Some P)
+              format_Some decode_Some P)
       (decode_None_pf :
          cache_inv_Property P P_invE
          -> CorrectDecoder
               monoid predicate_None predicate_rest_None
-              encode_None decode_None P)
+              format_None decode_None P)
   : CorrectDecoder
       monoid
       predicate
       predicate_rest
-      (format_option encode_Some encode_None)%comp
+      (format_option format_Some format_None)%comp
       (fun (b : B) (env : CacheDecode) =>
          If b' Then
             match decode_Some b env with

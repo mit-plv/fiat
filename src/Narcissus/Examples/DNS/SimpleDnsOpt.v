@@ -36,6 +36,8 @@ Require Import
         Fiat.Narcissus.Stores.DomainNameStore
         Fiat.Narcissus.Automation.CacheEncoders.
 
+
+
 Require Import
         Bedrock.Word.
 
@@ -210,57 +212,31 @@ Section DnsPacket.
                      ThenC (format_list format_resource (p!"answers" ++ p!"additional" ++ p!"authority"))
                      DoneC.
 
-  Ltac decode_DNS_rules g :=
-    (* Processes the goal by either: *)
-    lazymatch goal with
-    | |- appcontext[CorrectDecoder _ _ _ _ format_DomainName _ _ ] =>
-      eapply (DomainName_decode_correct
-                IndependentCaches IndependentCaches' IndependentCaches'''
-                getDistinct getDistinct' addPeekSome
-                boundPeekSome addPeekNone addPeekNone'
-                addZeroPeek addPeekESome boundPeekESome
-                addPeekENone addPeekENone')
-    | |- appcontext [CorrectDecoder _ _ _ _ (format_list format_resource) _ _] =>
-      intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
-    end.
-
-  Ltac synthesize_decoder_ext
-       monoid
-       decode_step'
-       determineHooks
-       synthesize_cache_invariant' :=
-    (* Combines tactics into one-liner. *)
-    start_synthesizing_decoder;
-    [ normalize_compose monoid;
-      repeat first [decode_step' idtac | decode_step determineHooks]
-    | cbv beta; synthesize_cache_invariant' idtac
-    |  ].
-
-  Lemma byte_align_Fix_encoder {A}
+  Lemma byte_align_Fix_encode {A}
         (lt_A : A -> A -> Prop)
         (wf_lt_A : well_founded lt_A)
     : forall
-      (body : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode)
-              -> FixComp.funType [A; CacheEncode] (ByteString * CacheEncode))
+      (body : FixComp.funType [A; CacheFormat] (ByteString * CacheFormat)
+              -> FixComp.funType [A; CacheFormat] (ByteString * CacheFormat))
       (body' : forall r : A,
-          (forall r' : A, lt_A r' r -> FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode)) ->
-          FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode))
+          (forall r' : A, lt_A r' r -> FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat)) ->
+          FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat))
 
       (refine_body_OK : forall (r : A)
-                               (x : A -> CacheEncode  ->
-                                    Comp (ByteString * CacheEncode))
+                               (x : A -> CacheFormat  ->
+                                    Comp (ByteString * CacheFormat))
                                (y : forall r' : A,
                                    lt_A r' r ->
-                                   CacheEncode ->
-                                   {n : _ & Vector.t (word 8) n} * CacheEncode),
-          (forall (a' : A) (wf_r : lt_A a' r) (ce : CacheEncode),
+                                   CacheFormat ->
+                                   {n : _ & Vector.t (word 8) n} * CacheFormat),
+          (forall (a' : A) (wf_r : lt_A a' r) (ce : CacheFormat),
               refine (x a' ce)
                      (ret (let (v, ce') := y a' wf_r ce in
                            (build_aligned_ByteString (projT2 v), ce'))))
           -> forall ce, refine (body x r ce) (ret (let (v, ce') := body' r y ce in
                                                    (build_aligned_ByteString (projT2 v), ce'))))
 
-      (body_monotone : forall rec rec' : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode),
+      (body_monotone : forall rec rec' : FixComp.funType [A; CacheFormat] (ByteString * CacheFormat),
           FixComp.refineFun rec rec' -> FixComp.refineFun (body rec) (body rec'))
       (body'_monotone : forall (x0 : A)
                                (f
@@ -270,7 +246,7 @@ Section DnsPacket.
           (forall y : {y : A | lt_A y x0}, f y = g y) ->
           body' x0 (fun (a' : A) (lt_a' : lt_A a' x0) => f (exist (fun a'0 : A => lt_A a'0 x0) a' lt_a')) =
           body' x0 (fun (a' : A) (lt_a' : lt_A a' x0) => g (exist (fun a'0 : A => lt_A a'0 x0) a' lt_a')))
-      (a : A) (ce : CacheEncode),
+      (a : A) (ce : CacheFormat),
       refine (FixComp.LeastFixedPointFun.LeastFixedPoint body a ce)
                 (ret (let (v, ce') := Fix wf_lt_A _ body' a ce in
                       (build_aligned_ByteString (projT2 v), ce'))).
@@ -280,7 +256,7 @@ Section DnsPacket.
     simpl.
     revert ce; pattern a; eapply (well_founded_ind wf_lt_A).
     simpl; intros.
-    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheEncode] (ByteString * CacheEncode)) _ (body_monotone))); etransitivity.
+    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheFormat] (ByteString * CacheFormat)) _ (body_monotone))); etransitivity.
     eapply H0; eauto.
     destruct (Fix wf_lt_A
              (fun _ : A =>
@@ -301,33 +277,33 @@ Section DnsPacket.
     rewrite Heqp; reflexivity.
   Qed.
 
-  Lemma byte_align_Fix_encoder_inv {A}
+  Lemma byte_align_Fix_encode_inv {A}
         (A_OK : A -> Prop)
         (lt_A : _ -> _ -> Prop)
         (wf_lt_A : well_founded lt_A)
     : forall
-      (body : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode)
-              -> FixComp.funType [A; CacheEncode] (ByteString * CacheEncode))
+      (body : FixComp.funType [A; CacheFormat] (ByteString * CacheFormat)
+              -> FixComp.funType [A; CacheFormat] (ByteString * CacheFormat))
       (body' : forall r : { a : _ & A_OK a},
           (forall r' : { a : _ & A_OK a},
               lt_A r' r
-              -> FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode)) ->
-          FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode))
+              -> FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat)) ->
+          FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat))
       (refine_body_OK : forall (r : { a : _ & A_OK a})
-                               (x : A -> CacheEncode ->
-                                    Comp (ByteString * CacheEncode))
+                               (x : A -> CacheFormat ->
+                                    Comp (ByteString * CacheFormat))
                                (y : forall r' : { a : _ & A_OK a},
                                    lt_A r' r ->
-                                   CacheEncode ->
-                                   {n : _ & Vector.t (word 8) n} * CacheEncode),
-          (forall (a' : { a : _ & A_OK a}) (wf_r : lt_A a' r) (ce : CacheEncode),
+                                   CacheFormat ->
+                                   {n : _ & Vector.t (word 8) n} * CacheFormat),
+          (forall (a' : { a : _ & A_OK a}) (wf_r : lt_A a' r) (ce : CacheFormat),
               refine (x (projT1 a') ce)
                      (ret (let (v, ce') := y a' wf_r ce in
                            (build_aligned_ByteString (projT2 v), ce'))))
           -> forall ce, refine (body x (projT1 r) ce) (ret (let (v, ce') := body' r y ce in
                                                             (build_aligned_ByteString (projT2 v), ce'))))
 
-      (body_monotone : forall rec rec' : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode),
+      (body_monotone : forall rec rec' : FixComp.funType [A; CacheFormat] (ByteString * CacheFormat),
           FixComp.refineFun rec rec' -> FixComp.refineFun (body rec) (body rec'))
       (body'_monotone : forall (x0 : { a : _ & A_OK a})
                                (f
@@ -337,7 +313,7 @@ Section DnsPacket.
           (forall y : {y : { a : _ & A_OK a} | lt_A y x0}, f y = g y) ->
           body' x0 (fun (a' : { a : _ & A_OK a}) (lt_a' : lt_A a' x0) => f (exist (fun a'0 : { a : _ & A_OK a} => lt_A a'0 x0) a' lt_a')) =
           body' x0 (fun (a' : { a : _ & A_OK a}) (lt_a' : lt_A a' x0) => g (exist (fun a'0 : { a : _ & A_OK a} => lt_A a'0 x0) a' lt_a')))
-      (a : A) (ce : CacheEncode) (a_OK : A_OK a),
+      (a : A) (ce : CacheFormat) (a_OK : A_OK a),
       refine (FixComp.LeastFixedPointFun.LeastFixedPoint body a ce)
                 (ret (let (v, ce') := Fix wf_lt_A _ body' (existT _ _ a_OK) ce in
                       (build_aligned_ByteString (projT2 v), ce'))).
@@ -348,7 +324,7 @@ Section DnsPacket.
     replace a with (projT1 (existT _ a a_OK)) at 1.
     revert ce; pattern (existT _ a a_OK); eapply (well_founded_ind wf_lt_A).
     simpl; intros.
-    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheEncode] (ByteString * CacheEncode)) _ (body_monotone))); etransitivity.
+    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheFormat] (ByteString * CacheFormat)) _ (body_monotone))); etransitivity.
     eapply H0; eauto.
     destruct ( Fix wf_lt_A
                (fun _ : {a0 : A & A_OK a0} =>
@@ -375,7 +351,7 @@ Qed.
     replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
     revert ce; pattern (existT (fun a0 : A => A_OK a0) a a_OK); eapply (well_founded_ind wf_lt_A).
     simpl; intros.
-    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheEncode] (ByteString * CacheEncode)) _ (body_monotone))); etransitivity.
+    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheFormat] (ByteString * CacheFormat)) _ (body_monotone))); etransitivity.
     eapply H0; eauto.
     destruct (Fix wf_lt_A
                (fun _ : {a0 : A & A_OK a0} =>
@@ -420,15 +396,15 @@ Qed.
   Proof.
   Admitted.
 
-  Definition aligned_encode_DomainName :=
+  Definition aligned_format_DomainName :=
              Fix well_founded_string_length
                   (fun _ : string  =>
-                   FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : nat & t (word 8) n} * CacheEncode))
+                   FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : nat & t (word 8) n} * CacheFormat))
                   (fun (r : string)
                      (y : forall r' : string,
                           lt (String.length r') (String.length r)%nat ->
-                          CacheEncode -> {n : nat & t (word 8) n} * CacheEncode)
-                     (ce : CacheEncode) =>
+                          CacheFormat -> {n : nat & t (word 8) n} * CacheFormat)
+                     (ce : CacheFormat) =>
                      match string_dec r "" with
                      | left e =>
                        (existT (fun n : nat => t (word 8) n) 1 [NToWord 8 (Ascii.N_of_ascii terminal_char)], addE ce 8)
@@ -536,18 +512,18 @@ Qed.
     intros; destruct (string_dec s s'); auto.
   Qed.
 
-Lemma align_encode_DomainName
+Lemma align_format_DomainName
     : forall d ce
       (d_OK : ValidDomainName d),
       refine (format_DomainName d ce)
-             (ret (build_aligned_ByteString (projT2 (fst (aligned_encode_DomainName d ce))),
-                   (snd (aligned_encode_DomainName d ce)))).
+             (ret (build_aligned_ByteString (projT2 (fst (aligned_format_DomainName d ce))),
+                   (snd (aligned_format_DomainName d ce)))).
   Proof.
     intros.
     etransitivity.
-    eapply (byte_align_Fix_encoder_inv ValidDomainName) with
+    eapply (byte_align_Fix_encode_inv ValidDomainName) with
     (lt_A := fun a a' => lt (String.length (projT1 a)) (String.length (projT1 a')));
-      eauto using encode_body_monotone.
+      eauto using format_body_monotone.
     intros.
     etransitivity.
     match goal with
@@ -556,7 +532,7 @@ Lemma align_encode_DomainName
         let H := fresh in
         intro H; set_refine_evar; try rewrite H; simpl
     end.
-    unfold AsciiOpt.format_ascii; rewrite aligned_encode_char_eq.
+    unfold AsciiOpt.format_ascii; rewrite aligned_format_char_eq.
     subst_refine_evar; higher_order_reflexivity.
     refine pick val None; try congruence.
     simplify with monad laws; simpl.
@@ -564,9 +540,9 @@ Lemma align_encode_DomainName
     refine pick val (split_string (projT1 r)).
     simplify with monad laws.
     unfold format_nat.
-    rewrite aligned_encode_char_eq.
+    rewrite aligned_format_char_eq.
     simplify with monad laws.
-    rewrite encode_string_ByteString.
+    rewrite format_string_ByteString.
     simplify with monad laws.
     unfold snd at 2; unfold snd at 2.
     unfold fst at 2; unfold fst at 2.
@@ -583,8 +559,8 @@ Lemma align_encode_DomainName
     instantiate (1 := (fun (r : {a : string & ValidDomainName a})
                      (y : forall r' : {a : string & ValidDomainName a},
                           lt (String.length (projT1 r')) (String.length (projT1 r))%nat ->
-                          CacheEncode -> {n : nat & t (word 8) n} * CacheEncode)
-                     (ce : CacheEncode) =>
+                          CacheFormat -> {n : nat & t (word 8) n} * CacheFormat)
+                     (ce : CacheFormat) =>
                    match string_dec (projT1 r) "" with
                    | left _ =>  (existT (fun n : nat => t (word 8) n) 1 [NToWord 8 (Ascii.N_of_ascii terminal_char)], addE ce 8)
                    | right n' =>  (existT (fun n : nat => t (word 8) n)
@@ -706,24 +682,24 @@ Lemma align_encode_DomainName
     match goal with
       |- context [let (_,_) := ?z in _] =>
       replace z with
-      (aligned_encode_DomainName d ce)
+      (aligned_format_DomainName d ce)
     end.
-    destruct (aligned_encode_DomainName d ce); reflexivity.
+    destruct (aligned_format_DomainName d ce); reflexivity.
     simpl. admit.
 Qed.
 
-(*  Lemma align_encode_DomainName
+(*  Lemma align_format_DomainName
     : forall d ce
       (d_OK : ValidDomainName d),
       refine (format_DomainName d ce)
-             (ret (build_aligned_ByteString (projT2 (fst (aligned_encode_DomainName d ce))),
-                   (snd (aligned_encode_DomainName d ce)))).
+             (ret (build_aligned_ByteString (projT2 (fst (aligned_format_DomainName d ce))),
+                   (snd (aligned_format_DomainName d ce)))).
   Proof.
     intros.
     etransitivity.
-    eapply (byte_align_Fix_encoder_inv ValidDomainName) with
+    eapply (byte_align_Fix_encode_inv ValidDomainName) with
     (lt_A := fun a a' => lt (String.length (projT1 a)) (String.length (projT1 a')));
-      eauto using encode_body_monotone.
+      eauto using format_body_monotone.
     intros.
     etransitivity.
     match goal with
@@ -732,7 +708,7 @@ Qed.
         let H := fresh in
         intro H; set_refine_evar; try rewrite H; simpl
     end.
-    unfold AsciiOpt.format_ascii; rewrite aligned_encode_char_eq.
+    unfold AsciiOpt.format_ascii; rewrite aligned_format_char_eq.
     subst_refine_evar; higher_order_reflexivity.
     refine pick val None; try congruence.
     simplify with monad laws; simpl.
@@ -740,9 +716,9 @@ Qed.
     refine pick val (split_string (projT1 r)).
     simplify with monad laws.
     unfold format_nat.
-    rewrite aligned_encode_char_eq.
+    rewrite aligned_format_char_eq.
     simplify with monad laws.
-    rewrite encode_string_ByteString.
+    rewrite format_string_ByteString.
     simplify with monad laws.
     unfold snd at 2; unfold snd at 2.
     unfold fst at 2; unfold fst at 2.
@@ -759,8 +735,8 @@ Qed.
     instantiate (1 := (fun (r : {a : string & ValidDomainName a})
                      (y : forall r' : {a : string & ValidDomainName a},
                           lt (String.length (projT1 r')) (String.length (projT1 r))%nat ->
-                          CacheEncode -> {n : nat & t (word 8) n} * CacheEncode)
-                     (ce : CacheEncode) =>
+                          CacheFormat -> {n : nat & t (word 8) n} * CacheFormat)
+                     (ce : CacheFormat) =>
                    match string_dec (projT1 r) "" with
                    | left _ =>  (existT (fun n : nat => t (word 8) n) 1 [NToWord 8 (Ascii.N_of_ascii terminal_char)], addE ce 8)
                    | right n' =>  (existT (fun n : nat => t (word 8) n)
@@ -887,31 +863,31 @@ Qed.
     match goal with
       |- context [let (_,_) := ?z in _] =>
       replace z with
-      (aligned_encode_DomainName d ce)
+      (aligned_format_DomainName d ce)
     end.
-    destruct (aligned_encode_DomainName d ce); reflexivity.
+    destruct (aligned_format_DomainName d ce); reflexivity.
     simpl. admit.
   Qed. *) *)
 
-  Lemma optimize_align_encode_list
+  Lemma optimize_align_format_list
           {A}
           (A_OK : A -> Prop)
-          (format_A : A -> CacheEncode -> Comp (ByteString * CacheEncode))
-          (A_encode_align :
+          (format_A : A -> CacheFormat -> Comp (ByteString * CacheFormat))
+          (A_format_align :
              A
-             ->  CacheEncode
-             -> {n : _ & Vector.t (word 8) n} * CacheEncode)
-          (A_encode_OK :
+             ->  CacheFormat
+             -> {n : _ & Vector.t (word 8) n} * CacheFormat)
+          (A_format_OK :
              forall a ce,
                A_OK a
                -> refine (format_A a ce)
-                      (ret (let (v', ce') := A_encode_align a ce in
+                      (ret (let (v', ce') := A_format_align a ce in
                             (build_aligned_ByteString (projT2 v'), ce'))))
       : forall (As : list A)
-               (ce : CacheEncode),
+               (ce : CacheFormat),
       (forall a, In a As -> A_OK a)
       -> refine (format_list format_A As ce)
-               (let (v', ce') := (align_encode_list A_encode_align As ce) in
+               (let (v', ce') := (align_format_list A_format_align As ce) in
                 ret (build_aligned_ByteString (projT2 v'), ce')).
   Proof.
     induction As; simpl; intros; simpl.
@@ -921,11 +897,11 @@ Qed.
       instantiate (1 := eq_refl _); reflexivity.
       instantiate (1 := eq_refl _); reflexivity.
     - unfold Bind2.
-      rewrite A_encode_OK.
+      rewrite A_format_OK.
       simplify with monad laws.
       rewrite IHAs.
-      destruct (A_encode_align a ce); simpl.
-      destruct (align_encode_list A_encode_align As c);
+      destruct (A_format_align a ce); simpl.
+      destruct (align_format_list A_format_align As c);
         simplify with monad laws.
       simpl.
       rewrite <- build_aligned_ByteString_append.
@@ -934,54 +910,54 @@ Qed.
       eauto.
   Qed.
 
-  Lemma align_encode_sumtype_OK_inv'
+  Lemma align_format_sumtype_OK_inv'
         {m : nat}
         {types : t Type m}
         (A_OKs : SumType types -> Prop)
         (align_encoders :
-                ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
+                ilist (B := (fun T : Type => T -> @CacheFormat dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
         (encoders :
-           ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> Comp (ByteString * (CacheEncode)))) types)
-        (encoders_OK : forall idx t (ce : CacheEncode),
+           ilist (B := (fun T : Type => T -> @CacheFormat dns_list_cache -> Comp (ByteString * (CacheFormat)))) types)
+        (encoders_OK : forall idx t (ce : CacheFormat),
             A_OKs (inj_SumType _ idx t)
             -> refine (ith encoders idx t ce)
                    (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
                          snd (ith align_encoders idx t ce))))
     : forall (st : SumType types)
-             (ce : CacheEncode),
+             (ce : CacheFormat),
       A_OKs st
       -> refine (format_SumType types encoders st ce)
-             (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
-                   (snd (align_encode_sumtype align_encoders st ce)))).
+             (ret (build_aligned_ByteString (projT2 (fst (align_format_sumtype align_encoders st ce))),
+                   (snd (align_format_sumtype align_encoders st ce)))).
   Proof.
-    intros; unfold format_SumType, align_encode_sumtype.
+    intros; unfold format_SumType, align_format_sumtype.
     rewrite encoders_OK; eauto.
     reflexivity.
     rewrite inj_SumType_proj_inverse; eauto.
   Qed.
 
-  Corollary align_encode_sumtype_OK
+  Corollary align_format_sumtype_OK
         {m : nat}
         {types : t Type m}
         (A_OKs : SumType types -> Prop)
         (align_encoders :
-                ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
+                ilist (B := (fun T : Type => T -> @CacheFormat dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
         (encoders :
-           ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> Comp (ByteString * (CacheEncode)))) types)
+           ilist (B := (fun T : Type => T -> @CacheFormat dns_list_cache -> Comp (ByteString * (CacheFormat)))) types)
         (encoders_OK : Iterate_Ensemble_BoundedIndex
-                         (fun idx => forall t (ce : CacheEncode),
+                         (fun idx => forall t (ce : CacheFormat),
                               A_OKs (inj_SumType _ idx t)
                               -> refine (ith encoders idx t ce)
                                         (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
                                               snd (ith align_encoders idx t ce)))))
     : forall (st : SumType types)
-             (ce : CacheEncode),
+             (ce : CacheFormat),
       A_OKs st
       -> refine (format_SumType types encoders st ce)
-                (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
-                      (snd (align_encode_sumtype align_encoders st ce)))).
+                (ret (build_aligned_ByteString (projT2 (fst (align_format_sumtype align_encoders st ce))),
+                      (snd (align_format_sumtype align_encoders st ce)))).
   Proof.
-    intros; eapply align_encode_sumtype_OK_inv'; intros.
+    intros; eapply align_format_sumtype_OK_inv'; intros.
     eapply Iterate_Ensemble_BoundedIndex_equiv in encoders_OK.
     apply encoders_OK; eauto.
     eauto.
@@ -1027,34 +1003,34 @@ Qed.
 
   Arguments Vector.nth A !m !v' !p /.
 
-  Check align_encode_DomainName.
+  Check align_format_DomainName.
 
-  Lemma AlignedEncodeDomainName
-     : (forall (ce : CacheEncode) (n m : nat), addE (addE ce n) m = addE ce (n + m)) ->
+  Lemma AlignedFormatDomainName
+     : (forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m)) ->
        forall (numBytes : nat)
               (d : DomainName)
-              (ce ce' : CacheEncode)
-              (c : CacheEncode -> Comp (ByteString * CacheEncode))
+              (ce ce' : CacheFormat)
+              (c : CacheFormat -> Comp (ByteString * CacheFormat))
               (v : t Core.char numBytes),
          ValidDomainName d ->
-         refine (c (snd (aligned_encode_DomainName d ce))) (ret (build_aligned_ByteString v, ce')) ->
+         refine (c (snd (aligned_format_DomainName d ce))) (ret (build_aligned_ByteString v, ce')) ->
          refine ((format_DomainName d ThenC c) ce)
-                (ret (build_aligned_ByteString ((projT2 (fst (aligned_encode_DomainName d ce))) ++ v), ce')).
+                (ret (build_aligned_ByteString ((projT2 (fst (aligned_format_DomainName d ce))) ++ v), ce')).
   Proof.
     unfold compose at 1, Bind2; intros.
-    rewrite align_encode_DomainName; eauto.
+    rewrite align_format_DomainName; eauto.
     simplify with monad laws.
     simpl; rewrite H1.
     simplify with monad laws; simpl.
     rewrite build_aligned_ByteString_append; reflexivity.
   Qed.
 
-  Definition refine_encode_packet
+  Definition refine_format_packet
     : { numBytes : _ &
       { v : _ &
       { c : _ & forall (p : packet)
                        (p_OK : DNS_Packet_OK p),
-            refine (format_packet p list_CacheEncode_empty)
+            refine (format_packet p list_CacheFormat_empty)
                    (ret (@build_aligned_ByteString (numBytes p) (v p), c p)) } } }.
   Proof.
     unfold format_packet.
@@ -1075,53 +1051,53 @@ Qed.
     pose_string_hyps.
     etransitivity.
     (* Replace formats with byte-aligned versions. *)
-    eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    eapply AlignedFormat2Char; eauto using addE_addE_plus.
     (* Not in a byte-aligned state, so we need to try to
        combine/collapse formats until we are. *)
     unfold format_enum.
-    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
-    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
-    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
-    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    rewrite CollapseFormatWord; eauto using addE_addE_plus.
+    rewrite CollapseFormatWord; eauto using addE_addE_plus.
+    rewrite CollapseFormatWord; eauto using addE_addE_plus.
+    rewrite CollapseFormatWord; eauto using addE_addE_plus.
     (* Woo hoo! We're formating an 8-bit word now! *)
-    eapply AlignedEncodeChar; eauto using addE_addE_plus.
+    eapply AlignedFormatChar; eauto using addE_addE_plus.
     (* But now we need to do it again. *)
-    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
-    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
-    eapply AlignedEncodeChar; eauto using addE_addE_plus.
-    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
-    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
-    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
-    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
-    (* Should replace this with an AlignedEncodeDomainName. *)
-    eapply AlignedEncodeDomainName; eauto using addE_addE_plus.
+    rewrite CollapseFormatWord; eauto using addE_addE_plus.
+    rewrite CollapseFormatWord; eauto using addE_addE_plus.
+    eapply AlignedFormatChar; eauto using addE_addE_plus.
+    eapply AlignedFormat2Nat; eauto using addE_addE_plus.
+    eapply AlignedFormat2Nat; eauto using addE_addE_plus.
+    eapply AlignedFormat2Nat; eauto using addE_addE_plus.
+    eapply AlignedFormat2Nat; eauto using addE_addE_plus.
+    (* Should replace this with an AlignedFormatDomainName. *)
+    eapply AlignedFormatDomainName; eauto using addE_addE_plus.
     eapply p_OK.
-    eapply AlignedEncode2Char; eauto using addE_addE_plus.
-    eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    eapply AlignedFormat2Char; eauto using addE_addE_plus.
+    eapply AlignedFormat2Char; eauto using addE_addE_plus.
     unfold compose, Bind2.
     etransitivity.
     apply refine_under_bind_both.
     pose proof (proj2 (proj2 (proj2 (proj2 p_OK)))).
-    apply optimize_align_encode_list with (A_OK := resourceRecord_OK).
+    apply optimize_align_format_list with (A_OK := resourceRecord_OK).
     unfold format_resource; intros.
     unfold compose at 1, Bind2.
-    rewrite align_encode_DomainName.
+    rewrite align_format_DomainName.
     simplify with monad laws.
     etransitivity.
     apply refine_under_bind_both.
     unfold format_enum.
-    eapply AlignedEncode2Char; eauto using addE_addE_plus.
-    eapply AlignedEncode2Char; eauto using addE_addE_plus.
-    eapply AlignedEncode32Char; eauto using addE_addE_plus.
+    eapply AlignedFormat2Char; eauto using addE_addE_plus.
+    eapply AlignedFormat2Char; eauto using addE_addE_plus.
+    eapply AlignedFormat32Char; eauto using addE_addE_plus.
     unfold format_rdata.
     etransitivity.
     apply refine_under_bind_both.
     unfold resourceRecord_OK in H0.
     let types' := (eval unfold ResourceRecordTypeTypes in ResourceRecordTypeTypes)
       in ilist_of_evar
-           (fun T : Type => T -> @CacheEncode dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))
+           (fun T : Type => T -> @CacheFormat dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))
            types'
-           ltac:(fun encoders' => eapply (@align_encode_sumtype_OK _ ResourceRecordTypeTypes _ encoders'));
+           ltac:(fun encoders' => eapply (@align_format_sumtype_OK _ ResourceRecordTypeTypes _ encoders'));
            [simpl; intros; repeat (apply Build_prim_and; intros); try exact I |
            ].
     5 : instantiate (1 := fun a => ith
@@ -1144,11 +1120,11 @@ Qed.
          a)); apply H0.
     { unfold format_CNAME.
       etransitivity.
-      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      apply (@AlignedFormat2UnusedChar dns_list_cache).
       try eapply addE_addE_plus.
       etransitivity.
       apply refine_under_bind_both.
-      apply align_encode_DomainName.
+      apply align_format_DomainName.
       apply H1.
       intros; unfold Bind2; simplify with monad laws.
       simpl; higher_order_reflexivity.
@@ -1166,9 +1142,9 @@ Qed.
     }
     { unfold format_A.
       etransitivity.
-      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      apply (@AlignedFormat2UnusedChar dns_list_cache).
       eauto using addE_addE_plus.
-      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
       replace mempty
       with (build_aligned_ByteString (Vector.nil _)).
       reflexivity.
@@ -1179,11 +1155,11 @@ Qed.
     }
     { unfold format_NS.
       etransitivity.
-      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      apply (@AlignedFormat2UnusedChar dns_list_cache).
       eauto using addE_addE_plus.
       etransitivity.
       apply refine_under_bind_both.
-      apply align_encode_DomainName.
+      apply align_format_DomainName.
       apply H1.
       intros; unfold Bind2; simplify with monad laws.
       simpl; higher_order_reflexivity.
@@ -1201,26 +1177,26 @@ Qed.
     { unfold format_SOA_RDATA.
       pose_string_hyps.
       etransitivity.
-      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      apply (@AlignedFormat2UnusedChar dns_list_cache).
       eauto using addE_addE_plus.
       etransitivity.
       apply refine_under_bind_both.
-      apply align_encode_DomainName.
+      apply align_format_DomainName.
       apply H1.
       intros; unfold Bind2.
       etransitivity.
       apply refine_under_bind_both.
       etransitivity.
       apply refine_under_bind_both.
-      apply align_encode_DomainName.
+      apply align_format_DomainName.
       apply H1.
       intros; unfold Bind2.
       apply refine_under_bind_both.
-      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
-      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
-      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
-      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
-      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
       replace mempty
       with (build_aligned_ByteString (Vector.nil _)).
       reflexivity.
@@ -1255,8 +1231,8 @@ Qed.
       instantiate (1 := eq_refl _); reflexivity.
     intros; higher_order_reflexivity.
     match goal with
-      |- context [ @align_encode_sumtype ?cache ?m ?types ?encoders ?p ?ce] =>
-      pose (@align_encode_sumtype cache m types encoders) as H'; fold H'
+      |- context [ @align_format_sumtype ?cache ?m ?types ?encoders ?p ?ce] =>
+      pose (@align_format_sumtype cache m types encoders) as H'; fold H'
     end.
 
     simpl.
@@ -1290,7 +1266,17 @@ Qed.
        reflexivity.
        eapply ByteString_f_equal;
          instantiate (1 := eq_refl _); reflexivity.
-       intros; higher_order_reflexivity.
+       match goal with
+         |- refine (ret (build_aligned_ByteString ?encoder, ?store))
+                   (ret (build_aligned_ByteString (?encoder' ?p), ?store' ?p)) =>
+         let encoder'' := (eval pattern p in encoder) in
+         let encoder'' := (match encoder'' with ?encoder p => encoder end) in
+         let store'' := (eval pattern p in store) in
+         let store'' := (match store'' with ?store p => store end) in
+         unify encoder' encoder''; unify store' store'';
+           reflexivity
+       end.
+       (* intros; higher_order_reflexivity.
        simplify with monad laws.
        simpl; rewrite <- build_aligned_ByteString_append.
        rewrite !addE_addE_plus.
@@ -1298,19 +1284,20 @@ Qed.
        reflexivity.
        apply p_OK.
        simpl.
-       higher_order_reflexivity.
+       higher_order_reflexivity. *)
        Time Defined.
 
-Definition refine_encode_packet_Impl
+Definition encode_packet
              (p : packet)
-  := Eval simpl in (projT1 refine_encode_packet p).
+  := Eval simpl in (build_aligned_ByteString (projT1 (projT2 refine_format_packet) p),
+                    projT1 (projT2 (projT2 refine_format_packet)) p).
 
-Lemma refine_encode_packet_Impl_OK
+Lemma refine_format_packet_Impl_OK
   : forall p (p_OK : DNS_Packet_OK p),
-    refine (encode_packet_Spec p list_CacheEncode_empty)
-           (ret (refine_encode_packet_Impl p)).
+    refine (format_packet p list_CacheFormat_empty)
+           (ret (encode_packet p)).
 Proof.
-  intros; apply (projT2 refine_encode_packet); eauto.
+  intros; apply (projT2 (projT2 (projT2 refine_format_packet))); eauto.
 Qed.
 
   Definition ByteAlignedCorrectDecoderFor {A} {cache : Cache}
@@ -1318,7 +1305,7 @@ Qed.
     { decodePlusCacheInv |
       exists P_inv,
       (cache_inv_Property (snd decodePlusCacheInv) P_inv
-       -> CorrectDecoder (A := A) cache monoid Invariant (fun _ _ => True)
+       -> CorrectDecoder (A := A) monoid Invariant (fun _ _ => True)
                                   FormatSpec
                                   (fst decodePlusCacheInv)
                                   (snd decodePlusCacheInv))
@@ -1329,8 +1316,34 @@ Qed.
   Arguments weq : simpl never.
   Arguments word_indexed : simpl never.
 
+  Ltac decode_DNS_rules g :=
+    (* Processes the goal by either: *)
+    lazymatch goal with
+    | |- appcontext[CorrectDecoder _ _ _ format_DomainName _ _ ] =>
+      eapply (DomainName_decode_correct
+                IndependentCaches IndependentCaches' IndependentCaches'''
+                getDistinct getDistinct' addPeekSome
+                boundPeekSome addPeekNone addPeekNone'
+                addZeroPeek addPeekESome boundPeekESome
+                addPeekENone addPeekENone')
+    | |- appcontext [CorrectDecoder _ _ _ (format_list format_resource) _ _] =>
+      intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
+    end.
+
+  Ltac synthesize_decoder_ext
+       monoid
+       decode_step'
+       determineHooks
+       synthesize_cache_invariant' :=
+    (* Combines tactics into one-liner. *)
+    start_synthesizing_decoder;
+    [ normalize_compose monoid;
+      repeat first [decode_step' idtac | decode_step determineHooks]
+    | cbv beta; synthesize_cache_invariant' idtac
+    |  ].
+
   Definition packet_decoder
-    : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
+    : CorrectDecoderFor DNS_Packet_OK format_packet.
   Proof.
     synthesize_decoder_ext monoid
                            decode_DNS_rules
@@ -1453,7 +1466,7 @@ Qed.
         fun n0
             (rec' : forall x : nat,
                 (lt x n0)%nat ->
-                t Core.char x -> CacheDecode -> option (RRecordTypes.DomainName * {n1 : nat & t Core.char n1} * CacheDecode))
+                t Core.char x -> CacheDecode -> option (DomainName * {n1 : nat & t Core.char n1} * CacheDecode))
             b cd =>
           match Compare_dec.le_dec 1 n0 with
           | left e1 =>

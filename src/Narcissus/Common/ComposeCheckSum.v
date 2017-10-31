@@ -8,15 +8,15 @@ Require Import
 
 Section Checksum.
 
-  Variable A : Type. (* Type of data to be encoded. *)
-  Variable B : Type. (* Type of encoded values. *)
-  Variable monoid : Monoid B. (* Record of operations on encoded values. *)
+  Variable A : Type. (* Type of data to be formatd. *)
+  Variable B : Type. (* Type of formatd values. *)
+  Variable monoid : Monoid B. (* Record of operations on formatd values. *)
   Variable monoid_opt : QueueMonoidOpt monoid bool.
 
   (*Variable calculate_checksum : B -> B -> B. (* Function to compute checksums. *) *)
 
   Variable checksum_sz : nat.
-  Variable checksum_Valid : nat -> B -> Prop.  (* Property of properly checksummed encoded values. *)
+  Variable checksum_Valid : nat -> B -> Prop.  (* Property of properly checksummed formatd values. *)
   Variable checksum_Valid_dec :         (* Checksum validity should be decideable . *)
     forall n b, {checksum_Valid n b} + {~ checksum_Valid n b}.
   (*Variable checksum_OK :
@@ -31,21 +31,21 @@ Section Checksum.
 
   Open Scope comp_scope.
 
-  Definition encode_checksum c := format_word' checksum_sz c mempty.
+  Definition format_checksum c := encode_word' checksum_sz c mempty.
 
   Definition composeChecksum {Env}
-             (encode1 : Env -> Comp (B * Env))
-             (encode2 : Env -> Comp (B * Env))
+             (format1 : Env -> Comp (B * Env))
+             (format2 : Env -> Comp (B * Env))
              (ctx : Env) :=
-    `(p, ctx) <- encode1 ctx;
-    `(q, ctx) <- encode2 ctx;
+    `(p, ctx) <- format1 ctx;
+    `(q, ctx) <- format2 ctx;
     c <- { c : word checksum_sz | forall ext,
              checksum_Valid
-               (bin_measure (mappend p (mappend (encode_checksum c) q)))
-               (mappend (mappend p (mappend (encode_checksum c) q)) ext) };
-    ret (mappend p (mappend (encode_checksum c) q), ctx)%comp.
+               (bin_measure (mappend p (mappend (format_checksum c) q)))
+               (mappend (mappend p (mappend (format_checksum c) q)) ext) };
+    ret (mappend p (mappend (format_checksum c) q), ctx)%comp.
 
-  Lemma composeChecksum_encode_correct
+  Lemma composeChecksum_format_correct
         {A'}
         {P  : CacheDecode -> Prop}
         {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
@@ -62,20 +62,20 @@ Section Checksum.
         (predicate' : A' -> Prop)
         (predicate_rest' : A -> B -> Prop)
         (predicate_rest : A' -> B -> Prop)
-        (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
-        (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
-        (encoded_A_measure : B -> nat)
-        (encoded_A_measure_OK :
+        (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
+        (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
+        (formatd_A_measure : B -> nat)
+        (formatd_A_measure_OK :
            forall a ctx ctx' ctx'' b b' b'' ext,
-             computes_to (encode1 (project a) ctx) (b, ctx')
-             -> computes_to (encode2 a ctx') (b'', ctx'')
+             computes_to (format1 (project a) ctx) (b, ctx')
+             -> computes_to (format2 a ctx') (b'', ctx'')
              -> predicate a
-             -> bin_measure (mappend b (mappend (encode_checksum b') b''))
-                = encoded_A_measure (mappend (mappend b (mappend (encode_checksum b') b'')) ext))
+             -> bin_measure (mappend b (mappend (format_checksum b') b''))
+                = formatd_A_measure (mappend (mappend b (mappend (format_checksum b') b'')) ext))
         (*checksum_Valid_OK :
            forall a ctx ctx' ctx'' b b' ext,
-             computes_to (encode1 (project a) ctx) (b, ctx')
-             -> computes_to (encode2 a ctx') (b', ctx'')
+             computes_to (format1 (project a) ctx) (b, ctx')
+             -> computes_to (format2 a ctx') (b', ctx'')
              -> predicate a
              -> checksum_Valid
                           (bin_measure (mappend (mappend b (calculate_checksum b b')) b'))
@@ -86,41 +86,41 @@ Section Checksum.
            -> CorrectDecoder
                 monoid predicate'
                 predicate_rest
-                encode1 decode1 P)
+                format1 decode1 P)
         (pred_pf : forall data, predicate data -> predicate' (project data))
         (predicate_rest_impl :
            forall a' b
                   a ce ce' ce'' b' b'' c,
-             computes_to (encode1 a' ce) (b', ce')
+             computes_to (format1 a' ce) (b', ce')
              -> project a = a'
              -> predicate a
-             -> computes_to (encode2 a ce') (b'', ce'')
+             -> computes_to (format2 a ce') (b'', ce'')
              -> predicate_rest' a b
              -> computes_to
                   { c | forall ext,
                       checksum_Valid
-                        (bin_measure (mappend b' (mappend (encode_checksum c) b'')))
-                        (mappend (mappend b' (mappend (encode_checksum c) b'')) ext)} c
-             -> predicate_rest a' (mappend (mappend (encode_checksum c) b'') b))
+                        (bin_measure (mappend b' (mappend (format_checksum c) b'')))
+                        (mappend (mappend b' (mappend (format_checksum c) b'')) ext)} c
+             -> predicate_rest a' (mappend (mappend (format_checksum c) b'') b))
         (decodeChecksum_pf : forall a' b a ce ce' ce'' b' b'' c ctxD ext,
-             computes_to (encode1 a' ce) (b', ce')
+             computes_to (format1 a' ce) (b', ce')
              -> project a = a'
              -> predicate a
-             -> computes_to (encode2 a ce') (b'', ce'')
+             -> computes_to (format2 a ce') (b'', ce'')
              -> predicate_rest' a b
              -> computes_to
                   { c | forall ext,
                       checksum_Valid
-                        (bin_measure (mappend b' (mappend (encode_checksum c) b'')))
-                        (mappend (mappend b' (mappend (encode_checksum c) b'')) ext)} c
-             -> decodeChecksum (mappend (mappend (encode_checksum c) b'') ext) ctxD =
+                        (bin_measure (mappend b' (mappend (format_checksum c) b'')))
+                        (mappend (mappend b' (mappend (format_checksum c) b'')) ext)} c
+             -> decodeChecksum (mappend (mappend (format_checksum c) b'') ext) ctxD =
                Some (tt, mappend b'' ext, ctxD))
         (decodeChecksum_pf' : forall u b b' ctx ctxD ctxD',
             Equiv ctx ctxD
             -> decodeChecksum b ctxD = Some (u, b', ctxD')
             -> Equiv ctx ctxD'
                /\ exists c,
-                b = mappend (encode_checksum c) b')
+                b = mappend (format_checksum c) b')
         (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
         (decode2_pf : forall proj,
             predicate' proj ->
@@ -128,36 +128,36 @@ Section Checksum.
             CorrectDecoder monoid
                                     (fun data => predicate data /\ project data = proj)
                                     predicate_rest'
-                                    encode2
+                                    format2
                                     (decode2 proj) P)
         (checksum_Valid_chk :
            forall data x x0 x1 x2 ext ext' env c,
              predicate data
-             -> encode1 (project data) env ↝ (x, x0)
-             -> encode2 data x0 ↝ (x1, x2)
-             -> checksum_Valid (bin_measure (mappend x (mappend (encode_checksum c) x1))) (mappend (mappend x (mappend (encode_checksum c) x1)) ext)
-             -> checksum_Valid (bin_measure (mappend x (mappend (encode_checksum c) x1))) (mappend (mappend x (mappend (encode_checksum c) x1)) ext'))
+             -> format1 (project data) env ↝ (x, x0)
+             -> format2 data x0 ↝ (x1, x2)
+             -> checksum_Valid (bin_measure (mappend x (mappend (format_checksum c) x1))) (mappend (mappend x (mappend (format_checksum c) x1)) ext)
+             -> checksum_Valid (bin_measure (mappend x (mappend (format_checksum c) x1))) (mappend (mappend x (mappend (format_checksum c) x1)) ext'))
         (*checksum_Valid_chk :
            forall env xenv' data ext c0 c1 x x0 x1 x2 x3,
              checksum_Valid
                (bin_measure (mappend x (mappend x3 x1)))
                (mappend x (mappend x3 (mappend x1 ext)))
              -> predicate data
-             -> encode1 (project data) env ↝ (x, x0)
+             -> format1 (project data) env ↝ (x, x0)
              -> predicate' (project data)
              -> decodeChecksum (mappend x3 (mappend x1 ext)) c0 = Some (tt, mappend x1 ext, c1)
              -> decode2 (project data) (mappend x1 ext) c1 = Some (data, ext, xenv')
-             -> encode2 data (snd (x, x0)) ↝ (x1, x2)
+             -> format2 data (snd (x, x0)) ↝ (x1, x2)
              -> mappend x (mappend x3 (mappend x1 ext)) = mappend x (mappend (calculate_checksum x x1) (mappend x1 ext))*)
     : CorrectDecoder
         monoid
         predicate
         predicate_rest'
         (fun (data : A) =>
-           composeChecksum (encode1 (project data)) (encode2 data)
+           composeChecksum (format1 (project data)) (format2 data)
         )%comp
         (fun (bin : B) (env : CacheDecode) =>
-           if checksum_Valid_dec (encoded_A_measure bin) bin then
+           if checksum_Valid_dec (formatd_A_measure bin) bin then
              `(proj, rest, env') <- decode1 bin env;
                `(_, rest', env') <- decodeChecksum rest env';
                decode2 proj rest' env'
@@ -169,7 +169,7 @@ Section Checksum.
       unfold composeChecksum, Bind2 in com_pf; computes_to_inv; destruct v;
         destruct v0.
       simpl in *.
-      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend (mappend (encode_checksum v1) b0) ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
+      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend (mappend (format_checksum v1) b0) ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
       find_if_inside.
       - setoid_rewrite <- mappend_assoc; rewrite H2.
         simpl.
@@ -179,7 +179,7 @@ Section Checksum.
           intuition; simpl in *; injections.
         eauto.
       - destruct f.
-        erewrite <- encoded_A_measure_OK; eauto.
+        erewrite <- formatd_A_measure_OK; eauto.
     }
     { intros.
       find_if_inside; try discriminate.
@@ -195,8 +195,8 @@ Section Checksum.
         simpl; pose proof (decodeChecksum_pf' _ _ _ x0 _ _ H6 Heqo);
           intuition; destruct_ex; intuition; subst.
         rewrite !mappend_assoc in c.
-        rewrite <- (mappend_assoc x (encode_checksum x3)) in c.
-        erewrite <- encoded_A_measure_OK in c; try eassumption;
+        rewrite <- (mappend_assoc x (format_checksum x3)) in c.
+        erewrite <- formatd_A_measure_OK in c; try eassumption;
           try (eapply H16; eauto).
         eexists; eexists; repeat split.
         unfold composeChecksum.
@@ -215,12 +215,12 @@ End Checksum.
 
 (*Section ComposeComposeChecksum.
 
-  Variable A : Type. (* Type of data to be encoded. *)
-  Variable B : Type. (* Type of encoded values. *)
-  Variable monoid : Monoid B. (* Record of operations on encoded values. *)
+  Variable A : Type. (* Type of data to be formatd. *)
+  Variable B : Type. (* Type of formatd values. *)
+  Variable monoid : Monoid B. (* Record of operations on formatd values. *)
 
   Variable calculate_checksum : B -> B -> B. (* Function to compute checksums. *)
-  Variable checksum_Valid : nat -> B -> Prop.  (* Property of properly checksummed encoded values. *)
+  Variable checksum_Valid : nat -> B -> Prop.  (* Property of properly checksummed formatd values. *)
   Variable checksum_Valid_dec :         (* Checksum validity should be decideable . *)
     forall n b, {checksum_Valid n b} + {~ checksum_Valid n b}.
   (*Variable checksum_OK :
@@ -233,7 +233,7 @@ End Checksum.
                      checksum_Valid (bin_measure (mappend b' b)) (mappend (mappend b' b) ext). *)
   Variable cache : Cache.
 
-Lemma composeChecksum_compose_encode_correct
+Lemma composeChecksum_compose_format_correct
       {A'}
         {P  : CacheDecode -> Prop}
         {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
@@ -243,39 +243,39 @@ Lemma composeChecksum_compose_encode_correct
         (predicate' : A' -> Prop)
         (predicate_rest' : A -> B -> Prop)
         (predicate_rest : A' -> B -> Prop)
-        (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
-        (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
-        (encode3 : A -> CacheEncode -> Comp (B * CacheEncode))
+        (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
+        (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
+        (format3 : A -> CacheFormat -> Comp (B * CacheFormat))
         (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
         (decode1_pf :
            cache_inv_Property P P_inv1
            -> CorrectDecoder
                 cache monoid predicate'
                 predicate_rest
-                encode1 decode1 P)
+                format1 decode1 P)
         (pred_pf : forall data, predicate data -> predicate' (project data))
         (predicate_rest_impl :
            forall a' b
                   a ce ce' ce'' ce''' b' b'' b''',
-             encode1 a' ce ↝ (b', ce')
+             format1 a' ce ↝ (b', ce')
              -> project a = a'
              -> predicate a
-             -> encode2 a ce' ↝ (b'', ce'')
-             -> encode3 a ce'' ↝ (b''', ce''')
+             -> format2 a ce' ↝ (b'', ce'')
+             -> format3 a ce'' ↝ (b''', ce''')
              -> predicate_rest' a b
              -> predicate_rest a' (mappend (mappend (mappend b'' (calculate_checksum (mappend b' b'') b''')) b''') b))
         (decode23 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
         (decode23_pf :
            forall proj b' ce ce',
              predicate' proj
-             -> encode1 proj ce ↝ (b', ce')
+             -> format1 proj ce ↝ (b', ce')
              -> cache_inv_Property P P_inv2
              -> CorrectDecoder
                   cache monoid
                   (fun data => predicate data /\ project data = proj)
                predicate_rest'
                (fun (data : A) =>
-                  composeChecksum _ _ (fun b => calculate_checksum (mappend b' b)) (encode2 data) (encode3 data)
+                  composeChecksum _ _ (fun b => calculate_checksum (mappend b' b)) (format2 data) (format3 data)
                )%comp
                (decode23 proj) P)
     : CorrectDecoder
@@ -283,7 +283,7 @@ Lemma composeChecksum_compose_encode_correct
         predicate
         predicate_rest'
         (fun (data : A) =>
-           composeChecksum _ _ calculate_checksum (compose _ (encode1 (project data)) (encode2 data) ) (encode3 data)
+           composeChecksum _ _ calculate_checksum (compose _ (format1 (project data)) (format2 data) ) (format3 data)
         )%comp
         (fun (bin : B) (env : CacheDecode) =>
            `(proj, rest, env') <- decode1 bin env;
@@ -324,7 +324,7 @@ Lemma composeChecksum_compose_encode_correct
     }
   Qed.
 
-  Lemma composeChecksum_compose_encode_correct_no_dep
+  Lemma composeChecksum_compose_format_correct_no_dep
         {A'}
         (A_eq_dec : forall a a' : A', {a = a'} + {a <> a'})
         {P  : CacheDecode -> Prop}
@@ -334,37 +334,37 @@ Lemma composeChecksum_compose_encode_correct
         (predicate' : A' -> Prop)
         (predicate_rest' : A -> B -> Prop)
         (predicate_rest : A' -> B -> Prop)
-        (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
-        (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
-        (encode3 : A -> CacheEncode -> Comp (B * CacheEncode))
+        (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
+        (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
+        (format3 : A -> CacheFormat -> Comp (B * CacheFormat))
         (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
         (decode1_pf :
            cache_inv_Property P P_inv1
            -> CorrectDecoder
                 cache monoid predicate'
                 predicate_rest
-                encode1 decode1 P)
+                format1 decode1 P)
         (a' : A')
         (pred_pf : predicate' a')
         (predicate_rest_impl :
            forall b a ce ce' ce'' ce''' b' b'' b''',
-             encode1 a' ce ↝ (b', ce')
+             format1 a' ce ↝ (b', ce')
              -> predicate a
-             -> encode2 a ce' ↝ (b'', ce'')
-             -> encode3 a ce'' ↝ (b''', ce''')
+             -> format2 a ce' ↝ (b'', ce'')
+             -> format3 a ce'' ↝ (b''', ce''')
              -> predicate_rest' a b
              -> predicate_rest a' (mappend (mappend (mappend b'' (calculate_checksum (mappend b' b'') b''')) b''') b))
         (decode23 : B -> CacheDecode -> option (A * B * CacheDecode))
         (decode23_pf :
            forall b' ce ce',
-             encode1 a' ce ↝ (b', ce')
+             format1 a' ce ↝ (b', ce')
              -> cache_inv_Property P P_inv2
              -> CorrectDecoder
                   cache monoid
                   predicate
                predicate_rest'
                (fun (data : A) =>
-                  composeChecksum _ _ (fun b => calculate_checksum (mappend b' b)) (encode2 data) (encode3 data)
+                  composeChecksum _ _ (fun b => calculate_checksum (mappend b' b)) (format2 data) (format3 data)
                )%comp
                decode23 P)
     : CorrectDecoder
@@ -372,7 +372,7 @@ Lemma composeChecksum_compose_encode_correct
         predicate
         predicate_rest'
         (fun (data : A) =>
-           composeChecksum _ _ calculate_checksum (compose _ (encode1 a') (encode2 data) ) (encode3 data)
+           composeChecksum _ _ calculate_checksum (compose _ (format1 a') (format2 data) ) (format3 data)
         )%comp
         (fun (bin : B) (env : CacheDecode) =>
            `(a, rest, env') <- decode1 bin env;
@@ -417,7 +417,7 @@ Lemma composeChecksum_compose_encode_correct
 
 End ComposeComposeChecksum.
 
-  (* Corollary composeChecksum_compose_encode_correct *)
+  (* Corollary composeChecksum_compose_format_correct *)
   (*       {A_fst} *)
   (*       {P  : CacheDecode -> Prop} *)
   (*       {P_inv_fst P_inv_snd P_inv2 : (CacheDecode -> Prop) -> Prop} *)
@@ -437,33 +437,33 @@ End ComposeComposeChecksum.
   (*       (predicate_rest' : A -> B -> Prop) *)
   (*       (predicate_rest_fst : A_fst -> B -> Prop) *)
   (*       (predicate_rest_snd : A_snd -> B -> Prop) *)
-  (*       (encode_fst : A_fst -> CacheEncode -> Comp (B * CacheEncode)) *)
-  (*       (encode_snd : A -> CacheEncode -> Comp (B * CacheEncode)) *)
-  (*       (encode2 : A -> CacheEncode -> Comp (B * CacheEncode)) *)
-  (*       (encoded_A_measure : B -> nat) *)
-  (*       (encoded_A_measure_OK : *)
+  (*       (format_fst : A_fst -> CacheFormat -> Comp (B * CacheFormat)) *)
+  (*       (format_snd : A -> CacheFormat -> Comp (B * CacheFormat)) *)
+  (*       (format2 : A -> CacheFormat -> Comp (B * CacheFormat)) *)
+  (*       (formatd_A_measure : B -> nat) *)
+  (*       (formatd_A_measure_OK : *)
   (*          forall a ctx ctx' b ext, *)
-  (*            computes_to (composeChecksum (compose _ (encode_fst (project_fst a)) (encode_snd (project_snd a))) (encode2 a) ctx) (b, ctx') *)
-  (*            -> bin_measure b = encoded_A_measure (mappend b ext)) *)
+  (*            computes_to (composeChecksum (compose _ (format_fst (project_fst a)) (format_snd (project_snd a))) (format2 a) ctx) (b, ctx') *)
+  (*            -> bin_measure b = formatd_A_measure (mappend b ext)) *)
   (*       (decode_fst : B -> CacheDecode -> option (A_fst * B * CacheDecode)) *)
   (*       (decode_fst_pf : *)
   (*          cache_inv_Property P P_inv_fst *)
   (*          -> CorrectDecoder *)
   (*               cache monoid predicate_fst *)
   (*               predicate_rest_fst *)
-  (*               encode_fst decode_fst P) *)
+  (*               format_fst decode_fst P) *)
   (*       (pred_fst_pf : forall data, predicate data -> predicate_fst (project_fst data)) *)
   (*       (*predicate_rest_impl : *)
   (*          forall a' b *)
   (*                 a ce ce' ce'' b' b'', *)
-  (*            computes_to (encode1 a' ce) (b', ce') *)
+  (*            computes_to (format1 a' ce) (b', ce') *)
   (*            -> project a = a' *)
   (*            -> predicate a *)
-  (*            -> computes_to (encode2 a ce') (b'', ce'') *)
+  (*            -> computes_to (format2 a ce') (b'', ce'') *)
   (*            -> predicate_rest' a b *)
   (*            -> predicate_rest_fst a' (mappend (mappend (calculate_checksum (mappend b' b'')) b'') b) *) *)
   (*       (*decodeChecksum_pf : forall b b' ext a' ctx ctx' ctxD, *)
-  (*           computes_to (encode1 a' ctx) (b, ctx') *)
+  (*           computes_to (format1 a' ctx) (b, ctx') *)
   (*           -> Equiv ctx' ctxD *)
   (*           -> decodeChecksum (mappend (mappend (calculate_checksum (mappend b b')) b') ext) ctxD = *)
   (*              Some (tt, mappend b' ext, ctxD)) *)
@@ -482,7 +482,7 @@ End ComposeComposeChecksum.
   (*                                                /\ project_fst data = proj_fst *)
   (*                                                /\ project_snd data = proj_snd) *)
   (*                                   predicate_rest' *)
-  (*                                   encode2 *)
+  (*                                   format2 *)
   (*                                   (decode2 proj_fst proj_snd) P) *)
   (*       (*checksum_Valid_chk : *)
   (*          forall env env' xenv' data ext c0 c1 x x0 x1 x2 x3, *)
@@ -492,23 +492,23 @@ End ComposeComposeChecksum.
   (*            P xenv' -> *)
   (*            Equiv x2 xenv' -> *)
   (*            predicate data -> *)
-  (*            CorrectDecoder cache monoid predicate' predicate_rest encode1 decode1 P -> *)
-  (*            encode1 (project data) env ↝ (x, x0) -> *)
+  (*            CorrectDecoder cache monoid predicate' predicate_rest format1 decode1 P -> *)
+  (*            format1 (project data) env ↝ (x, x0) -> *)
   (*            predicate' (project data) -> *)
   (*            decode2 (project_fst data) (mappend x1 ext) c1 = Some (data, ext, xenv') -> *)
-  (*            encode2 data x0 ↝ (x1, x2) -> *)
+  (*            format2 data x0 ↝ (x1, x2) -> *)
   (*            Equiv x0 c1 -> *)
-  (*            checksum_Valid (encoded_A_measure (mappend x (mappend x3 (mappend x1 ext)))) (mappend x (mappend x3 (mappend x1 ext))) -> *)
+  (*            checksum_Valid (formatd_A_measure (mappend x (mappend x3 (mappend x1 ext)))) (mappend x (mappend x3 (mappend x1 ext))) -> *)
   (*            x3 = calculate_checksum (mappend x x1)*) *)
   (*   : CorrectDecoder *)
   (*       cache monoid *)
   (*       (fun a => predicate a) *)
   (*       predicate_rest' *)
-  (*       (fun (data : A) (ctx : CacheEncode) => *)
-  (*          composeChecksum (compose _ (encode_fst (project_fst data)) (encode_snd (project_snd data))) (encode2 data)  ctx *)
+  (*       (fun (data : A) (ctx : CacheFormat) => *)
+  (*          composeChecksum (compose _ (format_fst (project_fst data)) (format_snd (project_snd data))) (format2 data)  ctx *)
   (*       )%comp *)
   (*       (fun (bin : B) (env : CacheDecode) => *)
-  (*          if checksum_Valid_dec (encoded_A_measure bin) bin then *)
+  (*          if checksum_Valid_dec (formatd_A_measure bin) bin then *)
   (*            `(proj_fst, rest, env') <- decode_fst bin env; *)
   (*            `(proj_snd, rest, env') <- decode_snd rest env'; *)
   (*            `(_, rest', env') <- decodeChecksum rest env'; *)
@@ -518,7 +518,7 @@ End ComposeComposeChecksum.
   (* Proof. *)
   (*unfold cache_inv_Property in *; split.
     { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
-      eapply composeChecksum_encode_correct in com_pf.
+      eapply composeChecksum_format_correct in com_pf.
 
       unfold composeChecksum, Bind2 in com_pf; computes_to_inv; destruct v;
         destruct v0.
@@ -531,7 +531,7 @@ End ComposeComposeChecksum.
           intuition; simpl in *; injections.
         eauto.
       - destruct f.
-        erewrite <- encoded_A_measure_OK, <- mappend_assoc, checksum_commute; eauto.
+        erewrite <- formatd_A_measure_OK, <- mappend_assoc, checksum_commute; eauto.
         rewrite !mappend_assoc.
         rewrite checksum_Valid_commute, mappend_assoc; eauto.
         computes_to_econstructor; eauto.
@@ -563,5 +563,5 @@ End ComposeComposeChecksum.
     }
   Qed. *) *)
 
-Notation "encode1 'ThenChecksum' c 'OfSize' sz 'ThenCarryOn' encode2"
-  := (composeChecksum _ _ _ sz c encode1 encode2) : binencoders_scope.
+Notation "format1 'ThenChecksum' c 'OfSize' sz 'ThenCarryOn' format2"
+  := (composeChecksum _ _ _ sz c format1 format2) : format_scope.

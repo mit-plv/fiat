@@ -36,7 +36,7 @@ Section AlignedDecoders.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
 
-  Lemma aligned_encode_char_eq
+  Lemma aligned_format_char_eq
     : forall (w : word 8) cd,
       refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w cd)
              (ret (build_aligned_ByteString (Vector.cons _ w _ (Vector.nil _)), addE cd 8)).
@@ -81,7 +81,7 @@ Section AlignedDecoders.
     reflexivity.
   Qed.
 
-  Lemma AlignedEncodeChar {numBytes}
+  Lemma AlignedFormatChar {numBytes}
     : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
@@ -90,7 +90,7 @@ Section AlignedDecoders.
   Proof.
     unfold compose; intros.
     unfold Bind2.
-    setoid_rewrite aligned_encode_char_eq; simplify with monad laws.
+    setoid_rewrite aligned_format_char_eq; simplify with monad laws.
     simpl; rewrite H; simplify with monad laws.
 
     simpl.
@@ -131,9 +131,9 @@ Section AlignedDecoders.
   Qed.
 
   Variable addE_addE_plus :
-    forall (ce : CacheEncode) (n m : nat), addE (addE ce n) m = addE ce (n + m).
+    forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).
 
-  Lemma encode_words {n m}
+  Lemma format_words {n m}
     : forall (w : word (n + m)) ce,
       refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
              ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1' _ _ w)
@@ -149,7 +149,7 @@ Section AlignedDecoders.
       reflexivity.
     - simpl; intros.
       rewrite (word_split_SW w) at 1.
-      rewrite encode_SW_word.
+      rewrite format_SW_word.
       unfold compose, Bind2.
       rewrite (IHn (word_split_tl w) (addE ce 1)).
       unfold compose, Bind2.
@@ -176,7 +176,7 @@ Section AlignedDecoders.
       + eauto.
   Qed.
 
-  Lemma AlignedEncode2Char {numBytes}
+  Lemma AlignedFormat2Char {numBytes}
     : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
@@ -186,8 +186,8 @@ Section AlignedDecoders.
                                                   (Vector.cons _ (split2' 8 8 w) _ v)), ce')).
   Proof.
     unfold compose, Bind2; intros.
-    intros; setoid_rewrite (@encode_words 8 8 w).
-    rewrite (@AlignedEncodeChar 1) by apply aligned_encode_char_eq.
+    intros; setoid_rewrite (@format_words 8 8 w).
+    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
     simplify with monad laws.
     unfold snd.
     rewrite addE_addE_plus.
@@ -218,7 +218,7 @@ Section AlignedDecoders.
     reflexivity.
   Qed.
 
-  Corollary AlignedEncode2Nat
+  Corollary AlignedFormat2Nat
             {numBytes}
     : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
@@ -229,7 +229,7 @@ Section AlignedDecoders.
                                                   (Vector.cons _ (split2' 8 8 (natToWord 16 n)) _ v)), ce')).
   Proof.
     unfold format_nat; cbv beta; intros.
-    rewrite <- AlignedEncode2Char; eauto.
+    rewrite <- AlignedFormat2Char; eauto.
     reflexivity.
   Qed.
 
@@ -466,9 +466,9 @@ Section AlignedDecoders.
     | String a s' => Vector.cons _ (NToWord 8 (Ascii.N_of_ascii a)) _ (StringToBytes s')
     end.
 
-  Lemma encode_string_ByteString
+  Lemma format_string_ByteString
     : forall (s : string)
-             (ce : CacheEncode),
+             (ce : CacheFormat),
       refine (FixStringOpt.format_string s ce)
              (ret (build_aligned_ByteString (StringToBytes s), addE ce (8 * String.length s))).
   Proof.
@@ -478,7 +478,7 @@ Section AlignedDecoders.
       instantiate (1 := eq_refl _); reflexivity.
       instantiate (1 := eq_refl _); reflexivity.
     - unfold AsciiOpt.format_ascii.
-      unfold Bind2;  setoid_rewrite aligned_encode_char_eq.
+      unfold Bind2;  setoid_rewrite aligned_format_char_eq.
       simplify with monad laws.
       rewrite IHs.
       simplify with monad laws.
@@ -488,17 +488,17 @@ Section AlignedDecoders.
       f_equiv; f_equiv; f_equiv; omega.
   Qed.
 
-  Lemma encode_string_aligned_ByteString {numBytes}
+  Lemma format_string_aligned_ByteString {numBytes}
     : forall (s : string)
-             (ce : CacheEncode)
-             (ce' : CacheEncode)
+             (ce : CacheFormat)
+             (ce' : CacheFormat)
              (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce (8 * String.length s))) (ret (build_aligned_ByteString v, ce'))
       -> refine (((FixStringOpt.format_string s) ThenC c) ce)
                 (ret (build_aligned_ByteString (append (StringToBytes s) v), ce')).
   Proof.
     unfold compose, Bind2; autorewrite with monad laws; intros.
-    rewrite encode_string_ByteString.
+    rewrite format_string_ByteString.
     simplify with monad laws.
     unfold snd at 1.
     rewrite H.
@@ -1043,7 +1043,7 @@ Section AlignedDecoders.
         erewrite <- WS_eq_rect_eq; reflexivity.
   Qed.
 
-  Lemma AlignedEncode32Char {numBytes}
+  Lemma AlignedFormat32Char {numBytes}
     : forall (w : word 32) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 32)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
@@ -1062,8 +1062,8 @@ Section AlignedDecoders.
                                     (split2' 24 8 w) _ v)))), ce')).
   Proof.
     unfold compose, Bind2; intros.
-    intros; setoid_rewrite (@encode_words 8 24 w).
-    rewrite (@AlignedEncodeChar 3).
+    intros; setoid_rewrite (@format_words 8 24 w).
+    rewrite (@AlignedFormatChar 3).
     simplify with monad laws.
     unfold snd.
     rewrite H.
@@ -1075,11 +1075,11 @@ Section AlignedDecoders.
     instantiate (1 := Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _)))).
     unfold append.
     reflexivity.
-    setoid_rewrite (@encode_words 8 16 _).
-    rewrite (@AlignedEncodeChar 2).
+    setoid_rewrite (@format_words 8 16 _).
+    rewrite (@AlignedFormatChar 2).
     reflexivity.
-    setoid_rewrite (@encode_words 8 8).
-    rewrite (@AlignedEncodeChar 1) by apply aligned_encode_char_eq.
+    setoid_rewrite (@format_words 8 8).
+    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
     rewrite !addE_addE_plus; simpl plus.
     rewrite !split2_split2.
     simpl plus.
@@ -1143,38 +1143,38 @@ Section AlignedDecoders.
       as [ [ [? [? ?] ] ?]  | ]; simpl; eauto.
   Qed.
 
-  Fixpoint align_encode_list {A}
-           (A_encode_align :
+  Fixpoint align_format_list {A}
+           (A_format_align :
               A
-              ->  CacheEncode
-              -> {n : _ & Vector.t (word 8) n} * CacheEncode)
+              ->  CacheFormat
+              -> {n : _ & Vector.t (word 8) n} * CacheFormat)
            (As : list A)
-           (ce : CacheEncode)
-    : {n : _ & Vector.t (word 8) n} * CacheEncode :=
+           (ce : CacheFormat)
+    : {n : _ & Vector.t (word 8) n} * CacheFormat :=
     match As with
     | nil => (existT _ _ (Vector.nil _), ce)
     | a :: As' =>
-      let (b, ce') := A_encode_align a ce in
-      let (b', ce'') := align_encode_list A_encode_align As' ce' in
+      let (b, ce') := A_format_align a ce in
+      let (b', ce'') := align_format_list A_format_align As' ce' in
       (existT _ _ (append (projT2 b) (projT2 b')), ce'')
     end.
 
-  Lemma optimize_align_encode_list
+  Lemma optimize_align_format_list
         {A}
-        (format_A : A -> CacheEncode -> Comp (ByteString * CacheEncode))
-        (A_encode_align :
+        (format_A : A -> CacheFormat -> Comp (ByteString * CacheFormat))
+        (A_format_align :
            A
-           ->  CacheEncode
-           -> {n : _ & Vector.t (word 8) n} * CacheEncode)
-        (A_encode_OK :
+           ->  CacheFormat
+           -> {n : _ & Vector.t (word 8) n} * CacheFormat)
+        (A_format_OK :
            forall a ce,
              refine (format_A a ce)
-                    (ret (let (v', ce') := A_encode_align a ce in
+                    (ret (let (v', ce') := A_format_align a ce in
                           (build_aligned_ByteString (projT2 v'), ce'))))
     : forall (As : list A)
-             (ce : CacheEncode),
+             (ce : CacheFormat),
       refine (format_list format_A As ce)
-             (let (v', ce') := (align_encode_list A_encode_align As ce) in
+             (let (v', ce') := (align_format_list A_format_align As ce) in
               ret (build_aligned_ByteString (projT2 v'), ce')).
   Proof.
     induction As; simpl; intros; simpl.
@@ -1184,10 +1184,10 @@ Section AlignedDecoders.
       instantiate (1 := eq_refl _); reflexivity.
       instantiate (1 := eq_refl _); reflexivity.
     - unfold Bind2.
-      rewrite A_encode_OK; simplify with monad laws.
+      rewrite A_format_OK; simplify with monad laws.
       rewrite IHAs.
-      destruct (A_encode_align a ce); simpl.
-      destruct (align_encode_list A_encode_align As c);
+      destruct (A_format_align a ce); simpl.
+      destruct (align_format_list A_format_align As c);
         simplify with monad laws.
       simpl.
       rewrite <- build_aligned_ByteString_append.
@@ -1381,7 +1381,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
       reflexivity.
   Qed.
 
-  Lemma aligned_encode_unused_char_eq
+  Lemma aligned_format_unused_char_eq
     : forall cd,
       refine (format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8 cd)
              (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.nil _)), addE cd 8)).
@@ -1404,7 +1404,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
     reflexivity.
   Qed.
 
-  Lemma AlignedEncodeUnusedChar {numBytes}
+  Lemma AlignedFormatUnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8)
@@ -1412,7 +1412,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ v), ce')).
   Proof.
     unfold compose, Bind2; simpl; intros.
-    rewrite aligned_encode_unused_char_eq.
+    rewrite aligned_format_unused_char_eq.
     simplify with monad laws.
     simpl snd; rewrite H; simplify with monad laws.
     simpl.
@@ -1420,7 +1420,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
     reflexivity.
   Qed.
 
-  Lemma AlignedEncode2UnusedChar {numBytes}
+  Lemma AlignedFormat2UnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 16)
@@ -1428,7 +1428,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ (wzero 8) _ v)), ce')).
   Proof.
     unfold compose, Bind2; intros.
-    rewrite <- (AlignedEncode2Char (wzero 16)); eauto.
+    rewrite <- (AlignedFormat2Char (wzero 16)); eauto.
     unfold format_unused_word, format_word, compose, Bind2.
     simpl.
     unfold format_unused_word'; simpl.
@@ -1528,56 +1528,56 @@ Lemma decode_unused_word_aligned_ByteString_overflow
     apply H.
   Qed.
 
-  Definition align_encode_sumtype
+  Definition align_format_sumtype
              {m : nat}
              {types : t Type m}
-             (encoders :
-                ilist (B := (fun T : Type => T -> @CacheEncode cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
+             (formatrs :
+                ilist (B := (fun T : Type => T -> @CacheFormat cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
              (st : SumType types)
-             (ce : CacheEncode)
-    := ith (encoders) (SumType_index types st) (SumType_proj types st) ce.
+             (ce : CacheFormat)
+    := ith (formatrs) (SumType_index types st) (SumType_proj types st) ce.
 
-  Lemma align_encode_sumtype_OK'
+  Lemma align_format_sumtype_OK'
         {m : nat}
         {types : t Type m}
-        (align_encoders :
-           ilist (B := (fun T : Type => T -> @CacheEncode cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
-        (encoders :
-           ilist (B := (fun T : Type => T -> @CacheEncode cache -> Comp (ByteString * (CacheEncode)))) types)
-        (encoders_OK : forall idx t (ce : CacheEncode),
-            refine (ith encoders idx t ce)
-                   (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
-                         snd (ith align_encoders idx t ce))))
+        (align_formatrs :
+           ilist (B := (fun T : Type => T -> @CacheFormat cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
+        (formatrs :
+           ilist (B := (fun T : Type => T -> @CacheFormat cache -> Comp (ByteString * (CacheFormat)))) types)
+        (formatrs_OK : forall idx t (ce : CacheFormat),
+            refine (ith formatrs idx t ce)
+                   (ret (build_aligned_ByteString (projT2 (fst (ith align_formatrs idx t ce))),
+                         snd (ith align_formatrs idx t ce))))
     : forall (st : SumType types)
-             (ce : CacheEncode),
-      refine (format_SumType types encoders st ce)
-             (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
-                   (snd (align_encode_sumtype align_encoders st ce)))).
+             (ce : CacheFormat),
+      refine (format_SumType types formatrs st ce)
+             (ret (build_aligned_ByteString (projT2 (fst (align_format_sumtype align_formatrs st ce))),
+                   (snd (align_format_sumtype align_formatrs st ce)))).
   Proof.
-    intros; unfold format_SumType, align_encode_sumtype.
-    rewrite encoders_OK; reflexivity.
+    intros; unfold format_SumType, align_format_sumtype.
+    rewrite formatrs_OK; reflexivity.
   Qed.
 
-  Corollary align_encode_sumtype_OK
+  Corollary align_format_sumtype_OK
             {m : nat}
             {types : t Type m}
-            (align_encoders :
-               ilist (B := (fun T : Type => T -> @CacheEncode cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
-            (encoders :
-               ilist (B := (fun T : Type => T -> @CacheEncode cache -> Comp (ByteString * (CacheEncode)))) types)
-            (encoders_OK : Iterate_Ensemble_BoundedIndex (fun idx => forall t (ce : CacheEncode),
-                                                              refine (ith encoders idx t ce)
-                                                                     (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
-                                                                           snd (ith align_encoders idx t ce)))))
+            (align_formatrs :
+               ilist (B := (fun T : Type => T -> @CacheFormat cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
+            (formatrs :
+               ilist (B := (fun T : Type => T -> @CacheFormat cache -> Comp (ByteString * (CacheFormat)))) types)
+            (formatrs_OK : Iterate_Ensemble_BoundedIndex (fun idx => forall t (ce : CacheFormat),
+                                                              refine (ith formatrs idx t ce)
+                                                                     (ret (build_aligned_ByteString (projT2 (fst (ith align_formatrs idx t ce))),
+                                                                           snd (ith align_formatrs idx t ce)))))
     : forall (st : SumType types)
-             (ce : CacheEncode),
-      refine (format_SumType types encoders st ce)
-             (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
-                   (snd (align_encode_sumtype align_encoders st ce)))).
+             (ce : CacheFormat),
+      refine (format_SumType types formatrs st ce)
+             (ret (build_aligned_ByteString (projT2 (fst (align_format_sumtype align_formatrs st ce))),
+                   (snd (align_format_sumtype align_formatrs st ce)))).
   Proof.
-    intros; eapply align_encode_sumtype_OK'; intros.
-    eapply Iterate_Ensemble_BoundedIndex_equiv in encoders_OK.
-    apply encoders_OK.
+    intros; eapply align_format_sumtype_OK'; intros.
+    eapply Iterate_Ensemble_BoundedIndex_equiv in formatrs_OK.
+    apply formatrs_OK.
   Qed.
 
   Lemma nth_Vector_split {A}

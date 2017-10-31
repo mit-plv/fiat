@@ -13,16 +13,16 @@ Section Nat.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Definition format_nat (n : nat) (ce : CacheEncode)
-    : Comp (B * CacheEncode) :=
+  Definition format_nat (n : nat) (ce : CacheFormat)
+    : Comp (B * CacheFormat) :=
     format_word (natToWord sz n) ce.
 
-  Definition encode_nat_Impl (n : nat) (ce : CacheEncode) : B * CacheEncode :=
+  Definition encode_nat (n : nat) (ce : CacheFormat) : B * CacheFormat :=
     encode_word (natToWord sz n) ce.
 
-  Lemma refine_encode_nat :
+  Lemma refine_format_nat :
     forall n ce,
-      refine (format_nat n ce) (ret (encode_nat_Impl n ce)).
+      refine (format_nat n ce) (ret (encode_nat n ce)).
   Proof.
     reflexivity.
   Qed.

@@ -87,7 +87,7 @@ Module Make (WS : WORDSIZE).
             rewrite BinPos.Pos.add_diag; auto.
     Qed.
 
-    Definition format_int (sz : nat) (i : int) (ce : CacheEncode) : Comp (B * CacheEncode) := format_word (intToWord sz i) ce.
+    Definition format_int (sz : nat) (i : int) (ce : CacheFormat) : Comp (B * CacheFormat) := format_word (intToWord sz i) ce.
 
     Definition decode_int (sz : nat) (b : B) (cd : CacheDecode) : option (int * B * CacheDecode) :=
       `(w, b, cd) <- decode_word (sz:=sz) b cd;

@@ -39,17 +39,17 @@ Section Enum.
   Qed.
 
   Definition format_enum (idx : Fin.t _) :
-    CacheEncode -> Comp (B * CacheEncode) :=
+    CacheFormat -> Comp (B * CacheFormat) :=
     format_word (nth tb idx).
 
-  Definition encode_enum_Impl (idx : Fin.t _) :
-    CacheEncode -> B * CacheEncode :=
+  Definition encode_enum (idx : Fin.t _) :
+    CacheFormat -> B * CacheFormat :=
     encode_word (nth tb idx).
 
-  Lemma refine_encode_enum :
+  Lemma refine_format_enum :
     forall idx ce,
       refine (format_enum idx ce)
-             (ret (encode_enum_Impl idx ce)).
+             (ret (encode_enum idx ce)).
   Proof.
     intros; reflexivity.
   Qed.

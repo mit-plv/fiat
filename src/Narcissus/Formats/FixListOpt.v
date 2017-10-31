@@ -5,7 +5,7 @@ Require Import
 Require Export
         Coq.Lists.List.
 
-Notation "| ls |" := (Datatypes.length ls) : binencoders_scope.
+Notation "| ls |" := (Datatypes.length ls) : format_scope.
 
 Section FixList.
   Context {A : Type}.
@@ -15,14 +15,14 @@ Section FixList.
 
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
-  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheFormat -> Comp (B * CacheFormat).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_decode_pf : CorrectDecoder monoid A_predicate A_predicate_rest format_A A_decode A_cache_inv.
 
   (* Ben: Should we do this with a FixComp instead? *)
-  Fixpoint format_list (xs : list A) (ce : CacheEncode)
-    : Comp (B * CacheEncode) :=
+  Fixpoint format_list (xs : list A) (ce : CacheFormat)
+    : Comp (B * CacheFormat) :=
     match xs with
     | nil => ret (mempty, ce)
     | x :: xs' => `(b1, env1) <- format_A x ce;
@@ -30,14 +30,14 @@ Section FixList.
                   ret (mappend b1 b2, env2)
     end%comp.
 
-  Fixpoint encode_list_Impl
-           (A_encode_Impl : A -> CacheEncode -> B * CacheEncode)
-           (xs : list A) (ce : CacheEncode)
-    : B * CacheEncode :=
+  Fixpoint encode_list
+           (encode_A : A -> CacheFormat -> B * CacheFormat)
+           (xs : list A) (ce : CacheFormat)
+    : B * CacheFormat :=
     match xs with
     | nil => (mempty, ce)
-    | x :: xs' =>  let (b1, env1) := A_encode_Impl x ce in
-                   let (b2, env2) := encode_list_Impl A_encode_Impl xs' env1 in
+    | x :: xs' =>  let (b1, env1) := encode_A x ce in
+                   let (b2, env2) := encode_list encode_A xs' env1 in
                    (mappend b1 b2, env2)
     end%comp.
 
@@ -119,40 +119,40 @@ Section FixList.
   Qed.
 
 
-  Definition encode_list_body
-               (A_encode_Impl : A -> CacheEncode -> B * CacheEncode)
-:= (fun (acc: B * CacheEncode) x =>
+  Definition format_list_body
+               (A_format_Impl : A -> CacheFormat -> B * CacheFormat)
+:= (fun (acc: B * CacheFormat) x =>
                                     let (bacc, env) := acc in
-                                       let (b1, env1) := A_encode_Impl x env in
+                                       let (b1, env1) := A_format_Impl x env in
                                        (mappend bacc b1, env1)).
 
-  Lemma encode_list_body_characterization A_encode_Impl :
+  Lemma format_list_body_characterization A_format_Impl :
     forall xs base env,
-      fold_left (encode_list_body A_encode_Impl) xs (base, env) =
-      (let (b2, env2) := fold_left (encode_list_body A_encode_Impl) xs (mempty, env) in
+      fold_left (format_list_body A_format_Impl) xs (base, env) =
+      (let (b2, env2) := fold_left (format_list_body A_format_Impl) xs (mempty, env) in
        (mappend base b2, env2)).
   Proof.
     induction xs; simpl.
     + intros; rewrite mempty_right; reflexivity.
-    + intros; destruct (A_encode_Impl _ _).
+    + intros; destruct (A_format_Impl _ _).
       rewrite IHxs, mempty_left, (IHxs b).
       destruct (fold_left _ _ _).
       rewrite mappend_assoc; reflexivity.
   Qed.
 
-  Lemma encode_list_as_foldl A_encode_Impl :
+  Lemma format_list_as_foldl encode_A :
     forall xs env,
-      encode_list_Impl A_encode_Impl xs env =
-      fold_left (encode_list_body A_encode_Impl) xs (mempty, env).
+      encode_list encode_A xs env =
+      fold_left (format_list_body encode_A) xs (mempty, env).
   Proof.
     induction xs; simpl.
     + reflexivity.
-    + intros; destruct (A_encode_Impl _ _).
-      rewrite IHxs, mempty_left, (encode_list_body_characterization A_encode_Impl xs b c).
+    + intros; destruct (encode_A _ _).
+      rewrite IHxs, mempty_left, (format_list_body_characterization encode_A xs b c).
       destruct (fold_left _ _ _); reflexivity.
   Qed.
 
-  Lemma measure_encode_length_Spec n :
+  Lemma measure_format_length_Spec n :
     (forall (a : A) b ctx ctx',
         computes_to (format_A a ctx) (b, ctx')
         -> bin_measure b = n)
@@ -179,7 +179,7 @@ End FixList.
 Lemma FixedList_predicate_rest_True {A B}
       {cache : Cache}
       {monoid : Monoid B}
-      (format_A : A -> CacheEncode -> Comp (B * CacheEncode))
+      (format_A : A -> CacheFormat -> Comp (B * CacheFormat))
   : forall (l : list A) (b : B),
     FixList_predicate_rest (fun a b => True) format_A l b.
 Proof.

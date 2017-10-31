@@ -8,6 +8,8 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Common.DecideableEnsembles
+        Fiat.Common.IterateBoundedIndex
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
@@ -24,8 +26,7 @@ Require Import
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.DomainNameOpt
-        Fiat.Common.IterateBoundedIndex
-        Fiat.Common.Tactics.CacheStringConstant.
+        Fiat.Narcissus.Examples.DNS.DNSPacket.
 
 Require Import
         Bedrock.Word.
@@ -62,17 +63,17 @@ Section DnsPacket.
     (k, v) :: l.
 
   Instance dns_list_cache : Cache :=
-    {| CacheEncode := option (word 17) * association_list string pointerT;
+    {| CacheFormat := option (word 17) * association_list string pointerT;
        CacheDecode := option (word 17) * association_list pointerT string;
        Equiv ce cd := fst ce = fst cd
                       /\ (snd ce) = (map (fun ps => match ps with (p, s) => (s, p) end) (snd cd))
                       /\ NoDup (map fst (snd cd))
     |}%type.
 
-  Definition list_CacheEncode_empty : CacheEncode := (Some (wzero _), nil).
+  Definition list_CacheFormat_empty : CacheFormat := (Some (wzero _), nil).
   Definition list_CacheDecode_empty : CacheDecode := (Some (wzero _), nil).
 
-  Lemma list_cache_empty_Equiv : Equiv list_CacheEncode_empty list_CacheDecode_empty.
+  Lemma list_cache_empty_Equiv : Equiv list_CacheFormat_empty list_CacheDecode_empty.
   Proof.
     simpl; intuition; simpl; econstructor.
   Qed.
@@ -119,7 +120,7 @@ Section DnsPacket.
   Defined.
 
   Lemma cacheGetDNPointer_pf
-    : forall (ce : CacheEncode) (cd : CacheDecode)
+    : forall (ce : CacheFormat) (cd : CacheDecode)
              (p : string) (q : pointerT),
       Equiv ce cd ->
       (association_list_find_first (snd cd) q = Some p <-> List.In q (association_list_find_all (snd ce) p)).
@@ -151,7 +152,7 @@ Section DnsPacket.
        get_correct := cacheGetDNPointer_pf |}.
 
   Lemma cacheAddDNPointer_pf
-    : forall (ce : CacheEncode) (cd : CacheDecode) (t : string * pointerT),
+    : forall (ce : CacheFormat) (cd : CacheDecode) (t : string * pointerT),
    Equiv ce cd ->
    add_ptr_OK t ce cd ->
    Equiv (fst ce, association_list_add (snd ce) (fst t) (snd t))
@@ -943,24 +944,24 @@ Section DnsPacket.
 
   (* Resource Record <character-string>s are a byte, *)
   (* followed by that many characters. *)
-  Definition encode_characterString_Spec (s : string) :=
+  Definition format_characterString_Spec (s : string) :=
     format_nat 8 (String.length s)
                     ThenC format_string s
                     DoneC.
 
-  Definition encode_question_Spec (q : question) :=
+  Definition format_question_Spec (q : question) :=
     format_DomainName q!"qname"
                            ThenC format_enum QType_Ws q!"qtype"
                            ThenC format_enum QClass_Ws q!"qclass"
                            DoneC.
 
 
-  Definition encode_TXT_Spec (s : string) :=
+  Definition format_TXT_Spec (s : string) :=
     format_unused_word 16 (* Unusued RDLENGTH Field *)
-                            ThenC encode_characterString_Spec s
+                            ThenC format_characterString_Spec s
                             DoneC.
 
-  Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
+  Definition format_SOA_RDATA_Spec (soa : SOA_RDATA) :=
     format_unused_word 16 (* Unusued RDLENGTH Field *)
                             ThenC format_DomainName soa!"sourcehost"
                             ThenC format_DomainName soa!"contact_email"
@@ -971,73 +972,73 @@ Section DnsPacket.
                             ThenC format_word soa!"minTTL"
                             DoneC.
 
-  Definition encode_WKS_RDATA_Spec (wks : WKS_RDATA) :=
+  Definition format_WKS_RDATA_Spec (wks : WKS_RDATA) :=
     format_nat 16 (length (wks!"Bit-Map"))
                     ThenC format_word wks!"Address"
                     ThenC format_word wks!"Protocol"
                     ThenC (format_list format_word wks!"Bit-Map")
                     DoneC.
 
-  Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
+  Definition format_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
     format_unused_word 16 (* Unusued RDLENGTH Field *)
-                            ThenC encode_characterString_Spec hinfo!"CPU"
-                            ThenC encode_characterString_Spec hinfo!"OS"
+                            ThenC format_characterString_Spec hinfo!"CPU"
+                            ThenC format_characterString_Spec hinfo!"OS"
                             DoneC.
 
-  Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
+  Definition format_MX_RDATA_Spec (mx : MX_RDATA) :=
     format_unused_word 16 (* Unusued RDLENGTH Field *)
                             ThenC format_word mx!"Preference"
                             ThenC format_DomainName mx!"Exchange"
                             DoneC.
 
-  Definition encode_MINFO_RDATA_Spec (minfo : MINFO_RDATA) :=
+  Definition format_MINFO_RDATA_Spec (minfo : MINFO_RDATA) :=
     format_unused_word 16 (* Unusued RDLENGTH Field *)
                             ThenC format_DomainName minfo!"rMailBx"
                             ThenC format_DomainName minfo!"eMailBx"
                             DoneC.
 
-  Definition encode_A_Spec (a : Memory.W) :=
+  Definition format_A_Spec (a : Memory.W) :=
     format_unused_word 16 (* Unused RDLENGTH Field *)
                             ThenC format_word a
                             DoneC.
 
-  Definition encode_NS_Spec (domain : DomainName) :=
+  Definition format_NS_Spec (domain : DomainName) :=
     format_unused_word 16 (* Unused RDLENGTH Field *)
                             ThenC format_DomainName domain
                             DoneC.
 
-  Definition encode_CNAME_Spec (domain : DomainName) :=
+  Definition format_CNAME_Spec (domain : DomainName) :=
     format_unused_word 16 (* Unused RDLENGTH Field *)
                             ThenC format_DomainName domain
                             DoneC.
 
-  Definition encode_PTR_Spec (domain : DomainName) :=
+  Definition format_PTR_Spec (domain : DomainName) :=
     format_unused_word 16 (* Unused RDLENGTH Field *)
                             ThenC format_DomainName domain
                             DoneC.
 
-  Definition encode_rdata_Spec :=
+  Definition format_rdata_Spec :=
     format_SumType ResourceRecordTypeTypes
-                        (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
-                        (icons encode_A_Spec (* A; host address 	[RFC1035] *)
-                        (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
-                        (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
-                        (icons encode_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
-                        (icons (encode_PTR_Spec) (* PTR domain name pointer 	[RFC1035] *)
-                        (icons encode_HINFO_RDATA_Spec (* HINFO host information 	[RFC1035] *)
-                        (icons (encode_MINFO_RDATA_Spec) (* MINFO mailbox or mail list information 	[RFC1035] *)
-                        (icons encode_MX_RDATA_Spec  (* MX  mail exchange 	[RFC1035] *)
-                        (icons encode_TXT_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
+                        (icons (format_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
+                        (icons format_A_Spec (* A; host address 	[RFC1035] *)
+                        (icons (format_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
+                        (icons format_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
+                        (icons format_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
+                        (icons (format_PTR_Spec) (* PTR domain name pointer 	[RFC1035] *)
+                        (icons format_HINFO_RDATA_Spec (* HINFO host information 	[RFC1035] *)
+                        (icons (format_MINFO_RDATA_Spec) (* MINFO mailbox or mail list information 	[RFC1035] *)
+                        (icons format_MX_RDATA_Spec  (* MX  mail exchange 	[RFC1035] *)
+                        (icons format_TXT_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
 
-  Definition encode_resource_Spec(r : resourceRecord) :=
+  Definition format_resource_Spec(r : resourceRecord) :=
     format_DomainName r!sNAME
                            ThenC format_enum RRecordType_Ws (RDataTypeToRRecordType r!sRDATA)
                            ThenC format_enum RRecordClass_Ws r!sCLASS
                            ThenC format_word r!sTTL
-                           ThenC encode_rdata_Spec r!sRDATA
+                           ThenC format_rdata_Spec r!sRDATA
                            DoneC.
 
-  Definition encode_packet_Spec (p : packet) :=
+  Definition format_packet_Spec (p : packet) :=
     format_word p!"id"
                      ThenC format_word (WS p!"QR" WO)
                      ThenC format_enum Opcode_Ws p!"Opcode"
@@ -1051,8 +1052,8 @@ Section DnsPacket.
                      ThenC format_nat 16 (|p!"answers"|)
                      ThenC format_nat 16 (|p!"authority"|)
                      ThenC format_nat 16 (|p!"additional"|)
-                     ThenC encode_question_Spec p!"question"
-                     ThenC (format_list encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
+                     ThenC format_question_Spec p!"question"
+                     ThenC (format_list format_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
                      DoneC.
 
   Ltac decode_DNS_rules g :=
@@ -1065,12 +1066,12 @@ Section DnsPacket.
                 boundPeekSome addPeekNone addPeekNone'
                 addZeroPeek addPeekESome boundPeekESome
                 addPeekENone addPeekENone' addZeroPeekE)
-    | |- appcontext [CorrectDecoder _ _ _ _ (format_list encode_resource_Spec) _ _] =>
+    | |- appcontext [CorrectDecoder _ _ _ _ (format_list format_resource_Spec) _ _] =>
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
 
   Definition packet_decoder
-    : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
+    : CorrectDecoderFor DNS_Packet_OK format_packet_Spec.
   Proof.
     synthesize_decoder_ext monoid
                            decode_DNS_rules

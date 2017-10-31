@@ -14,18 +14,18 @@ Section Word.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Fixpoint format_word' (s : nat) (w : word s) (b' : B) : B :=
+  Fixpoint encode_word' (s : nat) (w : word s) (b' : B) : B :=
     match w with
     | WO => b'
-    | WS b s' w' => enqueue_opt b (format_word' s' w' b')
+    | WS b s' w' => enqueue_opt b (encode_word' s' w' b')
     end.
 
   Eval compute in (wordToNat (WS true (WS false (WS false (WS false (WO)))))).
 
-  Definition encode_word (w : word sz) (ce : CacheEncode) : B * CacheEncode := (format_word' sz w mempty, addE ce sz).
+  Definition encode_word (w : word sz) (ce : CacheFormat) : B * CacheFormat := (encode_word' sz w mempty, addE ce sz).
 
-  Definition format_word (w : word sz) (ce : CacheEncode) : Comp (B * CacheEncode) :=
-    ret (format_word' sz w mempty, addE ce sz).
+  Definition format_word (w : word sz) (ce : CacheFormat) : Comp (B * CacheFormat) :=
+    ret (encode_word' sz w mempty, addE ce sz).
 
   Fixpoint SW_word {sz} (b : bool) (w : word sz) : word (S sz) :=
     match w with
@@ -71,8 +71,8 @@ Section Word.
 
   Lemma enqueue_opt_format_word :
     forall n w b b',
-      enqueue_opt b (format_word' n w b') =
-      mappend (format_word' n w b') (enqueue_opt b mempty).
+      enqueue_opt b (encode_word' n w b') =
+      mappend (encode_word' n w b') (enqueue_opt b mempty).
   Proof.
     induction w; simpl; intros; eauto.
     - rewrite <- enqueue_mappend_opt, mempty_right; auto.
@@ -82,11 +82,11 @@ Section Word.
       rewrite IHw; reflexivity.
   Qed.
 
-  Lemma dequeue_format_word'_enqueue_opt' :
+  Lemma dequeue_encode_word'_enqueue_opt' :
     forall n w w' b b' ext,
       dequeue_opt w' = Some (b, b')
-      -> dequeue_opt (mappend (format_word' n w w') ext) =
-           Some (b, (mappend (format_word' n w b') ext)).
+      -> dequeue_opt (mappend (encode_word' n w w') ext) =
+           Some (b, (mappend (encode_word' n w b') ext)).
   Proof.
     induction w; simpl; intros.
     - erewrite dequeue_mappend_opt; eauto using dequeue_head_opt.
@@ -96,19 +96,19 @@ Section Word.
       rewrite <- enqueue_opt_format_word; reflexivity.
   Qed.
 
-  Corollary dequeue_format_word'_enqueue_opt :
+  Corollary dequeue_encode_word'_enqueue_opt :
     forall n w b ext,
-      dequeue_opt (mappend (format_word' n w (enqueue_opt b mempty)) ext) =
-      Some (b, (mappend (format_word' n w mempty) ext)).
+      dequeue_opt (mappend (encode_word' n w (enqueue_opt b mempty)) ext) =
+      Some (b, (mappend (encode_word' n w mempty) ext)).
   Proof.
-    intros; eapply dequeue_format_word'_enqueue_opt'.
+    intros; eapply dequeue_encode_word'_enqueue_opt'.
     eapply dequeue_head_opt.
   Qed.
 
   Lemma dequeue_opt_Some' :
     forall n w ext,
-      dequeue_opt (mappend (format_word' (S n) w mempty) ext)
-      = Some (word_split_hd w, (mappend (format_word' n (word_split_tl w) mempty) ext)).
+      dequeue_opt (mappend (encode_word' (S n) w mempty) ext)
+      = Some (word_split_hd w, (mappend (encode_word' n (word_split_tl w) mempty) ext)).
   Proof.
     induction n; simpl; intros.
     - shatter_word w; simpl in *.
@@ -122,9 +122,9 @@ Section Word.
       rewrite <- mappend_assoc; auto.
   Qed.
 
-  Lemma decode_format_word'
+  Lemma decode_encode_word'
     : forall {n} w ext,
-      decode_word' n (mappend (format_word' n w mempty) ext)
+      decode_word' n (mappend (encode_word' n w mempty) ext)
       = Some (w, ext).
   Proof.
     induction n; simpl; intros; try shatter_word w; simpl in *.
@@ -142,7 +142,7 @@ Section Word.
       + rewrite dequeue_opt_Some'.
         unfold DecodeBindOpt, BindOpt at 1; unfold If_Opt_Then_Else.
         assert (decode_word' (S n)
-                   (mappend (format_word' n (word_split_tl x0) mempty)
+                   (mappend (encode_word' n (word_split_tl x0) mempty)
                               (mappend (enqueue_opt x mempty) ext))
                 = Some (WS x (word_split_tl x0), ext)).
         { simpl.
@@ -155,10 +155,10 @@ Section Word.
         unfold BindOpt. rewrite H; simpl; rewrite <- (word_split_SW x0); auto.
   Qed.
 
-  Lemma decode_format_word'_Some
+  Lemma decode_encode_word'_Some
     : forall sz bin data ext,
       decode_word' sz bin = Some (data, ext)
-      -> bin = mappend (format_word' sz data mempty) ext.
+      -> bin = mappend (encode_word' sz data mempty) ext.
   Proof.
     induction sz0; simpl; intros.
     - shatter_word data; simpl; injections.
@@ -171,7 +171,7 @@ Section Word.
       apply IHsz0 in Heqo0; subst.
       eapply dequeue_opt_inj; eauto.
       simpl.
-      rewrite <- dequeue_format_word'_enqueue_opt.
+      rewrite <- dequeue_encode_word'_enqueue_opt.
       clear; revert ext; induction w; simpl; auto; intros.
       rewrite !enqueue_opt_format_word, <- !mappend_assoc.
       rewrite IHw; reflexivity.
@@ -189,13 +189,13 @@ Section Word.
     - intros env env' xenv w w' ext env_OK Eeq _ _ Penc.
       computes_to_inv; injections.
       generalize dependent sz.
-      intros; rewrite decode_format_word'; simpl.
+      intros; rewrite decode_encode_word'; simpl.
       eexists; split; eauto using add_correct.
     - intros.
       destruct (decode_word' sz bin)
         as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
       injections.
-      apply decode_format_word'_Some in Heqo; subst.
+      apply decode_encode_word'_Some in Heqo; subst.
       split; eauto using add_correct.
       eexists; eexists; repeat split.
       eauto using add_correct.
@@ -205,7 +205,7 @@ Section Word.
     : forall (a : word sz) (b' b1 : B),
       decode_word' _ b1 = Some (a, b') -> le_B b' b1.
   Proof.
-    intros; apply decode_format_word'_Some in H; subst.
+    intros; apply decode_encode_word'_Some in H; subst.
     unfold le_B.
     rewrite mappend_measure; omega.
   Qed.
@@ -253,9 +253,9 @@ Section Word.
   Qed.
 
   Definition format_unused_word' (sz : nat) b
-             (_ : unit) (ctx : CacheEncode) :=
+             (_ : unit) (ctx : CacheFormat) :=
     (w <- { w : word sz | True};
-       ret (format_word' sz w b, addE ctx sz))%comp.
+       ret (encode_word' sz w b, addE ctx sz))%comp.
 
   Definition format_unused_word
              (sz : nat) :=
@@ -293,13 +293,13 @@ Section Word.
     reflexivity.
   Qed.
 
-  Lemma monoid_dequeue_format_word'
+  Lemma monoid_dequeue_encode_word'
         (sz' : nat)
     : forall (w : word sz') (ext : B),
-      monoid_dequeue_word sz' (mappend (format_word' _ w mempty ) ext) = Some (w, ext).
+      monoid_dequeue_word sz' (mappend (encode_word' _ w mempty ) ext) = Some (w, ext).
   Proof.
     intros; unfold monoid_dequeue_word.
-    apply decode_format_word'.
+    apply decode_encode_word'.
   Qed.
 
   Definition decode_unused_word' (s : nat) (b : B) : option (unit * B) :=
@@ -321,7 +321,7 @@ Section Word.
     - intros env env' xenv w w' ext env_OK Eeq _ _ Penc.
       computes_to_inv; injections.
       unfold decode_unused_word'.
-      rewrite monoid_dequeue_format_word'; simpl.
+      rewrite monoid_dequeue_encode_word'; simpl.
       destruct w.
       eexists; split; eauto using add_correct.
     - intros.
@@ -334,7 +334,7 @@ Section Word.
       destruct (decode_word' sz' bin)  as [ [? ?] | ] eqn: ? ; simpl in *;
         try discriminate.
       injections.
-      apply decode_format_word'_Some in Heqo0.
+      apply decode_encode_word'_Some in Heqo0.
       eexists; eexists; repeat split.
       repeat computes_to_econstructor; eauto.
       apply Heqo0.
@@ -345,12 +345,12 @@ End Word.
 
 Arguments format_unused_word {_ _ _ _ _} sz ctx _.
 
-Lemma monoid_get_format_word' {B}
+Lemma monoid_get_encode_word' {B}
       {monoid : Monoid B}
       {monoid_opt : QueueMonoidOpt monoid bool}
       (sz : nat)
   : forall (w : word sz) (ext : B),
-    monoid_get_word sz (mappend (format_word' _ w mempty) ext) = Some w.
+    monoid_get_word sz (mappend (encode_word' _ w mempty) ext) = Some w.
 Proof.
   induction sz; simpl; intros; try shatter_word w; simpl in *.
     - reflexivity.
@@ -368,7 +368,7 @@ Proof.
           rewrite enqueue_opt_format_word in H.
           rewrite <- mappend_assoc in H.
           destruct (dequeue_opt
-          (mappend (format_word' sz (word_split_tl x0) mempty)
+          (mappend (encode_word' sz (word_split_tl x0) mempty)
                      (mappend (enqueue_opt x mempty) ext))) as [ [? ?] | ];
             simpl in *; try discriminate.
           destruct (monoid_get_word sz b0); try discriminate.

@@ -66,14 +66,14 @@ Section TCPPacketDecoder.
              (n : nat)
              (b : ByteString)
     := IPChecksum_Valid (96 + n)
-       (mappend (mappend (IPChecksum.format_word srcAddr)
-                  (mappend (IPChecksum.format_word destAddr)
-                  (mappend (IPChecksum.format_word (wzero 8))
-                  (mappend (IPChecksum.format_word (natToWord 8 6))
-                  (IPChecksum.format_word tcpLength)))))
+       (mappend (mappend (IPChecksum.encode_word srcAddr)
+                  (mappend (IPChecksum.encode_word destAddr)
+                  (mappend (IPChecksum.encode_word (wzero 8))
+                  (mappend (IPChecksum.encode_word (natToWord 8 6))
+                  (IPChecksum.encode_word tcpLength)))))
                   b).
 
-  Definition encode_TCP_Packet_Spec
+  Definition format_TCP_Packet_Spec
              (tcp : TCP_Packet) :=
          (      format_word (tcp!"SourcePort")
           ThenC format_word (tcp!"DestPort")
@@ -111,7 +111,7 @@ ThenCarryOn (format_option format_word (format_unused_word' 16 ByteString_id) tc
     (fun _ : ByteString => (wordToNat tcpLength) * 8).
 
   Lemma TCP_Packet_Header_Len_OK
-    : forall (tcp : TCP_Packet) (ctx ctx' ctx'' : CacheEncode) (c : word 16) (b b'' ext : ByteString),
+    : forall (tcp : TCP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
       (      format_word (tcp!"SourcePort")
           ThenC format_word (tcp!"DestPort")
           ThenC format_word (tcp!"SeqNumber")
@@ -145,7 +145,7 @@ ThenCarryOn (format_option format_word (format_unused_word' 16 ByteString_id) tc
    (fun a0 : TCP_Packet =>
     16 + ((|a0!"Options"|) * 32 + ((|a0!"Payload" |) * 8 + length_ByteString ByteString_id))) tcp + 16 =
     (TCP_Length
-       (mappend (mappend b (mappend (encode_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext)).
+       (mappend (mappend b (mappend (format_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext)).
 Proof.
   intros.
   intros; change mempty with ByteString_id; rewrite length_ByteString_ByteString_id.
@@ -160,7 +160,7 @@ Proof.
 Qed.
 
 Definition TCP_Packet_decoder'
-  : CorrectDecoderFor TCP_Packet_OK encode_TCP_Packet_Spec.
+  : CorrectDecoderFor TCP_Packet_OK format_TCP_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
   normalize_compose monoid.

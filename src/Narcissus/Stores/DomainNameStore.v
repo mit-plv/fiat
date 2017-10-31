@@ -44,17 +44,17 @@ Section DomainNameCache.
     (k, v) :: l.
 
   Global Instance dns_list_cache : Cache :=
-    {| CacheEncode := option (word 17) * association_list string pointerT;
+    {| CacheFormat := option (word 17) * association_list string pointerT;
        CacheDecode := option (word 17) * association_list pointerT string;
        Equiv ce cd := fst ce = fst cd
                       /\ (snd ce) = (map (fun ps => match ps with (p, s) => (s, p) end) (snd cd))
                       /\ NoDup (map fst (snd cd))
     |}%type.
 
-  Definition list_CacheEncode_empty : CacheEncode := (Some (wzero _), nil).
+  Definition list_CacheFormat_empty : CacheFormat := (Some (wzero _), nil).
   Definition list_CacheDecode_empty : CacheDecode := (Some (wzero _), nil).
 
-  Lemma list_cache_empty_Equiv : Equiv list_CacheEncode_empty list_CacheDecode_empty.
+  Lemma list_cache_empty_Equiv : Equiv list_CacheFormat_empty list_CacheDecode_empty.
   Proof.
     simpl; intuition; simpl; econstructor.
   Qed.
@@ -101,7 +101,7 @@ Section DomainNameCache.
   Defined.
 
   Lemma cacheGetDNPointer_pf
-    : forall (ce : CacheEncode) (cd : CacheDecode)
+    : forall (ce : CacheFormat) (cd : CacheDecode)
              (p : string) (q : pointerT),
       Equiv ce cd ->
       (association_list_find_first (snd cd) q = Some p <-> List.In q (association_list_find_all (snd ce) p)).
@@ -133,7 +133,7 @@ Section DomainNameCache.
        get_correct := cacheGetDNPointer_pf |}.
 
   Lemma cacheAddDNPointer_pf
-    : forall (ce : CacheEncode) (cd : CacheDecode) (t : string * pointerT),
+    : forall (ce : CacheFormat) (cd : CacheDecode) (t : string * pointerT),
       Equiv ce cd ->
       add_ptr_OK t ce cd ->
       Equiv (fst ce, association_list_add (snd ce) (fst t) (snd t))
@@ -788,7 +788,7 @@ Section DomainNameCache.
   Qed.
 
   Lemma addE_addE_plus :
-    forall (cd : CacheEncode) (n m : nat), addE (addE cd n) m = addE cd (n + m).
+    forall (cd : CacheFormat) (n m : nat), addE (addE cd n) m = addE cd (n + m).
   Proof.
     simpl; intros.
     destruct (fst cd); simpl; eauto.
@@ -819,19 +819,19 @@ Section DomainNameCache.
     omega.
   Qed.
 
-  Ltac solve_GoodCache_inv _ :=
-    lazymatch goal with
-      |- cache_inv_Property ?Z _ =>
-      unify Z GoodCache;
-      unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10, cacheIndependent_add_11, cacheIndependent_add_12, cacheIndependent_add_13;
-      try match goal with
-            H : _ = _ |- _ =>
-            try solve [ eapply cacheIndependent_add_3 in H; intuition eauto ];
-            try solve [ eapply cacheIndependent_add_9 in H; intuition eauto ];
-            try solve [ eapply cacheIndependent_add_5 in H; intuition eauto ]
-          end;
-      try solve [instantiate (1 := fun _ => True); exact I]
-    end.
-
 End DomainNameCache.
+
+Ltac solve_GoodCache_inv _ :=
+  lazymatch goal with
+    |- cache_inv_Property ?Z _ =>
+    unify Z GoodCache;
+    unfold cache_inv_Property; repeat split;
+    eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10, cacheIndependent_add_11, cacheIndependent_add_12, cacheIndependent_add_13;
+    try match goal with
+          H : _ = _ |- _ =>
+          try solve [ eapply cacheIndependent_add_3 in H; intuition eauto ];
+          try solve [ eapply cacheIndependent_add_9 in H; intuition eauto ];
+          try solve [ eapply cacheIndependent_add_5 in H; intuition eauto ]
+        end;
+    try solve [instantiate (1 := fun _ => True); exact I]
+  end.

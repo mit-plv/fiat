@@ -15,30 +15,30 @@ Section Specifications.
   Variable B : Type. (* Target Type. (usually ByteStrings) *)
   Context {store : Cache}. (* Store Type. *)
 
-  (* Formats are a quaternary relation on an source value, initial store, 
+  (* Formats are a quaternary relation on an source value, initial store,
      target value, and final store. *)
-  Definition FormatM : Type := 
-    A -> CacheEncode -> Comp (B * CacheEncode).
+  Definition FormatM : Type :=
+    A -> CacheFormat -> Comp (B * CacheFormat).
 
-  (* Decoders consume a target value and store and produce either 
+  (* Decoders consume a target value and store and produce either
      - a source value, remaining target value, and updated store
      - or an error value, i.e. None. *)
 
   Definition DecodeM : Type :=
     B -> CacheDecode -> option (A * B * CacheDecode).
-  
+
   Local Notation "a ∋ b" := (@computes_to _ a b) (at level 90).
   Local Notation "a ∌ b" := (~ @computes_to _ a b) (at level 90).
-  
-  Definition encode_decode_correct
+
+  Definition format_decode_correct
              (monoid : Monoid B)
              (predicate : A -> Prop)
-             (encode : A -> CacheEncode -> B * CacheEncode)
+             (format : A -> CacheFormat -> B * CacheFormat)
              (decode : B -> CacheDecode -> A * B * CacheDecode) :=
     forall env env' xenv xenv' data data' bin ext ext',
       Equiv env env' ->
       predicate data ->
-      encode data env = (bin, xenv) ->
+      format data env = (bin, xenv) ->
       decode (mappend bin ext) env' = (data', ext', xenv') ->
       Equiv xenv xenv' /\ data = data' /\ ext = ext'.
 
@@ -46,7 +46,7 @@ Section Specifications.
              (monoid : Monoid B)
              (predicate : A -> Prop)
              (rest_predicate : A -> B -> Prop)
-             (encode : FormatM)
+             (format : FormatM)
              (decode : DecodeM)
              (decode_inv : CacheDecode -> Prop) :=
     (forall env env' xenv data bin ext
@@ -54,7 +54,7 @@ Section Specifications.
         Equiv env env' ->
         predicate data ->
         rest_predicate data ext ->
-        encode data env ∋ (bin, xenv) ->
+        format data env ∋ (bin, xenv) ->
         exists xenv',
           decode (mappend bin ext) env' = Some (data, ext, xenv')
           /\ Equiv xenv xenv' /\ decode_inv xenv') /\
@@ -64,7 +64,7 @@ Section Specifications.
         -> decode bin env' = Some (data, ext, xenv')
         -> decode_inv xenv'
            /\ exists bin' xenv,
-            (encode data env ∋ (bin', xenv))
+            (format data env ∋ (bin', xenv))
             /\ bin = mappend bin' ext
             /\ predicate data
             /\ Equiv xenv xenv').
@@ -123,17 +123,17 @@ Section Specifications.
     destruct (rest_predicate_dec a b'); intuition.
     right; right; intros; eapply CorrectDecoderNone; eauto.
   Qed.
-  
+
   Lemma decode_None :
     forall (monoid : Monoid B)
            (predicate : A -> Prop)
            (rest_predicate : A -> B -> Prop)
-           (encode : A -> CacheEncode -> Comp (B * CacheEncode))
+           (format : A -> CacheFormat -> Comp (B * CacheFormat))
            (decode : B -> CacheDecode -> option (A * B * CacheDecode))
            (decode_inv : CacheDecode -> Prop)
            (predicate_dec : forall a, {predicate a} + {~ predicate a})
            (rest_predicate_dec : forall data, {rest_predicate data mempty} + {~rest_predicate data mempty}),
-      CorrectDecoder monoid predicate rest_predicate encode decode decode_inv
+      CorrectDecoder monoid predicate rest_predicate format decode decode_inv
       -> forall b env' env,
         Equiv env env'
         -> decode b env' = None
@@ -141,7 +141,7 @@ Section Specifications.
         -> forall data,
           ~ predicate data
           \/ ~ rest_predicate data mempty
-          \/ ~ exists xenv, encode data env ∋ (b, xenv).
+          \/ ~ exists xenv, format data env ∋ (b, xenv).
   Proof.
     intros.
     destruct (predicate_dec data); try (solve [intuition]).
@@ -153,6 +153,31 @@ Section Specifications.
     rewrite mempty_right in H5; congruence.
   Qed.
 
+  Local Transparent computes_to.
+ 
+  (* We can always strengthen a format to disallow invalid data. *)
+  Lemma CorrectDecoderStrengthenFormat :
+    forall (monoid : Monoid B)
+           (predicate : A -> Prop)
+           (rest_predicate : A -> B -> Prop)
+           (format : A -> CacheFormat -> Comp (B * CacheFormat))
+           (decode : B -> CacheDecode -> option (A * B * CacheDecode))
+           (decode_inv : CacheDecode -> Prop)
+           (predicate_dec : forall a, {predicate a} + {~ predicate a})
+           (rest_predicate_dec : forall data, {rest_predicate data mempty} + {~rest_predicate data mempty}),
+      CorrectDecoder monoid predicate rest_predicate format decode decode_inv
+      ->
+      CorrectDecoder monoid predicate rest_predicate  (fun a s b => (format a s ∋ b) /\ predicate a) decode decode_inv.
+  Proof.
+    intros; destruct H; unfold CorrectDecoder; split; intros.
+    eapply H; eauto.
+    apply (proj1 H4).
+    destruct (H0 env env' xenv' data bin ext) as [? [? [? ?] ] ]; intuition eauto.
+    eexists _, _; intuition eauto.
+    unfold computes_to; eauto.
+  Qed.
+  Local Opaque computes_to.
+  
   Definition BindOpt {A' A''}
              (a_opt : option A')
              (k : A' -> option A'') :=
@@ -345,12 +370,12 @@ Proof.
 Qed.
 
 Notation "`( a , b , env ) <- c ; k" :=
-  (DecodeBindOpt2 c%bencode (fun a b env => k%bencode)) : binencoders_scope.
+  (DecodeBindOpt2 c%format (fun a b env => k%format)) : format_scope.
 
 Notation "`( a , b ) <- c ; k" :=
-  (DecodeBindOpt c%bencode (fun a b => k%bencode)) : binencoders_scope.
+  (DecodeBindOpt c%format (fun a b => k%format)) : format_scope.
 
-Open Scope binencoders_scope.
+Open Scope format_scope.
 
 Lemma optimize_If_bind2_bool {A A' B B' C}
   : forall (c : bool)
@@ -410,11 +435,11 @@ Add Parametric Morphism
     rest_predicate
     (decode : B -> CacheDecode -> option (A * B * CacheDecode))
     (decode_inv : CacheDecode -> Prop)
-  : (fun encoder =>
+  : (fun format =>
        @CorrectDecoder A B cache monoid predicate
-                                rest_predicate encoder decode decode_inv)
+                                rest_predicate format decode decode_inv)
     with signature (pointwise_relation _ (pointwise_relation _ refineEquiv) ==> impl)
-      as encode_decode_correct_refineEquiv.
+      as format_decode_correct_refineEquiv.
 Proof.
   unfold impl, pointwise_relation, CorrectDecoder;
     intuition eauto; intros.
@@ -431,7 +456,7 @@ Section DecodeWMeasure.
   Context {cache : Cache}.
   Context {monoid : Monoid B}.
 
-  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheFormat -> Comp (B * CacheFormat).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
 
   Definition Decode_w_Measure_lt
@@ -633,11 +658,11 @@ Definition Pick_Decoder_For
            Invariant
            FormatSpec
            (b : B)
-           (ce : CacheEncode)
+           (ce : CacheFormat)
   := {a : option A |
       forall a' : A,
         a = Some a' <->
-        (exists b1 b2 (ce' : CacheEncode),
+        (exists b1 b2 (ce' : CacheFormat),
             computes_to (FormatSpec a' ce) (b1, ce')
             /\ b = mappend b1 b2
             /\ Invariant a')}%comp.

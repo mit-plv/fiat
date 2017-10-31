@@ -15,43 +15,43 @@ Section SteppingList.
   Variable A_halt : A.
   Variable A_halt_dec : forall a, {a = A_halt} + {~ a = A_halt}.
   Variable A_predicate : A -> Prop.
-  Variable A_encode : A -> CacheEncode -> B * CacheEncode.
+  Variable A_format : A -> CacheFormat -> B * CacheFormat.
   Variable A_decode : B -> CacheDecode -> A * B * CacheDecode.
-  Variable A_decode_pf : encode_decode_correct monoid A_predicate A_encode A_decode.
+  Variable A_decode_pf : format_decode_correct monoid A_predicate A_format A_decode.
 
   Variable P_predicate : P -> Prop.
   Variable P_predicate_dec : forall p, {P_predicate p} + {~ P_predicate p}.
-  Variable P_encode : P -> CacheEncode -> B * CacheEncode.
+  Variable P_format : P -> CacheFormat -> B * CacheFormat.
   Variable P_decode : B -> CacheDecode -> P * B * CacheDecode.
-  Variable P_decode_pf : encode_decode_correct monoid P_predicate P_encode P_decode.
+  Variable P_decode_pf : format_decode_correct monoid P_predicate P_format P_decode.
 
-  Variable X_encode : bool -> CacheEncode -> B * CacheEncode.
+  Variable X_format : bool -> CacheFormat -> B * CacheFormat.
   Variable X_decode : B -> CacheDecode -> bool * B * CacheDecode.
-  Variable X_decode_pf : encode_decode_correct monoid (fun _ => True) X_encode X_decode.
+  Variable X_decode_pf : format_decode_correct monoid (fun _ => True) X_format X_decode.
 
   Variable cacheAdd : CacheAdd cache (list A * P).
   Variable cacheGet : CacheGet cache (list A) P.
   Variable cachePeek : CachePeek cache P.
 
-  (*Fixpoint encode_list_step (l : list A) (ce : CacheEncode) : B * CacheEncode :=
+  (*Fixpoint format_list_step (l : list A) (ce : CacheFormat) : B * CacheFormat :=
     match l with
-    | nil => let (b1, e1) := X_encode false ce in
-             let (b2, e2) := A_encode A_halt e1 in
+    | nil => let (b1, e1) := X_format false ce in
+             let (b2, e2) := A_format A_halt e1 in
                  (mappend b1 b2, e2)
     | cons x l' =>
       match getE ce l with
       | Some position =>
         if P_predicate_dec position
-        then let (b1, e1) := X_encode true ce in
-             let (b2, e2) := P_encode position e1 in
+        then let (b1, e1) := X_format true ce in
+             let (b2, e2) := P_format position e1 in
                  (mappend b1 b2, e2)
-        else let (b1, e1) := X_encode false ce in
-             let (b2, e2) := A_encode x e1 in
-             let (b3, e3) := encode_list_step l' e2 in
+        else let (b1, e1) := X_format false ce in
+             let (b2, e2) := A_format x e1 in
+             let (b3, e3) := format_list_step l' e2 in
                  (mappend (mappend b1 b2) b3, addE e3 (l, peekE ce))
-      | None => let (b1, e1) := X_encode false ce in
-                let (b2, e2) := A_encode x e1 in
-                let (b3, e3) := encode_list_step l' e2 in
+      | None => let (b1, e1) := X_format false ce in
+                let (b2, e2) := A_format x e1 in
+                let (b3, e3) := format_list_step l' e2 in
                     (mappend (mappend b1 b2) b3, addE e3 (l, peekE ce))
       end
     end.
@@ -82,13 +82,13 @@ Section SteppingList.
   Definition decode_list_step := decode'_list_step fuel.
 
   Theorem SteppingList_decode_correct :
-    encode_decode_correct
+    format_decode_correct
       cache monoid
       (fun ls => A_predicate A_halt /\ |ls| <= fuel /\ (forall x, In x ls -> A_predicate x /\
                                                                              ~ x = A_halt))
-      encode_list_step decode_list_step.
+      format_list_step decode_list_step.
   Proof.
-    unfold encode_decode_correct.
+    unfold format_decode_correct.
     intros env env' xenv xenv' l l' bin' ext ext' Eeq [Ppredh [PPredlen PPredA]] Penc Pdec.
     unfold decode_list_step in *; simpl in *.
     generalize dependent l'; generalize dependent fuel; clear fuel;
@@ -96,8 +96,8 @@ Section SteppingList.
       generalize dependent xenv; generalize dependent bin';
       generalize ext; generalize dependent ext'; generalize dependent xenv';
     induction l; intros; simpl in *.
-    { destruct (X_encode false env) eqn: ?.
-      destruct (A_encode A_halt c) eqn: ?.
+    { destruct (X_format false env) eqn: ?.
+      destruct (A_format A_halt c) eqn: ?.
       inversion Penc; subst; clear Penc.
       destruct (X_decode (mappend (mappend b b0) ext0) env') as [[? ?] ?] eqn: ?.
       rewrite <- mappend_assoc in Heqp1.
@@ -115,8 +115,8 @@ Section SteppingList.
     { destruct fuel as [| fuel']; try solve [ exfalso; intuition; inversion PPredlen ].
       destruct (getE env (a :: l)) eqn: ?.
       { destruct (P_predicate_dec p).
-        { destruct (X_encode true env) eqn: ?.
-          destruct (P_encode p c) eqn: ?. simpl in *.
+        { destruct (X_format true env) eqn: ?.
+          destruct (P_format p c) eqn: ?. simpl in *.
           destruct (X_decode (mappend bin' ext0) env') as [[? ?] ?] eqn: ?.
           destruct (P_decode (mappend b0 ext0) c1) as [[? ?] ?] eqn: ?.
           inversion Penc; subst; clear Penc.
@@ -126,9 +126,9 @@ Section SteppingList.
           eapply get_correct in Heqo; eauto.
           rewrite Heqp3, Heqo in Pdec.
           inversion Pdec; subst; eauto. }
-        { destruct (X_encode false env) eqn: ?.
-          destruct (A_encode a c) eqn: ?.
-          destruct (encode_list_step l c0) eqn: ?. simpl in *.
+        { destruct (X_format false env) eqn: ?.
+          destruct (A_format a c) eqn: ?.
+          destruct (format_list_step l c0) eqn: ?. simpl in *.
           inversion Penc; subst; clear Penc.
           destruct (X_decode (mappend (mappend (mappend b b0) b1) ext0) env')
             as [[? ?] ?] eqn: ?.
@@ -147,9 +147,9 @@ Section SteppingList.
             intuition eauto.
             erewrite peek_correct; eauto.
             eapply add_correct; eauto. } } }
-      { destruct (X_encode false env) eqn: ?.
-        destruct (A_encode a c) eqn: ?.
-        destruct (encode_list_step l c0) eqn: ?. simpl in *.
+      { destruct (X_format false env) eqn: ?.
+        destruct (A_format a c) eqn: ?.
+        destruct (format_list_step l c0) eqn: ?. simpl in *.
         inversion Penc; subst; clear Penc.
         destruct (X_decode (mappend (mappend (mappend b b0) b1) ext0) env')
           as [[? ?] ?] eqn: ?.

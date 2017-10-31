@@ -14,12 +14,12 @@ Section Ascii.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Definition format_ascii (c : ascii) (ce : CacheEncode)
-    : Comp (B * CacheEncode) :=
+  Definition format_ascii (c : ascii) (ce : CacheFormat)
+    : Comp (B * CacheFormat) :=
     format_word (NToWord 8 (N_of_ascii c)) ce.
 
-  Definition encode_ascii_Impl (c : ascii) (ce : CacheEncode)
-    : B * CacheEncode :=
+  Definition encode_ascii (c : ascii) (ce : CacheFormat)
+    : B * CacheFormat :=
     encode_word (NToWord 8 (N_of_ascii c)) ce.
 
   Definition decode_ascii (b : B) (cd : CacheDecode) : option (ascii * B * CacheDecode) :=

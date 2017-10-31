@@ -62,12 +62,12 @@ Ltac solve_predicate :=
 
 Ltac eauto_typeclass :=
   match goal with
-  | |- context [ Bool_encode ] => eapply Bool_decoder
-  | |- context [ Char_encode ] => eapply Char_decoder
-  | |- context [ FixInt_encode ] => eapply FixInt_decoder
-  | |- context [ FixList_encode _  ] => eapply FixList_decoder
-  | |- context [ IList_encode _ ] => eapply IList_decoder
-  | |- context [ SteppingList_encode _ ] => eapply SteppingListCache_decoder
+  | |- context [ Bool_format ] => eapply Bool_decoder
+  | |- context [ Char_format ] => eapply Char_decoder
+  | |- context [ FixInt_format ] => eapply FixInt_decoder
+  | |- context [ FixList_format _  ] => eapply FixList_decoder
+  | |- context [ IList_format _ ] => eapply IList_decoder
+  | |- context [ SteppingList_format _ ] => eapply SteppingListCache_decoder
   end; eauto.
 
 Ltac solve_decoder :=
