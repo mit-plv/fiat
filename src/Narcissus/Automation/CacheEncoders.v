@@ -3,7 +3,8 @@ Require Import
         Fiat.Common.Tactics.HintDbExtra
         Fiat.Common.Tactics.TransparentAbstract
         Fiat.Common.Tactics.CacheStringConstant
-        Fiat.Narcissus.BinLib.AlignedDecoders.
+        Fiat.Narcissus.BinLib.AlignedDecoders
+        Fiat.Narcissus.BinLib.AlignedList.
 
 (* Tactics for caching intermediate encoder definitions. *)
 (* The current use case is for the various encoders for sums. *)

@@ -11,6 +11,7 @@ Require Import
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
+        Fiat.Narcissus.BinLib.AlignedList
         Fiat.Narcissus.BinLib.AlignedDecoders
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
@@ -38,78 +39,39 @@ Arguments natToWord : simpl never.
 Arguments Guarded_Vector_split : simpl never.
 Arguments Core.append_word : simpl never.
 
-(*Lemma AlignedFormatList {A}
-      format_A
-      (encode_A : A -> CacheFormat -> {n : nat & t (word 8) n} * CacheFormat)
-  : forall (l : list A) ce (c : _ -> Comp _)
-           (v' : _ -> {n : nat & t (word 8) n})
-           (ce' : _ -> CacheFormat),
-    (forall (a : A) (ce : CacheFormat),
-        refine (format_A a ce) (ret (let (v', ce') := encode_A a ce in (build_aligned_ByteString (projT2 v'), ce'))))
-    -> refine (((format_list format_A l)
-                  ThenC c) ce)
-              (ret (let (v, ce'') := align_format_list encode_A l ce in
-                    build_aligned_ByteString
-                      (Vector.append (projT2 v) (projT2 (v' ce''))),
-               let (v, ce'') := align_format_list encode_A l ce in
-               ce' ce'')).
-Proof.
-  unfold compose; intros.
-  unfold Bind2.
-  etransitivity.
-  apply refine_under_bind_both.
-  eapply (optimize_align_format_list format_A encode_A); eassumption.
-  eassumption.
-  destruct (align_format_list encode_A l ce) eqn: ?.
-  simplify with monad laws; simpl.
-
-
-
-  setoid_rewrite aligned_format_char_eq; simplify with monad laws.
-
-  simpl; rewrite H; simplify with monad laws.
-
-  simpl.
-  rewrite <- build_aligned_ByteString_append.
-  reflexivity.
-Qed. *)
-
 Definition refine_simple_format
-  : { b : _ & forall (p : simple_record)
+  : { numBytes : _ &
+    { v : _ &
+    { c : _ & forall (p : simple_record)
                      (p_OK : Simply_OK p),
           refine (Simple_Format p ())
-                 (ret (b p)) }.
+                 (ret (@build_aligned_ByteString (numBytes p) (v p), c p)) } } }.
 Proof.
   unfold Simple_Format.
-  eexists; intros.
-  eapply AlignedFormatChar; eauto.
-  eapply AlignedFormat2Char; eauto.
-  etransitivity.
-  apply refine_under_bind_both.
-  eapply optimize_align_format_list.
-  etransitivity.
-  eapply aligned_format_char_eq.
-  instantiate (1 := fun a ce => (existT _ _ _, _)); simpl.
-  reflexivity.
-  intros; unfold Bind2; simplify with monad laws; higher_order_reflexivity.
-  simpl.
-  match goal with
-    |- context [let (v, c) := ?z in ret (@?b v c)] =>
-    rewrite (zeta_inside_ret z _)
-  end.
-  simplify with monad laws; simpl.
-  rewrite zeta_to_fst; simpl.
-  replace ByteString_id
-  with (build_aligned_ByteString (Vector.nil _)).
-  erewrite <- build_aligned_ByteString_append.
-  reflexivity.
-  eapply ByteString_f_equal;
-    instantiate (1 := eq_refl _); reflexivity.
+  eexists _, _, _; intros.
+  (* Step 1: simplification with monad laws so that any complex
+       subformats are inlined properly. (Not needed for this example) *)
+  eapply refine_refineEquiv_Proper;
+    [ unfold flip;
+      repeat first
+             [ etransitivity; [ apply refineEquiv_compose_compose with (monoid := monoid) | idtac ]
+             | etransitivity; [ apply refineEquiv_compose_Done with (monoid := monoid) | idtac ]
+             | apply refineEquiv_under_compose with (monoid := monoid) ];
+      intros; higher_order_reflexivity
+    | reflexivity | ].
+    etransitivity.
+    (* Replace formats with byte-aligned versions. *)
+    eapply AlignedFormatChar; eauto.
+    eapply AlignedFormat2Char; eauto.
+    eapply AlignedFormatListDoneC; intros; eauto.
+    rewrite aligned_format_char_eq.
+    encoder_reflexivity.
+    encoder_reflexivity.
 Defined.
 
 Definition byte_aligned_simple_encoder
              (r : simple_record)
-  := Eval simpl in (projT1 refine_simple_format r).
+  := Eval simpl in (projT1 (projT2 refine_simple_format) r).
 
 Import Vectors.VectorDef.VectorNotations.
 Print byte_aligned_simple_encoder.
@@ -128,11 +90,11 @@ Defined.
 Definition SimpleDecoderImpl
     := Eval simpl in (projT1 Simple_Format_decoder).
 
-  Ltac rewrite_DecodeOpt2_fmap :=
-    set_refine_evar;
-    progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
-    ?DecodeOpt2_fmap_if_bool;
-    subst_refine_evar.
+Ltac rewrite_DecodeOpt2_fmap :=
+  set_refine_evar;
+  progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
+  ?DecodeOpt2_fmap_if_bool;
+  subst_refine_evar.
 
 Definition ByteAligned_SimpleDecoderImpl {A}
            (f : _ -> A)
