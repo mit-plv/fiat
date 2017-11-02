@@ -106,6 +106,7 @@ Section AlignedList.
 
   Lemma optimize_align_format_list
         {A}
+        (A_OK : A -> Prop)
         (format_A : A -> CacheFormat -> Comp (ByteString * CacheFormat))
         (A_format_align :
            A
@@ -113,12 +114,14 @@ Section AlignedList.
            -> {n : _ & Vector.t (word 8) n} * CacheFormat)
         (A_format_OK :
            forall a ce,
-             refine (format_A a ce)
+             A_OK a
+             -> refine (format_A a ce)
                     (ret (let (v', ce') := A_format_align a ce in
                           (build_aligned_ByteString (projT2 v'), ce'))))
     : forall (As : list A)
              (ce : CacheFormat),
-      refine (format_list format_A As ce)
+      (forall a, In a As -> A_OK a)
+      -> refine (format_list format_A As ce)
              (let (v', ce') := (align_format_list A_format_align As ce) in
               ret (build_aligned_ByteString (projT2 v'), ce')).
   Proof.
@@ -129,7 +132,7 @@ Section AlignedList.
       instantiate (1 := eq_refl _); reflexivity.
       instantiate (1 := eq_refl _); reflexivity.
     - unfold Bind2.
-      rewrite A_format_OK; simplify with monad laws.
+      rewrite A_format_OK; eauto; simplify with monad laws.
       rewrite IHAs.
       destruct (A_format_align a ce); simpl.
       destruct (align_format_list A_format_align As c);
@@ -137,19 +140,23 @@ Section AlignedList.
       simpl.
       rewrite <- build_aligned_ByteString_append.
       reflexivity.
+      intuition.
   Qed.
 
   Lemma AlignedFormatListThenC {A}
+        (A_OK : A -> Prop)
         format_A
         (encode_A : A -> CacheFormat -> {n : nat & t (word 8) n} * CacheFormat)
     : forall (l : list A) ce (c : _ -> Comp _)
              (v' : _ -> {n : nat & t (word 8) n})
              (ce' : _ -> CacheFormat),
       (forall (a : A) (ce : CacheFormat),
+          A_OK a ->
           refine (format_A a ce) (ret (let (v', ce') := encode_A a ce in (build_aligned_ByteString (projT2 v'), ce'))))
       -> (forall v ce'',
              format_list format_A l ce ↝ (v, ce'') ->
              refine (c ce'') (ret (build_aligned_ByteString (projT2 (v' ce'')), ce' ce'')))
+      -> (forall a : A, In a l -> A_OK a)
       -> refine (((format_list format_A l)
                     ThenC c) ce)
                 (ret (let (v, ce'') := align_format_list encode_A l ce in
@@ -161,7 +168,7 @@ Section AlignedList.
     intros.
     etransitivity.
     eapply AlignedFormatThenC.
-    rewrite (optimize_align_format_list format_A encode_A); try eassumption.
+    rewrite (optimize_align_format_list A_OK format_A encode_A); try eassumption.
     match goal with
       |- context [let (v, c) := ?z in ret (@?b v c)] =>
       rewrite (zeta_inside_ret z _)
@@ -176,13 +183,16 @@ Section AlignedList.
   Qed.
 
   Lemma AlignedFormatListDoneC {A}
+        (A_OK : A -> Prop)
         format_A
         (encode_An : A -> CacheFormat -> nat)
         (encode_A1 : forall a ce,  t (word 8) (encode_An a ce))
         (encode_A2 : A -> CacheFormat -> CacheFormat)
     : forall (l : list A) ce,
       (forall (a : A) (ce : CacheFormat),
-          refine (format_A a ce) (ret (build_aligned_ByteString (encode_A1 a ce), encode_A2 a ce)))
+          A_OK a 
+          -> refine (format_A a ce) (ret (build_aligned_ByteString (encode_A1 a ce), encode_A2 a ce)))
+      -> (forall a : A, In a l -> A_OK a)
       -> refine (((format_list format_A l) DoneC) ce)
                 (ret (build_aligned_ByteString (projT2 (fst (align_format_list (fun a ce => (existT _ _ (encode_A1 a ce), encode_A2 a ce)) l ce))),
                       let (v, ce'') := align_format_list (fun a ce => (existT _ _ (encode_A1 a ce), encode_A2 a ce)) l ce in
@@ -191,7 +201,7 @@ Section AlignedList.
     intros.
     etransitivity.
     eapply AlignedFormatDoneC.
-    rewrite (optimize_align_format_list format_A (fun a ce => (existT _ _ (encode_A1 a ce), encode_A2 a ce))); try eassumption.
+    rewrite (optimize_align_format_list A_OK format_A (fun a ce => (existT _ _ (encode_A1 a ce), encode_A2 a ce))); try eassumption.
     match goal with
       |- context [let (v, c) := ?z in ret (@?b v c)] =>
       rewrite (zeta_inside_ret z _)

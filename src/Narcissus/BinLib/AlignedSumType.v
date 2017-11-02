@@ -77,4 +77,35 @@ Section AlignedSumType.
     eauto.
   Qed.
 
+  Lemma AlignedFormatSumTypeDoneC
+            {m : nat}
+            {types : t Type m}
+            (A_OKs : SumType types -> Prop)
+            (align_encoders :
+               ilist (B := (fun T : Type => T -> CacheFormat -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
+            (encoders :
+               ilist (B := (fun T : Type => T -> CacheFormat -> Comp (ByteString * (CacheFormat)))) types)
+            (encoders_OK : Iterate_Ensemble_BoundedIndex
+                             (fun idx => forall t (ce : CacheFormat),
+                                  A_OKs (inj_SumType _ idx t)
+                                  -> refine (ith encoders idx t ce)
+                                            (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
+                                                  snd (ith align_encoders idx t ce)))))
+    : forall (st : SumType types)
+             (ce : CacheFormat),
+      A_OKs st
+      -> refine (((format_SumType types encoders st) DoneC) ce)
+                (ret (build_aligned_ByteString (projT2 (fst (align_format_sumtype align_encoders st ce))),
+                      (snd (align_format_sumtype align_encoders st ce)))).
+  Proof.
+    intros.
+    etransitivity.
+    eapply AlignedFormatDoneC.
+    rewrite (align_format_sumtype_OK A_OKs); try eassumption.
+    instantiate (2 := fun ce => fst (_ ce)).
+    instantiate (1 := fun ce => snd (_ ce)).
+    simpl; reflexivity.
+    simpl; reflexivity.
+  Qed.
+
 End AlignedSumType.
