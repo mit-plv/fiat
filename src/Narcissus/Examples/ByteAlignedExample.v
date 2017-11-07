@@ -32,8 +32,8 @@ Definition Simple_Format
 Definition Simply_OK (p : simple_record) :=
   ((|snd p|) < pow2 8)%nat.
 
-Arguments split1' : simpl never.
-Arguments split2' : simpl never.
+Arguments split1 : simpl never.
+Arguments split2 : simpl never.
 Arguments weq : simpl never.
 Arguments natToWord : simpl never.
 Arguments Guarded_Vector_split : simpl never.
@@ -63,7 +63,7 @@ Proof.
     (* Replace formats with byte-aligned versions. *)
     eapply AlignedFormatChar; eauto.
     eapply AlignedFormat2Char; eauto.
-    eapply AlignedFormatListDoneC; intros; eauto.
+    eapply AlignedFormatListDoneC with (A_OK := fun _ => True); intros; eauto.
     rewrite aligned_format_char_eq.
     encoder_reflexivity.
     encoder_reflexivity.

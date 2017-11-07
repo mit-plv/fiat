@@ -704,7 +704,7 @@ Section AlignedDomainName.
     rewrite Heqp; try reflexivity. *)
   (*Qed. *)
 
-  Lemma AlignedFormatDomainName
+  Lemma AlignedFormatDomainNameThenC
     : (forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m)) ->
       forall (numBytes : nat)
              (d : DomainName)
@@ -724,5 +724,328 @@ Section AlignedDomainName.
     rewrite build_aligned_ByteString_append; reflexivity.
   Qed.
 
+  Lemma AlignedFormatDomainNameDoneC
+    : (forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m)) ->
+      forall (d : DomainName)
+             (ce : CacheFormat),
+        ValidDomainName d ->
+        refine ((format_DomainName d DoneC) ce)
+               (ret (build_aligned_ByteString (projT2 (fst (aligned_format_DomainName d ce))),
+                     snd (aligned_format_DomainName d ce))).
+  Proof.
+    unfold compose at 1, Bind2; intros.
+    rewrite align_format_DomainName; eauto.
+    simplify with monad laws.
+    simpl.
+    replace ByteString_id with (build_aligned_ByteString (Vector.nil _)).
+    simpl.
+    rewrite <- build_aligned_ByteString_append.
+    rewrite Vector_append_nil_r'; simpl.
+    repeat f_equiv.
+    eapply ByteString_f_equal; simpl; eauto.
+    eapply ByteString_f_equal; simpl;
+      try instantiate (1 := eq_refl _); reflexivity.
+    Grab Existential Variables.
+    reflexivity.
+  Qed.
+
+  Arguments Guarded_Vector_split : simpl never.
+
+  Arguments addD : simpl never.
+
+  Lemma rec_aligned_decode_DomainName_OK
+    : forall (x : nat) (x0 : t (word 8) x),
+      (le 1 x) ->
+      ~ (lt (x - 1) (wordToNat (Vector.hd (Guarded_Vector_split 1 x x0))))%nat ->
+      (lt (x - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 x x0))) x)%nat.
+  Proof.
+    clear; intros; omega.
+  Qed.
+
+  Definition byte_aligned_decode_DomainName {sz}
+             (b : Vector.t (word 8) sz)
+             (cd : CacheDecode) :=
+    let body :=
+        fun n0
+            (rec' : forall x : nat,
+                (lt x n0)%nat ->
+                t Core.char x -> CacheDecode -> option (DomainName * {n1 : nat & t Core.char n1} * CacheDecode))
+            b cd =>
+          match Compare_dec.le_dec 1 n0 with
+          | left e1 =>
+            match wlt_dec (natToWord 8 191) (Vector.hd (Guarded_Vector_split 1 n0 b)) with
+            | left e =>
+              if match n0 - 1 with
+                 | 0 => false
+                 | S _ => true
+                 end
+              then
+                match
+                  association_list_find_first (snd cd)
+                                              (exist (wlt (natToWord 8 191)) (Vector.hd (Guarded_Vector_split 1 n0 b)) e,
+                                               Vector.hd (Guarded_Vector_split 1 (n0 - 1) (Vector.tl (Guarded_Vector_split 1 n0 b))))
+                with
+                | Some ""%string => None
+                | Some (String _ _ as domain) =>
+                  Some
+                    (domain,
+                     existT (fun n => Vector.t (word 8) n) _ (Vector.tl (Guarded_Vector_split 1 (n0 - 1) (Vector.tl (Guarded_Vector_split 1 n0 b)))),
+                     addD (addD cd 8) 8)
+                | None => None
+                end
+              else None
+            | right n1 =>
+              if bool_of_sumbool (wlt_dec (Vector.hd (Guarded_Vector_split 1 n0 b)) (natToWord 8 64))
+              then
+                match weq (Vector.hd (Guarded_Vector_split 1 n0 b)) (wzero 8) with
+                | in_left => Some (""%string, existT (fun n => Vector.t (word 8) n) _ (Vector.tl (Guarded_Vector_split 1 n0 b)), addD cd 8)
+                | right n2 =>
+                  (fun a_neq0 : Vector.hd (Guarded_Vector_split 1 n0 b) <> wzero 8 =>
+                     match Compare_dec.lt_dec (n0 - 1) (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b))) with
+                     | left e => (fun _ : lt (n0 - 1) (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))%nat => None) e
+                     | right n3 =>
+                       (fun a_neq1 : ~ lt (n0 - 1) (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))%nat =>
+                          Ifopt index 0 "."
+                                (BytesToString
+                                   (fst
+                                      (Vector_split (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                    (n0 - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                    (Guarded_Vector_split
+                                                       (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                       (n0 - 1) (Vector.tl (Guarded_Vector_split 1 n0 b)))))) as a8 Then
+                                                                                                                    (fun _ : nat => None) a8
+                                                                                                                    Else (`(d, s, c) <- rec' (n0 - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                           (rec_aligned_decode_DomainName_OK n0 b e1 n3)
+                                                                                                                           (snd
+                                                                                                                              (Vector_split
+                                                                                                                                 (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                 (n0 - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                 (Guarded_Vector_split
+                                                                                                                                    (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                    (n0 - 1)
+                                                                                                                                    (Vector.tl (Guarded_Vector_split 1 n0 b)))))
+                                                                                                                           (addD (addD cd 8) (8 * wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b))));
+                                                                                                                            If string_dec d ""
+                                                                                                                               Then Some
+                                                                                                                               (BytesToString
+                                                                                                                                  (fst
+                                                                                                                                     (Vector_split
+                                                                                                                                        (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                        (n0 - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                        (Guarded_Vector_split
+                                                                                                                                           (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                           (n0 - 1)
+                                                                                                                                           (Vector.tl (Guarded_Vector_split 1 n0 b))))),
+                                                                                                                                s,
+                                                                                                                                Ifopt Ifopt fst cd as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None
+                                                                                                                                   as curPtr
+                                                                                                                                        Then (fst c,
+                                                                                                                                              ((curPtr,
+                                                                                                                                                BytesToString
+                                                                                                                                                  (fst
+                                                                                                                                                     (Vector_split
+                                                                                                                                                        (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                                        (n0 - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                                        (Guarded_Vector_split
+                                                                                                                                                           (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                                           (n0 - 1)
+                                                                                                                                                           (Vector.tl (Guarded_Vector_split 1 n0 b)))))) ::
+                                                                                                                                                                                                         snd c)%list) Else c)
+                                                                                                                               Else Some
+                                                                                                                               ((BytesToString
+                                                                                                                                   (fst
+                                                                                                                                      (Vector_split
+                                                                                                                                         (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                         (n0 - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                         (Guarded_Vector_split
+                                                                                                                                            (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                            (n0 - 1)
+                                                                                                                                            (Vector.tl (Guarded_Vector_split 1 n0 b))))) ++
+                                                                                                                                   String "." d)%string,
+                                                                                                                                s,
+                                                                                                                                Ifopt Ifopt fst cd as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None
+                                                                                                                                   as curPtr
+                                                                                                                                        Then (fst c,
+                                                                                                                                              ((curPtr,
+                                                                                                                                                (BytesToString
+                                                                                                                                                   (fst
+                                                                                                                                                      (Vector_split
+                                                                                                                                                         (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                                         (n0 - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                                         (Guarded_Vector_split
+                                                                                                                                                            (wordToNat (Vector.hd (Guarded_Vector_split 1 n0 b)))
+                                                                                                                                                            (n0 - 1)
+                                                                                                                                                            (Vector.tl (Guarded_Vector_split 1 n0 b))))) ++
+                                                                                                                                                   String "." d)%string) ::
+                                                                                                                                                                         snd c)%list) Else c))) n3
+                     end) n2
+                end
+              else None
+            end
+          | right e => None
+          end in
+    Fix Wf_nat.lt_wf (fun m : nat => Vector.t (word 8) m -> CacheDecode -> option (_ * { n : _ & Vector.t _ n} * CacheDecode)) body sz b cd.
+
+  Lemma byte_align_decode_DomainName {sz}
+    : forall (b : Vector.t (word 8) sz) cd,
+      decode_DomainName(build_aligned_ByteString b) cd =
+      Ifopt byte_aligned_decode_DomainName b cd as p Then
+                                                     (match p with
+                                                      | (a, b', cd') => Some (a, build_aligned_ByteString (projT2 b'), cd')
+                                                      end)
+                                                     Else None.
+  Proof.
+    unfold If_Opt_Then_Else,decode_DomainName,
+    byte_aligned_decode_DomainName; simpl; intros.
+    eapply (@optimize_Fix dns_list_cache).
+    Focus 3.
+    etransitivity.
+    simpl; intros.
+    erewrite ByteAlign_Decode_w_Measure_le with (m := 1)
+                                                  (dec_a' := Vector.hd)
+                                                  (f := fun cd => addD cd 8);
+      try (intros; unfold decode_word; rewrite aligned_decode_char_eq;
+           reflexivity).
+    Focus 2.
+    intros; assert (n = 0) by omega; subst.
+    revert b1; clear.
+    apply case0; reflexivity.
+    set_refine_evar.
+    etransitivity;
+      [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
+
+    apply optimize_under_match; intros.
+    simpl.
+
+    apply optimize_under_match; intros.
+    simpl.
+    erewrite ByteAlign_Decode_w_Measure_le with (m := 1)
+                                                  (dec_a' := Vector.hd)
+                                                  (f := fun cd => addD cd 8);
+      try (intros; unfold decode_word; rewrite aligned_decode_char_eq;
+           reflexivity).
+    Focus 2.
+    intros; assert (n - 1 = 0) by omega.
+    revert b1; rewrite H3; clear.
+    apply case0; reflexivity.
+    set_refine_evar.
+    simpl.
+    etransitivity;
+      [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
+    apply optimize_under_match; intros.
+    simpl.
+    reflexivity.
+    simpl.
+    reflexivity.
+    eapply Solver.optimize_under_if_bool.
+    apply optimize_under_match.
+    simpl.
+    intros; higher_order_reflexivity.
+    intros.
+    simpl.
+    2: reflexivity.
+    2: reflexivity.
+    2: simpl.
+    erewrite ByteAlign_Decode_w_Measure_lt with (m := (wordToNat (Vector.hd (Guarded_Vector_split 1 n b0)))) (m_OK := n_eq_0_lt _ a_neq0).
+    Focus 3.
+
+    intros.
+    rewrite decode_string_aligned_ByteString.
+    repeat f_equal.
+    higher_order_reflexivity.
+    higher_order_reflexivity.
+    apply addD_addD_plus.
+    etransitivity;
+      [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
+    etransitivity.
+    apply optimize_under_match; intros.
+    subst_refine_evar; simpl; higher_order_reflexivity.
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    subst_refine_evar; simpl; higher_order_reflexivity.
+    apply optimize_under_match; intros.
+    simpl; higher_order_reflexivity.
+    unfold LetIn.
+    apply optimize_under_if_opt.
+    intros; higher_order_reflexivity.
+    eapply optimize_under_DecodeBindOpt2_both.
+    unfold lt_B_Guarded_Vector_split; simpl.
+    intros; apply H with (b_lt' := rec_aligned_decode_DomainName_OK _ _ a_eq a_neq1).
+    apply H2.
+    intros; eapply H0; eauto.
+    intros; simpl.
+    higher_order_reflexivity.
+    intros; eauto using decode_string_aligned_ByteString_overflow.
+    destruct n; eauto.
+    destruct (wlt_dec (natToWord 8 191) (Vector.hd (Guarded_Vector_split 1 (S n) b0)));
+      eauto.
+    find_if_inside; eauto.
+    simpl.
+    find_if_inside; eauto.
+    destruct n; try omega; simpl; eauto.
+    match goal with
+      |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
+      replace z' with z by reflexivity; destruct z; eauto
+    end.
+    clear; induction s; simpl; eauto.
+    destruct n; simpl; auto; try omega.
+    match goal with
+      |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
+      replace z' with z by reflexivity; destruct z; eauto
+    end.
+    match goal with
+      |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
+      replace z' with z by reflexivity; destruct z; eauto
+    end.
+    find_if_inside; simpl; eauto.
+    match goal with
+      |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
+      replace z' with z by reflexivity; destruct z; eauto
+    end.
+    match goal with
+      |- (Ifopt ?c as a Then _ Else _) = _ => destruct c as [ ? | ]; simpl; eauto
+    end.
+    match goal with
+      |- DecodeBindOpt2 ?z _ = _ => destruct z as [ [ [? ?] ?] | ]; simpl; eauto
+    end.
+    find_if_inside; simpl; eauto.
+    simpl; intros; apply functional_extensionality; intros.
+    f_equal.
+    simpl; intros; repeat (apply functional_extensionality; intros).
+    destruct (wlt_dec (natToWord 8 191) x1).
+    reflexivity.
+    destruct (wlt_dec x1 (natToWord 8 64)); simpl.
+    destruct (weq x1 (wzero 8)); eauto.
+    match goal with
+      |- DecodeBindOpt2 ?z _ = _ => destruct z as [ [ [? ?] ?] | ]; simpl; eauto
+    end.
+    match goal with
+      |- (Ifopt ?c as a Then _ Else _) = _ => destruct c as [ ? | ]; simpl; eauto
+    end.
+    rewrite H.
+    reflexivity.
+    eauto.
+    simpl; intros; apply functional_extensionality; intros.
+    f_equal.
+    simpl; intros; repeat (apply functional_extensionality; intros).
+    match goal with
+      |- match ?z with _ => _ end = match ?z' with _ => _ end =>
+      replace z' with z by reflexivity; destruct z; eauto
+    end.
+    match goal with
+      |- match ?z with _ => _ end = match ?z' with _ => _ end =>
+      replace z' with z by reflexivity; destruct z; eauto
+    end.
+    find_if_inside; simpl.
+    find_if_inside; simpl; eauto.
+    match goal with
+      |- match ?z with _ => _ end = match ?z' with _ => _ end =>
+      replace z' with z by reflexivity; destruct z; eauto
+    end.
+    match goal with
+      |- (Ifopt ?c as a Then _ Else _) = _ => destruct c as [ ? | ]; simpl; eauto
+    end.
+    rewrite H; reflexivity.
+    eauto.
+  Qed.
 
 End AlignedDomainName.

@@ -166,6 +166,7 @@ NARCISSUS_UNMADE_VO := \
 	src/Narcissus/Examples/Toy2.vo \
 	src/Narcissus/Formats/CInt.vo \
 	src/Narcissus/BinLib/CharString.vo \
+	src/Narcissus/Formats/ASN1.vo \
 	$(NARCISSUS_EXAMPLES_VO)
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo

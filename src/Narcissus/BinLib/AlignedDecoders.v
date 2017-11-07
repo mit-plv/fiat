@@ -181,7 +181,7 @@ Section AlignedDecoders.
   Variable addE_addE_plus :
     forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).
 
-  Lemma format_words {n m}
+  Lemma format_words' {n m}
     : forall (w : word (n + m)) ce,
       refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
              ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1' _ _ w)
@@ -224,7 +224,18 @@ Section AlignedDecoders.
       + eauto.
   Qed.
 
-  Lemma AlignedFormat2Char {numBytes}
+  Lemma format_words {n m}
+    : forall (w : word (n + m)) ce,
+      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
+             ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split2 m n (eq_rect _ _ w _ (trans_plus_comm _ _)))
+                           ThenC (format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1 m n (eq_rect _ _ w _ (trans_plus_comm _ _)))))
+                ce).
+  Proof.
+    intros; rewrite format_words'.
+    rewrite split1'_eq, split2'_eq; reflexivity.
+  Qed.
+
+  Lemma AlignedFormat2Char' {numBytes}
     : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
@@ -232,6 +243,29 @@ Section AlignedDecoders.
                 (ret (build_aligned_ByteString (Vector.cons
                                                   _ (split1' 8 8 w) _
                                                   (Vector.cons _ (split2' 8 8 w) _ v)), ce')).
+  Proof.
+    unfold compose, Bind2; intros.
+    intros; setoid_rewrite (@format_words' 8 8 w).
+    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
+    simplify with monad laws.
+    unfold snd.
+    rewrite addE_addE_plus.
+    rewrite H.
+    simplify with monad laws.
+    unfold fst.
+    rewrite <- build_aligned_ByteString_append.
+    unfold append.
+    reflexivity.
+  Qed.
+
+  Lemma AlignedFormat2Char {numBytes}
+    : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
+      refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
+      -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+                    ThenC c) ce)
+                (ret (build_aligned_ByteString (Vector.cons
+                                                  _ (split2 8 8 w) _
+                                                  (Vector.cons _ (split1 8 8 w) _ v)), ce')).
   Proof.
     unfold compose, Bind2; intros.
     intros; setoid_rewrite (@format_words 8 8 w).
@@ -244,7 +278,7 @@ Section AlignedDecoders.
     unfold fst.
     rewrite <- build_aligned_ByteString_append.
     unfold append.
-    reflexivity.
+    f_equiv.
   Qed.
 
   Corollary AlignedDecode2Nat {C}
@@ -266,7 +300,7 @@ Section AlignedDecoders.
     reflexivity.
   Qed.
 
-  Corollary AlignedFormat2Nat
+  Corollary AlignedFormat2Nat'
             {numBytes}
     : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
@@ -275,6 +309,21 @@ Section AlignedDecoders.
                 (ret (build_aligned_ByteString (Vector.cons
                                                   _ (split1' 8 8 (natToWord 16 n)) _
                                                   (Vector.cons _ (split2' 8 8 (natToWord 16 n)) _ v)), ce')).
+  Proof.
+    unfold format_nat; cbv beta; intros.
+    rewrite <- AlignedFormat2Char'; eauto.
+    reflexivity.
+  Qed.
+
+  Corollary AlignedFormat2Nat
+            {numBytes}
+    : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
+      refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
+      -> refine (((format_nat 16 (monoidUnit := ByteString_QueueMonoidOpt) n)
+                    ThenC c) ce)
+                (ret (build_aligned_ByteString (Vector.cons
+                                                  _ (split2 8 8 (natToWord 16 n)) _
+                                                  (Vector.cons _ (split1 8 8 (natToWord 16 n)) _ v)), ce')).
   Proof.
     unfold format_nat; cbv beta; intros.
     rewrite <- AlignedFormat2Char; eauto.
@@ -1091,7 +1140,7 @@ Section AlignedDecoders.
         erewrite <- WS_eq_rect_eq; reflexivity.
   Qed.
 
-  Lemma AlignedFormat32Char {numBytes}
+  Lemma AlignedFormat32Char' {numBytes}
     : forall (w : word 32) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 32)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
@@ -1108,6 +1157,50 @@ Section AlignedDecoders.
                                  (Vector.cons
                                     _
                                     (split2' 24 8 w) _ v)))), ce')).
+  Proof.
+    unfold compose, Bind2; intros.
+    intros; setoid_rewrite (@format_words' 8 24 w).
+    rewrite (@AlignedFormatChar 3).
+    simplify with monad laws.
+    unfold snd.
+    rewrite H.
+    simplify with monad laws.
+    unfold fst.
+    unfold mappend.
+    unfold ByteStringQueueMonoid.
+    rewrite <- build_aligned_ByteString_append.
+    instantiate (1 := Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _)))).
+    unfold append.
+    reflexivity.
+    setoid_rewrite (@format_words' 8 16 _).
+    rewrite (@AlignedFormatChar 2).
+    reflexivity.
+    setoid_rewrite (@format_words' 8 8).
+    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
+    rewrite !addE_addE_plus; simpl plus.
+    rewrite !split2_split2.
+    simpl plus.
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; auto with arith.
+    reflexivity.
+  Qed.
+
+  Lemma AlignedFormat32Char {numBytes}
+    : forall (w : word 32) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
+      refine (c (addE ce 32)) (ret (build_aligned_ByteString v, ce'))
+      -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+                    ThenC c) ce)
+                (ret (build_aligned_ByteString
+                        (Vector.cons
+                           _ (split2 24 8 w) _
+                           (Vector.cons
+                              _
+                              (split2 16 8 (split1 24 8 w)) _
+                              (Vector.cons
+                                 _
+                                 (split2 8 8 (split1 16 16 w)) _
+                                 (Vector.cons
+                                    _
+                                    (split1 8 24 w) _ v)))), ce')).
   Proof.
     unfold compose, Bind2; intros.
     intros; setoid_rewrite (@format_words 8 24 w).
@@ -1129,10 +1222,7 @@ Section AlignedDecoders.
     setoid_rewrite (@format_words 8 8).
     rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
     rewrite !addE_addE_plus; simpl plus.
-    rewrite !split2_split2.
-    simpl plus.
-    rewrite <- !Eqdep_dec.eq_rect_eq_dec; auto with arith.
-    reflexivity.
+    f_equiv.
   Qed.
 
   Fixpoint align_decode_list {A}
@@ -1523,58 +1613,6 @@ Section AlignedDecoders.
     pose proof (decoders_OK n0 v0 cd0).
     eapply Iterate_Ensemble_BoundedIndex_equiv in H.
     apply H.
-  Qed.
-
-  Definition align_format_sumtype
-             {m : nat}
-             {types : t Type m}
-             (formatrs :
-                ilist (B := (fun T : Type => T -> @CacheFormat cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
-             (st : SumType types)
-             (ce : CacheFormat)
-    := ith (formatrs) (SumType_index types st) (SumType_proj types st) ce.
-
-  Lemma align_format_sumtype_OK'
-        {m : nat}
-        {types : t Type m}
-        (align_formatrs :
-           ilist (B := (fun T : Type => T -> @CacheFormat cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
-        (formatrs :
-           ilist (B := (fun T : Type => T -> @CacheFormat cache -> Comp (ByteString * (CacheFormat)))) types)
-        (formatrs_OK : forall idx t (ce : CacheFormat),
-            refine (ith formatrs idx t ce)
-                   (ret (build_aligned_ByteString (projT2 (fst (ith align_formatrs idx t ce))),
-                         snd (ith align_formatrs idx t ce))))
-    : forall (st : SumType types)
-             (ce : CacheFormat),
-      refine (format_SumType types formatrs st ce)
-             (ret (build_aligned_ByteString (projT2 (fst (align_format_sumtype align_formatrs st ce))),
-                   (snd (align_format_sumtype align_formatrs st ce)))).
-  Proof.
-    intros; unfold format_SumType, align_format_sumtype.
-    rewrite formatrs_OK; reflexivity.
-  Qed.
-
-  Corollary align_format_sumtype_OK
-            {m : nat}
-            {types : t Type m}
-            (align_formatrs :
-               ilist (B := (fun T : Type => T -> @CacheFormat cache -> ({n : _ & Vector.t (word 8) n} * (CacheFormat)))) types)
-            (formatrs :
-               ilist (B := (fun T : Type => T -> @CacheFormat cache -> Comp (ByteString * (CacheFormat)))) types)
-            (formatrs_OK : Iterate_Ensemble_BoundedIndex (fun idx => forall t (ce : CacheFormat),
-                                                              refine (ith formatrs idx t ce)
-                                                                     (ret (build_aligned_ByteString (projT2 (fst (ith align_formatrs idx t ce))),
-                                                                           snd (ith align_formatrs idx t ce)))))
-    : forall (st : SumType types)
-             (ce : CacheFormat),
-      refine (format_SumType types formatrs st ce)
-             (ret (build_aligned_ByteString (projT2 (fst (align_format_sumtype align_formatrs st ce))),
-                   (snd (align_format_sumtype align_formatrs st ce)))).
-  Proof.
-    intros; eapply align_format_sumtype_OK'; intros.
-    eapply Iterate_Ensemble_BoundedIndex_equiv in formatrs_OK.
-    apply formatrs_OK.
   Qed.
 
   Lemma nth_Vector_split {A}

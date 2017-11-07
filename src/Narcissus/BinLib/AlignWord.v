@@ -1,4 +1,5 @@
 Require Import
+        Coq.Logic.Eqdep_dec
         Fiat.Computation
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.Compose
@@ -46,7 +47,173 @@ Section AlignWord.
     | S n' => fun w => split2' n' sz' (word_split_tl w)
     end.
 
-  Lemma CollapseWord {ResultT}
+  Definition trans_S_comm : forall n m : nat, S (n + m) = n + S m.
+  Proof.
+    fix 1; destruct n.
+    - intro; reflexivity.
+    - simpl; intro; destruct (trans_S_comm n m); reflexivity.
+  Defined.
+
+  Lemma trans_plus_comm : forall n m, n + m = m + n.
+  Proof.
+    fix 1.
+    destruct n.
+    - fix 1.
+      destruct m.
+      + reflexivity.
+      + simpl.
+        destruct (trans_plus_comm0 m); reflexivity.
+    - simpl; intro; rewrite (trans_plus_comm n m).
+      apply trans_S_comm.
+  Defined.
+
+  Lemma wtl_eq_rect_S : forall sz sz' w eq_comm eq_comm',
+      wtl (eq_rect (S sz) word w (S sz') eq_comm) =
+      eq_rect sz word (wtl w) sz' eq_comm'.
+  Proof.
+    intros.
+    destruct (shatter_word_S w) as (?, (w', H)); rewrite H in *; clear.
+    revert w' eq_comm.
+    rewrite eq_comm'; clear eq_comm'; intros.
+    unfold eq_rect; simpl.
+    revert w'.
+    pattern eq_comm.
+    apply K_dec_set; eauto; decide equality.
+  Qed.
+
+  Lemma wtl_eq_rect_comm : forall sz sz' w eq_comm eq_comm',
+      wtl (eq_rect (S (sz + sz')) word w (S (sz' + sz)) eq_comm) =
+      eq_rect (sz + sz') word (wtl w) (sz' + sz) eq_comm'.
+  Proof.
+    intros.
+    eapply wtl_eq_rect_S.
+  Qed.
+
+  Lemma whd_eq_rect_comm : forall sz sz' w eq_comm,
+      whd (eq_rect (S (sz + sz')) word w (S (sz' + sz)) eq_comm) =
+      whd w.
+  Proof.
+    intros ? ?; rewrite trans_plus_comm; intros.
+    destruct (shatter_word_S w) as (?, (w', H)); rewrite H in *; clear.
+    unfold eq_rect; simpl.
+    pattern eq_comm.
+    apply K_dec_set; eauto; decide equality.
+  Qed.
+
+  Lemma eq_rect_WS : forall b sz sz' w e e',
+      eq_rect (S sz) _ (WS b w) (S sz') e = WS b (eq_rect sz _ w sz' e').
+  Proof.
+    simpl; intros.
+    revert e w.
+    rewrite e'; intro; pattern e.
+    apply K_dec_set; eauto; decide equality.
+  Qed.
+
+  Lemma eq_rect_split_tl
+    : forall (sz sz' : nat) (x0 : bool) (w'' : word (sz' + sz)) (e : sz' + sz = sz + sz') (e1 : sz + sz' = sz' + sz),
+      word_split_tl (WS x0 w'') =
+      eq_rect (sz + sz') word (word_split_tl (WS x0 (eq_rect (sz' + sz) word w'' (sz + sz') e))) (sz' + sz) e1.
+  Proof.
+    induction sz; simpl.
+    - intro; rewrite <- plus_n_O; intros.
+      pattern e1.
+      apply K_dec_set; eauto; try decide equality; clear e1.
+      pattern e.
+      apply K_dec_set; eauto; try decide equality; clear e.
+    - intro; rewrite <- (trans_S_comm sz' sz); intros.
+      intros; destruct (shatter_word_S w'') as (?, (w', H)); rewrite H in *; clear H.
+      simpl.
+      rewrite (IHsz sz' x w' (trans_plus_comm _ _) (trans_plus_comm _ _)); repeat f_equal.
+      erewrite !eq_rect_WS; reflexivity.
+  Qed.
+
+  Lemma split1'_eq : forall sz sz' w,
+      split1' sz sz' w = split2 sz' sz (eq_rect _ _ w _ (trans_plus_comm _ _)).
+  Proof.
+    induction sz; simpl; intros.
+    - induction sz'; simpl.
+      + shatter_word w; reflexivity.
+      + destruct (shatter_word_S w) as (?, (w', H)); rewrite H in *; clear H.
+        erewrite wtl_eq_rect_comm.
+        eapply IHsz'.
+    - intros; destruct (shatter_word_S w) as (?, (w', H)); rewrite H in *; clear H.
+      simpl; rewrite IHsz; clear.
+      generalize (eq_ind_r (fun n : nat => S n = sz' + S sz) (trans_S_comm sz' sz) (trans_plus_comm sz sz')).
+      generalize (trans_plus_comm sz sz').
+      fold (plus sz sz').
+      revert x sz w'; induction sz'; simpl.
+      + intros ? ?; rewrite <- (plus_n_O sz); simpl.
+        intros.
+        pattern e.
+        apply K_dec_set; eauto; try decide equality.
+        pattern e0.
+        apply K_dec_set; eauto; try decide equality.
+        unfold eq_rect; simpl.
+        rewrite <- word_split_SW; reflexivity.
+      + intros ? ?.
+        rewrite <- !trans_S_comm.
+        rewrite trans_plus_comm.
+        intros; pattern e.
+        apply K_dec_set; eauto; try decide equality; clear e.
+        intros; destruct (shatter_word_S w') as (?, (w'', H)); rewrite H in *; clear H.
+        rewrite (wtl_eq_rect_S _ _ _ e0 (trans_S_comm _ _)); simpl.
+        assert (S (sz + sz') = sz' + S sz) by omega.
+        replace (eq_rect (S (sz' + sz)) word (WS x0 w'') (sz' + S sz) (trans_S_comm sz' sz)) with
+        (eq_rect (S (sz + sz')) word (WS x0 (eq_rect _ _ w'' _ (trans_plus_comm _ _))) (sz' + S sz) H).
+        erewrite <- (IHsz' x0 sz _ (trans_plus_comm _ _)).
+        repeat f_equal.
+        { generalize (trans_plus_comm sz' sz); intros; clear.
+          revert sz' x0 w'' e; induction sz; simpl.
+          - intro; rewrite <- plus_n_O; intros.
+            destruct e; reflexivity.
+          - intro; rewrite <- (trans_S_comm sz' sz); intros.
+            intros; destruct (shatter_word_S w'') as (?, (w', H)); rewrite H in *; clear H.
+            simpl.
+            rewrite (IHsz sz' x w' (trans_plus_comm _ _)); repeat f_equal.
+            erewrite eq_rect_WS; eauto.
+        }
+        { eapply eq_rect_split_tl. }
+        revert H; clear. revert w''; generalize (trans_S_comm sz' sz).
+        rewrite (trans_plus_comm sz' sz); intros; simpl.
+        destruct e; simpl.
+        rewrite eq_rect_WS with (e' := eq_refl _); reflexivity.
+  Qed.
+
+  Lemma split2'_eq : forall sz sz' w,
+      split2' sz sz' w = split1 sz' sz (eq_rect _ _ w _ (trans_plus_comm _ _)).
+  Proof.
+    induction sz; simpl; intros.
+    - induction sz'; simpl.
+      + shatter_word w; reflexivity.
+      + destruct (shatter_word_S w) as (?, (w', H)); rewrite H in *; clear H.
+        rewrite whd_eq_rect_comm; simpl.
+        erewrite wtl_eq_rect_comm.
+        rewrite (IHsz' w') at 1; reflexivity.
+    - intros; destruct (shatter_word_S w) as (?, (w', H)); rewrite H in *; clear H.
+      simpl; rewrite IHsz; clear.
+      generalize (eq_ind_r (fun n : nat => S n = sz' + S sz) (trans_S_comm sz' sz) (trans_plus_comm sz sz')).
+      generalize (trans_plus_comm sz sz').
+      fold (plus sz sz').
+      revert x sz w'; induction sz'; simpl; eauto.
+      intros.
+      assert (sz + S sz' = sz' + S sz) by omega.
+      rewrite eq_rect_WS with (e' := H); simpl.
+      revert w' e0 H; rewrite e; intros.
+      destruct (shatter_word_S w') as (?, (w'', H')); rewrite H' in *; clear H'; simpl.
+      f_equal.
+      assert (S (sz + sz') = sz' + S sz) by omega.
+      replace (eq_rect (S (sz' + sz)) word (WS x0 w'') (sz' + S sz) H)
+      with (eq_rect (S (sz + sz')) word (WS x0 (eq_rect _ _ w'' _ (trans_plus_comm _ _))) (sz' + S sz) H0)
+        by (revert w'' H H0; clear;
+            rewrite (trans_plus_comm sz' sz); intros; simpl;
+            destruct H; simpl;
+            erewrite eq_rect_WS with (e' := eq_refl _); reflexivity).
+      rewrite <- IHsz' with (e := trans_plus_comm _ _);
+        f_equal; simpl.
+      eapply eq_rect_split_tl.
+  Qed.
+
+    Lemma CollapseWord {ResultT}
     : forall sz sz' (b : B)
              (cd : CacheDecode)
              (k : _ -> _ -> _ -> _ -> option (ResultT * B * CacheDecode)),
@@ -110,6 +277,42 @@ Section AlignWord.
             simpl; f_equal; eauto.
           pose proof (shatter_word_S w); destruct_ex; subst;
             simpl; f_equal; eauto.
+  Qed.
+
+  Lemma CollapseWord' {ResultT}
+    : forall sz' sz (b : B)
+             (cd : CacheDecode)
+             (k : _ -> _ -> _ -> _ -> option (ResultT * B * CacheDecode)),
+      (`(w, b', cd') <- decode_word (sz:=sz) b cd;
+         `(w', b', cd') <- decode_word (sz:=sz') b' cd';
+         k w w' b' cd') =
+      (`(w , b', cd') <- decode_word (sz:=sz + sz') b cd;
+         k (split2 sz' sz (eq_rect _ _ w _ (trans_plus_comm sz sz')))
+           (split1 sz' sz (eq_rect _ _ w _ (trans_plus_comm sz sz'))) b' cd').
+  Proof.
+    intros; rewrite CollapseWord.
+    destruct (decode_word b cd) as [ [ [? ?] ?] | ]; simpl.
+    rewrite split2'_eq, split1'_eq; eauto.
+    reflexivity.
+  Qed.
+
+  Lemma CollapseWord'' {ResultT}
+    : forall sz' sz (b : B)
+             (cd : CacheDecode)
+             (k : _ -> _ -> _ -> _ -> option (ResultT * B * CacheDecode)),
+      (`(w, b', cd') <- decode_word (sz:=sz) b cd;
+         `(w', b', cd') <- decode_word (sz:=sz') b' cd';
+         k w w' b' cd') =
+      (`(w , b', cd') <- decode_word (sz:=sz' + sz) b cd;
+         k (split2 sz' sz w)
+           (split1 sz' sz w) b' cd').
+  Proof.
+    intros; rewrite CollapseWord'.
+    replace (decode_word (sz:=sz' + sz) b cd) with (eq_rect _ (fun n => option (word n * B * _)) (decode_word (sz:=sz + sz') b cd) _ (trans_plus_comm _ _)).
+    - destruct (decode_word b cd) as [ [ [? ?] ?] | ]; simpl.
+      + revert w; rewrite (trans_plus_comm sz sz'); simpl; eauto.
+      + rewrite (trans_plus_comm sz sz'); simpl; eauto.
+    - rewrite (trans_plus_comm sz sz'); simpl; reflexivity.
   Qed.
 
   Variable addE_addE_plus :
@@ -255,6 +458,6 @@ Ltac collapse_word addD_addD_plus :=
                            (fun w' b' cd' => @?k w w' b' cd')) = _ =>
     etransitivity;
     [let H := fresh in
-     pose proof (@CollapseWord _ _ _ _ _ addD_addD_plus _ sz sz' b cd k);
+     pose proof (@CollapseWord'' _ _ _ _ _ addD_addD_plus _ sz' sz b cd k);
      apply H | ]
   end.
