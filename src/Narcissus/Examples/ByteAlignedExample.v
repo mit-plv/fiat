@@ -1,4 +1,5 @@
 Require Import
+        Coq.omega.Omega
         Coq.Strings.String
         Coq.Vectors.Vector.
 
@@ -88,7 +89,7 @@ Proof.
 Defined.
 
 Definition SimpleDecoderImpl
-    := Eval simpl in (projT1 Simple_Format_decoder).
+    := Eval simpl in (proj1_sig Simple_Format_decoder).
 
 Ltac rewrite_DecodeOpt2_fmap :=
   set_refine_evar;

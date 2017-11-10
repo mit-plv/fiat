@@ -1,5 +1,6 @@
 Require Import
         Bedrock.Word
+        Coq.omega.Omega
         Coq.NArith.NArith
         Coq.Arith.Arith
         Coq.Numbers.Natural.Peano.NPeano
@@ -524,7 +525,7 @@ Proof.
       first [ rewrite IHbyteString0
             | unfold Vector.fold_left;
               rewrite IHbyteString0].
-      
+
       first [ simpl ByteString_into_queue';
               rewrite <- !fold_left_cons;
               reflexivity
@@ -542,7 +543,7 @@ Proof.
     destruct (eq_nat_dec padding0 7).
     subst; omega.
     repeat f_equal.
-    apply le_uniqueness_proof. 
+    apply le_uniqueness_proof.
 Qed.   *)
   (* 8.4 hangs forever on Qed :p *)
 Admitted.

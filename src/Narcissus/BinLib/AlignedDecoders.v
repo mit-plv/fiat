@@ -1,7 +1,8 @@
 Require Import
-         Coq.Strings.String
-         Coq.Arith.Mult
-         Coq.Vectors.Vector.
+        Coq.omega.Omega
+        Coq.Strings.String
+        Coq.Arith.Mult
+        Coq.Vectors.Vector.
 
 Require Import
         Fiat.Common.SumType
@@ -463,7 +464,7 @@ Section AlignedDecoders.
     end.
     eapply Decode_w_Measure_le_eq' in Heqo.
     assert (dec_a (build_aligned_ByteString (Guarded_Vector_split m n b)) cd
-            = Some (a, projT1 s, c)).
+            = Some (a, proj1_sig s, c)).
     { destruct s; simpl in *.
       rewrite <- Heqo.
       unfold build_aligned_ByteString; repeat f_equal; simpl.
@@ -689,7 +690,7 @@ Section AlignedDecoders.
       end.
       eapply Decode_w_Measure_lt_eq' in Heqo.
       assert (dec_a m (build_aligned_ByteString (Guarded_Vector_split m n b)) cd
-              = Some (a, projT1 s, c)).
+              = Some (a, proj1_sig s, c)).
       { destruct s; simpl in *.
         rewrite <- Heqo.
         unfold build_aligned_ByteString; repeat f_equal; simpl.
@@ -762,7 +763,7 @@ Section AlignedDecoders.
       end.
       eapply Decode_w_Measure_lt_eq' in Heqo.
       assert (dec_a n (build_aligned_ByteString (Guarded_Vector_split n n b)) cd
-              = Some (a, projT1 s, c)).
+              = Some (a, proj1_sig s, c)).
       { destruct s; simpl in *.
         rewrite <- Heqo.
         unfold build_aligned_ByteString; repeat f_equal; simpl.
@@ -1020,13 +1021,21 @@ Section AlignedDecoders.
       simpl.
       unfold build_aligned_ByteString, decode_word in *.
       simpl in H0.
-      destruct (decode_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
+      first [destruct (decode_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
+                             {|
+                               padding := 0;
+                               front := WO;
+                               paddingOK := build_aligned_ByteString_subproof (*n b *);
+                               numBytes := n;
+                               byteString := b |}) as [ [? ?] | ]
+            | destruct (decode_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
                              {|
                                padding := 0;
                                front := WO;
                                paddingOK := build_aligned_ByteString_subproof n b;
                                numBytes := n;
-                               byteString := b |}) as [ [? ?] | ]; simpl in *; try congruence.
+                               byteString := b |}) as [ [? ?] | ]]
+      ; simpl in *; try congruence.
   Qed.
 
   Lemma build_aligned_ByteString_eq_split'

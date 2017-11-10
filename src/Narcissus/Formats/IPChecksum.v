@@ -1,4 +1,5 @@
 Require Import
+        Coq.omega.Omega
         Coq.Strings.String
         Coq.Vectors.Vector.
 

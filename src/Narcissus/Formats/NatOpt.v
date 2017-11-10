@@ -2,6 +2,7 @@ Require Import
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Formats.WordOpt.
 Require Import
+        Coq.omega.Omega
         Bedrock.Word.
 
 Section Nat.

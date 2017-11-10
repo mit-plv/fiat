@@ -1,5 +1,7 @@
 Require Import List.
-Require Import Bedrock.Word Coq.micromega.Psatz.
+Require Import Bedrock.Word
+        Coq.omega.Omega
+        Coq.micromega.Psatz.
 
 Require Import NArith NArithRing.
 Local Open Scope N_scope.
@@ -183,7 +185,7 @@ Qed.
 Fixpoint waddmsb {sz} (w: word sz) msb : word (S sz) :=
   match w with
   | WO => WS msb WO
-  | WS b sz w' => WS b (waddmsb w' msb)
+  | @WS b sz w' => WS b (waddmsb w' msb)
   end.
 
 Lemma wmsb_waddmsb:
@@ -495,7 +497,7 @@ Qed.
 Fixpoint wcountones {sz} (w: word sz) : nat :=
   match w with
   | WO => 0
-  | WS x n w' => (if Bool.eqb x true then 1 else 0) + wcountones w'
+  | @WS x n w' => (if Bool.eqb x true then 1 else 0) + wcountones w'
   end%nat.
 
 Lemma wcountones_wzero {sz} :
@@ -756,7 +758,29 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma wmsb_combine {sz} :
+(* 8.7 Definition 
+   Lemma wmsb_combine {sz} :
+  forall (w : word (S sz)) b,
+  exists w' : word sz,
+    w = match eq_sym (Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
+        | eq_refl => fun w' => w'
+        end (w' +^+ WS (wmsb w b) WO).
+Proof.
+  induction sz; intros;
+    destruct (shatter_word_S w) as (b' & [ w' ? ]); subst.
+  - exists WO; pose proof (shatter_word_0 w'); subst; simpl.
+    rewrite (UIP_nat _ _ (Nat.add_1_r 0) eq_refl); reflexivity.
+  - specialize (IHsz w' b'); destruct IHsz as (w'' & Heq).
+    simpl.
+    exists (WS b' w'').
+    change (WS b' w'' +^+ WS (wmsb w' b') WO) with (WS b' (w'' +^+ WS (wmsb w' b') WO)).
+    eapply WS_match_eq_refl.
+    rewrite Heq at 1.
+    reflexivity.
+Qed. *)
+
+(* 8.4 Definition *)
+   Lemma wmsb_combine {sz} :
   forall (w : word (S sz)) b,
   exists w' : word sz,
     w = match eq_sym (NPeano.Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
@@ -774,7 +798,7 @@ Proof.
     eapply WS_match_eq_refl.
     rewrite Heq at 1.
     reflexivity.
-Qed.
+Qed. 
 
 Lemma normalizeZ_OneCToZ {sz} :
   forall w: word (S sz), normalizeZ sz (OneCToZ w) = (OneCToZ w).
@@ -783,6 +807,25 @@ Proof.
   apply normalizeZ_noop.
   unfold OneCToZ.
   pose proof (Npow2_ge_one sz).
+  (* 8.7 script: 
+     destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
+    repeat match goal with
+           | _ => lia
+           | [ H: wordToN (wnot ?w) = _, Heqb: wmsb ?w _ = _ |- _ ] =>
+             apply (f_equal negb) in Heqb; rewrite <- (wmsb_wnot' (S sz) w true) in Heqb; simpl in Heqb
+           | [ H: wmsb ?w ?b = _ |- _ ] =>
+             let w' := fresh in
+             let Heqw := fresh in
+             destruct (wmsb_combine w b) as (w' & Heqw);
+               rewrite Heqw in Heqn;
+               rewrite <- (Nat.add_1_r sz) in *;
+               simpl in Heqn;
+               clear Heqw;
+               rewrite wordToN_combine in Heqn;
+               pose proof (wordToN_bound w');
+               simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
+           end. *)
+  (* 8.4 script *)
   destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with
            | _ => lia
@@ -980,7 +1023,8 @@ Proof.
     try solve [match goal with
                | [ H: _ \/ _ |- _ ] => destruct H; try congruence
                end].
-  apply combine_inj. eassumption.
+  first [apply combine_inj; eassumption
+        | solve [intuition] ].
 Qed.
 
 Lemma checksum'_somewhat_injective :

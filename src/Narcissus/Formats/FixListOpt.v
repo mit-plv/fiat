@@ -1,4 +1,5 @@
 Require Import
+        Coq.omega.Omega
         Fiat.Narcissus.Common.Notations
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt.

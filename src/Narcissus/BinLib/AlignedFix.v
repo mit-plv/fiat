@@ -72,7 +72,7 @@ Section AlignedFix.
                   (fun _ : A =>
                      CacheFormat ->
                      {n : nat & t (word 8) n} * (CacheFormat)) body' x ce) eqn: ?.
-    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (exist (fun a' => lt_A a' a) a' lt_a')))).
     simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
     rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
     etransitivity.
@@ -128,6 +128,7 @@ Section AlignedFix.
              (ret (let (v, ce') := Fix wf_lt_A _ body' (existT _ _ a_OK) ce in
                    (build_aligned_ByteString (projT2 v), ce'))).
   Proof.
+    (* 8.4 script *)
     intros.
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
@@ -140,7 +141,7 @@ Section AlignedFix.
                    (fun _ : {a0 : A & A_OK a0} =>
                       CacheFormat ->
                       {n : nat & t (word 8) n} * (CacheFormat)) body' x ce) eqn: ?.
-    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (exist (fun a' => lt_A a' a) a' lt_a')))).
     simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
     rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
     etransitivity.
@@ -155,7 +156,7 @@ Section AlignedFix.
     rewrite Heqp; reflexivity.
     reflexivity.
   Qed.
-(*intros. 8.6 script.
+    (*intros. (*8.6 script. *)
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
@@ -167,7 +168,7 @@ Section AlignedFix.
                (fun _ : {a0 : A & A_OK a0} =>
                 CacheFormat ->
                 {n : nat & t (word 8) n} * (CacheFormat)) body' x ce) eqn: ?.
-    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (exist (fun a' => lt_A a' a) a' lt_a')))).
     simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
     rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
     etransitivity.
@@ -177,9 +178,9 @@ Section AlignedFix.
                CacheFormat ->
                {n : nat & t (word 8) n} * (CacheFormat) :=
                body' x0 (fun (a'0 : {a0 : A & A_OK a0}) (lt_a'0 : lt_A a'0 x0) => Fix_F_sub a'0 (Acc_inv r lt_a'0))) a'
-              (wf_lt_A a')).
+               (wf_lt_A a')).
     simpl; intros; rewrite H; eauto;  reflexivity.
-    rewrite Heqp; try reflexivity. *)
-  (*Qed. *)
+    rewrite Heqp; try reflexivity.
+  Qed. *)
 
 End AlignedFix.

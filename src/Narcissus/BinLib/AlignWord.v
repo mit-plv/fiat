@@ -7,6 +7,7 @@ Require Import
         Fiat.Narcissus.Formats.WordOpt.
 Require Import
         Coq.Vectors.Vector
+        Coq.omega.Omega
         Bedrock.Word.
 
 Section AlignWord.

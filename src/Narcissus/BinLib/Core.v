@@ -1,5 +1,6 @@
 Require Import
         Bedrock.Word
+        Coq.omega.Omega
         Coq.NArith.NArith
         Coq.Arith.Arith
         Coq.Numbers.Natural.Peano.NPeano

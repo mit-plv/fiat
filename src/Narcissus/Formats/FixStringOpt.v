@@ -3,6 +3,7 @@ Require Import
         Fiat.Narcissus.Formats.AsciiOpt.
 Require Import
         Bedrock.Word
+        Coq.omega.Omega
         Coq.Strings.Ascii
         Coq.Strings.String.
 

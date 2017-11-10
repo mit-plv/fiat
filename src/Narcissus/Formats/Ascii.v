@@ -3,6 +3,7 @@ Require Import
         Fiat.Narcissus.Formats.Word.
 Require Import
         Bedrock.Word
+        Coq.omega.Omega
         Coq.Strings.Ascii
         Coq.Numbers.BinNums
         Coq.NArith.BinNat.

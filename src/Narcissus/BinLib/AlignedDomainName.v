@@ -1,4 +1,5 @@
 Require Import
+        Coq.omega.Omega
         Coq.Strings.String
         Coq.Arith.Mult
         Coq.Vectors.Vector.
@@ -213,7 +214,7 @@ Section AlignedDomainName.
     unfold snd at 2; unfold snd at 2.
     unfold fst at 2; unfold fst at 2.
     unfold fst at 2.
-    rewrite (H (exist _ _ (split_string_ValidDomainName _ (projT2 r)))
+    rewrite (H (existT _ _ (split_string_ValidDomainName _ (projT2 r)))
                (@split_string_ValidDomainName_length _ H0)).
     simplify with monad laws.
     Arguments mult : simpl never.
@@ -587,7 +588,7 @@ Section AlignedDomainName.
                   (fun _ : A =>
                      CacheFormat ->
                      {n : nat & t (word 8) n} * (CacheFormat)) body' x ce) eqn: ?.
-    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (exist (fun a' => lt_A a' a) a' lt_a')))).
     generalize Heqp as Heqp'; intros.
     simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
     rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
@@ -647,7 +648,7 @@ Section AlignedDomainName.
              (ret (let (v, ce') := Fix wf_lt_A _ body' (existT _ _ a_OK) ce in
                    (build_aligned_ByteString (projT2 v), ce'))).
   Proof.
-    intros.
+     intros. (* 8.4 script *)
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT _ a a_OK)) at 1.
@@ -659,7 +660,7 @@ Section AlignedDomainName.
                    (fun _ : {a0 : A & A_OK a0} =>
                       CacheFormat ->
                       {n : nat & t (word 8) n} * (CacheFormat)) body' x ce) eqn: ?.
-    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (exist (fun a' => lt_A a' a) a' lt_a')))).
     simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
     generalize Heqp as Heqp'; intros.
     rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
@@ -676,8 +677,8 @@ Section AlignedDomainName.
     rewrite Heqp, Heqp'.
     reflexivity.
     reflexivity.
-  Qed.
-  (*intros. 8.6 script.
+  Qed. (*
+  intros. (* 8.6 script. *)
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
@@ -689,7 +690,7 @@ Section AlignedDomainName.
                (fun _ : {a0 : A & A_OK a0} =>
                 CacheFormat ->
                 {n : nat & t (word 8) n} * (CacheFormat)) body' x ce) eqn: ?.
-    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (exist (fun a' => lt_A a' a) a' lt_a')))).
     simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
     rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
     etransitivity.
@@ -701,8 +702,9 @@ Section AlignedDomainName.
                body' x0 (fun (a'0 : {a0 : A & A_OK a0}) (lt_a'0 : lt_A a'0 x0) => Fix_F_sub a'0 (Acc_inv r lt_a'0))) a'
               (wf_lt_A a')).
     simpl; intros; rewrite H; eauto;  reflexivity.
-    rewrite Heqp; try reflexivity. *)
-  (*Qed. *)
+    admit.
+    (*rewrite Heqp; try reflexivity. *)
+  Qed.  *)
 
   Lemma AlignedFormatDomainNameThenC
     : (forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m)) ->
@@ -895,7 +897,8 @@ Section AlignedDomainName.
                                                       end)
                                                      Else None.
   Proof.
-    unfold If_Opt_Then_Else,decode_DomainName,
+    (* 8.4 script *)
+  unfold If_Opt_Then_Else,decode_DomainName,
     byte_aligned_decode_DomainName; simpl; intros.
     eapply (@optimize_Fix dns_list_cache).
     Focus 3.

@@ -154,7 +154,7 @@ Section Specifications.
   Qed.
 
   Local Transparent computes_to.
- 
+
   (* We can always strengthen a format to disallow invalid data. *)
   Lemma CorrectDecoderStrengthenFormat :
     forall (monoid : Monoid B)
@@ -177,7 +177,7 @@ Section Specifications.
     unfold computes_to; eauto.
   Qed.
   Local Opaque computes_to.
-  
+
   Definition BindOpt {A' A''}
              (a_opt : option A')
              (k : A' -> option A'') :=
@@ -618,7 +618,7 @@ Global Unset Implicit Arguments.
 
 Definition CorrectDecoderFor {A B} {cache : Cache}
            {monoid : Monoid B} Invariant FormatSpec :=
-  { decodePlusCacheInv |
+  { decodePlusCacheInv : _ |
     exists P_inv,
     (cache_inv_Property (snd decodePlusCacheInv) P_inv
      -> CorrectDecoder (A := A) monoid Invariant (fun _ _ => True)
@@ -674,23 +674,23 @@ Lemma refine_Pick_Decoder_For
       (decoderImpl : @CorrectDecoderFor A B cache monoid Invariant FormatSpec)
   : forall b ce cd,
     Equiv ce cd
-    -> snd (projT1 decoderImpl) cd
+    -> snd (proj1_sig decoderImpl) cd
     -> refine (Pick_Decoder_For Invariant FormatSpec b ce)
-              (ret match fst (projT1 decoderImpl) b cd
+              (ret match fst (proj1_sig decoderImpl) b cd
                    with
                    | Some (a, _, _) => Some a
                    | None => None
                    end).
 Proof.
   intros.
-  pose proof (projT2 (decoderImpl)).
+  pose proof (proj2_sig (decoderImpl)).
   cbv beta in H1.
   destruct_ex; intuition.
   destruct H1.
   intros v Comp_v; computes_to_inv; subst;
     apply PickComputes; intros.
   split; intros.
-  - destruct (fst (projT1 decoderImpl) b cd) as [ [ [? ?] ?] | ] eqn: ?; try discriminate.
+  - destruct (fst (proj1_sig decoderImpl) b cd) as [ [ [? ?] ?] | ] eqn: ?; try discriminate.
     injections.
     eapply H2 in Heqo; eauto.
     destruct Heqo as [? [? [? [? ?] ] ] ].

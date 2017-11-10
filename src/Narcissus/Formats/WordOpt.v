@@ -1,4 +1,5 @@
 Require Import
+        Coq.omega.Omega
         Fiat.Common
         Fiat.Computation.Notations
         Fiat.Narcissus.Common.Specs

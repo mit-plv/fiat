@@ -1,5 +1,6 @@
 Require Import
         Coq.Bool.Bool
+        Coq.omega.Omega
         Fiat.Common.DecideableEnsembles
         Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
