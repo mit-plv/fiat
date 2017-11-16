@@ -666,14 +666,14 @@ Qed.
   Ltac decode_DNS_rules g :=
     (* Processes the goal by either: *)
     lazymatch goal with
-    | |- appcontext[CorrectDecoder _ _ _ format_DomainName _ _ ] =>
+    | |- context[CorrectDecoder _ _ _ format_DomainName _ _ ] =>
       eapply (DomainName_decode_correct
                 IndependentCaches IndependentCaches' IndependentCaches'''
                 getDistinct getDistinct' addPeekSome
                 boundPeekSome addPeekNone addPeekNone'
                 addZeroPeek addPeekESome boundPeekESome
                 addPeekENone addPeekENone')
-    | |- appcontext [CorrectDecoder _ _ _ (format_list format_resource) _ _] =>
+    | |- context [CorrectDecoder _ _ _ (format_list format_resource) _ _] =>
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
 

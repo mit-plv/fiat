@@ -19,14 +19,14 @@ Local Ltac tuplify a b :=
 Local Ltac tuplify' a b :=
   tuplify a b;
   let tac := (fun T => match T with
-                         | appcontext[?P (a, b)]
+                         | context[?P (a, b)]
                            => change (P (a, b)) with (P (fst (a, b), snd (a, b)))
                        end) in
   match goal with
-    | [ |- appcontext[@eq ?T] ] => tac T
-    | [ |- appcontext[@flatten_forall_eq ?B ?T] ] => tac B; tac T
-    | [ |- appcontext[@flatten_forall_eq_with_assumption ?B ?T] ] => tac B; tac T
-    | [ |- appcontext[@flatten_append_forall ?B ?T] ] => tac B; tac T
+    | [ |- context[@eq ?T] ] => tac T
+    | [ |- context[@flatten_forall_eq ?B ?T] ] => tac B; tac T
+    | [ |- context[@flatten_forall_eq_with_assumption ?B ?T] ] => tac B; tac T
+    | [ |- context[@flatten_append_forall ?B ?T] ] => tac B; tac T
   end.
 
 (** work around https://coq.inria.fr/bugs/show_bug.cgi?id=4471 *)
@@ -180,7 +180,7 @@ Local Ltac Fix2_eq_t F_ext Rwf :=
   rewrite <- Fix2_F_eq;
   apply F_ext; intros;
   repeat match goal with
-           | [ |- appcontext[Fix2_F _ _ (?f ?x)] ] => generalize (f x)
+           | [ |- context[Fix2_F _ _ (?f ?x)] ] => generalize (f x)
          end;
   clear -F_ext Rwf;
   let y := match goal with |- forall x : Acc _ (?y, ?y'), _ => constr:(y) end in
@@ -444,7 +444,7 @@ Section Fix2VTransfer.
         end.
         reflexivity. }
       lazymatch goal with
-        | [ |- appcontext[Fix2V' ?F] ]
+        | [ |- context[Fix2V' ?F] ]
           => generalize (Fix2V' F)
       end.
       subst F'; cbv beta.
@@ -452,7 +452,7 @@ Section Fix2VTransfer.
       intro.
       rewrite flatten_forall_eq_rect_trans.
       match goal with
-        | [ |- appcontext[flatten_forall_eq_rect
+        | [ |- context[flatten_forall_eq_rect
                             (flattenT_unapply_Proper ?P ?Q ?H)
                             (flatten_forall_unapply ?f)] ]
           => rewrite (@flatten_forall_eq_rect_flattenT_unapply_Proper _ P Q H f)
@@ -461,17 +461,17 @@ Section Fix2VTransfer.
       { apply flatten_forall_eq_rect_Proper.
         apply flatten_forall_unapply_Proper; intro.
         match goal with
-          | [ |- appcontext[@transitivity _ (@eq ?A) ?P] ]
+          | [ |- context[@transitivity _ (@eq ?A) ?P] ]
             => change (@transitivity _ (@eq ?A) P) with (@eq_trans A)
         end.
         match goal with
-          | [ |- appcontext[@symmetry _ (@eq ?A) ?P] ]
+          | [ |- context[@symmetry _ (@eq ?A) ?P] ]
             => change (@symmetry _ (@eq ?A) P) with (@eq_sym A)
         end.
         set_evars.
         rewrite @transport_pp.
         match goal with
-          | [ |- appcontext G[eq_rect _ (fun T => T) (flatten_forall_apply (flatten_forall_unapply ?k) ?x0) _ (eq_sym (flattenT_apply_unapply ?f1 ?x0))] ]
+          | [ |- context G[eq_rect _ (fun T => T) (flatten_forall_apply (flatten_forall_unapply ?k) ?x0) _ (eq_sym (flattenT_apply_unapply ?f1 ?x0))] ]
             => let H := fresh in
                pose proof (@eq_rect_symmetry_flattenT_apply_unapply _ f1 x0 k) as H;
                  cbv beta in H |- *;

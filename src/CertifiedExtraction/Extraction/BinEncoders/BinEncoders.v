@@ -71,7 +71,7 @@ Ltac _compile_encode_list :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             lazymatch post with
-            | appcontext[fold_left (encode_list_body _) (`?lst)] =>
+            | context[fold_left (encode_list_body _) (`?lst)] =>
               lazymatch pre with
               | context[Cons (NTSome ?vlst) (ret lst) _] =>
                 _compile_LoopMany vlst;
@@ -122,7 +122,7 @@ Ltac encode_list_body_simpl :=
 
 Ltac encode_list__cleanup_post_encode_list_as_fold :=
   lazymatch goal with
-  | [  |- appcontext[fold_left (@encode_list_body _ _ ?cache ?transformer _)] ] =>
+  | [  |- context[fold_left (@encode_list_body _ _ ?cache ?transformer _)] ] =>
     change_post_into_TelAppend; (* FIXME: Need either this, or a set_evars call; why? *)
     setoid_rewrite (encode_list_post_transform_TelEq_TelAppend cache transformer)
   end.
@@ -205,7 +205,7 @@ Definition Counted {A} (x: A) := x.
 Ltac count_instances head_symbol counter_var :=
   pose 0 as counter_var;
   repeat match goal with
-         | [  |- appcontext C [head_symbol ?x] ] =>
+         | [  |- context C [head_symbol ?x] ] =>
            apply_in_body counter_var S;
            let C' := context C[(Counted head_symbol) x] in change C'
          end;

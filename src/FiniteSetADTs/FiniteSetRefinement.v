@@ -1285,7 +1285,7 @@ Section FiniteSetHelpers.
     rewrite EnsembleOfList_In in *.
     rewrite In_UniqueFilterOfList in *.
     repeat match goal with
-             | [ |- appcontext[if ?E then _ else _] ] => case_eq E
+             | [ |- context[if ?E then _ else _] ] => case_eq E
              | _ => intro
              | _ => progress subst
              | _ => reflexivity
@@ -1413,45 +1413,45 @@ Tactic Notation "finish" "sharpening" "computation" := finish_FullySharpenedComp
 
 Ltac finite_set_sharpen_step FiniteSetImpl :=
   first [ progress autorewrite with refine_monad
-        | match goal with |- appcontext[Bind (Bind _ _)] => idtac end;
+        | match goal with |- context[Bind (Bind _ _)] => idtac end;
           setoid_rewrite refineEquiv_bind_bind
-        | match goal with |- appcontext[Bind (Return _)] => idtac end;
+        | match goal with |- context[Bind (Return _)] => idtac end;
           setoid_rewrite refineEquiv_bind_unit
-        | match goal with |- appcontext[Bind _ (Return _)] => idtac end;
+        | match goal with |- context[Bind _ (Return _)] => idtac end;
           setoid_rewrite refineEquiv_unit_bind
         | idtac;
           (* do an explicit [match] to avoid "Anomaly: Uncaught exception Invalid_argument("decomp_pointwise"). Please report." *)
           match goal with
-            | |- appcontext[@FiniteSetADT.cardinal] => idtac
-            | |- appcontext[@Ensembles.Cardinal.cardinal] => idtac
+            | |- context[@FiniteSetADT.cardinal] => idtac
+            | |- context[@Ensembles.Cardinal.cardinal] => idtac
           end;
           setoid_rewrite (@finite_set_handle_cardinal FiniteSetImpl)
-        | match goal with |- appcontext[@Ensembles.Union] => idtac end;
+        | match goal with |- context[@Ensembles.Union] => idtac end;
           setoid_rewrite refineEquivUnion; [ | apply Same_set_ELE ]
-        | match goal with |- appcontext[@Ensembles.Complement] => idtac end;
+        | match goal with |- context[@Ensembles.Complement] => idtac end;
           setoid_rewrite Same_set__Intersection_Complement__Setminus
-        | match goal with |- appcontext[@Ensembles.Intersection] => idtac end;
+        | match goal with |- context[@Ensembles.Intersection] => idtac end;
           first [ setoid_rewrite Same_set__Intersection_beq__Setminus
                 | setoid_rewrite Same_set__Intersection_bneq__Setminus
                 | setoid_rewrite Same_set__Intersection_bnneq__Setminus ]
-        (*| match goal with |- appcontext[@Ensembles.Setminus] => idtac end;
+        (*| match goal with |- context[@Ensembles.Setminus] => idtac end;
           setoid_rewrite Same_set_Setminus_fold*)
         | rewrite filter_fold_right
         | progress rewrite ?NoFiniteSetJustFunctionOfList, ?FunctionIsListOfList, ?NoFiniteSetJustListOfList
-        | match goal with |- appcontext[EnsembleListEquivalence (fun x => Ensembles.In _ _ x /\ _)] => idtac end;
+        | match goal with |- context[EnsembleListEquivalence (fun x => Ensembles.In _ _ x /\ _)] => idtac end;
           setoid_rewrite refine_ELE_filter_by_and
-        | match goal with |- appcontext[@FunctionOfList] => idtac end;
+        | match goal with |- context[@FunctionOfList] => idtac end;
           (** N.B. the [not_in] one must come first, so we combine them; if it doesn't come first, then we end up trying to make a finite set out of the complement of a list, which is impossible *)
           first [ setoid_rewrite (@FunctionOfList_pick_not_in FiniteSetImpl)
                 | setoid_rewrite (@FunctionOfList_pick_in FiniteSetImpl) ]
-        | match goal with |- appcontext[@FunctionOfList] => idtac end;
+        | match goal with |- context[@FunctionOfList] => idtac end;
           setoid_rewrite (@FunctionOfList_pull_ret FiniteSetImpl)
-        | match goal with |- appcontext[@FiniteSetAndFunctionOfList] => idtac end;
+        | match goal with |- context[@FiniteSetAndFunctionOfList] => idtac end;
           setoid_rewrite (@FiniteSetAndFunctionOfList_pull_ret FiniteSetImpl)
-        | match goal with |- appcontext[@Ensembles.Intersection] => idtac end;
+        | match goal with |- context[@Ensembles.Intersection] => idtac end;
           setoid_rewrite (@EnsembleListEquivalence_Intersection_elements1_fold FiniteSetImpl)
         | idtac;
-          match goal with |- appcontext[@eq bool] => idtac end;
+          match goal with |- context[@eq bool] => idtac end;
           first [ setoid_rewrite bool_true_iff_beq_pick
                 | setoid_rewrite bool_true_iff_bneq_pick
                 | setoid_rewrite bool_true_iff_bnneq_pick ]

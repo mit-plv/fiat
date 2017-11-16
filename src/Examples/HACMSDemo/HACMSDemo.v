@@ -464,7 +464,7 @@ Definition Empty : CacheEncode := tt.
 
   Ltac decompose_EnumField Ridx Fidx :=
     match goal with
-      |- appcontext[ @BuildADT (UnConstrQueryStructure (QueryStructureSchemaRaw ?qs_schema)) ]
+      |- context[ @BuildADT (UnConstrQueryStructure (QueryStructureSchemaRaw ?qs_schema)) ]
       =>
       let n := eval compute in (NumAttr (GetHeading qs_schema Ridx)) in
     let AbsR' := constr:(@DecomposeRawQueryStructureSchema_AbsR' n qs_schema ``Ridx ``Fidx id (fun i => ibound (indexb i))

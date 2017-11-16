@@ -348,9 +348,9 @@ Proof.
     repeat first [
              solve [ eauto ]
            | match goal with
-             | |- appcontext[Nat_as_OT.compare ?st ?st'] =>
+             | |- context[Nat_as_OT.compare ?st ?st'] =>
                destruct (Nat_as_OT.compare st st'); simpl
-             | |- appcontext[le_dec ?st ?st'] =>
+             | |- context[le_dec ?st ?st'] =>
                destruct (le_dec st st'); simpl
              end
            | progress (unfold Nat_as_OT.lt, Nat_as_OT.eq in *; omega)

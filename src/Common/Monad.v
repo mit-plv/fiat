@@ -85,7 +85,7 @@ Local Ltac t_option :=
            | _ => assumption
            | _ => solve [ trivial ]
            | [ H : option _ |- _ ] => destruct H
-           | [ |- appcontext[match ?a with None => _ end] ] => case_eq a
+           | [ |- context[match ?a with None => _ end] ] => case_eq a
            | [ |- @bind ?M ?H ?A ?B ?x _ = bind ?x _ ] => let lem := constr:(@bind_ext M H _ A B) in apply lem
            | [ |- @bind ?M ?H ?A ?B ?x _ = ?x ] => etransitivity; [ | solve [ apply (@unit_bind M H _) ] ]
            | _ => progress autorewrite with monad; try assumption; []

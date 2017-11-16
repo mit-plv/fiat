@@ -180,7 +180,7 @@ Ltac final_optimizations := eapply FullySharpened_Finish.
 
 Ltac determinize :=
   match goal with
-  | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
+  | |- context[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
     FullySharpenQueryStructure Schema Indexes
   end.
 

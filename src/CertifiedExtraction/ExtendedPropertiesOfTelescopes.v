@@ -262,13 +262,13 @@ Qed.
 
 Ltac is_dirty_telescope term :=
   match term with
-  | appcontext[DropName] => idtac
+  | context[DropName] => idtac
   | _ => fail 1
   end.
 
 Ltac is_clean_telescope term :=
   match term with
-  | appcontext[DropName] => fail 1
+  | context[DropName] => fail 1
   | _ => idtac
   end.
 
