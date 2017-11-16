@@ -10,12 +10,16 @@ Require Import Fiat.Common.Equality.
 Set Implicit Arguments.
 
 Local Ltac Fix_eq_t F_ext Rwf :=
+  let generalize_if_not_var x :=
+      first [ is_var x; fail 1
+            | generalize x ] in
   intros;
   unfold Fix;
   rewrite <- Fix_F_eq;
   apply F_ext; intros;
   repeat match goal with
-           | [ |- appcontext[Fix_F _ _ (?f ?x)] ] => generalize (f x)
+           | [ |- context[Fix_F _ _ ?x] ] => generalize_if_not_var x
+           | [ |- context[Fix_F _ _ ?x _] ] => generalize_if_not_var x
          end;
   clear -F_ext Rwf;
   match goal with
@@ -231,7 +235,7 @@ Section FixVTransfer.
         end.
         reflexivity. }
       lazymatch goal with
-        | [ |- appcontext[FixV' ?F] ]
+        | [ |- context[FixV' ?F _] ]
           => generalize (FixV' F)
       end.
       subst F'; cbv beta.
@@ -239,7 +243,7 @@ Section FixVTransfer.
       intro.
       rewrite flatten_forall_eq_rect_trans.
       match goal with
-        | [ |- appcontext[flatten_forall_eq_rect
+        | [ |- context[flatten_forall_eq_rect
                             (flattenT_unapply_Proper ?P ?Q ?H)
                             (flatten_forall_unapply ?f)] ]
           => rewrite (@flatten_forall_eq_rect_flattenT_unapply_Proper _ P Q H f)
@@ -248,17 +252,17 @@ Section FixVTransfer.
       { apply flatten_forall_eq_rect_Proper.
         apply flatten_forall_unapply_Proper; intro.
         match goal with
-          | [ |- appcontext[@transitivity _ (@eq ?A) ?P] ]
+          | [ |- context[@transitivity _ (@eq ?A) ?P _ _ _ _ _] ]
             => change (@transitivity _ (@eq ?A) P) with (@eq_trans A)
         end.
         match goal with
-          | [ |- appcontext[@symmetry _ (@eq ?A) ?P] ]
+          | [ |- context[@symmetry _ (@eq ?A) ?P _ _ _] ]
             => change (@symmetry _ (@eq ?A) P) with (@eq_sym A)
         end.
         set_evars.
         rewrite @transport_pp.
         match goal with
-          | [ |- appcontext G[eq_rect _ (fun T => T) (flatten_forall_apply (flatten_forall_unapply ?k) ?x0) _ (eq_sym (flattenT_apply_unapply ?f1 ?x0))] ]
+          | [ |- context G[eq_rect _ (fun T => T) (flatten_forall_apply (flatten_forall_unapply ?k) ?x0) _ (eq_sym (flattenT_apply_unapply ?f1 ?x0))] ]
             => let H := fresh in
                pose proof (@eq_rect_symmetry_flattenT_apply_unapply _ f1 x0 k) as H;
                  cbv beta in H |- *;
