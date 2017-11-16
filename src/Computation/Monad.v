@@ -128,9 +128,9 @@ Hint Rewrite @refineEquiv_bind_bind @refineEquiv_bind_unit @refineEquiv_unit_bin
     "Anomaly: Uncaught exception
     Invalid_argument("decomp_pointwise"). Please report." *)
 Tactic Notation "autosetoid_rewrite" "with" "refine_monad" :=
-  repeat first [ match goal with |- appcontext[Bind (Bind _ _)] => idtac end;
+  repeat first [ match goal with |- context[Bind (Bind _ _) _] => idtac end;
                  setoid_rewrite refineEquiv_bind_bind
-               | match goal with |- appcontext[Bind (Return _)] => idtac end;
+               | match goal with |- context[Bind (Return _) _] => idtac end;
                  setoid_rewrite refineEquiv_bind_unit
                | setoid_rewrite refineEquiv_unit_bind ].
 

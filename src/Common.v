@@ -254,7 +254,7 @@ Ltac apply_in_hyp_no_match lem :=
   match goal with
   | [ H : _ |- _ ] => apply lem in H;
       match type of H with
-      | appcontext[match _ with _ => _ end] => fail 1
+      | context[match _ with _ => _ end] => fail 1
       | _ => idtac
       end
   end.
@@ -265,16 +265,16 @@ Ltac apply_in_hyp_no_cbv_match lem :=
     => apply lem in H;
       cbv beta iota in H;
       match type of H with
-      | appcontext[match _ with _ => _ end] => fail 1
+      | context[match _ with _ => _ end] => fail 1
       | _ => idtac
       end
   end.
 
 Ltac destruct_sum_in_match' :=
   match goal with
-  | [ H : appcontext[match ?E with inl _ => _ | inr _ => _ end] |- _ ]
+  | [ H : context[match ?E with inl _ => _ | inr _ => _ end] |- _ ]
     => destruct E
-  | [ |- appcontext[match ?E with inl _ => _ | inr _ => _ end] ]
+  | [ |- context[match ?E with inl _ => _ | inr _ => _ end] ]
     => destruct E
   end.
 Ltac destruct_sum_in_match := repeat destruct_sum_in_match'.
@@ -294,7 +294,7 @@ Hint Extern 10 (Proper _ _) => progress cbv beta : typeclass_instances.
 
 Ltac set_evars :=
   repeat match goal with
-         | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
+         | [ |- context[?E] ] => is_evar E; let H := fresh in set (H := E)
          end.
 
 Ltac subst_evars :=
@@ -1324,12 +1324,12 @@ Qed.
 Ltac instantiate_evar :=
   instantiate;
   match goal with
-  | [ H : appcontext[?E] |- _ ]
+  | [ H : context[?E] |- _ ]
     => is_evar E;
       match goal with
       | [ H' : _ |- _ ] => unify E H'
       end
-  | [ |- appcontext[?E] ]
+  | [ |- context[?E] ]
     => is_evar E;
       match goal with
       | [ H' : _ |- _ ] => unify E H'
@@ -1743,13 +1743,13 @@ Global Hint Extern 0 (@eq_refl_vm_cast_r ?T ?x ?y) => clear; abstract (vm_cast_n
 
 Ltac uneta_fun :=
   repeat match goal with
-         | [ |- appcontext[fun ch : ?T => ?f ch] ]
+         | [ |- context[fun ch : ?T => ?f ch] ]
            => progress change (fun ch : T => f ch) with f
          end.
 Ltac uneta_fun_in_hyps :=
   repeat match goal with
-         | [ H : appcontext[fun ch : ?T => ?f ch] |- _ ]
+         | [ H : context[fun ch : ?T => ?f ch] |- _ ]
            => progress change (fun ch : T => f ch) with f in H
-         | [ H := appcontext[fun ch : ?T => ?f ch] |- _ ]
+         | [ H := context[fun ch : ?T => ?f ch] |- _ ]
            => progress change (fun ch : T => f ch) with f in (value of H)
          end.

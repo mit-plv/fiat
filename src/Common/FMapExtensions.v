@@ -1620,9 +1620,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
                                   <- fold_1
           | should_convert_from_to (@fold_left) (@fold_right);
             match goal with
-            | [ |- appcontext[fold_left (fun a b => ?g (@?f b) a)] ]
+            | [ |- context[fold_left (fun a b => ?g (@?f b) a) _ _] ]
               => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => g b a) f), <- fold_left_rev_right, <- map_rev
-            | [ H : appcontext[fold_left (fun a b => ?g (@?f b) a)] |- _ ]
+            | [ H : context[fold_left (fun a b => ?g (@?f b) a) _ _] |- _ ]
               => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => g b a) f), <- fold_left_rev_right, <- map_rev in H
             end
           | should_convert_from_to (@fold_right) (@List.In);

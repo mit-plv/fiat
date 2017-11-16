@@ -6,7 +6,7 @@ Require Import Fiat.Common.Tactics.Head.
    as [if]s), and finally matches in general. *)
 Ltac set_match_refl v' only_when :=
   lazymatch goal with
-  | [ |- appcontext G[match ?e with _ => _ end eq_refl] ]
+  | [ |- context G[match ?e with _ => _ end eq_refl] ]
     => only_when e;
        let T := fresh in
        evar (T : Type); evar (v' : T);
@@ -19,7 +19,7 @@ Ltac set_match_refl v' only_when :=
   end.
 Ltac set_match_refl_hyp v' only_when :=
   lazymatch goal with
-  | [ H : appcontext G[match ?e with _ => _ end eq_refl] |- _ ]
+  | [ H : context G[match ?e with _ => _ end eq_refl] |- _ ]
     => only_when e;
        let T := fresh in
        evar (T : Type); evar (v' : T);
@@ -53,12 +53,12 @@ Ltac destruct_rewrite_sumbool e :=
   try lazymatch type of H with
       | ?LHS = ?RHS
         => lazymatch RHS with
-           | appcontext[LHS] => fail
+           | context[LHS] => fail
            | _ => idtac
            end;
            rewrite ?H; rewrite ?H in *;
            repeat match goal with
-                  | [ |- appcontext G[LHS] ]
+                  | [ |- context G[LHS] ]
                     => let LHS' := fresh in
                        pose LHS as LHS';
                        let G' := context G[LHS'] in
@@ -69,31 +69,31 @@ Ltac destruct_rewrite_sumbool e :=
       end.
 Ltac break_match_step only_when :=
   match goal with
-  | [ |- appcontext[match ?e with _ => _ end] ]
+  | [ |- context[match ?e with _ => _ end] ]
     => only_when e; is_var e; destruct e
-  | [ |- appcontext[match ?e with _ => _ end] ]
+  | [ |- context[match ?e with _ => _ end] ]
     => only_when e;
        match type of e with
        | sumbool _ _ => destruct_rewrite_sumbool e
        end
-  | [ |- appcontext[if ?e then _ else _] ]
+  | [ |- context[if ?e then _ else _] ]
     => only_when e; destruct e eqn:?
-  | [ |- appcontext[match ?e with _ => _ end] ]
+  | [ |- context[match ?e with _ => _ end] ]
     => only_when e; destruct e eqn:?
   | _ => let v := fresh in set_match_refl v only_when; destruct_by_existing_equation v
   end.
 Ltac break_match_hyps_step only_when :=
   match goal with
-  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
+  | [ H : context[match ?e with _ => _ end] |- _ ]
     => only_when e; is_var e; destruct e
-  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
+  | [ H : context[match ?e with _ => _ end] |- _ ]
     => only_when e;
        match type of e with
        | sumbool _ _ => destruct_rewrite_sumbool e
        end
-  | [ H : appcontext[if ?e then _ else _] |- _ ]
+  | [ H : context[if ?e then _ else _] |- _ ]
     => only_when e; destruct e eqn:?
-  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
+  | [ H : context[match ?e with _ => _ end] |- _ ]
     => only_when e; destruct e eqn:?
   | _ => let v := fresh in set_match_refl_hyp v only_when; destruct_by_existing_equation v
   end.
@@ -113,12 +113,12 @@ Ltac break_match_when_head T := repeat break_match_when_head_step T.
 Ltac break_match_hyps_when_head T := repeat break_match_hyps_when_head_step T.
 Ltac break_innermost_match_step :=
   break_match_step ltac:(fun v => lazymatch v with
-                                  | appcontext[match _ with _ => _ end] => fail
+                                  | context[match _ with _ => _ end] => fail
                                   | _ => idtac
                                   end).
 Ltac break_innermost_match_hyps_step :=
   break_match_hyps_step ltac:(fun v => lazymatch v with
-                                       | appcontext[match _ with _ => _ end] => fail
+                                       | context[match _ with _ => _ end] => fail
                                        | _ => idtac
                                        end).
 Ltac break_innermost_match := repeat break_innermost_match_step.
