@@ -15,7 +15,7 @@ Ltac is_sumbool expr :=
 
 Ltac unfold_functions expr :=
   match expr with
-    | appcontext [ ?f _ ] => unfold f
+    | context [ ?f _ ] => unfold f
   end.
 
 Ltac destruct_ifs_inside conditional :=
@@ -76,7 +76,7 @@ Tactic Notation
        "using" "search" "term" constr(keyword) :=
   match goal with
     | [ H: EnsembleBagEquivalence ?bag_plus ?table ?storage
-        |- appcontext [ filter ?filter1 (benumerate ?storage) ] ] =>
+        |- context [ filter ?filter1 (benumerate ?storage) ] ] =>
       let temp := fresh in
       let filter2 := constr:(bfind_matcher (Bag := BagPlus indexed_storage)
                                            keyword) in
@@ -162,7 +162,7 @@ Qed.
 
 Ltac refine_bag_update_other_table :=
   match goal with
-    | [ |- appcontext [
+    | [ |- context [
                EnsembleBagEquivalence
                  ?bag
                  (GetUnConstrRelation

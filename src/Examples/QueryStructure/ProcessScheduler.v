@@ -112,7 +112,7 @@ Proof.
   - unfold CallBagFind, CallBagInsert.
     pose_headings_all;
       match goal with
-      | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
+      | |- context[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
         FullySharpenQueryStructure Schema Indexes
       end.
 Defined.

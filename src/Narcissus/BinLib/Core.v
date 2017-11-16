@@ -51,7 +51,7 @@ Record ByteString :=
 
 Local Ltac destruct_matches :=
   repeat match goal with
-         | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+         | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
          end.
 
 Definition ByteString_push

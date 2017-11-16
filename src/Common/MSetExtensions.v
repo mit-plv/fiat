@@ -251,7 +251,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     repeat match goal with
            | [ H : elements ?v = _ |- _ ]
              => rewrite !H
-           | [ H : elements ?v = _, H' : appcontext[elements ?v] |- _ ]
+           | [ H : elements ?v = _, H' : context[elements ?v] |- _ ]
              => rewrite !H in H'
            end.
   Ltac InA_concretize_step :=

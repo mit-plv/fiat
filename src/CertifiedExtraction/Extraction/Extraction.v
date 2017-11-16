@@ -171,10 +171,10 @@ Ltac _compile_rewrite_if :=
   match_ProgOk
      ltac:(fun prog pre post ext env =>
              match post with
-             | appcontext [if ?b then ?x else ?y] =>
+             | context [if ?b then ?x else ?y] =>
                is_dec b; first [ rewrite (dec2bool_correct b x y)
                                | setoid_rewrite (dec2bool_correct b x y) ]
-             | appcontext [?f (if ?b then ?x else ?y)] =>
+             | context [?f (if ?b then ?x else ?y)] =>
                is_pushable_head_constant f; first [ rewrite (push_if f x y b)
                                                   | setoid_rewrite (push_if f x y b) ]
              end).

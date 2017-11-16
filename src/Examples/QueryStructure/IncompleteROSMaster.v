@@ -103,7 +103,7 @@ Ltac implement_bag_methods :=
   (* Clean up any leftover CallBagImplMethods *)
   repeat (cbv beta; simpl;
           match goal with
-                |- appcontext[CallBagImplMethod] =>
+                |- context[CallBagImplMethod] =>
                 unfold CallBagImplMethod; cbv beta; simpl;
                 try remove_spurious_Dep_Type_BoundedIndex_nth_eq
           end);
@@ -238,7 +238,7 @@ Ltac Finish_Master BuildEarlyBag BuildLastBag :=
     eapply FullySharpened_Finish;
     [pose_headings_all;
       match goal with
-      | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
+      | |- context[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
         FullySharpenQueryStructure'' Schema Indexes
       end
     | simpl; pose_string_ids; pose_headings_all;

@@ -221,7 +221,7 @@ Ltac start_synthesizing_decoder :=
   (* Unfold formatr specification and the data and packet invariants *)
   repeat
     match goal with
-      |- appcontext [CorrectDecoder _ ?dataInv ?restInv ?formatSpec] =>
+      |- context [CorrectDecoder _ ?dataInv ?restInv ?formatSpec] =>
       first [unfold dataInv
             | unfold restInv
             | unfold formatSpec ]
@@ -234,16 +234,16 @@ Ltac start_synthesizing_decoder :=
 Ltac decode_step :=
   match goal with
   | |- _ => apply_compose
-  | |- appcontext [CorrectDecoder _ _ _ (format_Vector _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_Vector _) _ _] =>
     intros; eapply Vector_decode_correct
   | H : cache_inv_Property _ _
-    |- appcontext [CorrectDecoder _ _ _ format_word _ _] =>
+    |- context [CorrectDecoder _ _ _ format_word _ _] =>
     intros; revert H; eapply Word_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ format_word _ _] =>
+  | |- context [CorrectDecoder _ _ _ format_word _ _] =>
     eapply Word_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ (format_nat _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_nat _) _ _] =>
     eapply Nat_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ (format_enum _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_enum _) _ _] =>
     eapply Enum_decode_correct
   | |- NoDupVector _ => Discharge_NoDupVector
   | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>

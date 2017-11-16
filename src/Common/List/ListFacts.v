@@ -981,8 +981,8 @@ Section ListFacts.
        | [ H : forall x, _ = x \/ _ -> _ |- _ ] => pose proof (H _ (or_introl eq_refl)); specialize (fun x pf => H x (or_intror pf))
        | [ H : ?x = None |- context[?x] ] => rewrite H
        | [ H : S _ = S _ |- _ ] => inversion H; clear H
-       | [ H : appcontext[first_index_helper] |- _ ] => rewrite first_index_helper_first_index_error in H
-       | [ |- appcontext[first_index_helper] ] => rewrite first_index_helper_first_index_error
+       | [ H : context[first_index_helper] |- _ ] => rewrite first_index_helper_first_index_error in H
+       | [ |- context[first_index_helper] ] => rewrite first_index_helper_first_index_error
        | [ H : option_rect _ _ _ ?v = Some _ |- _ ] => destruct v eqn:?; simpl in H
        | [ H : option_rect _ _ _ ?v = None |- _ ] => destruct v eqn:?; simpl in H
        | _ => progress unfold BoolFacts.Bool.bool_rect_nodep in *

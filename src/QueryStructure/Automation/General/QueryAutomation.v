@@ -18,7 +18,7 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
 Tactic Notation "drop" "constraints" "from" "query" :=
   simplify with monad laws;
   repeat match goal with
-             |- appcontext[@Query_In ?ResultT ?qs_schema ?qs ?R] =>
+             |- context[@Query_In ?ResultT ?qs_schema ?qs ?R] =>
              let H' := fresh in
              pose (@DropQSConstraintsQuery_In ResultT qs_schema qs R) as H';
                simpl in H'; fold_string_hyps_in H'; fold_heading_hyps_in H';
