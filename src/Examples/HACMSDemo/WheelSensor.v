@@ -4,17 +4,17 @@ Require Import Coq.Strings.Ascii
         Coq.Structures.OrderedType.
 
 Require Import
-        Fiat.BinEncoders.Env.BinLib.Core
-        Fiat.BinEncoders.Env.Common.Specs
-        Fiat.BinEncoders.Env.Common.Compose
-        Fiat.BinEncoders.Env.Common.ComposeOpt
-        Fiat.BinEncoders.Env.Automation.Solver
-        Fiat.BinEncoders.Env.Lib2.WordOpt
-        Fiat.BinEncoders.Env.Lib2.NatOpt
-        Fiat.BinEncoders.Env.Lib2.StringOpt
-        Fiat.BinEncoders.Env.Lib2.EnumOpt
-        Fiat.BinEncoders.Env.Lib2.FixListOpt
-        Fiat.BinEncoders.Env.Lib2.SumTypeOpt.
+        Fiat.Narcissus.BinLib.Core
+        Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.Common.Compose
+        Fiat.Narcissus.Common.ComposeOpt
+        Fiat.Narcissus.Automation.Solver
+        Fiat.Narcissus.Lib2.WordOpt
+        Fiat.Narcissus.Lib2.NatOpt
+        Fiat.Narcissus.Lib2.StringOpt
+        Fiat.Narcissus.Lib2.EnumOpt
+        Fiat.Narcissus.Lib2.FixListOpt
+        Fiat.Narcissus.Lib2.SumTypeOpt.
 
 Require Import
         Fiat.Common.SumType

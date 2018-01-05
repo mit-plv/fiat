@@ -1,4 +1,4 @@
-Require Import
+vRequire Import
         Bedrock.Word
         Coq.omega.Omega
         Coq.Strings.Ascii
@@ -278,7 +278,6 @@ Section DomainName.
     intros; destruct b1; destruct b3; simpl in *.
     unfold le_B, lt_B in *; omega.
   Qed.
-
 
   Lemma n_eq_0_lt :
     forall n,
@@ -1864,7 +1863,7 @@ Section DomainName.
                        end.
                 injections.
                 rewrite !IndependentCaches; eauto.
-                (* uncomment for 8.4 compatibility. 
+                (* uncomment for 8.4 compatibility.
                    repeat match type of H2 with
                        | context [dequeue_opt ?b] => destruct (dequeue_opt b) as [ [? ?] | ]; simpl in H2; try discriminate
                        end.
@@ -2304,8 +2303,8 @@ Section DomainName.
           destruct H11 as [bin' [xenv0 [? [? [? ? ] ] ] ] ].
           destruct (string_dec x6 ""); simpl in *;
             injections.
-  Admitted. 
-         (* uncomment below for <8.7. Need to patch up for latest Coq release. 
+  Admitted.
+         (* uncomment below for <8.7. Need to patch up for latest Coq release.
  { injection H5; intros; rewrite H14.
             destruct (peekD env') eqn: ?; simpl in *; eauto.
             eapply P_OK; eauto.

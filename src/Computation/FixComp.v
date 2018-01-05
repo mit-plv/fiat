@@ -718,8 +718,8 @@ Module LeastFixedPointFun.
                        | 1 => ret 1
                        | S (S n') =>
                          n1 <- rec n';
-                           n2 <- rec (S n');
-                           ret (n1 + n2)
+                         n2 <- rec (S n');
+                         ret (n1 + n2)
                        end).
 
   Lemma refine_match_nat {A}

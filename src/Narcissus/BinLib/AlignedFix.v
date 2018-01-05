@@ -128,7 +128,7 @@ Section AlignedFix.
              (ret (let (v, ce') := Fix wf_lt_A _ body' (existT _ _ a_OK) ce in
                    (build_aligned_ByteString (projT2 v), ce'))).
   Proof.
-    (* 8.4 script *)
+    (*(* 8.4 script *)
     intros.
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
@@ -155,8 +155,8 @@ Section AlignedFix.
     eapply H; eauto.
     rewrite Heqp; reflexivity.
     reflexivity.
-  Qed.
-    (*intros. (*8.6 script. *)
+  Qed. *)
+    intros. (*8.6 script. *)
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
@@ -181,6 +181,6 @@ Section AlignedFix.
                (wf_lt_A a')).
     simpl; intros; rewrite H; eauto;  reflexivity.
     rewrite Heqp; try reflexivity.
-  Qed. *)
+  Qed.
 
 End AlignedFix.
