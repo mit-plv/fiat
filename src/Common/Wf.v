@@ -515,7 +515,7 @@ Section wf.
                      [ clear n1'; revert n0'
                      | apply H
                      | lazymatch goal with
-                       | [ |- appcontext[@nat_eq_transfer iterated_prod n1' n0'] ]
+                       | [ |- context[@nat_eq_transfer iterated_prod n1' n0' _] ]
                          => pose proof (@nat_eq_transfer_neq iterated_prod n1' n0') as H';
                             cbv beta in *;
                             generalize dependent (nat_eq_transfer iterated_prod n1' n0');
@@ -524,7 +524,7 @@ Section wf.
                             [ apply EqNat.beq_nat_true_iff in Heq; subst; rewrite <- EqNat.beq_nat_refl in H;
                               exfalso; clear -H; congruence
                             | ]
-                       | [ |- appcontext[@nat_eq_transfer iterated_prod n0' n1'] ]
+                       | [ |- context[@nat_eq_transfer iterated_prod n0' n1' _] ]
                          => pose proof (@nat_eq_transfer_neq iterated_prod n0' n1') as H';
                             cbv beta in *;
                             generalize dependent (nat_eq_transfer iterated_prod n0' n1');
