@@ -119,7 +119,6 @@ Section FixList.
     }
   Qed.
 
-
   Definition format_list_body
                (A_format_Impl : A -> CacheFormat -> B * CacheFormat)
 := (fun (acc: B * CacheFormat) x =>

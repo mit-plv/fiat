@@ -1,4 +1,4 @@
-vRequire Import
+Require Import
         Bedrock.Word
         Coq.omega.Omega
         Coq.Strings.Ascii
@@ -278,6 +278,7 @@ Section DomainName.
     intros; destruct b1; destruct b3; simpl in *.
     unfold le_B, lt_B in *; omega.
   Qed.
+
 
   Lemma n_eq_0_lt :
     forall n,

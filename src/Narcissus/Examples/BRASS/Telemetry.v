@@ -10,11 +10,19 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.Narcissus.BinLib.AlignedByteString
+        Fiat.Narcissus.BinLib.AlignWord
+        Fiat.Narcissus.BinLib.AlignedDecoders
+        Fiat.Narcissus.BinLib.AlignedList
+        Fiat.Narcissus.BinLib.AlignedSumType
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
-        Fiat.Narcissus.Formats.StringOpt.
+        Fiat.Narcissus.Formats.StringOpt
+        Fiat.Common.Tactics.HintDbExtra
+        Fiat.Common.Tactics.TransparentAbstract
+        Fiat.Common.Tactics.CacheStringConstant.
 
 Require Import
         Coq.NArith.NArith
@@ -154,13 +162,33 @@ Proof.
     destruct (N_to_string' (N.pos p)) eqn: ?.
 Admitted.
 
+Lemma no_space_in_N_to_string
+  : forall (n : N) (s1 s2 : string),
+    N_to_string n <> (s1 ++ String " " s2)%string.
+Proof.
+Admitted.
+
+Lemma no_dot_in_Z_to_string
+  : forall (z : Z) (s1 s2 : string),
+    Z_to_string z <> (s1 ++ String "." s2)%string.
+Proof.
+Admitted.
+
+Definition newline := Ascii.Ascii false false false false true false true false.
+
+Lemma no_newline_in_N_to_string
+  : forall (n : N) (s1 s2 : string),
+    N_to_string n <> (s1 ++ String newline s2)%string.
+Proof.
+Admitted.
+
 Definition Coordinate_format
            (coords : Coordinate) :=
           format_string_with_term_char " " (N_to_string (coords!"Time"))
     ThenC format_string_with_term_char "." (Z_to_string (fst coords!"Latitude"))
     ThenC format_string_with_term_char " " (N_to_string (snd coords!"Latitude"))
     ThenC format_string_with_term_char "." (Z_to_string (fst coords!"Longitude"))
-    ThenC format_string_with_term_char " " (N_to_string (snd coords!"Longitude"))
+    ThenC format_string_with_term_char newline (N_to_string (snd coords!"Longitude"))
     DoneC.
 
 Definition Coordinate_decoder
@@ -171,27 +199,27 @@ Proof.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
   decode_step idtac.
-  admit.
+  intros; simpl; eapply no_space_in_N_to_string.
   decode_step idtac.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
   decode_step idtac.
-  admit.
+  intros; simpl; eapply no_dot_in_Z_to_string.
   decode_step idtac.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
   decode_step idtac.
-  admit.
+  intros; simpl; eapply no_space_in_N_to_string.
   decode_step idtac.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
   decode_step idtac.
-  admit.
+  intros; simpl; eapply no_dot_in_Z_to_string.
   decode_step idtac.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
   decode_step idtac.
-  admit.
+  intros; simpl; eapply no_newline_in_N_to_string.
   decode_step idtac.
   simpl; intros **; eapply CorrectDecoderinish.
   unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *;
@@ -216,7 +244,6 @@ Proof.
   subst.
   reflexivity.
   unfold GetAttribute, GetAttributeRaw; simpl.
-  Print Ltac build_fully_determined_type.
   decide_data_invariant.
   apply (@decides_True' _ proj).
   setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
@@ -231,7 +258,6 @@ Proof.
     split; intro H5; apply H5.
   synthesize_cache_invariant.
   repeat optimize_decoder_impl.
-
 Defined.
 
 Definition Coordinate_decoder_impl :=
