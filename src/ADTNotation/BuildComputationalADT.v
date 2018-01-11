@@ -362,7 +362,7 @@ Notation "'cADTRep' r { cons1 , meth1 , .. , methn } " :=
      format "'cADTRep'  r  '/' '[hv  ' {  cons1 , '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
-Notation CallMethod CompADT idx := (callcADTMethod CompADT (fun idx => ibound (indexb idx))
-                                                  {| bindex := idx |}).
-Notation CallConstructor CompADT idx := (callcADTConstructor CompADT (fun idx => ibound (indexb idx))
-                                                  {| bindex := idx |}).
+Notation CallMethod CompADT bidx := (callcADTMethod CompADT (fun idx => ibound (indexb idx))
+                                                    {| bindex := bidx |}).
+Notation CallConstructor CompADT bidx := (callcADTConstructor CompADT (fun idx => ibound (indexb idx))
+                                                              {| bindex := bidx |}).
