@@ -1,5 +1,6 @@
 Require Import Coq.Lists.List Coq.Lists.SetoidList.
 Require Import Coq.Bool.Bool.
+Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Fiat.Common.
 
