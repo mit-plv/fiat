@@ -2,6 +2,7 @@ Require Import Coq.Lists.List Coq.Lists.SetoidList.
 Require Import Coq.Bool.Bool.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
+Require Import Coq.Logic.Eqdep_dec.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.
@@ -673,20 +674,21 @@ Proof.
   destruct b; reflexivity.
 Qed.
 
+Lemma bool_beq_refl b : Bool.bool_beq b b = true.
+Proof.
+  destruct b; reflexivity.
+Qed.
+
 Lemma ascii_dec_refl a : Ascii.ascii_dec a a = left eq_refl.
 Proof.
-  destruct a as [b0 b1 b2 b3 b4 b5 b6 b7];
-  repeat match goal with
-         | _ => reflexivity
-         | [ |- ?a = ?b ] => let a' := (eval hnf in a) in progress change (a' = b)
-         | _ => rewrite bool_dec_refl
-         end.
+  destruct (Ascii.ascii_eq_dec a a) as [p|p]; [ | congruence ].
+  apply f_equal, UIP_dec, Ascii.ascii_dec.
 Qed.
 
 Lemma string_dec_refl a : string_dec a a = left eq_refl.
 Proof.
-  induction a; trivial.
-  simpl; rewrite IHa, ascii_dec_refl; reflexivity.
+  destruct (String.string_eq_dec a a) as [p|p]; [ | congruence ].
+  apply f_equal, UIP_dec, string_dec.
 Qed.
 
 Lemma f_equal_fst_injective_projections' {A B x y} (p : fst x = fst y :> A) (q : snd x = snd y :> B)
