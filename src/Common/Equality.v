@@ -674,11 +674,6 @@ Proof.
   destruct b; reflexivity.
 Qed.
 
-Lemma bool_beq_refl b : Bool.bool_beq b b = true.
-Proof.
-  destruct b; reflexivity.
-Qed.
-
 Lemma ascii_dec_refl a : Ascii.ascii_dec a a = left eq_refl.
 Proof.
   destruct (Ascii.ascii_eq_dec a a) as [p|p]; [ | congruence ].
