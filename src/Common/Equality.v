@@ -669,22 +669,21 @@ Proof.
   rewrite ?Hs, ?Hn; reflexivity.
 Defined.
 
-Lemma bool_dec_refl b : Bool.bool_dec b b = left eq_refl.
+Lemma dec_refl {A} (dec : forall x y : A, {x = y} + {x <> y}) x
+  : dec x x = left eq_refl.
 Proof.
-  destruct b; reflexivity.
+  edestruct dec; [ | congruence ].
+  apply f_equal, UIP_dec, dec.
 Qed.
+
+Lemma bool_dec_refl b : Bool.bool_dec b b = left eq_refl.
+Proof. apply dec_refl. Qed.
 
 Lemma ascii_dec_refl a : Ascii.ascii_dec a a = left eq_refl.
-Proof.
-  destruct (Ascii.ascii_eq_dec a a) as [p|p]; [ | congruence ].
-  apply f_equal, UIP_dec, Ascii.ascii_dec.
-Qed.
+Proof. apply dec_refl. Qed.
 
 Lemma string_dec_refl a : string_dec a a = left eq_refl.
-Proof.
-  destruct (String.string_eq_dec a a) as [p|p]; [ | congruence ].
-  apply f_equal, UIP_dec, string_dec.
-Qed.
+Proof. apply dec_refl. Qed.
 
 Lemma f_equal_fst_injective_projections' {A B x y} (p : fst x = fst y :> A) (q : snd x = snd y :> B)
 : f_equal fst (injective_projections' p q) = p.
