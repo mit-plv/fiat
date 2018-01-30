@@ -32,6 +32,13 @@ Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
   | _ :: _ => ccons
   end.
 
+(* There's a bug in the fold_heading code that is causes
+   Anomaly "Uncaught exception Not_found."
+   at Defined. Overwriting the following folding tactics solves this problem.
+*)
+Ltac fold_heading_hyps_in H ::= idtac.
+Ltac fold_heading_hyps  ::= idtac.
+
 Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B),
   (ls = nil -> refine c1 cnil)
   -> (ls <> nil -> refine c1 ccons)

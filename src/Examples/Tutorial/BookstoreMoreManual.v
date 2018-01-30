@@ -105,8 +105,18 @@ Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
   start sharpening ADT.
+
+  (* This succeeds:
+  apply admit.
+  Grab Existential Variables.
+  apply admit.
+Defined. *)
+
+
   start_honing_QueryStructure'.
+
   chooseIndexes.
+
 
   Focus 6.
   simpl in *.
@@ -144,12 +154,15 @@ Proof.
   (* The final steps involve getting the program into functional, executable form. *)
   final_optimizations.
 
+
+
   determinize.            (* Put the program into a form where it's obviously
                            * deterministic, given an implementation of each
                            * index data structure. *)
   choose_data_structures. (* Choose an implementation for each index data structure. *)
   final_simplification.   (* Perform any more algebraic simplfications that are possible,
                            * now that we know each concrete data structure. *)
+
   use_this_one.           (* Now commit to this precise implementation. *)
 Defined.
 

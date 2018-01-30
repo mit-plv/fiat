@@ -1,38 +1,3 @@
-Inductive W  (S : Set) (T : S -> Set) : Set :=
-  | w : forall (x : S), (T x -> W S T) -> W S T.
-
-Inductive OO : Set := .
-
-Definition Nat : Set := W bool (fun b => if b then OO else nat).
-
-Definition sup (S : Set) (T : S -> Set) (s : S) (t : T s -> W S T) : W S T :=
-  w _ _ s t.
-
-Definition zero : Nat := w _ _ true (fun z : OO => match z with end).
-Definition succ (n' : nat) (n : Nat) : Nat.
-  refine (w _ _ false _).
-
-
-
-
-Definition indNat (P : Nat -> Set)
-           (Hzero : P zero)
-           (Hsucc : forall n, P n -> P (succ n))
-  : forall (n : Nat), P n.
-  refine (fun n => match n with
-                   | w _ _ b t =>
-                     match b return (forall (t : (if b then OO else unit) -> W bool (fun b => if b then OO else unit)),
-                     P (w _ _ b t)) with
-                     | true => fun z => _
-                     | false => fun z => _
-                     end t
-                   end).
-  simpl in *.
-  unfold zero in Hzero.
-  apply Hzero.
-  simpl in z.
-
-
 Require Import Tutorial.
 
 
