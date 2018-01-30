@@ -706,20 +706,20 @@ Tactic Notation "finish" "sharpening" constr(delegatees):=
              end ].
 
 Tactic Notation "finish" "honing" :=
-  match goal with
+  repeat match goal with
   | |- ?R _ (?H _ _ _ _ _) =>
-    try subst H; higher_order_reflexivity
+    subst H
   | |- ?R _ (?H _ _ _ _ ) =>
-    try subst H; higher_order_reflexivity
+    subst H
   | |- ?R _ (?H _ _ _ ) =>
-    try subst H; higher_order_reflexivity
+    subst H
   | |- ?R _ (?H _ _) =>
-    try subst H; higher_order_reflexivity
+    subst H
   | |- ?R _ (?H _ ) =>
-    try subst H; higher_order_reflexivity
+    subst H
   | |- ?R _ (?H ) =>
-    try subst H; higher_order_reflexivity
-  end.
+    subst H
+  end; higher_order_reflexivity.
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
