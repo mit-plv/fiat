@@ -1460,7 +1460,7 @@ Proof.
   apply refine_under_bind; intros.
   match goal with
   | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
-     |- refine (List_Query_In ?b (fun b : ?QueryT => Where (@?P b) (@?resultComp b))) _ ] =>
+     |- refine (List_Query_In ?b (fun b' : ?QueryT => Where (@?P b') (@?resultComp b'))) _ ] =>
     etransitivity;
       [ let H' := eval simpl in (@refine_List_Query_In_Where QueryT _ b P resultComp) in
             pose proof H'

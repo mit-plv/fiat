@@ -1,4 +1,8 @@
-Require Import SetoidClass Coq.Classes.Morphisms.
+Require Import
+        SetoidClass
+        Coq.Arith.Max
+        Coq.Classes.Morphisms.
+
 Generalizable All Variables.
 
 Definition prod_op {A B} (fA : A -> A -> Prop) (fB : B -> B -> Prop)
@@ -576,7 +580,6 @@ Module JoinLat.
        ; max := Peano.max
     |}.
 
-  Require Coq.Arith.Max.
   Local Instance Nat : t nat Nat_ops.
   Proof. constructor; intros.
          - apply PO.Nat.
@@ -1472,19 +1475,15 @@ Module Frame.
 
 End Frame.
 
-
-
-
 (** A definition of commutative and idempotent semigroups.
     This is effectively a semi-lattice (it can be a join semi-lattice
     or a meet semi-lattice depending on your attitude) defined
     solely in terms of its min or max operation.
  *)
+
 Module CommIdemSG.
 
   Generalizable All Variables.
-
-  Require Import SetoidClass Coq.Classes.Morphisms.
 
   (** [dot] is a binary operation which is commutative, idempotent, and
     associative. It is effectively a max or min. *)

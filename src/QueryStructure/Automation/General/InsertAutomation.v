@@ -125,10 +125,10 @@ Ltac drop_symmetric_functional_dependencies :=
                                            @?P tup'
                                            -> FunctionalDependency_P ?attrlist1 ?attrlist2 ?n
                                                                      (indexedElement tup'))};
-                     y <- {b | decides b (forall tup',
-                                            @?P tup'
+                     y <- {b' | decides b' (forall tup'',
+                                            @?P tup''
                                            -> FunctionalDependency_P ?attrlist1 ?attrlist2
-                                                                     (indexedElement tup') ?n)};
+                                                                     (indexedElement tup'') ?n)};
                      @?f x y] =>
          setoid_rewrite (@FunctionalDependency_symmetry _ _ f P attrlist1 attrlist2 n) at 1;
            try setoid_rewrite if_duplicate_cond_eq

@@ -167,8 +167,8 @@ Section reflective_forall.
                  end.
           rewrite <- IHys; clear IHys.
           match goal with
-          | [ |- List.fold_right (fun x y => If orb (if @?A x y then false else false) (@?B x y) Then @?C x y Else @?D x y) ?E ?ls
-                 = List.fold_right (fun x y => If (@?B x y) Then @?C x y Else @?D x y) ?E ?ls ]
+          | [ |- List.fold_right (fun x' y' => If orb (if @?A x' y' then false else false) (@?B x' y') Then @?C x' y' Else @?D x' y') ?E ?ls
+                 = List.fold_right (fun x'' y'' => If (@?B x'' y'') Then @?C x'' y'' Else @?D x'' y'') ?E ?ls ]
             => clear; induction ls as [|l0 ls0 IHls0];
                [ reflexivity
                | simpl; rewrite IHls0; clear IHls0 ]

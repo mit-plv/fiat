@@ -7,6 +7,9 @@ Require Import
         Fiat.Computation.SetoidMorphisms
         Coq.Logic.FunctionalExtensionality.
 
+Require Fiat.Common.Frame.
+Require Fiat.Common.
+
 Record funSig :=
   { funDom : list Type;
     funCod : Type }.
@@ -127,7 +130,7 @@ Fixpoint FunMin
   end fSet' fSet.
 
 Module LeastFixedPointFun.
-  Require Import Fiat.Common.Frame.
+  Import Fiat.Common.Frame.
 
   Instance funDefOps
            {fDom : list Type}
@@ -749,7 +752,7 @@ Module LeastFixedPointFun.
     destruct n; eauto.
   Qed.
 
-  Require Import Fiat.Common.
+  Import Fiat.Common.
 
   Ltac solve_rec_obligation x solveTac idm :=
     lazymatch goal with

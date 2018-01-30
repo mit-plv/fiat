@@ -38,7 +38,7 @@ Section BoundedIndex.
              (idx : BoundedIndex 0 [])
   : AnyT.
   Proof.
-    destruct idx as [idx [n] nth_n].
+    destruct idx as [idx [n nth_n] ].
     inversion n.
   Qed.
 
@@ -53,8 +53,8 @@ Section BoundedIndex.
   Proof.
     intros; induction Bound; simpl in *.
     - apply BoundedIndex_nil; auto.
-    - destruct bidx as [bindex [n'] nth_n];
-      destruct bidx' as [bindex' [n''] nth_n']; simpl in *; subst.
+    - destruct bidx as [bindex [n' nth_n] ];
+      destruct bidx' as [bindex' [n'' nth_n'] ]; simpl in *; subst.
       congruence.
   Qed.
 
@@ -98,8 +98,8 @@ Section BoundedIndex.
         idx = idx'.
     Proof.
       intros; generalize (indexb_ibound_eq _ _ idx idx' H);
-      destruct idx as [idx [n'] In_n'];
-        destruct idx' as [idx' [n''] In_n'' ]; intros;
+      destruct idx as [idx [n' In_n'] ];
+        destruct idx' as [idx' [n'' In_n'' ] ]; intros;
         simpl in *; subst; f_equal.
     Qed.
 
@@ -108,8 +108,8 @@ Section BoundedIndex.
         ibound (indexb idx) <> ibound (indexb idx') ->
         idx <> idx'.
     Proof.
-      intros; destruct idx as [idx [n'] In_n' ];
-        destruct idx' as [idx' [n''] In_n'' ]; intros;
+      intros; destruct idx as [idx [n' In_n' ] ];
+        destruct idx' as [idx' [n'' In_n'' ] ]; intros;
         simpl in *; subst.
       unfold not; intros; apply H; injection H0; auto.
     Qed.

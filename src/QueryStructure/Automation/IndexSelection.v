@@ -29,22 +29,23 @@ Module OccCountOrder <: TotalLeBool.
 
 End OccCountOrder.
 
+  
 Module AttrCountOrder <: TotalLeBool.
-   Variable n : nat.
-   Definition t := (prod (prod string (Fin.t n))  nat).
-
-   (* Largest element first *)
-   Definition leb (x y : t) :=
-     leb (snd y) (snd x).
-
-   Theorem leb_total : forall a1 a2 : t, leb a1 a2 = true \/ leb a2 a1 = true.
-   Proof.
-     unfold t; intros; intuition; unfold leb; simpl.
-     case_eq (Compare_dec.leb b b0); intuition.
-     case_eq (Compare_dec.leb b0 b); intuition.
-     apply leb_iff_conv in H; apply leb_iff_conv in H0.
-     omega.
-   Qed.
+  Parameter n : nat.
+    Definition t := (prod (prod string (Fin.t n))  nat).
+    
+    (* Largest element first *)
+    Definition leb (x y : t) :=
+      leb (snd y) (snd x).
+    
+    Theorem leb_total : forall a1 a2 : t, leb a1 a2 = true \/ leb a2 a1 = true.
+    Proof.
+      unfold t; intros; intuition; unfold leb; simpl.
+      case_eq (Compare_dec.leb b b0); intuition.
+      case_eq (Compare_dec.leb b0 b); intuition.
+      apply leb_iff_conv in H; apply leb_iff_conv in H0.
+      omega.
+    Qed.
 
 End AttrCountOrder.
 

@@ -274,6 +274,6 @@ Notation "ro ≃ rn" := (@UnConstrRelationAbsR _ _ _ ro%QueryImpl rn) : QueryImp
 Notation "qs ! R" :=
   (GetUnConstrRelationBnd qs {|bindex := R%string |}): QueryImpl_scope.
 
-Arguments BuildQueryStructureConstraints _ _ _.
+(*Arguments BuildQueryStructureConstraints _ _ _. *)
 Arguments BuildQueryStructureConstraints_cons [_ _] _ _ _ _ (*/*) _ .
 Arguments BuildQueryStructureConstraints_cons_obligation_1 [_ _] _ (*/*) _ _ _ _.
