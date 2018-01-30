@@ -139,8 +139,8 @@ Ltac drop_constraints_from_insert :=
   (* The trivial insertion checks involve the fresh id,
        so we need to drill under the binder before
        attempting to remove them. *)
-  rewrite refine_bind;
-    [ | reflexivity |
+  rewrite refine_bind; set_refine_evar;
+    [ | finish honing |
       unfold pointwise_relation; intros;
       (* These simplify and implement nontrivial constraint checks *)
       repeat first
@@ -151,7 +151,7 @@ Ltac drop_constraints_from_insert :=
              | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws
              ];
       pose_string_hyps; pose_heading_hyps;
-      higher_order_reflexivity ];
+      finish honing ];
     pose_string_hyps; pose_heading_hyps; finish honing.
 
 Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=

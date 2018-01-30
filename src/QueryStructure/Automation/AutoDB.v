@@ -2229,7 +2229,8 @@ Ltac Implement_Nested_Query_In :=
   end.
 
 Ltac implement_bag_methods :=
-  etransitivity;
+  etransitivity; set_refine_evar;
+  unfold CallBagFind;
   [ repeat (first [
                 simpl; simplify with monad laws
               | remove_spurious_Dep_Type_BoundedIndex_nth_eq
@@ -2252,7 +2253,7 @@ Ltac implement_bag_methods :=
                 unfold CallBagImplMethod; cbv beta; simpl;
                 try remove_spurious_Dep_Type_BoundedIndex_nth_eq
           end);
-  higher_order_reflexivity.
+  finish honing.
 
 Ltac implement_TopMost_Query' k k_dep:=
   Focused_refine_TopMost_Query;
