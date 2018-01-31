@@ -23,7 +23,7 @@ Section Ascii.
     let (n, b) := bundle in
         (ascii_of_N (wordToN n), b, cd).
 
-  Open Local Scope nat.
+  Local Open Scope nat.
   Theorem Ascii_decode_correct :
     format_decode_correct monoid (fun n => True) format_ascii decode_ascii.
   Proof.

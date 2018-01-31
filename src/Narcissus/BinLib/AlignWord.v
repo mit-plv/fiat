@@ -456,7 +456,7 @@ Ltac collapse_word addD_addD_plus :=
          (decode_word (sz := ?sz) ?b ?cd)
          (fun w b' cd' =>
             DecodeBindOpt2 (decode_word (sz := ?sz') b' cd')
-                           (fun w' b' cd' => @?k w w' b' cd')) = _ =>
+                           (fun w' b'' cd'' => @?k w w' b'' cd'')) = _ =>
     etransitivity;
     [let H := fresh in
      pose proof (@CollapseWord'' _ _ _ _ _ addD_addD_plus _ sz' sz b cd k);

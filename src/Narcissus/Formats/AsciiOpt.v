@@ -27,7 +27,7 @@ Section Ascii.
     `(n, b, cd) <- decode_word (sz:=8) b cd;
       Some (ascii_of_N (wordToN n), b, cd).
 
-  Open Local Scope nat.
+  Local Open Scope nat.
   Theorem Ascii_decode_correct
           {P : CacheDecode -> Prop}
           (P_OK : forall b cd, P cd -> P (addD cd b))
@@ -65,7 +65,7 @@ Section Ascii.
       destruct (decode_word n' xenv) as [ [ [? ? ] ? ] | ] eqn: ? ;
         simpl in *; try discriminate.
       injections.
-      eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
+      eapply (proj2 (Word_decode_correct P_OK)) in Heqo; eauto;
         destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst; eauto.
       unfold format_word in *; computes_to_inv; injections.
       repeat eexists; eauto.
