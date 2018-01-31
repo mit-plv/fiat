@@ -1,6 +1,7 @@
 Require Import
         Coq.Strings.String
-        Coq.Vectors.Vector.
+        Coq.Vectors.Vector
+        Coq.omega.Omega.
 
 Require Import
         Fiat.Common.SumType

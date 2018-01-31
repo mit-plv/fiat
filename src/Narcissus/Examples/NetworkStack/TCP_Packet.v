@@ -1,6 +1,7 @@
 Require Import
         Coq.Strings.String
-        Coq.Vectors.Vector.
+        Coq.Vectors.Vector
+        Coq.omega.Omega.
 
 Require Import
         Fiat.Common.SumType
@@ -229,7 +230,7 @@ Proof.
     Time Defined.
 
   Definition TCP_Packet_decoder_impl :=
-    Eval simpl in (fst (projT1 TCP_Packet_decoder')).
+    Eval simpl in (fst (proj1_sig TCP_Packet_decoder')).
 
 End TCPPacketDecoder.
 

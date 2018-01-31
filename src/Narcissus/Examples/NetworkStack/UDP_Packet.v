@@ -1,6 +1,7 @@
 Require Import
         Coq.Strings.String
-        Coq.Vectors.Vector.
+        Coq.Vectors.Vector
+        Coq.omega.Omega.
 
 Require Import
         Fiat.Common.SumType
@@ -25,6 +26,29 @@ Require Import
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.IPChecksum
         Fiat.Narcissus.Formats.WordOpt.
+
+Require Import IfDec.
+Require Import Decidable.
+
+Lemma refine_IfDec_Under_Bind {B} P (P_dec : Decidable P)
+  : forall (tb eb : Comp B) tb' eb',
+    (forall (p : P), refine tb (tb' p))
+    -> (forall (np : ~ P), refine eb (eb' np))
+    -> refine (IfDec P Then tb Else eb)
+              (match Decidable_witness as b return Decidable_witness = b -> _ with
+               | true => fun H => tb' (Decidable_sound P _ H)
+               | false => fun H => eb' (Decidable_complete_alt P _ H)
+               end eq_refl).
+Proof.
+  unfold IfDec_Then_Else; intros.
+  computes_to_econstructor.
+  eapply PickComputes; apply Decidable_witness_decides.
+  revert v H1;
+    generalize (Decidable_sound P P_dec) (Decidable_complete_alt P P_dec).
+  destruct Decidable_witness; intros; eauto.
+  eapply H; eauto.
+  eapply H0; eauto. 
+Qed.
 
 Require Import Bedrock.Word.
 
@@ -152,7 +176,7 @@ Proof.
 Defined.
 
 Definition UDP_Packet_decoder_impl :=
-  Eval simpl in (fst (projT1 UDP_Packet_decoder)).
+  Eval simpl in (fst (proj1_sig UDP_Packet_decoder)).
 
 End UDP_Decoder.
 
