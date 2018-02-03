@@ -14,6 +14,7 @@ Require Import
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats.FixStringOpt
+        Fiat.Narcissus.Formats.StringOpt
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
@@ -41,6 +42,9 @@ Section AlignedList.
 
   Variable addD_addD_plus :
     forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
+
+  Variable addE_addE_plus :
+    forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).
 
   Lemma decode_string_aligned_ByteString
         {sz sz'}
@@ -146,5 +150,35 @@ Section AlignedList.
         omega.
         reflexivity.
   Qed.
+
+  Fixpoint align_decode_string_with_term_char
+           (term_char : word 8)
+           {sz}
+           (v : Vector.t (word 8) sz)
+           (cd : CacheDecode)
+    : option (string * {n : _ & Vector.t (word 8) n} * CacheDecode) :=
+    match v with
+    | Vector.nil => None
+    | Vector.cons c _ v' => if weqb c term_char then
+                              Some (String.EmptyString, existT _ _ v', cd)
+                            else
+                              `(s, b', cd') <- align_decode_string_with_term_char term_char v' cd;
+                              Some (String (ascii_of_N (wordToN c)) s, b', cd')
+    end.
+
+  Lemma optimize_align_decode_string_w_term_char
+    : forall (term_char : Ascii.ascii)
+             {sz}
+             (v : Vector.t (word 8) sz)
+             (cd : CacheDecode),
+      decode_string_with_term_char term_char (build_aligned_ByteString v) cd
+      = Ifopt align_decode_string_with_term_char (NToWord _ (N_of_ascii term_char)) v cd as a
+              Then
+              Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
+              Else
+              None.
+  Proof.
+    intros.
+  Admitted.
 
 End AlignedList.

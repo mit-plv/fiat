@@ -14,7 +14,7 @@ Require Import
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedDecoders
         Fiat.Narcissus.BinLib.AlignedList
-        Fiat.Narcissus.BinLib.AlignedSumType
+        Fiat.Narcissus.BinLib.AlignedString
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
@@ -51,6 +51,9 @@ end.
 intros; apply N.div_lt; reflexivity.
 apply N.lt_wf_0.
 Defined.
+
+
+Print AlignedByteString.length_ByteString.
 
 Definition N_to_string (n : N) :=
   match n with
@@ -263,6 +266,129 @@ Defined.
 Definition Coordinate_decoder_impl :=
   Eval simpl in (fst (proj1_sig Coordinate_decoder)).
 
+Ltac rewrite_DecodeOpt2_fmap :=
+  set_refine_evar;
+  progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
+  ?DecodeOpt2_fmap_if_bool;
+  subst_refine_evar.
+
+Definition ByteAligned_Coordinate_decoder_impl'
+           n
+  : {impl : _ & forall (v : Vector.t _ n),
+         (Coordinate_decoder_impl (build_aligned_ByteString v) ()) =
+         impl v ()}.
+Proof.
+  unfold Coordinate_decoder_impl.
+  eexists _; intros.
+  etransitivity.
+  set_refine_evar; simpl.
+  rewrite optimize_align_decode_string_w_term_char; eauto.
+  rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := EmptyStore.test_cache)); simpl.
+  eapply optimize_under_if_opt; simpl; intros.
+  rewrite optimize_align_decode_string_w_term_char; eauto.
+  rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := EmptyStore.test_cache)); simpl.
+  eapply optimize_under_if_opt; simpl; intros.
+  rewrite optimize_align_decode_string_w_term_char; eauto.
+  rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := EmptyStore.test_cache)); simpl.
+  eapply optimize_under_if_opt; simpl; intros.
+  rewrite optimize_align_decode_string_w_term_char; eauto.
+  rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := EmptyStore.test_cache)); simpl.
+  eapply optimize_under_if_opt; simpl; intros.
+  rewrite optimize_align_decode_string_w_term_char; eauto.
+  rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := EmptyStore.test_cache)); simpl.
+  eapply optimize_under_if_opt; simpl; intros.
+  (* Could simplify the nested ifs here. *)
+  higher_order_reflexivity.
+  higher_order_reflexivity.
+  higher_order_reflexivity.
+  higher_order_reflexivity.
+  higher_order_reflexivity.
+  higher_order_reflexivity.
+  simpl.
+  higher_order_reflexivity.
+Defined.
+
+Definition aligned_Coordinate_decoder_impl n v :=
+  Eval simpl in (projT1 (ByteAligned_Coordinate_decoder_impl' n) v ()).
+
+
+Lemma format_string_with_term_char_length_gt_0
+  : forall c s v,
+    format_string_with_term_char c s () ↝ v
+    -> lt 0 (AlignedByteString.length_ByteString (fst v)).
+Proof.
+  induction s; unfold format_string_with_term_char;
+    simpl; unfold Bind2; intros;
+      computes_to_inv; subst; simpl.
+  - unfold AsciiOpt.format_ascii in *.
+    unfold WordOpt.format_word in *; computes_to_inv; subst;
+      simpl.
+    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (WordOpt.encode_word' _ _ _)).
+    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq AlignedByteString.ByteString_id).
+    rewrite BoundedByteStringToByteString_ByteString_id_eq.
+    rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
+    rewrite length_ByteString_ByteStringToBoundedByteString_eq.
+    rewrite ByteString_enqueue_ByteString_measure.
+    simpl; generalize (NToWord 8 (Ascii.N_of_ascii c)).
+    intros; shatter_word w; simpl.
+    Omega.omega.
+  - unfold AsciiOpt.format_ascii in *.
+    unfold WordOpt.format_word in *; computes_to_inv; subst;
+      simpl.
+    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (WordOpt.encode_word' _ _ _)).
+    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (fst v1)).
+    rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
+    rewrite length_ByteString_ByteStringToBoundedByteString_eq.
+    rewrite ByteString_enqueue_ByteString_measure.
+    simpl; generalize (NToWord 8 (Ascii.N_of_ascii a)).
+    intros; shatter_word w; simpl.
+    Omega.omega.
+Qed.
+
+Lemma AlignedByteString_length_ByteString_enqueue
+  : forall bs bs',
+  AlignedByteString.length_ByteString
+    (AlignedByteString.ByteString_enqueue_ByteString bs bs')
+  =   AlignedByteString.length_ByteString bs
+      +   AlignedByteString.length_ByteString bs'.
+Proof.
+  intros.
+  rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs).
+  rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs').
+  rewrite !length_ByteString_ByteStringToBoundedByteString_eq.
+  rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
+  rewrite length_ByteString_ByteStringToBoundedByteString_eq.
+  rewrite ByteString_enqueue_ByteString_measure.
+  reflexivity.
+Qed.
+
+Lemma Coordinate_decoder_impl_wf : forall s u x s' u',
+    Coordinate_decoder_impl s u = Some ((x, s'), u')
+    -> lt (AlignedByteString.length_ByteString s')
+          (AlignedByteString.length_ByteString s).
+Proof.
+  intros.
+  (* Use the -> direction of decoder correctness to infer that
+     s = Coordinate_format x ++ s'*)
+  let H' := fresh in
+  let H'' := fresh in
+  pose proof (proj2_sig Coordinate_decoder) as [? H'];
+    pose proof (proj2 (proj1 H' (proj2 H'))) as H'';
+    eapply (H'' ()) in H; clear H'' H'; simpl; eauto;
+      repeat (intuition; destruct_ex); subst.
+  (* Simplify with the definition of ByteString length. *)
+  let H := eval simpl in mappend_measure in
+      rewrite H.
+  (* Use the format to show that an encoded coordinate produces a
+   nonempty bytestring. *)
+  unfold Coordinate_format, compose, Bind2 in H1.
+  computes_to_inv; injections; simpl in *.
+  apply format_string_with_term_char_length_gt_0 in H1.
+  rewrite !AlignedByteString_length_ByteString_enqueue.
+  simpl in *; Omega.omega.
+Qed.
+
 End Coordinate_Decoder.
 
 Print Coordinate_decoder_impl.
+Print aligned_Coordinate_decoder_impl.

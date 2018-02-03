@@ -5,6 +5,7 @@ Require Import
         Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats.WordOpt.
+
 Require Import
         Coq.Vectors.Vector
         Coq.omega.Omega
@@ -449,6 +450,109 @@ Section AlignWord.
   Qed.
 
 End AlignWord.
+
+Require Import Fiat.Narcissus.BinLib.AlignedByteString.
+
+Section AlignDecodeWord.
+
+  Context {cache : Cache}.
+  Context {cacheAddNat : CacheAdd cache nat}.
+
+  Lemma aligned_format_char_eq
+    : forall (w : word 8) cd,
+      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w cd)
+             (ret (build_aligned_ByteString (Vector.cons _ w _ (Vector.nil _)), addE cd 8)).
+  Proof.
+    intros; shatter_word w; simpl.
+    unfold format_word; simpl.
+    compute.
+    intros.
+    computes_to_inv; subst.
+    match goal with
+      |- computes_to (ret ?c) ?v => replace c with v
+    end.
+    computes_to_econstructor.
+    f_equal.
+    eapply ByteString_f_equal; simpl.
+    instantiate (1 := eq_refl _).
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    erewrite eq_rect_Vector_cons; repeat f_equal.
+    instantiate (1 := eq_refl _); reflexivity.
+    Grab Existential Variables.
+    reflexivity.
+  Qed.
+
+  Lemma AlignedDecodeChar {C}
+        {numBytes}
+    : forall (v : Vector.t (word 8) (S numBytes))
+             (t : (word 8 * ByteString * CacheDecode) -> C)
+             (e : C)
+             cd,
+      Ifopt (decode_word
+               (monoidUnit := ByteString_QueueMonoidOpt) (sz := 8) (build_aligned_ByteString v) cd)
+      as w Then t w Else e
+         =
+         LetIn (Vector.nth v Fin.F1)
+               (fun w => t (w, build_aligned_ByteString (snd (Vector_split 1 _ v)), addD cd 8)).
+  Proof.
+    unfold LetIn; intros.
+    unfold decode_word, WordOpt.decode_word.
+    rewrite aligned_decode_char_eq; simpl.
+    f_equal.
+    pattern numBytes, v; apply Vector.caseS; simpl; intros.
+    reflexivity.
+  Qed.
+
+  Lemma AlignedFormatChar {numBytes}
+    : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
+      refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
+      -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+                    ThenC c) ce)
+                (ret (build_aligned_ByteString (Vector.cons _ w _ v), ce')).
+  Proof.
+    unfold compose; intros.
+    unfold Bind2.
+    setoid_rewrite aligned_format_char_eq; simplify with monad laws.
+    simpl; rewrite H; simplify with monad laws.
+
+    simpl.
+    rewrite <- build_aligned_ByteString_append.
+    reflexivity.
+  Qed.
+
+  Lemma AlignedDecode2Char {C}
+        {numBytes}
+    : forall (v : Vector.t (word 8) (S (S numBytes)))
+             (t : (word 16 * ByteString * CacheDecode) -> C)
+             (e : C)
+             cd,
+      (Ifopt (decode_word
+                (monoidUnit := ByteString_QueueMonoidOpt) (sz := 16) (build_aligned_ByteString v) cd) as w
+                                                                                                           Then t w
+                                                                                                           Else e)
+      = Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
+        t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
+  Proof.
+    unfold LetIn; intros.
+    unfold decode_word, WordOpt.decode_word.
+    match goal with
+      |- context[Ifopt ?Z as _ Then _ Else _] => replace Z with
+                                                 (let (v', v'') := Vector_split 2 numBytes v in Some (VectorByteToWord v', build_aligned_ByteString v'')) by (symmetry; apply (@aligned_decode_char_eq' _ 1 v))
+    end.
+    unfold Vector_split, If_Opt_Then_Else, If_Opt_Then_Else.
+    f_equal.
+    rewrite !Vector_nth_tl, !Vector_nth_hd.
+    erewrite VectorByteToWord_cons.
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    f_equal.
+    erewrite VectorByteToWord_cons.
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    Grab Existential Variables.
+    omega.
+    omega.
+  Qed.
+
+End AlignDecodeWord.
 
 Ltac collapse_word addD_addD_plus :=
   match goal with

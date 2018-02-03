@@ -15,6 +15,7 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
+        Fiat.Narcissus.BinLib.AlignedString
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
@@ -82,101 +83,6 @@ Section AlignedDecoders.
     simplify with monad laws.
     simpl.
     f_equiv.
-  Qed.
-
-
-  Lemma aligned_format_char_eq
-    : forall (w : word 8) cd,
-      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w cd)
-             (ret (build_aligned_ByteString (Vector.cons _ w _ (Vector.nil _)), addE cd 8)).
-  Proof.
-    intros; shatter_word w; simpl.
-    unfold format_word; simpl.
-    compute.
-    intros.
-    computes_to_inv; subst.
-    match goal with
-      |- computes_to (ret ?c) ?v => replace c with v
-    end.
-    computes_to_econstructor.
-    f_equal.
-    eapply ByteString_f_equal; simpl.
-    instantiate (1 := eq_refl _).
-    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    erewrite eq_rect_Vector_cons; repeat f_equal.
-    instantiate (1 := eq_refl _); reflexivity.
-    Grab Existential Variables.
-    reflexivity.
-  Qed.
-
-  Lemma AlignedDecodeChar {C}
-        {numBytes}
-    : forall (v : Vector.t (word 8) (S numBytes))
-             (t : (word 8 * ByteString * CacheDecode) -> C)
-             (e : C)
-             cd,
-      Ifopt (decode_word
-               (monoidUnit := ByteString_QueueMonoidOpt) (sz := 8) (build_aligned_ByteString v) cd)
-      as w Then t w Else e
-         =
-         LetIn (Vector.nth v Fin.F1)
-               (fun w => t (w, build_aligned_ByteString (snd (Vector_split 1 _ v)), addD cd 8)).
-  Proof.
-    unfold LetIn; intros.
-    unfold decode_word, WordOpt.decode_word.
-    rewrite aligned_decode_char_eq; simpl.
-    f_equal.
-    pattern numBytes, v; apply Vector.caseS; simpl; intros.
-    reflexivity.
-  Qed.
-
-  Lemma AlignedFormatChar {numBytes}
-    : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
-      refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
-                    ThenC c) ce)
-                (ret (build_aligned_ByteString (Vector.cons _ w _ v), ce')).
-  Proof.
-    unfold compose; intros.
-    unfold Bind2.
-    setoid_rewrite aligned_format_char_eq; simplify with monad laws.
-    simpl; rewrite H; simplify with monad laws.
-
-    simpl.
-    rewrite <- build_aligned_ByteString_append.
-    reflexivity.
-  Qed.
-
-  Lemma AlignedDecode2Char {C}
-        {numBytes}
-    : forall (v : Vector.t (word 8) (S (S numBytes)))
-             (t : (word 16 * ByteString * CacheDecode) -> C)
-             (e : C)
-             cd,
-      (Ifopt (decode_word
-                (monoidUnit := ByteString_QueueMonoidOpt) (sz := 16) (build_aligned_ByteString v) cd) as w
-                                                                                                           Then t w
-                                                                                                           Else e)
-      = Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
-        t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
-  Proof.
-    unfold LetIn; intros.
-    unfold decode_word, WordOpt.decode_word.
-    match goal with
-      |- context[Ifopt ?Z as _ Then _ Else _] => replace Z with
-                                                 (let (v', v'') := Vector_split 2 numBytes v in Some (VectorByteToWord v', build_aligned_ByteString v'')) by (symmetry; apply (@aligned_decode_char_eq' _ 1 v))
-    end.
-    unfold Vector_split, If_Opt_Then_Else, If_Opt_Then_Else.
-    f_equal.
-    rewrite !Vector_nth_tl, !Vector_nth_hd.
-    erewrite VectorByteToWord_cons.
-    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    f_equal.
-    erewrite VectorByteToWord_cons.
-    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    Grab Existential Variables.
-    omega.
-    omega.
   Qed.
 
   Variable addE_addE_plus :
@@ -247,7 +153,7 @@ Section AlignedDecoders.
   Proof.
     unfold compose, Bind2; intros.
     intros; setoid_rewrite (@format_words' 8 8 w).
-    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
+    rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     simplify with monad laws.
     unfold snd.
     rewrite addE_addE_plus.
@@ -270,7 +176,7 @@ Section AlignedDecoders.
   Proof.
     unfold compose, Bind2; intros.
     intros; setoid_rewrite (@format_words 8 8 w).
-    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
+    rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     simplify with monad laws.
     unfold snd.
     rewrite addE_addE_plus.
@@ -516,121 +422,6 @@ Section AlignedDecoders.
               unfold length_ByteString; simpl; omega).
   Defined.
 
-  Fixpoint BytesToString {sz}
-           (b : Vector.t (word 8) sz)
-    : string :=
-    match b with
-    | Vector.nil => EmptyString
-    | Vector.cons a _ b' => String (Ascii.ascii_of_N (wordToN a)) (BytesToString b')
-    end.
-
-  Variable addD_addD_plus :
-    forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
-
-  Lemma decode_string_aligned_ByteString
-        {sz sz'}
-    : forall (b : t (word 8) (sz + sz'))
-             (cd : CacheDecode),
-      FixStringOpt.decode_string sz (build_aligned_ByteString b) cd =
-      Some (BytesToString (fst (Vector_split sz sz' b)),
-            build_aligned_ByteString (snd (Vector_split sz sz' b)),
-            addD cd (8 * sz)).
-  Proof.
-    induction sz; intros.
-    - simpl; repeat f_equal.
-    - simpl.
-      assert (forall A n b, exists a b', b = Vector.cons A a n b')
-        by (clear; intros; pattern n, b; apply caseS; eauto).
-      destruct (H _ _ b) as [? [? ?] ]; subst; simpl.
-      unfold AsciiOpt.decode_ascii, DecodeBindOpt2.
-      rewrite BindOpt_assoc; simpl.
-      etransitivity.
-      unfold BindOpt at 1.
-      rewrite AlignedDecodeChar; simpl.
-      rewrite IHsz. higher_order_reflexivity.
-      simpl.
-      destruct (Vector_split sz sz' x0); simpl.
-      unfold LetIn.
-      rewrite addD_addD_plus;
-        repeat f_equal.
-      omega.
-  Qed.
-
-  Fixpoint StringToBytes
-           (s : string)
-    : Vector.t (word 8) (String.length s) :=
-    match s return Vector.t (word 8) (String.length s) with
-    | EmptyString => Vector.nil _
-    | String a s' => Vector.cons _ (NToWord 8 (Ascii.N_of_ascii a)) _ (StringToBytes s')
-    end.
-
-  Lemma format_string_ByteString
-    : forall (s : string)
-             (ce : CacheFormat),
-      refine (FixStringOpt.format_string s ce)
-             (ret (build_aligned_ByteString (StringToBytes s), addE ce (8 * String.length s))).
-  Proof.
-    induction s; intros; simpl.
-    - f_equiv. f_equal.
-      eapply ByteString_f_equal.
-      instantiate (1 := eq_refl _); reflexivity.
-      instantiate (1 := eq_refl _); reflexivity.
-    - unfold AsciiOpt.format_ascii.
-      unfold Bind2;  setoid_rewrite aligned_format_char_eq.
-      simplify with monad laws.
-      rewrite IHs.
-      simplify with monad laws.
-      simpl.
-      rewrite <- build_aligned_ByteString_append; simpl.
-      rewrite !addE_addE_plus.
-      f_equiv; f_equiv; f_equiv; omega.
-  Qed.
-
-  Lemma format_string_aligned_ByteString {numBytes}
-    : forall (s : string)
-             (ce : CacheFormat)
-             (ce' : CacheFormat)
-             (c : _ -> Comp _) (v : Vector.t _ numBytes),
-      refine (c (addE ce (8 * String.length s))) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((FixStringOpt.format_string s) ThenC c) ce)
-                (ret (build_aligned_ByteString (append (StringToBytes s) v), ce')).
-  Proof.
-    unfold compose, Bind2; autorewrite with monad laws; intros.
-    rewrite format_string_ByteString.
-    simplify with monad laws.
-    unfold snd at 1.
-    rewrite H.
-    simplify with monad laws.
-    simpl.
-    rewrite <- build_aligned_ByteString_append; simpl.
-    reflexivity.
-  Qed.
-
-  Lemma decode_string_aligned_ByteString_overflow
-        {sz}
-    : forall {sz'}
-             (b : t (word 8) sz')
-             (cd : CacheDecode),
-      lt sz' sz
-      -> FixStringOpt.decode_string sz (build_aligned_ByteString b) cd = None.
-  Proof.
-    induction sz; intros.
-    - omega.
-    - simpl.
-      assert (forall A n b, exists a b', b = Vector.cons A a n b')
-        by (clear; intros; pattern n, b; apply caseS; eauto).
-      destruct sz'.
-      + reflexivity.
-      + destruct (H0 _ _ b) as [? [? ?] ]; subst; simpl.
-        unfold AsciiOpt.decode_ascii, DecodeBindOpt2.
-        rewrite BindOpt_assoc; simpl.
-        etransitivity.
-        unfold BindOpt.
-        rewrite AlignedDecodeChar; simpl.
-        rewrite IHsz. higher_order_reflexivity.
-        omega.
-        reflexivity.
-  Qed.
 
   Lemma ByteAlign_Decode_w_Measure_lt {A}
     : forall (dec_a : nat -> ByteString -> CacheDecode -> option (A * ByteString * CacheDecode))
@@ -1169,7 +960,7 @@ Section AlignedDecoders.
   Proof.
     unfold compose, Bind2; intros.
     intros; setoid_rewrite (@format_words' 8 24 w).
-    rewrite (@AlignedFormatChar 3).
+    rewrite (@AlignedFormatChar _ _ 3).
     simplify with monad laws.
     unfold snd.
     rewrite H.
@@ -1182,10 +973,10 @@ Section AlignedDecoders.
     unfold append.
     reflexivity.
     setoid_rewrite (@format_words' 8 16 _).
-    rewrite (@AlignedFormatChar 2).
+    rewrite (@AlignedFormatChar _ _ 2).
     reflexivity.
     setoid_rewrite (@format_words' 8 8).
-    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
+    rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     rewrite !addE_addE_plus; simpl plus.
     rewrite !split2_split2.
     simpl plus.
@@ -1213,7 +1004,7 @@ Section AlignedDecoders.
   Proof.
     unfold compose, Bind2; intros.
     intros; setoid_rewrite (@format_words 8 24 w).
-    rewrite (@AlignedFormatChar 3).
+    rewrite (@AlignedFormatChar _ _ 3).
     simplify with monad laws.
     unfold snd.
     rewrite H.
@@ -1226,10 +1017,10 @@ Section AlignedDecoders.
     unfold append.
     reflexivity.
     setoid_rewrite (@format_words 8 16 _).
-    rewrite (@AlignedFormatChar 2).
+    rewrite (@AlignedFormatChar _ _ 2).
     reflexivity.
     setoid_rewrite (@format_words 8 8).
-    rewrite (@AlignedFormatChar 1) by apply aligned_format_char_eq.
+    rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     rewrite !addE_addE_plus; simpl plus.
     f_equiv.
   Qed.
@@ -1430,6 +1221,9 @@ Section AlignedDecoders.
     rewrite aligned_decode_unused_char_eq; simpl.
     f_equal.
   Qed.
+
+  Variable addD_addD_plus :
+    forall cd n m, addD (addD cd n) m = addD cd (n + m).
 
   Lemma AlignedDecodeUnusedChars {C}
         {numBytes numBytes'}
