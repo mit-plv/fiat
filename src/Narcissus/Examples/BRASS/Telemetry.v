@@ -388,6 +388,23 @@ Proof.
   simpl in *; Omega.omega.
 Qed.
 
+Lemma aligned_Coordinate_decoder_impl_wf
+  : forall n (s : t char n) x
+           s' u',
+    aligned_Coordinate_decoder_impl n s = Some ((x, s'), u')
+    -> lt (AlignedByteString.length_ByteString s')
+          (AlignedByteString.length_ByteString (build_aligned_ByteString s)).
+Proof.
+  intros.
+  (* Use the -> direction of decoder correctness to infer that
+     s = Coordinate_format x ++ s'*)
+  unfold aligned_Coordinate_decoder_impl in H;
+    let H' := eval simpl in (projT2 (ByteAligned_Coordinate_decoder_impl' n) s) in
+        rewrite <- H' in H.
+  apply Coordinate_decoder_impl_wf in H.
+  eauto.
+Qed.
+
 End Coordinate_Decoder.
 
 Print Coordinate_decoder_impl.
