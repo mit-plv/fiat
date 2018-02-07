@@ -25,6 +25,7 @@ Require Import
         Fiat.Common.Tactics.CacheStringConstant.
 
 Require Import
+        Coq.Arith.PeanoNat
         Coq.NArith.NArith
         Recdef.
 
@@ -40,8 +41,8 @@ Section Coordinate_Decoder.
 
 Definition Coordinate :=
   @Tuple <"Time" :: N,
-          "Latitude" :: Z * N,
-          "Longitude" :: Z * N >.
+          "Latitude" :: Z * (nat * N),
+          "Longitude" :: Z * (nat * N) >.
 
 Function N_to_string' (n : N) {wf N.lt n}: string :=
   match n with
@@ -144,6 +145,75 @@ Proof.
     reflexivity.
 Qed.
 
+Definition string_to_Nnat (s : string) : nat * N :=
+  (String.length s, string_to_N s).
+
+Fixpoint replicate (n : nat) (s : string) : string :=
+  match n with
+  | O => ""
+  | S x => s ++ replicate x s
+  end.
+
+Lemma replicate_length : forall n s,
+  String.length (replicate n s) = n * String.length s.
+Proof.
+  intros.
+  induction n; simpl; auto.
+  now rewrite string_length_append, IHn.
+Qed.
+
+Definition Nnat_to_string (z : nat * N) : string :=
+  let s := N_to_string (snd z) in
+  (if (String.length s <? fst z)%nat
+   then replicate (fst z - String.length s) "0" ++ s
+   else s).
+
+Lemma replicated_zeroes : forall n, string_to_N (replicate n "0") = 0%N.
+Proof. induction n; simpl; auto. Qed.
+
+Lemma distribute_if : forall A B (f : A -> B) (b : bool) (t e : A),
+  f (if b then t else e) = if b then f t else f e.
+Proof.
+  now destruct b.
+Qed.
+
+Lemma Nnat_to_string_inv
+  : forall nn, (fst nn > String.length (N_to_string (snd nn)))%nat
+      -> string_to_Nnat (Nnat_to_string nn) = nn.
+Proof.
+  Import Omega.
+  unfold Nnat_to_string, string_to_Nnat; intros.
+  destruct nn; simpl.
+  f_equal.
+    rewrite distribute_if.
+    rewrite string_length_append.
+    rewrite replicate_length.
+    rewrite Nat.mul_1_r.
+    remember (String.length (N_to_string n0)) as l.
+    destruct (l <? n) eqn:?.
+      apply Nat.ltb_lt in Heqb.
+      omega.
+    apply Nat.ltb_ge in Heqb.
+    simpl in H.
+    omega.
+  rewrite distribute_if.
+  rewrite string_to_N_append.
+  rewrite N_to_string_inv.
+  destruct (String.length (N_to_string n0) <? n) eqn:?; auto.
+  simpl in H.
+  apply Nat.ltb_lt in Heqb.
+  now rewrite replicated_zeroes.
+Qed.
+
+Lemma string_to_Nnat_inv
+  : forall s, (String.length s > 0)%nat
+      -> Nnat_to_string (string_to_Nnat s) = s.
+Proof.
+  unfold Nnat_to_string, string_to_Nnat; intros.
+  induction s; simpl in *; auto.
+    inversion H.
+Abort.
+
 Definition string_to_Z (s : string) : Z :=
   match s with
   | String "-" s' => BinInt.Z.mul (BinInt.Z.of_N (string_to_N s')) (-1)
@@ -171,13 +241,19 @@ Lemma no_space_in_N_to_string
 Proof.
 Admitted.
 
+Lemma no_space_in_Nnat_to_string
+  : forall (nn : nat * N) (s1 s2 : string),
+    Nnat_to_string nn <> (s1 ++ String " " s2)%string.
+Proof.
+Admitted.
+
 Lemma no_dot_in_Z_to_string
   : forall (z : Z) (s1 s2 : string),
     Z_to_string z <> (s1 ++ String "." s2)%string.
 Proof.
 Admitted.
 
-Definition newline := Ascii.Ascii false false false false true false true false.
+Definition newline := Ascii.Ascii false true false true false false false false.
 
 Lemma no_newline_in_N_to_string
   : forall (n : N) (s1 s2 : string),
@@ -185,13 +261,19 @@ Lemma no_newline_in_N_to_string
 Proof.
 Admitted.
 
+Lemma no_newline_in_Nnat_to_string
+  : forall (n : nat * N) (s1 s2 : string),
+    Nnat_to_string n <> (s1 ++ String newline s2)%string.
+Proof.
+Admitted.
+
 Definition Coordinate_format
            (coords : Coordinate) :=
           format_string_with_term_char " " (N_to_string (coords!"Time"))
     ThenC format_string_with_term_char "." (Z_to_string (fst coords!"Latitude"))
-    ThenC format_string_with_term_char " " (N_to_string (snd coords!"Latitude"))
+    ThenC format_string_with_term_char " " (Nnat_to_string (snd coords!"Latitude"))
     ThenC format_string_with_term_char "." (Z_to_string (fst coords!"Longitude"))
-    ThenC format_string_with_term_char newline (N_to_string (snd coords!"Longitude"))
+    ThenC format_string_with_term_char newline (Nnat_to_string (snd coords!"Longitude"))
     DoneC.
 
 Definition Coordinate_decoder
@@ -212,7 +294,8 @@ Proof.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
   decode_step idtac.
-  intros; simpl; eapply no_space_in_N_to_string.
+  intros. simpl.
+  intros; simpl; eapply no_space_in_Nnat_to_string.
   decode_step idtac.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
@@ -222,7 +305,7 @@ Proof.
   decode_step idtac.
   intros; eapply String_decode_with_term_char_correct.
   decode_step idtac.
-  intros; simpl; eapply no_newline_in_N_to_string.
+  intros; simpl; eapply no_newline_in_Nnat_to_string.
   decode_step idtac.
   simpl; intros **; eapply CorrectDecoderinish.
   unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *;
@@ -238,15 +321,20 @@ Proof.
                    | rewrite H in * ]
        end).
   destruct prim_fst0, prim_fst1; simpl in *.
-  apply (f_equal string_to_N) in H7.
-  apply (f_equal string_to_N) in H9.
+  apply (f_equal string_to_Nnat) in H7.
+  apply (f_equal string_to_Nnat) in H9.
   apply (f_equal string_to_N) in H11.
   apply (f_equal string_to_Z) in H8.
   apply (f_equal string_to_Z) in H10.
-  rewrite N_to_string_inv, Z_to_string_inv in *.
+  rewrite Nnat_to_string_inv, N_to_string_inv, Z_to_string_inv in *.
   subst.
   reflexivity.
   unfold GetAttribute, GetAttributeRaw; simpl.
+  admit.
+  admit.
+  admit.
+  instantiate (1 := true). admit.
+(*
   decide_data_invariant.
   apply (@decides_True' _ proj).
   setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
@@ -259,6 +347,7 @@ Proof.
     split; intro H5; apply H5.
   setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
     split; intro H5; apply H5.
+*)
   synthesize_cache_invariant.
   repeat optimize_decoder_impl.
 Defined.
