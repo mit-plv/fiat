@@ -422,6 +422,21 @@ Section AlignedDecoders.
               unfold length_ByteString; simpl; omega).
   Defined.
 
+  Fixpoint BytesToString {sz}
+           (b : Vector.t (word 8) sz)
+    : string :=
+    match b with
+    | Vector.nil => EmptyString
+    | Vector.cons a _ b' => String (Ascii.ascii_of_N (wordToN a)) (BytesToString b')
+    end.
+
+  Fixpoint StringToBytes
+           (s : string)
+    : Vector.t (word 8) (String.length s) :=
+    match s return Vector.t (word 8) (String.length s) with
+    | EmptyString => Vector.nil _
+    | String a s' => Vector.cons _ (NToWord 8 (Ascii.N_of_ascii a)) _ (StringToBytes s')
+    end.
 
   Lemma ByteAlign_Decode_w_Measure_lt {A}
     : forall (dec_a : nat -> ByteString -> CacheDecode -> option (A * ByteString * CacheDecode))
