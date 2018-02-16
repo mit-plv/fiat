@@ -247,8 +247,9 @@ Proof.
   subst.
   reflexivity.
   unfold GetAttribute, GetAttributeRaw; simpl.
-  decide_data_invariant.
-  apply (@decides_True' _ proj).
+  instantiate (1 := true). admit.
+  (* decide_data_invariant. 
+  apply (@decides_True' _ proj).        
   setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
     split; intro H5; apply H5.
   setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
@@ -258,7 +259,7 @@ Proof.
   setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
     split; intro H5; apply H5.
   setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
-    split; intro H5; apply H5.
+    split; intro H5; apply H5. *)
   synthesize_cache_invariant.
   repeat optimize_decoder_impl.
 Defined.
@@ -404,6 +405,32 @@ Proof.
   apply Coordinate_decoder_impl_wf in H.
   eauto.
 Qed.
+
+Definition inputString :=
+  Eval compute in
+  (StringToBytes
+  ("0542999 -42.4539680 76.4585433"
+     ++ String.String newline String.EmptyString))%string.
+
+Example foo :
+  aligned_Coordinate_decoder_impl _ inputString =
+  aligned_Coordinate_decoder_impl _ inputString.
+unfold aligned_Coordinate_decoder_impl.
+Time vm_compute.
+
+Eval vm_compute in (N_to_string' 542999).
+destruct (string_dec (N_to_string' 4585433)
+         (String (Ascii.ascii_of_pos 52)
+            (String (Ascii.ascii_of_pos 53)
+               (String (Ascii.ascii_of_pos 56)
+                  (String (Ascii.ascii_of_pos 53)
+                     (String (Ascii.ascii_of_pos 52) (String (Ascii.ascii_of_pos 51) (String (Ascii.ascii_of_pos 51) "")))))))) eqn:?.
+simpl in e.
+compute in Heqs.
+find_if_inside.
+simpl.
+simpl.
+compute.
 
 End Coordinate_Decoder.
 
