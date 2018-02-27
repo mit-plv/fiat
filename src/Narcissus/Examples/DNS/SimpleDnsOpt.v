@@ -354,16 +354,6 @@ Section DnsPacket.
     eapply AlignedFormat32Char; eauto using addE_addE_plus.
     unfold format_rdata.
     eapply (AlignedFormatSumTypeDoneC); repeat build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
-    build_ilist_evar.
     simpl; intros. repeat (apply Build_prim_and; intros); try exact I.
     { unfold format_CNAME;
       build_prim_prod_evar;

@@ -177,6 +177,7 @@ Proof.
   now destruct b.
 Qed.
 
+(*
 Lemma Nnat_to_string_inv
   : forall nn, (fst nn > String.length (N_to_string (snd nn)))%nat
       -> string_to_Nnat (Nnat_to_string nn) = nn.
@@ -204,7 +205,34 @@ Proof.
   apply Nat.ltb_lt in Heqb.
   now rewrite replicated_zeroes.
 Qed.
+*)
 
+Lemma Nnat_to_string_inv
+  : forall nn, string_to_Nnat (Nnat_to_string nn) = nn.
+Proof.
+  Import Omega.
+  unfold Nnat_to_string, string_to_Nnat; intros.
+  destruct nn; simpl.
+  f_equal.
+    rewrite distribute_if.
+    rewrite string_length_append.
+    rewrite replicate_length.
+    rewrite Nat.mul_1_r.
+    remember (String.length (N_to_string n0)) as l.
+    destruct (l <? n) eqn:?.
+      apply Nat.ltb_lt in Heqb.
+      omega.
+    apply Nat.ltb_ge in Heqb.
+    admit.
+  rewrite distribute_if.
+  rewrite string_to_N_append.
+  rewrite N_to_string_inv.
+  destruct (String.length (N_to_string n0) <? n) eqn:?; auto.
+  apply Nat.ltb_lt in Heqb.
+  now rewrite replicated_zeroes.
+Admitted.
+
+(*
 Lemma string_to_Nnat_inv
   : forall s, (String.length s > 0)%nat
       -> Nnat_to_string (string_to_Nnat s) = s.
@@ -212,6 +240,14 @@ Proof.
   unfold Nnat_to_string, string_to_Nnat; intros.
   induction s; simpl in *; auto.
     inversion H.
+Abort.
+*)
+
+Lemma string_to_Nnat_inv
+  : forall s, Nnat_to_string (string_to_Nnat s) = s.
+Proof.
+  unfold Nnat_to_string, string_to_Nnat; intros.
+  induction s; simpl in *; auto.
 Abort.
 
 Definition string_to_Z (s : string) : Z :=
@@ -296,77 +332,72 @@ Definition Coordinate_decoder
   : CorrectDecoderFor (fun _ => True) Coordinate_format.
 Proof.
   start_synthesizing_decoder.
-  normalize_compose monoid.
-  decode_step idtac.
-  intros; eapply String_decode_with_term_char_correct.
-  decode_step idtac.
-  intros; simpl; eapply no_space_in_N_to_string.
-  decode_step idtac.
-  decode_step idtac.
-  intros; eapply String_decode_with_term_char_correct.
-  decode_step idtac.
-  intros; simpl; eapply no_dot_in_Z_to_string.
-  decode_step idtac.
-  decode_step idtac.
-  intros; eapply String_decode_with_term_char_correct.
-  decode_step idtac.
-  intros. simpl.
-  intros; simpl; eapply no_space_in_Nnat_to_string.
-  decode_step idtac.
-  decode_step idtac.
-  intros; eapply String_decode_with_term_char_correct.
-  decode_step idtac.
-  intros; simpl; eapply no_dot_in_Z_to_string.
-  decode_step idtac.
-  decode_step idtac.
-  intros; eapply String_decode_with_term_char_correct.
-  decode_step idtac.
-  intros; simpl; eapply no_newline_in_Nnat_to_string.
-  decode_step idtac.
-  simpl; intros **; eapply CorrectDecoderinish.
-  unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *;
-    (let a' := fresh in
-     intros a'; repeat destruct a' as [? a']; unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *; intros **; intuition;
-     repeat
-       match goal with
-       | H:_ = _
-         |- _ => first
-                   [ apply decompose_pair_eq in H; (let H1 := fresh in
-                                                    let H2 := fresh in
-                                                    destruct H as [H1 H2]; simpl in H1; simpl in H2)
-                   | rewrite H in * ]
-       end).
-  destruct prim_fst0, prim_fst1; simpl in *.
-  apply (f_equal string_to_Nnat) in H7.
-  apply (f_equal string_to_Nnat) in H9.
-  apply (f_equal string_to_N) in H11.
-  apply (f_equal string_to_Z) in H8.
-  apply (f_equal string_to_Z) in H10.
-  rewrite Nnat_to_string_inv, N_to_string_inv, Z_to_string_inv in *.
-  subst.
-  reflexivity.
-  unfold GetAttribute, GetAttributeRaw; simpl.
-  admit.
-  admit.
-  admit.
-  simpl.
-  unfold BStringId, StringId; simpl.
-  unfold GetAttribute, GetAttributeRaw; simpl.
-  decide_data_invariant.
-  apply (@decides_True' _ proj).
-  setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
-    split; intro H5; apply H5.
-  setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
-    split; intro H5; apply H5.
-  setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
-    split; intro H5; apply H5.
-  setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
-    split; intro H5; apply H5.
-  setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
-    split; intro H5; apply H5.
-*)
-  synthesize_cache_invariant.
-  repeat optimize_decoder_impl.
+  - normalize_compose monoid.
+    decode_step idtac.
+    + intros; eapply String_decode_with_term_char_correct.
+      decode_step idtac.
+    + intros; simpl; eapply no_space_in_N_to_string.
+    + decode_step idtac.
+    + decode_step idtac.
+      * intros; eapply String_decode_with_term_char_correct.
+        decode_step idtac.
+      * intros; simpl; eapply no_dot_in_Z_to_string.
+      * decode_step idtac.
+      * decode_step idtac.
+        ** intros; eapply String_decode_with_term_char_correct.
+           decode_step idtac.
+        ** intros. simpl.
+           intros; simpl; eapply no_space_in_Nnat_to_string.
+        ** decode_step idtac.
+        ** decode_step idtac.
+           *** intros; eapply String_decode_with_term_char_correct.
+               decode_step idtac.
+           *** intros; simpl; eapply no_dot_in_Z_to_string.
+           *** decode_step idtac.
+           *** decode_step idtac.
+               **** intros; eapply String_decode_with_term_char_correct.
+                    decode_step idtac.
+               **** intros; simpl; eapply no_newline_in_Nnat_to_string.
+               **** decode_step idtac.
+               **** simpl; intros **; eapply CorrectDecoderinish.
+    ***** {
+      unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *;
+        (let a' := fresh in
+         intros a'; repeat destruct a' as [? a']; unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *; intros **; intuition;
+         repeat
+           match goal with
+           | H:_ = _
+             |- _ => first
+                       [ apply decompose_pair_eq in H; (let H1 := fresh in
+                                                        let H2 := fresh in
+                                                        destruct H as [H1 H2]; simpl in H1; simpl in H2)
+                       | rewrite H in * ]
+           end).
+      destruct prim_fst0, prim_fst1; simpl in *.
+      apply (f_equal string_to_Nnat) in H7.
+      apply (f_equal string_to_Nnat) in H9.
+      apply (f_equal string_to_N) in H11.
+      apply (f_equal string_to_Z) in H8.
+      apply (f_equal string_to_Z) in H10.
+      rewrite Nnat_to_string_inv, N_to_string_inv, Z_to_string_inv in *.
+      subst; reflexivity.
+    }
+    ***** {
+      decide_data_invariant.
+      apply (@decides_True' _ proj).
+      setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
+        split; intro H5; apply H5.
+      setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
+        split; intro H5; apply H5.
+      setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
+        split; intro H5; apply H5.
+      setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
+        split; intro H5; apply H5.
+      setoid_rewrite <- BoolFacts.string_dec_bool_true_iff;
+        split; intro H5; apply H5.
+    }
+  - synthesize_cache_invariant.
+  - repeat optimize_decoder_impl.
 Defined.
 
 Definition Coordinate_decoder_impl :=
