@@ -12,7 +12,9 @@ Require Import
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation
-        Fiat.Examples.DnsServer.SimplePacket
+        Fiat.Narcissus.Formats.DomainNameOpt
+        Fiat.Narcissus.Examples.DNS.SimpleDnsOpt
+        Fiat.Narcissus.Examples.DNS.SimpleDNSPacket
         Fiat.Examples.DnsServer.DecomposeSumField
         Fiat.Computation.FoldComp
         Fiat.Examples.DnsServer.SimpleAuthoritativeDNSSchema.
@@ -1514,7 +1516,7 @@ Proof.
     unfold MaxElements in *.
     computes_to_inv; subst.
     symmetry in H0''0.
-    pose proof (Permutation_filtered_List _ H0''0 _  H0'');
+    pose proof (Permutation_filtered_List _ _ _ H0''0 _  H0'');
       destruct_ex; intuition.
     repeat computes_to_econstructor.
     eassumption.
@@ -2268,8 +2270,6 @@ Admitted.
 
 Definition QType_proj : QType -> option RRecordType. Admitted.
 
-Require Import  Fiat.Narcissus.Examples.SimpleDnsOpt.
-
 Lemma refine_Process_Query_Exact_Match
   : forall (r_o : UnConstrQueryStructure DnsSchema)
            r_n e a1 qType a0 s answers,
@@ -2287,7 +2287,7 @@ Lemma refine_Process_Query_Exact_Match
             a' <- ⟦element in a3
                   | QType_match (RDataTypeToRRecordType (GetAttributeRaw element (Fin.FS (Fin.FS (Fin.FS Fin.F1)))))
                                 qType ⟧;
-            If negb (is_empty a3) Then encode_packet_Spec (add_answers answers (add_answers a' (buildempty true s a0))) list_CacheEncode_empty
+            If negb (is_empty a3) Then format_packet (add_answers answers (add_answers a' (buildempty true s a0))) list_CacheEncode_empty
                Else e)
          (If (QType_dec qType (EnumType.BoundedIndex_inj_EnumType ``("STAR"))) Then
              (a3 <- For (UnConstrQuery_In r_o Fin.F1
@@ -2295,7 +2295,7 @@ Lemma refine_Process_Query_Exact_Match
                                              Where (RDataTypeToRRecordType (GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS Fin.F1)))) <> CNAME
                                                     /\ GetAttributeRaw r Fin.F1 = a1)
                                                    Return r ));
-                If negb (is_empty a3) Then (encode_packet_Spec (add_answers answers (add_answers a3 (buildempty true s a0))) list_CacheEncode_empty)
+                If negb (is_empty a3) Then (format_packet (add_answers answers (add_answers a3 (buildempty true s a0))) list_CacheEncode_empty)
                    Else e)
              Else
              (Ifopt QType_proj qType as rType Then

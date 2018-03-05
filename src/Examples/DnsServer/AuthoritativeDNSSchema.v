@@ -17,7 +17,7 @@ Require Import
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import
-        Fiat.Examples.DnsServer.Packet.
+        Fiat.Narcissus.Examples.DNS.DNSPacket.
 
 Definition DnsSchema :=
   Query Structure Schema

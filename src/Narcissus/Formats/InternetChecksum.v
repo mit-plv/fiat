@@ -758,7 +758,7 @@ Proof.
   reflexivity.
 Qed.
 
-(* 8.7 Definition *)
+(*(* 8.7 Definition *)
    Lemma wmsb_combine {sz} :
   forall (w : word (S sz)) b,
   exists w' : word sz,
@@ -777,9 +777,8 @@ Proof.
     eapply WS_match_eq_refl.
     rewrite Heq at 1.
     reflexivity.
-Qed.
+Qed. *)
 
-(*
 (* 8.4 Definition *)
    Lemma wmsb_combine {sz} :
   forall (w : word (S sz)) b,
@@ -799,7 +798,7 @@ Proof.
     eapply WS_match_eq_refl.
     rewrite Heq at 1.
     reflexivity.
-Qed. *)
+Qed.
 
 Lemma normalizeZ_OneCToZ {sz} :
   forall w: word (S sz), normalizeZ sz (OneCToZ w) = (OneCToZ w).
@@ -808,7 +807,7 @@ Proof.
   apply normalizeZ_noop.
   unfold OneCToZ.
   pose proof (Npow2_ge_one sz).
-  (* 8.7 script:  *)
+  (* (* 8.7 script:  *)
      destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with
            | _ => lia
@@ -825,7 +824,7 @@ Proof.
                rewrite wordToN_combine in Heqn;
                pose proof (wordToN_bound w');
                simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
-           end. (*
+           end.  *)
   (* 8.4 script *)
   destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with
@@ -843,7 +842,7 @@ Proof.
                rewrite wordToN_combine in Heqn;
                pose proof (wordToN_bound w');
                simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
-           end. *)
+           end.
 Qed.
 
 Lemma NToWord_zero {sz} :

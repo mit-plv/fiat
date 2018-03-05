@@ -11,7 +11,8 @@ Require Import
         Fiat.Computation.IfDec
         Fiat.QueryStructure.Specification.Operations.InsertAll
         Fiat.QueryStructure.Automation.AutoDB
-        Fiat.Examples.DnsServer.Packet
+        Fiat.Narcissus.Examples.DNS.DNSPacket
+        Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Examples.DnsServer.RecursiveDNSSchema.
 
 Import Vectors.VectorDef.VectorNotations.
@@ -54,14 +55,16 @@ Definition addAnswersToCache
    () (answers ++ authority ++ additional)
    (@QSInsert _)
    (fun aal _ => ret (< sTTL :: curTime ^+ cachedTTL,
-                        sCACHETYPE :: ``"Answer",
+                        sCACHETYPE :: ANSWER,
                         sDOMAIN :: aal!sNAME,
-                        sQTYPE :: aal!sTYPE,
+                        sQTYPE :: (RDataTypeToRRecordType (aal!sRDATA)),
                         sCACHEDVALUE :: rRecord2CachedValue aal >, tt))
    (fun a s => ret s);
     ret this.
 
-Definition DnsSpec : ADT _ :=
+Definition getSIP (tup : @Tuple SLISTHeading) : W := tup!sIP.
+
+Definition DnsSpec (q : _ -> packet) : ADT _ :=
   Def ADT {
     rep := QueryStructure RecResolverSchema,
 
@@ -98,7 +101,7 @@ Definition DnsSpec : ADT _ :=
              `(this, b) <- Insert < sID :: newID,
                                     sIP :: sourceIP,
                                     sTTL :: curTime ^+ requestTTL > ++ p into this!sREQUESTS; (* Add the request to the list. *)
-             ret (this, (<"id" :: newID,
+             ret (this, (q <"id" :: newID,
                           "QR" :: false,
                           "Opcode" :: ``"Query",
                           "AA" :: false,
@@ -109,7 +112,7 @@ Definition DnsSpec : ADT _ :=
                           "question" :: p!"question",
                           "answers" :: [ ],
                           "authority" :: [ ],
-                          "additional" :: [ ] >, Some bestServer!sIP))
+                          "additional" :: [ ] >, Some (getSIP bestServer)))
              Else (* There are no known servers that can answer this request. *)
              ret (this, (buildempty false ``"ServFail" p, Some sourceIP)) (* This won't happen if the server has been properly initialized with the root servers. *)
             )

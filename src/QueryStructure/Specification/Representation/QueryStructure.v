@@ -276,4 +276,4 @@ Notation "qs ! R" :=
 
 (*Arguments BuildQueryStructureConstraints _ _ _. *)
 Arguments BuildQueryStructureConstraints_cons [_ _] _ _ _ _ (*/*) _ .
-Arguments BuildQueryStructureConstraints_cons_obligation_1 [_ _] _ (*/*) _ _ _ _.
+Arguments BuildQueryStructureConstraints_cons_obligation_1 [_ _] _ (*/*) _ _ _ _ _ _.
