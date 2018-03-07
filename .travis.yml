@@ -19,7 +19,6 @@ matrix:
     - dist: precise
       env: COQ_VERSION="8.4pl6" TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq-8.4pl6 libcoq-ocaml-8.4pl6 libcoq-ocaml-dev-8.4pl6 ocaml camlp5"                        PPA="ppa:jgross-h/many-coq-versions-ocaml-3"
   allow_failures:
-    - env: COQ_VERSION="master" TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-master-daily"
     - env: COQ_VERSION="v8.6"   TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.6-daily"
     - dist: trusty
       env: COQ_VERSION="8.5pl3" TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev ocaml camlp5" PPA="ppa:jgross-h/many-coq-versions"
