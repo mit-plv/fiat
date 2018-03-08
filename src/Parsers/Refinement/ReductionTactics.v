@@ -116,7 +116,7 @@ Ltac make_parser_informative_opaque splitter :=
   let sound := constr:(ParserInterface.has_parse_sound b str) in
   let b := constr:(ParserInterface.has_parse b str) in
   let b' := parser_red_gen b in
-  let v := constr:(match b' as b'' return b = b'' -> option (parse_of_item G str (NonTerminal (Start_symbol G))) with
+  let v := constr:(match b' as b'' return b' = b'' -> option (parse_of_item G str (NonTerminal (Start_symbol G))) with
                    | true => fun pf => Some (sound pf)
                    | false => fun _ => None
                    end (eq_refl b')) in
