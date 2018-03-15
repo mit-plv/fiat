@@ -21,6 +21,7 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedDecoders
+        Fiat.Narcissus.BinLib.AlignedMonads
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.CacheStringConstant.
 
@@ -182,6 +183,57 @@ Section AlignedList.
     rewrite !zeta_to_fst; simpl; reflexivity.
   Qed.
 
+  Fixpoint ListAlignedDecodeM {A} {m}
+           (A_decode_align : forall {m}, AlignedDecodeM A m)
+           (n : nat)
+    : AlignedDecodeM (list A) m :=
+    match n with
+    | 0 => return (@nil A)
+    | S s' => a <- A_decode_align;
+                l <- ListAlignedDecodeM (@A_decode_align) s';
+              return (a :: l)
+    end%AlignedDecodeM%list.
+
+  Lemma AlignedDecodeListM {A C : Set}
+        (A_decode : DecodeM A ByteString)
+        (A_decode_align : forall {m}, AlignedDecodeM A m)
+        (n : nat)
+    : forall (t : list A -> DecodeM C ByteString)
+             (t' : list A -> forall {numBytes}, AlignedDecodeM C numBytes),
+      (DecodeMEquivAlignedDecodeM A_decode (@A_decode_align))
+      -> (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
+      -> DecodeMEquivAlignedDecodeM
+           (fun v cd => `(l, bs, cd') <- decode_list A_decode n v cd;
+                          t l bs cd')
+           (fun numBytes => l <- ListAlignedDecodeM (@A_decode_align) n;
+                            t' l)%AlignedDecodeM%list.
+  Proof.
+    induction n; simpl; intros; eauto.
+    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
+    2: reflexivity.
+    2: apply AlignedDecodeMEquiv_sym; etransitivity; [apply ReturnAlignedDecodeM_LeftUnit;
+                                                      reflexivity | reflexivity ].
+    eauto.
+    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
+    2: set_evars; erewrite !DecodeBindOpt2_assoc; subst_evars; higher_order_reflexivity.
+    2: apply AlignedDecodeMEquiv_sym; etransitivity; [apply BindAlignedDecodeM_assoc;
+                                                      reflexivity | higher_order_reflexivity ].
+    simpl.
+    eapply Bind_DecodeMEquivAlignedDecodeM; intros.
+    eauto.
+    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
+    2: set_evars; erewrite !DecodeBindOpt2_assoc; subst_evars; higher_order_reflexivity.
+    2: apply AlignedDecodeMEquiv_sym; etransitivity; [apply BindAlignedDecodeM_assoc;
+                                                      reflexivity | higher_order_reflexivity ].
+    simpl.
+    eapply IHn; eauto.
+    intros.
+    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
+    2: higher_order_reflexivity.
+    2: apply AlignedDecodeMEquiv_sym; etransitivity; [eapply ReturnAlignedDecodeM_LeftUnit | higher_order_reflexivity].
+    eapply H0.
+  Qed.
+
   Lemma AlignedFormatListDoneC {A}
         (A_OK : A -> Prop)
         format_A
@@ -190,7 +242,7 @@ Section AlignedList.
         (encode_A2 : A -> CacheFormat -> CacheFormat)
     : forall (l : list A) ce,
       (forall (a : A) (ce : CacheFormat),
-          A_OK a 
+          A_OK a
           -> refine (format_A a ce) (ret (build_aligned_ByteString (encode_A1 a ce), encode_A2 a ce)))
       -> (forall a : A, In a l -> A_OK a)
       -> refine (((format_list format_A l) DoneC) ce)
