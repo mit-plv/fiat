@@ -107,7 +107,6 @@ Proof.
   unfold SimpleDecoderImpl.
   eapply (AlignedDecodeNatM (C := simple_record) (cache := test_cache)); intros.
   eapply (AlignedDecodeBind2CharM (cache := test_cache)); intros; eauto.
-  Check (fun b0 numBytes => l <- ListAlignedDecodeM _ b; return (b0, l)).
   instantiate (1 := fun b0 numBytes => l <- ListAlignedDecodeM _ b; return (b0, l)).
   simpl.
   eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.

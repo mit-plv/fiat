@@ -516,7 +516,7 @@ Section AlignDecodeWord.
   Proof.
     unfold DecodeMEquivAlignedDecodeM, BindAlignedDecodeM, DecodeBindOpt2, BindOpt; intros;
       unfold decode_word, WordOpt.decode_word.
-    split; [ | split; [ | split ] ]; intros.
+    split; [ | split ]; intros.
     - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
       unfold GetCurrentByte; simpl.
       destruct (nth_opt t n); simpl; eauto.
@@ -531,8 +531,15 @@ Section AlignDecodeWord.
         * unfold GetCurrentByte in H; simpl in H; discriminate.
         * unfold GetCurrentByte; injections; simpl.
           clear; induction n; simpl; eauto.
-    - unfold GetCurrentByte in H0.
-      admit.
+        * injections.
+          replace (match numBytes (build_aligned_ByteString v) with
+                           | 0 => S n
+                           | S l => n - l
+                   end) with 1 by
+              (unfold numBytes; simpl;
+               clear; induction n; omega).
+          setoid_rewrite <- build_aligned_ByteString_append.
+          eexists (Vector.cons _ c _ (@Vector.nil _)); reflexivity.
   Qed.
 
   Lemma AlignedDecodeBindCharM {C : Set}
@@ -718,7 +725,7 @@ Section AlignDecodeWord.
       -> DecodeMEquivAlignedDecodeM
            (fun v cd => `(a, b0, cd') <- decode_word (monoidUnit := ByteString_QueueMonoidOpt) (sz := 16) v cd;
                           t a b0 cd')
-           (fun numBytes => b <- GetCurrentByte; b' <- GetCurrentByte; t' (Core.append_word b' b)).
+           (fun numBytes => b <- GetCurrentByte; b' <- GetCurrentByte; w <- return (Core.append_word b' b); t' w).
   Proof.
     intros; eapply DecodeMEquivAlignedDecodeM_trans with
                 (bit_decoder1 :=

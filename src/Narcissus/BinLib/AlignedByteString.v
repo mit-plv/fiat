@@ -1677,3 +1677,205 @@ Fixpoint decode_list'
         Let a' := decode_list' n' (fun p => A_decode' (S p)) (snd a) in
                                             (fst a :: (fst a'), snd a')
   end A_decode.
+
+  Lemma Vector_split_append {A} {m n}
+    : forall (v : Vector.t A (m + n)),
+      v = Vector.append (fst (Vector_split _ _ v)) (snd (Vector_split _ _ v)).
+  Proof.
+    induction m; simpl; eauto.
+    intros.
+    generalize (IHm (Vector.tl v)); clear.
+    fold plus; destruct (Vector_split m n (Vector.tl v)); simpl; intros.
+    rewrite <- H.
+    generalize v; clear; generalize (m + n).
+    intros; pattern n0, v; apply Vector.caseS; simpl; intros.
+    reflexivity.
+  Qed.
+
+  Lemma queue_into_ByteString_inj
+        : forall l1 l2,
+      queue_into_ByteString l1 = queue_into_ByteString l2
+      -> l1 = l2.
+  Proof.
+    intros.
+    apply queue_into_ByteString_inj.
+    rewrite !BoundedByteStringToByteString_into_queue_eq.
+    rewrite H; reflexivity.
+  Qed.
+
+  Lemma app_inj {A}
+    : forall l1 l2 l1' l2' : list A,
+      List.length l2 = List.length l2'
+      -> app l1 l2 = app l1' l2'
+      -> l1 = l1'.
+  Proof.
+    induction l1; simpl; intros.
+    - destruct l1'; simpl; eauto.
+      rewrite H0 in H; simpl in H.
+      rewrite app_length in H; omega.
+    - destruct l1'; simpl in *; intros.
+      rewrite <- H0 in H; simpl in H; rewrite app_length in H; omega.
+      injections.
+      erewrite IHl1; eauto.
+  Qed.
+
+  Lemma app_inj' {A}
+    : forall l1 l2 l1' l2' : list A,
+      List.length l1 = List.length l1'
+      -> app l1 l2 = app l1' l2'
+      -> l2 = l2'.
+  Proof.
+    induction l1; simpl; intros.
+    - destruct l1'; simpl; eauto.
+      simpl in H; discriminate.
+    - destruct l1'; simpl in *; intros.
+      discriminate.
+      injections; eauto.
+  Qed.
+
+  Lemma length_ByteString_into_queue
+  : forall bs bs',
+      length_ByteString bs = length_ByteString bs'
+      -> List.length (ByteString_into_queue bs) = List.length (ByteString_into_queue bs').
+  Proof.
+    intros ? ?.
+    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs).
+    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs').
+    rewrite !ByteStringToBoundedByteString_into_queue_eq'.
+    unfold Core.ByteString_into_queue; rewrite !app_length, !length_ByteString_into_queue'.
+    rewrite !length_ByteString_ByteStringToBoundedByteString_eq.
+    unfold Core.length_ByteString.
+    rewrite !length_wordToQueue.
+    omega.
+  Qed.
+
+  Lemma ByteString_enqueue_ByteString_inj
+    : forall bs1 bs2 bs1' bs2',
+      ByteString_enqueue_ByteString bs1 bs2 =
+      ByteString_enqueue_ByteString bs1' bs2'
+      -> length_ByteString bs2 = length_ByteString bs2'
+      -> bs1 = bs1'.
+  Proof.
+    intros.
+    rewrite (ByteString_into_queue_eq bs1),
+    (ByteString_into_queue_eq bs2),
+    (ByteString_into_queue_eq bs1'),
+    (ByteString_into_queue_eq bs2') in H.
+    rewrite !ByteString_enqueue_ByteString_into_list in H.
+    apply queue_into_ByteString_inj in H.
+    rewrite (ByteString_into_queue_eq bs1),
+    (ByteString_into_queue_eq bs1').
+    apply app_inj in H; eauto using length_ByteString_into_queue.
+    rewrite H; eauto.
+  Qed.
+
+  Lemma ByteString_enqueue_ByteString_inj'
+    : forall bs1 bs2 bs1' bs2',
+      ByteString_enqueue_ByteString bs1 bs2 =
+      ByteString_enqueue_ByteString bs1' bs2'
+      -> length_ByteString bs1 = length_ByteString bs1'
+      -> bs2 = bs2'.
+  Proof.
+    intros.
+    rewrite (ByteString_into_queue_eq bs1),
+    (ByteString_into_queue_eq bs2),
+    (ByteString_into_queue_eq bs1'),
+    (ByteString_into_queue_eq bs2') in H.
+    rewrite !ByteString_enqueue_ByteString_into_list in H.
+    apply queue_into_ByteString_inj in H.
+    rewrite (ByteString_into_queue_eq bs2),
+    (ByteString_into_queue_eq bs2').
+    apply app_inj' in H; eauto using length_ByteString_into_queue.
+    rewrite H; eauto.
+  Qed.
+
+  Lemma build_aligned_ByteString_split :
+      forall {n} (v : Vector.t _ n) {m} (v' : Vector.t _ m)  b,
+      build_aligned_ByteString v = ByteString_enqueue_ByteString b (build_aligned_ByteString v')
+      -> exists v'' : Vector.t _ (n - m),
+        b = build_aligned_ByteString v''.
+  Proof.
+    intros.
+    assert (n = (n - m) + m).
+    { rewrite plus_comm. eapply le_plus_minus.
+      generalize (f_equal length_ByteString H); intros.
+      unfold length_ByteString at 1 in H0; simpl in H0.
+      replace (length_ByteString (ByteString_enqueue_ByteString b (build_aligned_ByteString v')))
+        with (length_ByteString b + (8 * m)) in H0.
+      omega.
+      rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b).
+      rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (build_aligned_ByteString _)).
+      rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
+      rewrite !length_ByteString_ByteStringToBoundedByteString_eq.
+      rewrite ByteString_enqueue_ByteString_measure.
+      unfold BoundedByteStringToByteString at 3.
+      simpl.
+      unfold Core.length_ByteString at 3; simpl.
+      rewrite <- !length_Vector_to_list; omega.
+    }
+    revert v H; rewrite H0; intros; rewrite <- H0.
+    rewrite (Vector_split_append v) in H.
+    rewrite build_aligned_ByteString_append in H.
+    eexists (fst (Vector_split (n - m) m v)).
+    eapply ByteString_enqueue_ByteString_inj in H; eauto.
+  Qed.
+
+  Lemma build_aligned_ByteString_split' :
+      forall {n} (v : Vector.t _ n) {m} (v' : Vector.t _ m)  b,
+      build_aligned_ByteString v = ByteString_enqueue_ByteString (build_aligned_ByteString v') b
+      -> exists v'' : Vector.t _ (n - m),
+        b = build_aligned_ByteString v''.
+  Proof.
+    intros.
+    assert (n = m + (n - m)).
+    { eapply le_plus_minus.
+      generalize (f_equal length_ByteString H); intros.
+      unfold length_ByteString at 1 in H0; simpl in H0.
+      replace (length_ByteString (ByteString_enqueue_ByteString (build_aligned_ByteString v') b))
+        with (length_ByteString b + (8 * m)) in H0.
+      omega.
+      rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b).
+      rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (build_aligned_ByteString _)).
+      rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
+      rewrite !length_ByteString_ByteStringToBoundedByteString_eq.
+      rewrite ByteString_enqueue_ByteString_measure.
+      unfold BoundedByteStringToByteString at 2.
+      simpl.
+      unfold Core.length_ByteString at 2; simpl.
+      rewrite <- !length_Vector_to_list.
+      omega.
+    }
+    revert v H; rewrite H0; intros; rewrite <- H0.
+    rewrite (Vector_split_append v) in H.
+    rewrite build_aligned_ByteString_append in H.
+    eexists (snd (Vector_split m (n - m) v)).
+    eapply ByteString_enqueue_ByteString_inj' in H; eauto.
+  Qed.
+
+  Lemma build_aligned_ByteString_inj {n}:
+    forall (v1 v2 : Vector.t _ n),
+      build_aligned_ByteString v1 = build_aligned_ByteString v2
+      -> v1 = v2.
+  Proof.
+    unfold build_aligned_ByteString; intros.
+    injection H.
+    intro.
+    rewrite <- (EqdepFacts.eq_sigT_snd H0); clear.
+    generalize (EqdepFacts.eq_sigT_fst H0); clear H0; intros.
+    replace e with (eq_refl n); try reflexivity.
+    eapply UIP_dec; decide equality.
+  Qed.
+
+
+  Lemma ByteString_enqueue_ByteString_assoc
+    : forall bs1 bs2 bs3,
+      ByteString_enqueue_ByteString bs1 (ByteString_enqueue_ByteString bs2 bs3) =
+      ByteString_enqueue_ByteString (ByteString_enqueue_ByteString bs1 bs2) bs3.
+  Proof.
+    intros.
+    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs1),
+    <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs2),
+    <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs3).
+    rewrite !ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
+    rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
+  Qed.
