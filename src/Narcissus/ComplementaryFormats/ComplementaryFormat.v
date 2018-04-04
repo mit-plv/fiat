@@ -379,3 +379,5 @@ Section ExampleRecord.
 (*   eexists _, _; intuition eauto. *)
 (*   unfold computes_to; eauto. *)
 (* Qed. *)
+
+End ExampleRecord.

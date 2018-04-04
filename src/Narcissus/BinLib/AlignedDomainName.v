@@ -649,7 +649,7 @@ Section AlignedDomainName.
              (ret (let (v, ce') := Fix wf_lt_A _ body' (existT _ _ a_OK) ce in
                    (build_aligned_ByteString (projT2 v), ce'))).
   Proof.
-    intros. (* 8.4 script *)
+    (*intros. (* 8.4 script *)
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT _ a a_OK)) at 1.
@@ -678,8 +678,8 @@ Section AlignedDomainName.
     rewrite Heqp, Heqp'.
     reflexivity.
     reflexivity.
-  Qed. 
-  (*intros. (* 8.6 script. *)
+  Qed. *)
+  intros. 
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
@@ -704,8 +704,8 @@ Section AlignedDomainName.
               (wf_lt_A a')).
     simpl; intros; rewrite H; eauto;  reflexivity.
     admit.
-    (*rewrite Heqp; try reflexivity. *) 
-  Qed. *)
+    (*rewrite Heqp; try reflexivity. *)
+  Qed.
 
   Lemma AlignedFormatDomainNameThenC
     : (forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m)) ->
@@ -898,7 +898,8 @@ Section AlignedDomainName.
                                                       end)
                                                      Else None.
   Proof.
-    (* 8.4 script *)
+  Admitted.
+  (*(* 8.4 script *)
     unfold If_Opt_Then_Else,decode_DomainName,
     byte_aligned_decode_DomainName; simpl; intros.
     eapply (@optimize_Fix dns_list_cache).
@@ -1002,7 +1003,7 @@ Section AlignedDomainName.
     end.
     find_if_inside; simpl; eauto.
   Admitted.
-  (*match goal with
+  match goal with
       |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
       replace z' with z by reflexivity; destruct z; eauto
     end.
@@ -1011,7 +1012,7 @@ Section AlignedDomainName.
     end.
     match goal with
       |- DecodeBindOpt2 ?z _ = _ => destruct z as [ [ [? ?] ?] | ]; simpl; eauto
-    end. 
+    end.
     find_if_inside; simpl; eauto.
     simpl; intros; apply functional_extensionality; intros.
     f_equal.

@@ -783,14 +783,14 @@ Qed. *)
    Lemma wmsb_combine {sz} :
   forall (w : word (S sz)) b,
   exists w' : word sz,
-    w = match eq_sym (NPeano.Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
+    w = match eq_sym (Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
         | eq_refl => fun w' => w'
         end (w' +^+ WS (wmsb w b) WO).
 Proof.
   induction sz; intros;
     destruct (shatter_word_S w) as (b' & [ w' ? ]); subst.
   - exists WO; pose proof (shatter_word_0 w'); subst; simpl.
-    rewrite (UIP_nat _ _ (NPeano.Nat.add_1_r 0) eq_refl); reflexivity.
+    rewrite (UIP_nat _ _ (Nat.add_1_r 0) eq_refl); reflexivity.
   - specialize (IHsz w' b'); destruct IHsz as (w'' & Heq).
     simpl.
     exists (WS b' w'').
@@ -836,7 +836,7 @@ Proof.
              let Heqw := fresh in
              destruct (wmsb_combine w b) as (w' & Heqw);
                rewrite Heqw in Heqn;
-               rewrite <- (NPeano.Nat.add_1_r sz) in *;
+               rewrite <- (Nat.add_1_r sz) in *;
                simpl in Heqn;
                clear Heqw;
                rewrite wordToN_combine in Heqn;

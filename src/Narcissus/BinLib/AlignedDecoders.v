@@ -1451,13 +1451,13 @@ Section AlignedDecoders.
           assert (n + S (m + sz) = n + S m + sz) by omega.
           (* Again, 8.4 compatibility problems. *)
           erewrite eq_rect_Vector_tl with (H' := H0).
-          erewrite eq_rect_Vector_tl with (H' := H1).
-          pose proof (IHn _ _ (Vector.tl v) H1 H0).
-          destruct ((Vector_split (n + m) sz (Vector.tl (eq_rect (n + S (m + sz)) (t A) (Vector.tl v) (S (n + m + sz)) H0)))) eqn: ?.
-          simpl in *; fold plus in *; rewrite Heqp, H2; simpl.
-          destruct (Vector_split (n + S m) sz (eq_rect (n + S (m + sz)) (Vector.t A) (Vector.tl v) (n + S m + sz) H1)) eqn: ?.
-          replace (plus_assoc n (S m) sz) with H1; simpl.
-          rewrite Heqp0; reflexivity.
+          erewrite eq_rect_Vector_tl with (H' := H).
+          pose proof (IHn _ _ (Vector.tl v) H0 H).
+          destruct ((Vector_split (n + m) sz (Vector.tl (eq_rect (n + S (m + sz)) (t A) (Vector.tl v) (S (n + m + sz)) H)))) eqn: ?.
+          simpl in *; fold plus in *; rewrite Heqp, H1; simpl.
+          destruct (Vector_split (n + S m) sz (eq_rect (n + S (m + sz)) (Vector.t A) (Vector.tl v) (n + S m + sz) H0)) eqn: ?.
+          replace (plus_assoc n (S m) sz) with H0; simpl.
+          reflexivity.
           eapply Eqdep_dec.eq_proofs_unicity; intros; omega.
       + clear.
         revert H v.
