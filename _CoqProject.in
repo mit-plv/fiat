@@ -317,6 +317,7 @@ src/Narcissus/BinLib/AlignedDecoders.v
 src/Narcissus/BinLib/AlignedDomainName.v
 src/Narcissus/BinLib/AlignedFix.v
 src/Narcissus/BinLib/AlignedList.v
+src/Narcissus/BinLib/AlignedMonads.v
 src/Narcissus/BinLib/AlignedString.v
 src/Narcissus/BinLib/AlignedSumType.v
 src/Narcissus/BinLib/CharString.v

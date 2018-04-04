@@ -64,7 +64,7 @@ Section DnsPacket.
       (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
       (icons (B := fun T => T -> Prop) (ValidDomainName)
       (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
-      (ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost") inil))))
+       True /\ (ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost") inil))))
       (SumType_index
          (DomainName
             :: (Memory.W : Type)
@@ -95,7 +95,7 @@ Section DnsPacket.
                (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
                       (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
                              (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
-                                                                 (ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost") inil))))        (SumType_index ResourceRecordTypeTypes rr!sRDATA)
+                                                                 True /\ (ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost") inil))))        (SumType_index ResourceRecordTypeTypes rr!sRDATA)
         (SumType_proj ResourceRecordTypeTypes rr!sRDATA).
     intros ? H; apply H.
   Qed.
@@ -388,10 +388,10 @@ Section DnsPacket.
       apply (@AlignedFormat2UnusedChar dns_list_cache); eauto using addE_addE_plus.
       eapply AlignedFormatDomainNameThenC; eauto using addE_addE_plus.
       unfold SumType_proj in H; simpl in H.
-      revert H; instantiate (1 := fun t => _ t /\ _ t); intros [? ?].
-      pattern t; apply H0.
+      revert H; instantiate (1 := fun t => True /\ _ t /\ _ t); intros [? [? ?] ].
+      pattern t; apply H1.
       eapply AlignedFormatDomainNameThenC; eauto using addE_addE_plus.
-      pattern t; apply (proj1 H).
+      pattern t; apply (proj1 (proj2 H)).
       apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
       apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
       apply (@AlignedFormat32Char dns_list_cache); auto using addE_addE_plus.
@@ -404,10 +404,7 @@ Section DnsPacket.
         instantiate (1 := eq_refl _); reflexivity.
       encoder_reflexivity.
     }
-    { simpl.
-      unfold resourceRecord_OK in p_OK.
-      unfold BStringId6, BStringId7, StringId, StringId0.
-      apply p_OK. }
+    { apply p_OK. }
     Time simpl.
     Time cache_encoders.
     Time encoder_reflexivity.
@@ -520,6 +517,60 @@ Section DnsPacket.
     | cbv beta; synthesize_cache_invariant' idtac
     |  ].
 
+  Definition foo {m n}
+    (H : Fin.t m = Fin.t n)
+    (i : Fin.t n)
+    : Fin.t m.
+    destruct H.
+    exact i.
+  Defined.
+
+  Definition bar {n}
+    (i : Fin.t n)
+    : nat := n.
+
+  Lemma foobar {m n}
+        (H : Fin.t m = Fin.t n)
+    : forall (i : Fin.t n),
+      bar (foo H i) = n.
+    intro.
+    unfold foo.
+    destruct H; intros.
+  Qed.
+
+  Lemma fin_inj
+    : forall m n
+             (H : Fin.t m = Fin.t n),
+      m = n.
+  Proof.
+    destruct m.
+    - destruct n; intros; eauto.
+      assert (Fin.t (S n)) by (clear; induction n; econstructor).
+      rewrite <- H in H0; inversion H0.
+    - destruct n; intros; eauto.
+      + assert (Fin.t (S m)) by (clear; induction m; econstructor).
+        rewrite H in H0; inversion H0.
+      + assert (Fin.t (S m)) by (clear; induction m; econstructor).
+        replace (S m) with (bar H0) by reflexivity.
+        symmetry in H.
+        replace (S n) with (bar (foo H H0)) by reflexivity.
+
+        rewrite foobar.
+        unfold bar.
+
+      assert (Fin.t n)
+    intros; pattern m, i, j.
+    eapply Fin.rect2; eauto.
+
+
+    induction m; simpl; intros.
+    - inversion i.
+    - revert j IHm; pattern m, i; apply Fin.caseS.
+      intros ? ?; pattern n, j; apply Fin.caseS; intros; eauto.
+
+
+
+
   Definition packet_decoder
     : CorrectDecoderFor DNS_Packet_OK format_packet.
   Proof.
@@ -527,11 +578,10 @@ Section DnsPacket.
                            decode_DNS_rules
                            decompose_parsed_data
                            solve_GoodCache_inv.
-    unfold resourceRecord_OK.
+    simpl.
     clear; intros.
-    intuition; eauto.
-    eapply resourceRecordOK_3.
-    eapply H0.
+    simpl.
+    eapply (proj1 H).
     simpl; intros; eapply CorrectDecoderinish.
     unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *;
    (let a' := fresh in
