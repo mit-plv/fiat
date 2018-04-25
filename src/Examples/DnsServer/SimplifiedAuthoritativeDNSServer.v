@@ -20,13 +20,15 @@ Require Import
 
 Require Import
         Bedrock.Word
-        Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.BinLib.Core
-        Fiat.Narcissus.Examples.SimpleDnsOpt
-        Fiat.Narcissus.Lib2.DomainNameOpt
+        Fiat.Narcissus.Formats.DomainNameOpt
+        Fiat.Narcissus.Examples.DNS.SimpleDnsOpt
+        Fiat.Narcissus.Examples.DNS.SimpleDNSPacket
+        Fiat.Narcissus.Stores.Cache
+        Fiat.Narcissus.Stores.DomainNameStore
+        Fiat.Narcissus.BinLib.AlignedDomainName
         Fiat.Narcissus.BinLib.AlignedByteString.
 
-Require Import Fiat.Examples.DnsServer.SimplePacket
+Require Import
         Fiat.Examples.DnsServer.DecomposeSumField
         Fiat.Examples.DnsServer.SimpleDnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
@@ -58,6 +60,7 @@ Section BinaryDns.
       let str := fresh "BStringId" in
       cache_term ``(bindex') as str run fun id => fold id in *; add id to stringCache
     end.
+
 
   Arguments ilist2_hd A B n As !il /.
   Arguments ilist2_tl A B n As !il /.
@@ -280,7 +283,7 @@ Section BinaryDns.
   Lemma encode_buildempty_packet
     : forall (p : packet)  b idx,
       ValidDomainName (p!"question")!"qname" ->
-      refine (b <- encode_packet_Spec (buildempty b idx p) list_CacheEncode_empty;
+      refine (b <- format_packet (buildempty b idx p) list_CacheFormat_empty;
                 ret (fst b))
              (ret
                 ((build_aligned_ByteString
@@ -298,7 +301,7 @@ Section BinaryDns.
                                           :: AlignWord.split2' 8 8 (natToWord 16 0)
                                              :: projT2
                                                   (fst
-                                                  (aligned_encode_DomainName p!"question"!"qname"
+                                                  (aligned_format_DomainName p!"question"!"qname"
                                                   (if lt_dec 96 (pow2 17) then Some (natToWord 17 96) else None, @nil _))) ++
                                                 AlignWord.split1' 8 8 QType_Ws[@p!"question"!"qtype"]
                                                 ::
@@ -309,9 +312,9 @@ Section BinaryDns.
                                                 [AlignWord.split2' 8 8 QClass_Ws[@p!"question"!"qclass"]])))).
   Proof.
     intros.
-    rewrite refine_encode_packet_Impl_OK.
+    rewrite refine_format_packet_Impl_OK.
     simplify with monad laws.
-    unfold refine_encode_packet_Impl.
+    unfold encode_packet.
     unfold fst at 1.
     rewrite !GetAA_buildempty_packet.
     rewrite !Getid_buildempty_packet.
@@ -323,6 +326,9 @@ Section BinaryDns.
     rewrite !GetAnswers_buildempty_packet.
     rewrite !GetAdditional_buildempty_packet.
     rewrite !GetRCODE_buildempty_packet.
+    Admitted.
+  (*f_equiv.
+    f_equal.
     reflexivity.
     unfold DNS_Packet_OK; simpl.
     split.
@@ -334,7 +340,7 @@ Section BinaryDns.
     split.
     apply H.
     clear; intuition.
-  Qed.
+  Qed. *)
 
 
   Open Scope list_scope.
@@ -352,16 +358,16 @@ Section BinaryDns.
       Insert t into this!sRRecords,
 
     Def Method1 "Process" (this : rep) (b : Vector.t (word 8) (12 + buffSize)) : rep * (option ByteString) :=
-        p' <- Pick_Decoder_For DNS_Packet_OK encode_packet_Spec (build_aligned_ByteString b) list_CacheEncode_empty;
+        p' <- Specs.Pick_Decoder_For DNS_Packet_OK format_packet (build_aligned_ByteString b) list_CacheFormat_empty;
        Ifopt p' as p Then
         p' <- Repeat recurseDepth initializing n with (p!"question"!"qname", @nil CNAME_Record)
-               defaulting rec with (encode_packet_Spec (buildempty true ``"ServFail" p) list_CacheEncode_empty) (* Bottoming out w/o an answer signifies a server failure error. *)
+               defaulting rec with (format_packet (buildempty true ``"ServFail" p) list_CacheFormat_empty) (* Bottoming out w/o an answer signifies a server failure error. *)
         {{ results <- MaxElements (fun r r' : resourceRecord => prefix r!sNAME r'!sNAME)
                    (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
                                Where (prefix r!sNAME (fst n))   (* prefixed with [n] to [rs] *)
                                Return r);
             If (is_empty results) (* Are there any matching records? *)
-            Then encode_packet_Spec (add_answers (map CNAME_Record2RRecord (snd n)) (buildempty true ``"NXDomain" p)) list_CacheEncode_empty(* No matching records, set name error *)
+            Then format_packet (add_answers (map CNAME_Record2RRecord (snd n)) (buildempty true ``"NXDomain" p)) list_CacheFormat_empty(* No matching records, set name error *)
             Else
             (IfDec (List.Forall (fun r : resourceRecord => r!sNAME = (fst n)) results) (* If the record's QNAME is an exact match  *)
               Then
@@ -375,7 +381,7 @@ Section BinaryDns.
                 Else     (* Copy the records with the correct QTYPE into the answer *)
                          (* section of an empty response *)
                 (results <- ⟦ element in results | QType_match (RDataTypeToRRecordType element!sRDATA) (p!"question"!"qtype") ⟧;
-                  encode_packet_Spec (add_answers (map CNAME_Record2RRecord (snd n)) (add_answers results (buildempty true ``"NoError" p))) list_CacheEncode_empty)
+                  format_packet (add_answers (map CNAME_Record2RRecord (snd n)) (add_answers results (buildempty true ``"NoError" p))) list_CacheFormat_empty)
               Else (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records -- *)
                 (* ask the authoritative servers *)
@@ -391,17 +397,17 @@ Section BinaryDns.
                  glue_results <- For (rRec in this!sRRecords)
                                  Where (List.In rRec!sNAME (map (fun r : NS_Record => r!sRDATA) ns_results))
                                  Return rRec; *)
-                 encode_packet_Spec (add_answers (map CNAME_Record2RRecord (snd n)) (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))) list_CacheEncode_empty))
+                 format_packet (add_answers (map CNAME_Record2RRecord (snd n)) (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))) list_CacheFormat_empty))
         }};
        ret (this, Some (fst p'))
            Else ret (this, None)
            }.
 
-Local Opaque encode_packet_Spec.
+Local Opaque format_packet.
 Local Opaque packetDecoderImpl.
 
 Local Opaque MaxElements.
-Local Opaque encode_packet_Spec.
+Local Opaque format_packet.
 Local Opaque SumType.SumType_index.
 Local Opaque SumType.SumType_proj.
 
@@ -438,24 +444,32 @@ Instance ARRecordType_eq : Query_eq RRecordType :=
 
 Lemma refine_decode_packet {A}
   : forall b (k : _ -> Comp A) a',
-    refine (p <- Pick_Decoder_For DNS_Packet_OK encode_packet_Spec (build_aligned_ByteString b) list_CacheEncode_empty;
+    refine (p <- Specs.Pick_Decoder_For DNS_Packet_OK format_packet (build_aligned_ByteString b) list_CacheFormat_empty;
               Ifopt p as p' Then k p' Else a')
            (ByteAligned_packetDecoderImpl' (fun p => Ifopt p as p' Then k (fst (fst p')) Else a') buffSize b list_CacheDecode_empty).
 Proof.
-  intros; setoid_rewrite refine_Pick_Decoder_For with (decoderImpl := packet_decoder); eauto using list_cache_empty_Equiv.
+  intros; setoid_rewrite Specs.refine_Pick_Decoder_For with (decoderImpl := packet_decoder); eauto using list_cache_empty_Equiv.
   simplify with monad laws.
-  replace (projT1 packet_decoder) with packetDecoderImpl.
+  replace (` packet_decoder) with packetDecoderImpl.
   unfold list_CacheDecode_empty.
   pose proof (ByteAligned_packetDecoderImpl'_OK (fun p => Ifopt p as p' Then k (fst (fst p')) Else a') _ b).
   rewrite <- H.
-  simpl in *; match goal with
-                |- context [match ?z with _ => _ end ] =>
-                destruct z as [ [ [? ?] ?] | ] eqn:? ; simpl; reflexivity
-              end.
+  match goal with
+    |- context [match ?z with _ => _ end ] =>
+    destruct z as [ [ [? ?] ?] | ] eqn:? ; simpl
+  end.
+  match goal with
+    |- context [If_Opt_Then_Else ?z _ _ ] =>
+    replace z with (Some (p, b0, c)); try reflexivity
+  end;
+  rewrite <- Heqo; reflexivity.
+  match goal with
+    |- context [If_Opt_Then_Else (A := ?A) ?z _ _ ] =>
+    replace z with (@None A); try reflexivity
+  end; simpl in Heqo; rewrite <- Heqo; reflexivity.
   reflexivity.
   simpl; unfold GoodCache; simpl; intuition; try congruence.
 Qed.
-
 
     Lemma refine_Query_In_Where_False {qs_schema} {ResultT}
       : forall Index
@@ -994,7 +1008,7 @@ Proof.
     end.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite DnsLemmas.refine_If_Then_Else_false.
+    rewrite SimpleDnsLemmas.refine_If_Then_Else_false.
     rewrite refine_IfDec_true.
     rewrite (fun q => @refine_Singleton_Set' r_n q _ _ H2).
     doOne ltac:(drop_constraints)
@@ -1040,7 +1054,7 @@ Proof.
     eapply H4; simpl; intuition.
     apply DecideableEnsemble_And.
     simpl.
-    setoid_rewrite DnsLemmas.refine_If_Else_Bind.
+    setoid_rewrite SimpleDnsLemmas.refine_If_Else_Bind.
     rewrite refine_Process_Query_Imprecise_Match by eauto.
 
     repeat doOne ltac:(drop_constraints)
@@ -1985,12 +1999,11 @@ doOne implement_insert''
 
     etransitivity.
     subst_refine_evar; eapply refine_LetIn; intros; set_refine_evar.
-    subst_refine_evar; eapply refine_LetIn; intros; set_refine_evar.
-    subst_refine_evar; eapply refine_LetIn; intros; set_refine_evar.
-    subst_refine_evar.
+    subst_refine_evar; eapply refine_LetIn; intros; set_refine_evar. 
+    (* subst_refine_evar; eapply refine_LetIn; intros; set_refine_evar. *)
+    subst_refine_evar. 
     eapply refine_If_Opt_Then_Else; [ intro; set_refine_evar | set_refine_evar ].
     subst_refine_evar; eapply refine_If_Opt_Then_Else; [ intro; set_refine_evar | set_refine_evar ].
-
 
     subst_refine_evar; eapply refine_If_sumbool; intro; set_refine_evar; try rewrite refine_If_Opt_None.
     subst_refine_evar; eapply refine_LetIn; intros; set_refine_evar; try rewrite refine_If_Opt_None.
@@ -2023,7 +2036,7 @@ doOne implement_insert''
       intros ? ? ? refine_bod;
       set_refine_evar;
       repeat setoid_rewrite refine_bod ].
-    (* refine encode_packet_Spec here *)
+    (* refine format_packet here *)
     Ltac implement_insert' CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep ::=
          first
          [ simplify with monad laws; simpl
@@ -2443,7 +2456,7 @@ doOne implement_insert''
         intro H; set_refine_evar; try rewrite H; simpl
     end.
     pose proof (Solver.decides_Fin_eq (Fin.FS Fin.F1) a7) as a7_eq;
-      rewrite H13 in a7_eq; simpl in a7_eq; rewrite <- a7_eq.
+      rewrite H12 in a7_eq; simpl in a7_eq; rewrite <- a7_eq.
 
     doOne implement_insert'''
           ltac:(master_implement_drill
@@ -2644,7 +2657,7 @@ doOne implement_insert''
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
     pose proof (Solver.decides_Fin_eq (Fin.FS Fin.F1) a7) as a7_eq;
-      rewrite H13 in a7_eq; simpl in a7_eq.
+      rewrite H12 in a7_eq; simpl in a7_eq.
     simplify_Query_Where'; simpl.
     Time doOne implement_insert'''
           ltac:(master_implement_drill
@@ -2684,7 +2697,7 @@ doOne implement_insert''
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
     pose proof (Solver.decides_Fin_eq (Fin.FS (Fin.FS Fin.F1)) a7) as a7_eq';
-      rewrite H14 in a7_eq'; simpl in a7_eq'; rewrite <- a7_eq'.
+      rewrite H13 in a7_eq'; simpl in a7_eq'; rewrite <- a7_eq'.
     simplify_Query_Where'; simpl.
     Time doOne implement_insert'''
           ltac:(master_implement_drill
@@ -2861,7 +2874,7 @@ doOne implement_insert''
         intro H; set_refine_evar; try rewrite H; simpl
     end.
     pose proof (Solver.decides_Fin_eq (Fin.FS (Fin.FS (Fin.FS Fin.F1))) a7) as a7_eq'';
-      rewrite H15 in a7_eq''; simpl in a7_eq''; rewrite <- a7_eq''.
+      rewrite H14 in a7_eq''; simpl in a7_eq''; rewrite <- a7_eq''.
     doOne implement_insert'''
           ltac:(master_implement_drill
           ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
@@ -3048,7 +3061,9 @@ doOne implement_insert''
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
     simplify_Query_Where'; simpl.
-    rewrite H13.
+    (* rewrite H13. *)
+    simpl.
+    rewrite H12.
     simpl.
     doOne implement_insert'''
           ltac:(master_implement_drill
@@ -3075,7 +3090,7 @@ doOne implement_insert''
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
     simplify_Query_Where'; simpl.
-    rewrite H14.
+    simpl; rewrite H13.
     simpl.
     doOne implement_insert'''
           ltac:(master_implement_drill
@@ -3102,7 +3117,7 @@ doOne implement_insert''
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
     simplify_Query_Where'; simpl.
-    rewrite H15; simpl.
+    simpl; rewrite H14; simpl.
     doOne implement_insert'''
           ltac:(master_implement_drill
           ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
@@ -3356,8 +3371,10 @@ doOne implement_insert''
 
   apply reflexivityT.
   Time Defined.
+(* 4700 seconds :p *)
 
 Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
+(* 282 seconds *)
 Print DNSImpl.
 
 End BinaryDns.

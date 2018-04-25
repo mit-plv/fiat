@@ -14,9 +14,9 @@ Require Import
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
-Require Import Fiat.Examples.DnsServer.Packet
+Require Import Fiat.Narcissus.Examples.DNS.SimpleDNSPacket
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema
-        Fiat.Examples.DnsServer.DnsLemmas.
+        Fiat.Examples.DnsServer.SimpleDnsLemmas.
 
 (* Process automation *)
 
