@@ -452,7 +452,7 @@ Section AlignWord.
 End AlignWord.
 
 Require Import Fiat.Narcissus.BinLib.AlignedByteString
-        Fiat.Narcissus.BinLib.AlignedMonads.
+        Fiat.Narcissus.BinLib.AlignedDecodeMonad.
 
 Section AlignDecodeWord.
 

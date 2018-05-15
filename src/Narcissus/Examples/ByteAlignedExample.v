@@ -14,7 +14,7 @@ Require Import
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedList
         Fiat.Narcissus.BinLib.AlignedDecoders
-        Fiat.Narcissus.BinLib.AlignedMonads
+        Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.FixListOpt
@@ -107,14 +107,12 @@ Proof.
   unfold SimpleDecoderImpl.
   eapply (AlignedDecodeNatM (C := simple_record) (cache := test_cache)); intros.
   eapply (AlignedDecodeBind2CharM (cache := test_cache)); intros; eauto.
-  instantiate (1 := fun b0 numBytes => l <- ListAlignedDecodeM _ b; return (b0, l)).
-  simpl.
   eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
   eapply AlignedDecodeListM with (A_decode := decode_word (sz := 8)) (n := b) (t := fun l bs cd' => Some (b0, l, bs, cd')).
   eapply (AlignedDecodeCharM (cache := test_cache)); intros; eauto.
   intros; eapply Return_DecodeMEquivAlignedDecodeM.
   simpl; reflexivity.
-  simpl; reflexivity.
+  simpl; higher_order_reflexivity.
 Defined.
 
 Definition ByteAligned_SimpleDecoderTrial_Impl := Eval simpl in projT1 ByteAligned_SimpleDecoderTrial.

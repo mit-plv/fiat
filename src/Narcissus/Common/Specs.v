@@ -27,6 +27,13 @@ Section Specifications.
   Definition DecodeM : Type :=
     B -> CacheDecode -> option (A * B * CacheDecode).
 
+  (* Encoders take a source value and store and produce either a
+     - target value and updated store
+     - or an error value, i.e. None. *)
+
+  Definition EncodeM : Type :=
+    CacheFormat -> B * CacheFormat.
+
   Local Notation "a ∋ b" := (@computes_to _ a b) (at level 90).
   Local Notation "a ∌ b" := (~ @computes_to _ a b) (at level 90).
 
@@ -176,6 +183,7 @@ Section Specifications.
     eexists _, _; intuition eauto.
     unfold computes_to; eauto.
   Qed.
+
   Local Opaque computes_to.
 
   Definition BindOpt {A' A''}
@@ -192,7 +200,6 @@ Section Specifications.
   Proof.
     destruct a_opt as [ ? | ]; simpl; intros; eauto.
   Qed.
-
 
   Definition DecodeBindOpt2
              {C D E}
@@ -609,9 +616,10 @@ Section DecodeWMeasure.
     discriminate.
   Qed.
 
-
-
 End DecodeWMeasure.
+
+
+
 
 
 Global Unset Implicit Arguments.

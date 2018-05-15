@@ -10,9 +10,9 @@ Import NPeano.
 
 Set Implicit Arguments.
 
-Notation bin := (list bool).
+Definition BitString := list bool.
 
-Global Instance bmonoid : Monoid bin :=
+Global Instance bmonoid : Monoid BitString :=
   {| mappend := @app _;
      bin_measure := (@length bool);
      mappend_measure b b' := app_length b b';
@@ -441,8 +441,8 @@ Definition word_into_ByteString
      paddingOK := H;
      byteString := word_into_ByteString' (snd (@word_split n _ w)) |}.
 
-Definition list_into_ByteString
-           (l : list bool)
+Definition BitString_into_ByteString
+           (l : BitString)
   : ByteString :=
   fold_right ByteString_push ByteString_id l.
 
@@ -471,28 +471,28 @@ Definition ByteString_into_word
   append_word (front bs) (ByteString_into_word' (byteString bs)).
 
 
-Fixpoint wordToList {n}
+Fixpoint wordToBitString {n}
            (w : word n)
-  : list bool :=
-  match n return word n -> list bool with
+  : BitString :=
+  match n return word n -> BitString with
   | 0 => fun _ => [ ]
-  | S n' => fun w => whd w :: wordToList (wtl w)
+  | S n' => fun w => whd w :: wordToBitString (wtl w)
   end w.
 
-Fixpoint ByteString_into_list'
+Fixpoint ByteString_into_BitString'
            (chars : list char)
-           {struct chars} : list bool :=
-  match chars return list bool with
+           {struct chars} : BitString :=
+  match chars return BitString with
   | [ ] => [ ]
   | char' :: chars' =>
-    app (wordToList char')
-        (ByteString_into_list' chars')
+    app (wordToBitString char')
+        (ByteString_into_BitString' chars')
   end.
 
-Definition ByteString_into_list
+Definition ByteString_into_BitString
            (bs : ByteString)
-  : list bool :=
-  app (wordToList (front bs)) (ByteString_into_list' (byteString bs)).
+  : BitString :=
+  app (wordToBitString (front bs)) (ByteString_into_BitString' (byteString bs)).
 
 Lemma ByteString_f_equal
   : forall bs bs'
@@ -663,11 +663,11 @@ simpl; eauto using ByteString_into_word'_eq.
       + omega.
 Qed.
 
-Lemma ByteString_into_list_eq
+Lemma ByteString_into_BitString_eq
   : forall bs,
-    bs = list_into_ByteString (ByteString_into_list bs).
+    bs = BitString_into_ByteString (ByteString_into_BitString bs).
 Proof.
-  destruct bs; unfold list_into_ByteString, ByteString_into_list;
+  destruct bs; unfold BitString_into_ByteString, ByteString_into_BitString;
     simpl.
   induction padding0.
   - simpl; induction byteString0.
@@ -711,16 +711,16 @@ Proof.
     apply le_uniqueness_proof.
 Qed.
 
-Lemma list_into_ByteString_eq
+Lemma BitString_into_ByteString_eq
   : forall l,
-    l = ByteString_into_list (list_into_ByteString l).
+    l = ByteString_into_BitString (BitString_into_ByteString l).
 Proof.
   induction l; simpl; try reflexivity.
-  rewrite IHl, <- ByteString_into_list_eq; clear IHl.
-  destruct (list_into_ByteString l).
+  rewrite IHl, <- ByteString_into_BitString_eq; clear IHl.
+  destruct (BitString_into_ByteString l).
   unfold ByteString_push; simpl.
   destruct (eq_nat_dec padding0 7) eqn: ?.
-  - unfold ByteString_into_list; simpl.
+  - unfold ByteString_into_BitString; simpl.
     f_equal; subst.
     shatter_word front0; reflexivity.
   - reflexivity.
@@ -813,15 +813,15 @@ Proof.
     f_equal; eauto using le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_mappend_list_into
+Lemma ByteString_mappend_BitString_into
   : forall l l',
-    ByteString_append (list_into_ByteString l) (list_into_ByteString l') = list_into_ByteString (app l l').
+    ByteString_append (BitString_into_ByteString l) (BitString_into_ByteString l') = BitString_into_ByteString (app l l').
 Proof.
   induction l; simpl.
   - unfold ByteString_append; simpl; eauto.
   - intro; rewrite <- IHl; clear IHl.
     unfold ByteString_append.
-    destruct (list_into_ByteString l); simpl.
+    destruct (BitString_into_ByteString l); simpl.
     unfold ByteString_push; simpl.
     destruct (eq_nat_dec padding0 7); subst.
     + unfold front at 1; unfold byteString at 1.
@@ -831,11 +831,11 @@ Proof.
       destruct (eq_nat_dec
                   (padding
                      (ByteString_push_word front0
-                                            (fold_right ByteString_push_char (list_into_ByteString l') byteString0))) 7).
+                                            (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0))) 7).
     * rewrite ByteString_push_char_WS.
       assert (0 = padding (ByteString_push a ((ByteString_push_word front0)
-                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
-      { induction (fold_right ByteString_push_char (list_into_ByteString l') byteString0).
+                                                (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)))).
+      { induction (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0).
         unfold ByteString_push.
         destruct (eq_nat_dec
          (padding
@@ -853,7 +853,7 @@ Proof.
       apply le_uniqueness_proof.
       destruct (fold_right
                    ByteString_push_char
-                   (list_into_ByteString l')
+                   (BitString_into_ByteString l')
                    byteString0).
       (* *) unfold front at 3; unfold padding at 2.
       destruct (ByteString_push_word
@@ -869,7 +869,7 @@ Proof.
         congruence.
         (* *) destruct (fold_right
                           ByteString_push_char
-                          (list_into_ByteString l')
+                          (BitString_into_ByteString l')
                           byteString0).
         unfold byteString at 2.
         unfold ByteString_push at 1.
@@ -893,11 +893,11 @@ Proof.
     * rewrite ByteString_push_char_WS.
       assert (S (padding
                 (ByteString_push_word front0
-                                      (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))
+                                      (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)))
           = padding (ByteString_push a ((ByteString_push_word front0)
-                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
+                                                (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)))).
       { destruct (ByteString_push_word front0
-           (fold_right ByteString_push_char (list_into_ByteString l') byteString0)).
+           (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)).
         simpl in *.
         unfold ByteString_push.
         destruct (eq_nat_dec
@@ -916,7 +916,7 @@ Proof.
       destruct (ByteString_push_word
                   front0
                   (fold_right ByteString_push_char
-                              (list_into_ByteString l') byteString0)).
+                              (BitString_into_ByteString l') byteString0)).
       simpl.
       revert H; unfold ByteString_push; simpl in *.
       destruct (eq_nat_dec padding0 7).
@@ -927,7 +927,7 @@ Proof.
       destruct (ByteString_push_word
                   front0
                   (fold_right ByteString_push_char
-                              (list_into_ByteString l') byteString0)).
+                              (BitString_into_ByteString l') byteString0)).
       simpl.
       revert H; unfold ByteString_push; simpl in *.
       destruct (eq_nat_dec padding0 7).
@@ -939,12 +939,12 @@ Proof.
       destruct (eq_nat_dec
        (padding
           (ByteString_push_word front0
-             (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))
+             (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)))
        7).
       setoid_rewrite ByteString_push_word_WS.
       assert (0 = padding (ByteString_push a ((ByteString_push_word front0)
-                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
-      { induction (fold_right ByteString_push_char (list_into_ByteString l') byteString0).
+                                                (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)))).
+      { induction (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0).
         unfold ByteString_push.
         destruct (eq_nat_dec
          (padding
@@ -961,7 +961,7 @@ Proof.
       apply le_uniqueness_proof.
       destruct (fold_right
                    ByteString_push_char
-                   (list_into_ByteString l')
+                   (BitString_into_ByteString l')
                    byteString0).
       (* *) unfold front at 3; unfold padding at 2.
       destruct (ByteString_push_word
@@ -977,7 +977,7 @@ Proof.
         congruence.
         (* *) destruct (fold_right
                           ByteString_push_char
-                          (list_into_ByteString l')
+                          (BitString_into_ByteString l')
                           byteString0).
         unfold byteString at 2.
         unfold ByteString_push at 1.
@@ -997,11 +997,11 @@ Proof.
         setoid_rewrite ByteString_push_word_WS.
         assert (S (padding
                      (ByteString_push_word front0
-                                           (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))
+                                           (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)))
                 = padding (ByteString_push a ((ByteString_push_word front0)
-                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
+                                                (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)))).
       { destruct (ByteString_push_word front0
-           (fold_right ByteString_push_char (list_into_ByteString l') byteString0)).
+           (fold_right ByteString_push_char (BitString_into_ByteString l') byteString0)).
         simpl in *.
         unfold ByteString_push.
         destruct (eq_nat_dec
@@ -1020,7 +1020,7 @@ Proof.
       destruct (ByteString_push_word
                   front0
                   (fold_right ByteString_push_char
-                              (list_into_ByteString l') byteString0)).
+                              (BitString_into_ByteString l') byteString0)).
       simpl.
       revert H; unfold ByteString_push; simpl in *.
       destruct (eq_nat_dec padding1 7).
@@ -1031,7 +1031,7 @@ Proof.
       destruct (ByteString_push_word
                   front0
                   (fold_right ByteString_push_char
-                              (list_into_ByteString l') byteString0)).
+                              (BitString_into_ByteString l') byteString0)).
       simpl.
       revert H; unfold ByteString_push; simpl in *.
       destruct (eq_nat_dec padding1 7).
@@ -1041,16 +1041,16 @@ Proof.
       reflexivity.
 Qed.
 
-Lemma list_into_ByteString_append
+Lemma BitString_into_ByteString_append
   : forall b b',
-    ByteString_into_list (ByteString_append b b') = app (ByteString_into_list b)
-                                                        (ByteString_into_list b').
+    ByteString_into_BitString (ByteString_append b b') = app (ByteString_into_BitString b)
+                                                        (ByteString_into_BitString b').
 Proof.
   intros.
-  rewrite (ByteString_into_list_eq b), (ByteString_into_list_eq b').
-  rewrite ByteString_mappend_list_into.
-  rewrite <- !ByteString_into_list_eq.
-  rewrite list_into_ByteString_eq; reflexivity.
+  rewrite (ByteString_into_BitString_eq b), (ByteString_into_BitString_eq b').
+  rewrite ByteString_mappend_BitString_into.
+  rewrite <- !ByteString_into_BitString_eq.
+  rewrite BitString_into_ByteString_eq; reflexivity.
 Qed.
 
 Fixpoint plus_assoc' (n : nat) {struct n}
@@ -1083,10 +1083,10 @@ Lemma ByteString_mappend_assoc
     ByteString_append (ByteString_append l m) n.
 Proof.
   intros.
-  rewrite (ByteString_into_list_eq m),
-  (ByteString_into_list_eq n),
-  (ByteString_into_list_eq l).
-  erewrite !ByteString_mappend_list_into.
+  rewrite (ByteString_into_BitString_eq m),
+  (ByteString_into_BitString_eq n),
+  (ByteString_into_BitString_eq l).
+  erewrite !ByteString_mappend_BitString_into.
   rewrite app_assoc.
   reflexivity.
 Qed.
@@ -1127,9 +1127,9 @@ Proof.
     omega.
 Qed.
 
-Lemma padding_list_into_ByteString :
+Lemma padding_BitString_into_ByteString :
   forall l,
-    padding (list_into_ByteString l) = NPeano.modulo (length l) 8.
+    padding (BitString_into_ByteString l) = NPeano.modulo (length l) 8.
 Proof.
   induction l.
   simpl; eauto.
@@ -1138,7 +1138,7 @@ Proof.
   - rewrite NatModulo_S_Full.
     simpl.
     unfold ByteString_push.
-    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7).
+    destruct (Peano_dec.eq_nat_dec (padding (BitString_into_ByteString l)) 7).
     simpl; eauto.
     elimtype False.
     rewrite IHl in n; congruence.
@@ -1148,14 +1148,14 @@ Proof.
     simpl.
     unfold ByteString_push.
     unfold NPeano.modulo, NPeano.Nat.modulo in IHl, n; rewrite <- IHl in n.
-    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7);
+    destruct (Peano_dec.eq_nat_dec (padding (BitString_into_ByteString l)) 7);
       simpl; eauto.
     congruence.
 Qed.
 
-Lemma list_into_ByteString_push
-  : forall a l, ByteString_push a (list_into_ByteString l) =
-                list_into_ByteString (a :: l).
+Lemma BitString_into_ByteString_push
+  : forall a l, ByteString_push a (BitString_into_ByteString l) =
+                BitString_into_ByteString (a :: l).
 Proof.
   reflexivity.
 Qed.
@@ -1165,10 +1165,10 @@ Lemma ByteString_append_padding_eq
     padding (ByteString_append b b') = NPeano.modulo (padding b + padding b') 8.
 Proof.
   intros.
-  rewrite (ByteString_into_list_eq b),
-  (ByteString_into_list_eq b').
-  rewrite ByteString_mappend_list_into.
-  rewrite !padding_list_into_ByteString.
+  rewrite (ByteString_into_BitString_eq b),
+  (ByteString_into_BitString_eq b').
+  rewrite ByteString_mappend_BitString_into.
+  rewrite !padding_BitString_into_ByteString.
   rewrite app_length.
   rewrite NPeano.Nat.add_mod; eauto.
 Qed.
@@ -1178,18 +1178,18 @@ Lemma padding_eq_mod_8
     padding b = NPeano.modulo (length_ByteString b) 8.
 Proof.
   intros.
-  rewrite (ByteString_into_list_eq b).
+  rewrite (ByteString_into_BitString_eq b).
   unfold length_ByteString.
-  rewrite !padding_list_into_ByteString.
+  rewrite !padding_BitString_into_ByteString.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_r; eauto.
   rewrite (fun c => proj2 (NPeano.Nat.mod_divides (8 * _) 8 c));
     eauto.
   rewrite <- plus_n_O, NPeano.Nat.mod_mod; eauto.
 Qed.
 
-Lemma length_list_into_ByteString
+Lemma length_BitString_into_ByteString
   : forall l,
-    length_ByteString (list_into_ByteString l) = length l.
+    length_ByteString (BitString_into_ByteString l) = length l.
 Proof.
   induction l; simpl.
   - reflexivity.
@@ -1218,9 +1218,9 @@ Proof.
   destruct l; simpl; intros; first [ discriminate | eauto].
 Qed.
 
-Lemma list_into_ByteString_inj :
+Lemma BitString_into_ByteString_inj :
   forall l l',
-    list_into_ByteString l = list_into_ByteString l'
+    BitString_into_ByteString l = BitString_into_ByteString l'
     -> l = l'.
 Proof.
   induction l; destruct l'; simpl; intros; eauto.
@@ -1432,22 +1432,22 @@ Proof.
 Qed.
 
 Definition queue_into_ByteString
-           (l : list bool)
+           (l : BitString)
   : ByteString :=
   fold_left (fun bs b => ByteString_enqueue b bs) l ByteString_id.
 
 Fixpoint wordToQueue {n}
            (w : word n)
-  : list bool :=
-  match n return word n -> list bool with
+  : BitString :=
+  match n return word n -> BitString with
   | 0 => fun _ => [ ]
   | S n' => fun w => wordToQueue (wtl w) ++ [whd w]
   end w.
 
 Fixpoint ByteString_into_queue'
            (chars : list char)
-           {struct chars} : list bool :=
-  match chars return list bool with
+           {struct chars} : BitString :=
+  match chars return BitString with
   | [ ] => [ ]
   | char' :: chars' =>
     app (wordToQueue char')
@@ -1456,7 +1456,7 @@ Fixpoint ByteString_into_queue'
 
 Definition ByteString_into_queue
            (bs : ByteString)
-  : list bool :=
+  : BitString :=
   app (ByteString_into_queue' (byteString bs)) (wordToQueue (front bs)).
 
 (* Lemma enqueue_queue_into_ByteString
@@ -1521,7 +1521,7 @@ Proof.
   induction (ByteString_into_queue' byteString0); simpl.
   reflexivity.
   rewrite length_padding_ByteString_into_queue_eq'.
-  rewrite IHl, length_padding_ByteString_into_queue_eq'.
+  rewrite IHb, length_padding_ByteString_into_queue_eq'.
   unfold length_ByteString; simpl; omega.
 Qed.
 
@@ -1579,8 +1579,8 @@ Proof.
     apply le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_enqueue_into_list
-  : forall b (l : list bool),
+Lemma ByteString_enqueue_into_BitString
+  : forall b (l : BitString),
     ByteString_enqueue b (queue_into_ByteString l)
     = queue_into_ByteString (l ++ [b]).
 Proof.
@@ -1592,12 +1592,12 @@ Proof.
     eapply IHl.
 Qed.
 
-Fixpoint split_list_bool
-         (l : list bool)
+Fixpoint split_BitString
+         (l : BitString)
   : (list char) * {n : nat & word n} :=
   match l return (list char) * {n : nat & word n} with
   | b0 :: b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: l' =>
-    let (l'', back) := split_list_bool l' in
+    let (l'', back) := split_BitString l' in
     (WS b7 (WS b6 (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO))))))) :: l'', back)
   | [b0; b1; b2; b3; b4; b5; b6] =>
     ([], existT _ _ (WS b6 (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO))))))))
@@ -1675,19 +1675,19 @@ Proof.
   apply le_uniqueness_proof.
 Qed.
 
-Lemma queue_into_ByteString_eq_split_list_bool
+Lemma queue_into_ByteString_eq_split_BitString
   : forall l,
     exists paddingOK',
     queue_into_ByteString l =
     {|
-      front := projT2 (snd (split_list_bool l));
+      front := projT2 (snd (split_BitString l));
       paddingOK := paddingOK';
-      byteString := fst (split_list_bool l) |}.
+      byteString := fst (split_BitString l) |}.
 Proof.
   intro; generalize (le_refl (length l)); remember (length l).
   unfold queue_into_ByteString.
-  replace (fst (split_list_bool l)) with
-  ((byteString ByteString_id) ++ (fst (split_list_bool l))) by reflexivity.
+  replace (fst (split_BitString l)) with
+  ((byteString ByteString_id) ++ (fst (split_BitString l))) by reflexivity.
   assert (padding ByteString_id = 0) as H' by reflexivity;
     revert H'.
   generalize ByteString_id.
@@ -1714,7 +1714,7 @@ Proof.
         simpl; unfold ByteString_enqueue; simpl; repeat f_equal;
           rewrite app_nil_r;
           eauto using empty_padding_ByteString_eq_byteString.
-    + destruct (split_list_bool l) eqn : ?.
+    + destruct (split_BitString l) eqn : ?.
       destruct b.
       destruct (IHn l {| front := WO;
                          paddingOK := lt_0_Sn _;
@@ -1722,7 +1722,7 @@ Proof.
                            byteString0 ++ [ WS b7 (WS b6 (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO)))))))] |}).
       simpl in *; omega.
       simpl in *; omega.
-      simpl split_list_bool.
+      simpl split_BitString.
       revert x H0 H1; rewrite Heqp; intros; clear Heqp.
       exists x.
       simpl byteString.
@@ -1760,12 +1760,12 @@ Lemma queue_into_ByteString_app
 Proof.
   induction l'; simpl; intros.
   - rewrite app_nil_r; eauto.
-  - rewrite ByteString_enqueue_into_list.
+  - rewrite ByteString_enqueue_into_BitString.
     rewrite <- IHl', <- app_assoc; reflexivity.
 Qed.
 
 Lemma ByteString_enqueue_ByteString_enqueue
-  : forall (l' l : bin)
+  : forall (l' l : BitString)
            (b : bool),
     ByteString_enqueue_ByteString (queue_into_ByteString l) (ByteString_enqueue b (queue_into_ByteString l')) =
    ByteString_enqueue b (ByteString_enqueue_ByteString (queue_into_ByteString l) (queue_into_ByteString l')).
@@ -1782,8 +1782,8 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma ByteString_enqueue_ByteString_into_list
-  : forall (l' l : list bool),
+Lemma ByteString_enqueue_ByteString_into_BitString
+  : forall (l' l : BitString),
     ByteString_enqueue_ByteString (queue_into_ByteString l) (queue_into_ByteString l')
     = queue_into_ByteString (l ++ l').
 Proof.
@@ -1799,7 +1799,7 @@ Proof.
     clear IHn H.
     induction (rev l'); simpl.
     + rewrite ByteString_enqueue_ByteString_id_right; reflexivity.
-    + rewrite <- ByteString_enqueue_into_list.
+    + rewrite <- ByteString_enqueue_into_BitString.
       rewrite fold_left_app; simpl.
       rewrite <- IHl0.
       apply ByteString_enqueue_ByteString_enqueue.
@@ -1900,15 +1900,15 @@ Proof.
     apply le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_dequeue_into_list
-  : forall (l : list bool),
+Lemma ByteString_dequeue_into_BitString
+  : forall (l : BitString),
     ByteString_dequeue (queue_into_ByteString l)
     = match l with
       | b :: l' => Some (b, queue_into_ByteString l')
       | _ => None
       end.
 Proof.
-  intro; destruct (queue_into_ByteString_eq_split_list_bool l);
+  intro; destruct (queue_into_ByteString_eq_split_BitString l);
     rewrite H.
   generalize (le_refl (length l)); remember (length l).
   setoid_rewrite Heqn at 1; clear Heqn; revert l x H;
@@ -1963,9 +1963,9 @@ Proof.
                 unfold ByteString_enqueue at 2; simpl;
                   unfold ByteString_enqueue at 1; simpl.
       simpl in *.
-      destruct (split_list_bool l) eqn : ? ; simpl in *.
+      destruct (split_BitString l) eqn : ? ; simpl in *.
       simpl in H.
-      destruct (queue_into_ByteString_eq_split_list_bool l).
+      destruct (queue_into_ByteString_eq_split_BitString l).
       assert (length l <= n)%nat as l_OK by omega.
       pose proof (IHn l _ H1 l_OK).
       unfold queue_into_ByteString in H; simpl in H.
@@ -1976,7 +1976,7 @@ Proof.
               unfold ByteString_enqueue at 3 in H; simpl in H;
                 unfold ByteString_enqueue at 2 in H; simpl in H;
                   unfold ByteString_enqueue at 1 in H; simpl in H.
-      destruct (split_list_bool l); simpl in *.
+      destruct (split_BitString l); simpl in *.
       simpl in H2; revert H2; injection Heqp; clear.
       intros G G'.
       revert x x0; rewrite G, G'; subst; intros.
@@ -2009,7 +2009,7 @@ Proof.
              repeat f_equal; intros; apply le_uniqueness_proof)
         end.
         rewrite <- queue_into_ByteString_app.
-        rewrite <- ByteString_enqueue_ByteString_into_list.
+        rewrite <- ByteString_enqueue_ByteString_into_BitString.
         rewrite <- H.
         clear.
         repeat f_equal.
@@ -2047,7 +2047,7 @@ Proof.
              repeat f_equal; intros; apply le_uniqueness_proof)
         end.
         rewrite <- queue_into_ByteString_app.
-        rewrite <- ByteString_enqueue_ByteString_into_list.
+        rewrite <- ByteString_enqueue_ByteString_into_BitString.
         rewrite <- H.
         clear.
         repeat f_equal.
@@ -2080,7 +2080,7 @@ Proof.
              repeat f_equal; intros; apply le_uniqueness_proof)
         end.
         rewrite <- queue_into_ByteString_app.
-        rewrite <- ByteString_enqueue_ByteString_into_list.
+        rewrite <- ByteString_enqueue_ByteString_into_BitString.
         rewrite <- H.
         clear.
         repeat f_equal.
@@ -2101,7 +2101,7 @@ Lemma ByteString_enqueue_ByteString_id_left
 Proof.
   intros; rewrite (ByteString_into_queue_eq bs),
           (ByteString_into_queue_eq ByteString_id).
-  rewrite ByteString_enqueue_ByteString_into_list.
+  rewrite ByteString_enqueue_ByteString_into_BitString.
   reflexivity.
 Qed.
 
@@ -2130,7 +2130,7 @@ Lemma ByteString_enqueue_ByteString_measure
     length_ByteString (ByteString_enqueue_ByteString b b') =
     length_ByteString b + length_ByteString b'.
 Proof.
-  intros; rewrite (ByteString_into_queue_eq b), (ByteString_into_queue_eq b'), ByteString_enqueue_ByteString_into_list.
+  intros; rewrite (ByteString_into_queue_eq b), (ByteString_into_queue_eq b'), ByteString_enqueue_ByteString_into_BitString.
   rewrite length_ByteString_queue_into_ByteString.
   rewrite app_length.
   rewrite <- !length_ByteString_queue_into_ByteString.
@@ -2145,7 +2145,7 @@ Proof.
   intros; rewrite (ByteString_into_queue_eq l),
           (ByteString_into_queue_eq m),
           (ByteString_into_queue_eq n),
-          !ByteString_enqueue_ByteString_into_list,
+          !ByteString_enqueue_ByteString_into_BitString,
           <- app_assoc; eauto.
 Qed.
 
@@ -2164,7 +2164,7 @@ Lemma ByteString_measure_dequeue_Some
     ByteString_dequeue b = Some (t, b') -> bin_measure b = bin_measure b' + 1.
 Proof.
   intros ? ? ?; rewrite (ByteString_into_queue_eq b),
-  ByteString_dequeue_into_list.
+  ByteString_dequeue_into_BitString.
   destruct (ByteString_into_queue b); intros;
     try discriminate; injections.
   simpl.
@@ -2181,12 +2181,12 @@ Proof.
     rewrite (ByteString_into_queue_eq b),
     (ByteString_into_queue_eq b'),
     (ByteString_into_queue_eq b'').
-  rewrite !ByteString_enqueue_ByteString_into_list.
-  rewrite !ByteString_dequeue_into_list.
+  rewrite !ByteString_enqueue_ByteString_into_BitString.
+  rewrite !ByteString_dequeue_into_BitString.
   destruct (ByteString_into_queue b) eqn : ?; intros; try discriminate;
     injections.
   simpl.
-  rewrite <- !ByteString_enqueue_ByteString_into_list.
+  rewrite <- !ByteString_enqueue_ByteString_into_BitString.
   rewrite H0; reflexivity.
 Qed.
 
@@ -2205,9 +2205,9 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma split_list_bool_inj
+Lemma split_BitString_inj
   : forall l l',
-    split_list_bool l = split_list_bool l'
+    split_BitString l = split_BitString l'
     -> l = l'.
 Proof.
   intro; generalize (le_refl (length l)); remember (length l).
@@ -2217,7 +2217,7 @@ Proof.
     destruct l'; simpl in *; eauto.
     destruct l' as [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? ] ] ] ] ] ] ];
       try (simpl; intros; congruence).
-    destruct (split_list_bool l); simpl; intros; discriminate.
+    destruct (split_BitString l); simpl; intros; discriminate.
     inversion H.
   - intros l H;
       destruct l as [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? ] ] ] ] ] ] ] ];
@@ -2226,10 +2226,10 @@ Proof.
     try (simpl; intros; first [discriminate
                               | congruence
                               | injection H0; congruence
-                              | destruct (split_list_bool l); congruence]).
+                              | destruct (split_BitString l); congruence]).
     simpl; intros.
-    destruct (split_list_bool l) eqn : ? ;
-      destruct (split_list_bool l0) eqn : ? .
+    destruct (split_BitString l) eqn : ? ;
+      destruct (split_BitString l0) eqn : ? .
     injections; repeat f_equal.
     eapply IHn; simpl in H; try omega.
     congruence.
@@ -2241,12 +2241,12 @@ Lemma queue_into_ByteString_inj
     -> l = l'.
 Proof.
   intros;
-    destruct (queue_into_ByteString_eq_split_list_bool l);
-    destruct (queue_into_ByteString_eq_split_list_bool l').
-  eapply split_list_bool_inj.
+    destruct (queue_into_ByteString_eq_split_BitString l);
+    destruct (queue_into_ByteString_eq_split_BitString l').
+  eapply split_BitString_inj.
   rewrite H1, H0 in H; clear H1 H0; injection H.
-  intros; destruct (split_list_bool l);
-    destruct (split_list_bool l'); simpl in *; subst.
+  intros; destruct (split_BitString l);
+    destruct (split_BitString l'); simpl in *; subst.
   f_equal.
   destruct s; destruct s0; simpl in *.
   rewrite H1; reflexivity.
@@ -2260,12 +2260,12 @@ Lemma ByteString_dequeue_opt_inj :
 Proof.
   intros; rewrite (ByteString_into_queue_eq b),
           (ByteString_into_queue_eq b'),
-          !ByteString_dequeue_into_list in *.
+          !ByteString_dequeue_into_BitString in *.
   destruct (ByteString_into_queue b) eqn : ?;
     destruct (ByteString_into_queue b') eqn : ?;
     try discriminate; injections.
   revert H0; clear; intros.
-  rewrite (queue_into_ByteString_inj l l0); eauto.
+  rewrite (queue_into_ByteString_inj b1 b3); eauto.
 Qed.
 
 Lemma length_ByteString_enqueue'
@@ -2282,12 +2282,12 @@ Lemma ByteString_enqueue_ByteString_enqueue_ByteString
 Proof.
   intros; rewrite (ByteString_into_queue_eq b'),
           (ByteString_into_queue_eq b''),
-          !ByteString_enqueue_ByteString_into_list,
-          !ByteString_enqueue_into_list.
+          !ByteString_enqueue_ByteString_into_BitString,
+          !ByteString_enqueue_into_BitString.
   replace [b] with
   (ByteString_into_queue (ByteString_enqueue b ByteString_id))
     by reflexivity.
-  rewrite !ByteString_enqueue_ByteString_into_list,
+  rewrite !ByteString_enqueue_ByteString_into_BitString,
   app_assoc; reflexivity.
 Qed.
 

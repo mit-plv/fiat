@@ -25,7 +25,6 @@ Require Import
         Fiat.Common.Tactics.CacheStringConstant.
 
 Require Import
-        Coq.Arith.PeanoNat
         Coq.NArith.NArith
         Recdef.
 
@@ -152,7 +151,7 @@ Fixpoint replicate (n : nat) (s : string) : string :=
   match n with
   | O => ""
   | S x => s ++ replicate x s
-  end.
+  end%string.
 
 Lemma replicate_length : forall n s,
   String.length (replicate n s) = n * String.length s.
@@ -162,11 +161,13 @@ Proof.
   now rewrite string_length_append, IHn.
 Qed.
 
+Locate "_ <? _".
+
 Definition Nnat_to_string (z : nat * N) : string :=
   let s := N_to_string (snd z) in
-  (if (String.length s <? fst z)%nat
+  (if (NPeano.ltb (String.length s) (fst z))
    then replicate (fst z - String.length s) "0" ++ s
-   else s).
+   else s)%string.
 
 Lemma replicated_zeroes : forall n, string_to_N (replicate n "0") = 0%N.
 Proof. induction n; simpl; auto. Qed.
@@ -217,19 +218,18 @@ Proof.
     rewrite distribute_if.
     rewrite string_length_append.
     rewrite replicate_length.
-    rewrite Nat.mul_1_r.
+    rewrite NPeano.Nat.mul_1_r.
     remember (String.length (N_to_string n0)) as l.
-    destruct (l <? n) eqn:?.
-      apply Nat.ltb_lt in Heqb.
+    destruct (NPeano.ltb l n) eqn:?.
+      apply NPeano.Nat.ltb_lt in Heqb.
       omega.
-    apply Nat.ltb_ge in Heqb.
     admit.
   rewrite distribute_if.
   rewrite string_to_N_append.
   rewrite N_to_string_inv.
-  destruct (String.length (N_to_string n0) <? n) eqn:?; auto.
+  (* destruct (String.length (N_to_string n0) <? n) eqn:?; auto.
   apply Nat.ltb_lt in Heqb.
-  now rewrite replicated_zeroes.
+  now rewrite replicated_zeroes. *)
 Admitted.
 
 (*

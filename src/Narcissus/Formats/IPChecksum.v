@@ -352,23 +352,23 @@ Defined.
   rewrite encode_word_WO; reflexivity.
 Qed. *)
 
-Lemma length_ByteString_into_list_measure :
+Lemma length_ByteString_into_BitString_measure :
   forall b,
-| ByteString_into_list b | = bin_measure b.
+| ByteString_into_BitString b | = bin_measure b.
 Proof.
   simpl.
-  intros; rewrite <- length_list_into_ByteString; f_equal.
-  rewrite <- ByteString_into_list_eq; reflexivity.
+  intros; rewrite <- length_BitString_into_ByteString; f_equal.
+  rewrite <- ByteString_into_BitString_eq; reflexivity.
 Qed.
 
 Lemma encode_word'_padding :
   forall sz (w : word sz),
     padding (encode_word' _ w mempty) = NPeano.modulo sz 8.
 Proof.
-  intros; rewrite (ByteString_into_list_eq _).
-  rewrite padding_list_into_ByteString.
+  intros; rewrite (ByteString_into_BitString_eq _).
+  rewrite padding_BitString_into_ByteString.
   f_equal.
-  rewrite length_ByteString_into_list_measure.
+  rewrite length_ByteString_into_BitString_measure.
   simpl.
   rewrite length_encode_word'; simpl; rewrite length_ByteString_id.
   omega.
@@ -436,8 +436,8 @@ Proof.
   omega.
 Qed.
 
-Lemma length_list_into_ByteString
-  : forall l, length_ByteString (list_into_ByteString l) = length l.
+Lemma length_BitString_into_ByteString
+  : forall l, length_ByteString (BitString_into_ByteString l) = length l.
 Proof.
   induction l.
   - reflexivity.
@@ -909,16 +909,16 @@ Proof.
   intros.
   rewrite (ByteString_into_queue_eq b),
   (ByteString_into_queue_eq b').
-  rewrite ByteString_enqueue_ByteString_into_list.
+  rewrite ByteString_enqueue_ByteString_into_BitString.
   rewrite queue_into_ByteString_app.
   generalize (queue_into_ByteString (ByteString_into_queue b)).
   induction (ByteString_into_queue b'); intros; simpl fold_left.
   - change (padding (queue_into_ByteString nil)) with 0.
     rewrite <- plus_n_O.
-    rewrite (ByteString_into_list_eq b0).
-    rewrite padding_list_into_ByteString.
+    rewrite (ByteString_into_BitString_eq b0).
+    rewrite padding_BitString_into_ByteString.
     rewrite NPeano.Nat.mod_mod; auto.
-  - rewrite IHl.
+  - rewrite IHb0.
     rewrite ByteString_enqueue_padding_eq.
     rewrite !queue_into_ByteString_padding_eq.
     simpl length.

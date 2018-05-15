@@ -416,22 +416,22 @@ Proof.
 Qed.
 
 Definition queue_into_ByteString
-           (l : list bool)
+           (l : BitString)
   : ByteString :=
   fold_left (fun bs b => ByteString_enqueue b bs) l ByteString_id.
 
 Fixpoint wordToQueue {n}
            (w : word n)
-  : list bool :=
-  match n return word n -> list bool with
+  : BitString :=
+  match n return word n -> BitString with
   | 0 => fun _ => [ ]
   | S n' => fun w => wordToQueue (wtl w) ++ [whd w]
   end w.
 
 Fixpoint ByteString_into_queue' {sz}
            (chars : Vector.t char sz)
-           {struct chars} : list bool :=
-  match chars return list bool with
+           {struct chars} : BitString :=
+  match chars return BitString with
   | Vector.nil => [ ]
   | Vector.cons char' _ chars' =>
     app (wordToQueue char')
@@ -440,7 +440,7 @@ Fixpoint ByteString_into_queue' {sz}
 
 Definition ByteString_into_queue
            (bs : ByteString)
-  : list bool :=
+  : BitString :=
   app (ByteString_into_queue' (byteString bs)) (wordToQueue (front bs)).
 
 Definition build_aligned_ByteString
@@ -596,7 +596,7 @@ Proof.
 Qed.
 
 Fixpoint split_Vector_bool
-         (l : list bool)
+         (l : BitString)
   : {n : nat & Vector.t char n} * {n : nat & word n} :=
   match l return {n : nat & Vector.t char n} * {n : nat & word n} with
   | b0 :: b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: l' =>
@@ -779,8 +779,8 @@ Proof.
       simpl; omega.
 Qed.
 
-Lemma ByteString_enqueue_into_list
-  : forall b (l : list bool),
+Lemma ByteString_enqueue_into_BitString
+  : forall b (l : BitString),
     ByteString_enqueue b (queue_into_ByteString l)
     = queue_into_ByteString (l ++ [b]).
 Proof.
@@ -800,7 +800,7 @@ Lemma queue_into_ByteString_app
 Proof.
   induction l'; simpl; intros.
   - rewrite app_nil_r; eauto.
-  - rewrite ByteString_enqueue_into_list.
+  - rewrite ByteString_enqueue_into_BitString.
     rewrite <- IHl', <- app_assoc; reflexivity.
 Qed.
 
@@ -812,7 +812,7 @@ Proof.
 Qed.
 
 Lemma ByteString_enqueue_ByteString_enqueue
-  : forall (l' l : bin)
+  : forall (l' l : BitString)
            (b : bool),
     ByteString_enqueue_ByteString (queue_into_ByteString l) (ByteString_enqueue b (queue_into_ByteString l')) =
    ByteString_enqueue b (ByteString_enqueue_ByteString (queue_into_ByteString l) (queue_into_ByteString l')).
@@ -828,8 +828,8 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma ByteString_enqueue_ByteString_into_list
-  : forall (l' l : list bool),
+Lemma ByteString_enqueue_ByteString_into_BitString
+  : forall (l' l : BitString),
     ByteString_enqueue_ByteString (queue_into_ByteString l) (queue_into_ByteString l')
     = queue_into_ByteString (l ++ l').
 Proof.
@@ -845,7 +845,7 @@ Proof.
     clear IHn H.
     induction (rev l'); simpl.
     + rewrite ByteStringQueueMonoid_subproof1; reflexivity.
-    + rewrite <- ByteString_enqueue_into_list.
+    + rewrite <- ByteString_enqueue_into_BitString.
       rewrite fold_left_app; simpl.
       rewrite <- IHl0.
       apply ByteString_enqueue_ByteString_enqueue.
@@ -1025,8 +1025,8 @@ Proof.
       omega.
 Qed.
 
-Lemma ByteString_dequeue_into_list
-  : forall (l : list bool),
+Lemma ByteString_dequeue_into_BitString
+  : forall (l : BitString),
     ByteString_dequeue (queue_into_ByteString l)
     = match l with
       | b :: l' => Some (b, queue_into_ByteString l')
@@ -1142,7 +1142,7 @@ Proof.
         end.
         rewrite <- queue_into_ByteString_app.
         f_equal; f_equal.
-        rewrite <- ByteString_enqueue_ByteString_into_list.
+        rewrite <- ByteString_enqueue_ByteString_into_BitString.
         rewrite <- H.
         clear.
         unfold queue_into_ByteString at 1; simpl.
@@ -1178,7 +1178,7 @@ Proof.
              repeat f_equal; intros; apply le_uniqueness_proof)
         end.
         rewrite <- queue_into_ByteString_app.
-        rewrite <- ByteString_enqueue_ByteString_into_list.
+        rewrite <- ByteString_enqueue_ByteString_into_BitString.
         rewrite <- H.
         clear.
         repeat f_equal.
@@ -1214,7 +1214,7 @@ Proof.
                 unfold ByteString_enqueue at 1; simpl ]
         end.
         rewrite <- queue_into_ByteString_app.
-        rewrite <- ByteString_enqueue_ByteString_into_list.
+        rewrite <- ByteString_enqueue_ByteString_into_BitString.
         f_equal; f_equal.
         injection H2; intros.
         rewrite <- H.
@@ -1246,8 +1246,8 @@ Lemma ByteString_dequeue_ByteStringToBoundedByteString_eq
 Proof.
   intros; rewrite (Core.ByteString_into_queue_eq b').
   rewrite ByteStringToBoundedByteString_into_queue_eq.
-  rewrite ByteString_dequeue_into_list.
-  rewrite Core.ByteString_dequeue_into_list.
+  rewrite ByteString_dequeue_into_BitString.
+  rewrite Core.ByteString_dequeue_into_BitString.
   destruct (Core.ByteString_into_queue b'); simpl;
   rewrite <- ?ByteStringToBoundedByteString_into_queue_eq; eauto.
 Qed.
@@ -1262,9 +1262,9 @@ Lemma ByteString_dequeue_ByteStringToBoundedByteString_eq'
 Proof.
   intros.
   rewrite (Core.ByteString_into_queue_eq (BoundedByteStringToByteString b')).
-  rewrite Core.ByteString_dequeue_into_list.
+  rewrite Core.ByteString_dequeue_into_BitString.
   rewrite (ByteString_into_queue_eq b').
-  rewrite ByteString_dequeue_into_list.
+  rewrite ByteString_dequeue_into_BitString.
   rewrite <- ByteString_into_queue_eq.
   rewrite <- ByteStringToBoundedByteString_into_queue_eq'.
   rewrite ByteStringToBoundedByteString_BoundedByteStringToByteString_eq.
@@ -1761,7 +1761,7 @@ Fixpoint decode_list'
     (ByteString_into_queue_eq bs2),
     (ByteString_into_queue_eq bs1'),
     (ByteString_into_queue_eq bs2') in H.
-    rewrite !ByteString_enqueue_ByteString_into_list in H.
+    rewrite !ByteString_enqueue_ByteString_into_BitString in H.
     apply queue_into_ByteString_inj in H.
     rewrite (ByteString_into_queue_eq bs1),
     (ByteString_into_queue_eq bs1').
@@ -1781,7 +1781,7 @@ Fixpoint decode_list'
     (ByteString_into_queue_eq bs2),
     (ByteString_into_queue_eq bs1'),
     (ByteString_into_queue_eq bs2') in H.
-    rewrite !ByteString_enqueue_ByteString_into_list in H.
+    rewrite !ByteString_enqueue_ByteString_into_BitString in H.
     apply queue_into_ByteString_inj in H.
     rewrite (ByteString_into_queue_eq bs2),
     (ByteString_into_queue_eq bs2').
@@ -1866,6 +1866,35 @@ Fixpoint decode_list'
     eapply UIP_dec; decide equality.
   Qed.
 
+  Lemma length_ByteString_queue_into_ByteString'
+    : forall (l : BitString) (bs : ByteString),
+      length_ByteString (List.fold_left (fun bs' b => ByteString_enqueue b bs') l bs) =
+      Datatypes.length l + length_ByteString bs.
+  Proof.
+    induction l; simpl; intros; eauto.
+    rewrite IHl; simpl.
+    pose proof (@measure_enqueue ByteString _ _ _ a bs) as H;
+      simpl in H; rewrite H; simpl; omega.
+  Qed.
+
+  Corollary length_ByteString_queue_into_ByteString
+    : forall l,
+      length_ByteString (queue_into_ByteString l) = List.length l.
+  Proof.
+    unfold queue_into_ByteString in *; intros; rewrite length_ByteString_queue_into_ByteString'.
+    unfold length_ByteString; simpl; omega.
+  Qed.
+
+  Lemma length_ByteString_enqueue_ByteString
+    : forall bs1 bs2,
+      length_ByteString (ByteString_enqueue_ByteString bs1 bs2) =
+      length_ByteString bs1 + length_ByteString bs2.
+  Proof.
+    intros; rewrite (ByteString_into_queue_eq bs1), (ByteString_into_queue_eq bs2).
+    rewrite ByteString_enqueue_ByteString_into_BitString.
+    rewrite !length_ByteString_queue_into_ByteString,
+    app_length; reflexivity.
+  Qed.
 
   Lemma ByteString_enqueue_ByteString_assoc
     : forall bs1 bs2 bs3,

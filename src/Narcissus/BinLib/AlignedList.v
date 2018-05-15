@@ -21,7 +21,7 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedDecoders
-        Fiat.Narcissus.BinLib.AlignedMonads
+        Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.CacheStringConstant.
 
