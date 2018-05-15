@@ -500,7 +500,7 @@ Lemma ByteString_into_queue_eq
   : forall bs,
     bs = queue_into_ByteString (ByteString_into_queue bs).
 Proof.
-  (* destruct bs; unfold queue_into_ByteString, ByteString_into_queue;
+  destruct bs; unfold queue_into_ByteString, ByteString_into_queue;
     simpl.
   rewrite <- fold_left_rev_right, rev_app_distr, fold_right_app.
   induction padding0.
@@ -517,7 +517,9 @@ Proof.
     front := WO;
     paddingOK := build_aligned_ByteString_subproof 0 (Vector.nil char);
     numBytes := 0;
-    byteString := Vector.nil char |} with ByteString_id.
+    byteString := Vector.nil char |} with ByteString_id
+    by (eapply byteString_f_equal; simpl;
+        instantiate (1 := eq_refl); reflexivity).
     generalize ByteString_id; clear.
     induction byteString0.
     + simpl; eauto.
@@ -525,14 +527,17 @@ Proof.
       first [ rewrite IHbyteString0
             | unfold Vector.fold_left;
               rewrite IHbyteString0].
-
-      first [ simpl ByteString_into_queue';
-              rewrite <- !fold_left_cons;
-              reflexivity
-            | unfold ByteString_enqueue_char;
-              simpl; reflexivity].
-    + eapply byteString_f_equal; simpl;
-        instantiate (1 := eq_refl); reflexivity.
+      (* This arcane sequence is to prevent slowdown in 8.4. *)
+      unfold ByteString_enqueue_char.
+      unfold char in h.
+      unfold ByteString_into_queue' at 2.
+      fold (ByteString_into_queue' byteString0).
+      rewrite fold_left_app.
+      unfold wordToQueue.
+      simpl app.
+      rewrite <- !fold_left_cons.
+      unfold fold_left at 3.
+      unfold ByteString_enqueue_word; reflexivity.
   - rewrite (shatter_word front0).
     simpl.
     rewrite rev_app_distr, fold_right_app.
@@ -544,9 +549,8 @@ Proof.
     subst; omega.
     repeat f_equal.
     apply le_uniqueness_proof.
-Qed.   *)
+Qed.
   (* 8.4 hangs forever on Qed :p *)
-Admitted.
 
 Lemma ByteStringToBoundedByteString_into_queue_eq
   : forall l,
@@ -1907,4 +1911,182 @@ Fixpoint decode_list'
     <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq bs3).
     rewrite !ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
     rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
+  Qed.
+
+  Lemma padding_mod_8
+    : forall bs,
+      (padding bs) mod 8 = padding bs.
+  Proof.
+    intros; pose proof (paddingOK bs).
+    destruct (padding bs); simpl in *; try omega.
+    do 8 (destruct n; simpl in *; try omega).
+  Qed.
+
+  Local Arguments modulo : simpl never.
+
+  Lemma padding_ByteString_queue_into_ByteString
+    : forall l : BitString, padding (queue_into_ByteString l) = (List.length l) mod 8.
+  Proof.
+    unfold queue_into_ByteString; intro.
+    replace (List.length l mod 8) with ((List.length l mod 8 + (padding ByteString_id) mod 8) mod 8).
+    generalize ByteString_id.
+    induction l.
+    - intros; simpl; rewrite !padding_mod_8; reflexivity.
+    - intros.
+      simpl; rewrite IHl.
+      rewrite <- !Nat.add_mod by omega.
+      destruct (le_lt_dec (padding b) 6).
+      erewrite ByteString_enqueue_simpl; simpl.
+      f_equal; omega.
+      unfold ByteString_enqueue.
+      pose proof (paddingOK b).
+      destruct (eq_nat_dec (padding b) 7); try omega.
+      simpl.
+      rewrite e.
+      replace (S (List.length l + 7)) with (List.length l + 8) by omega.
+      rewrite Nat.add_mod with (b := 8) by omega.
+      unfold modulo at 4; simpl.
+      rewrite Nat.add_mod by omega; f_equal.
+    - rewrite <- !Nat.add_mod by omega.
+      simpl; f_equal; omega.
+      Grab Existential Variables.
+      omega.
+  Qed.
+
+  Lemma padding_ByteString_enqueue_ByteString
+    : forall bs bs',
+      padding (ByteString_enqueue_ByteString bs bs') =
+      (padding bs + padding bs')%nat mod 8.
+  Proof.
+    intros.
+    rewrite (ByteString_into_queue_eq bs), (ByteString_into_queue_eq bs').
+    rewrite ByteString_enqueue_ByteString_into_BitString.
+    rewrite !padding_ByteString_queue_into_ByteString.
+    rewrite app_length.
+    rewrite Nat.add_mod by omega.
+    reflexivity.
+  Qed.
+
+  Corollary padding_ByteString_enqueue_aligned_ByteString
+    : forall bs bs',
+      padding bs = 0
+      -> padding (ByteString_enqueue_ByteString bs bs') = padding bs'.
+  Proof.
+    intros; rewrite padding_ByteString_enqueue_ByteString.
+    rewrite H, plus_O_n, padding_mod_8; reflexivity.
+  Qed.
+
+  Corollary numBytes_ByteString_enqueue_ByteString
+    : forall bs bs',
+      padding bs = 0
+      -> numBytes (ByteString_enqueue_ByteString bs bs') =
+         numBytes bs + numBytes bs'.
+  Proof.
+    intros.
+    pose proof (length_ByteString_enqueue_ByteString bs bs') as H';
+      unfold length_ByteString in H'.
+    rewrite padding_ByteString_enqueue_ByteString, H, !plus_O_n,
+      padding_mod_8 in H'.
+    omega.
+  Qed.
+
+  Lemma length_ByteString_no_padding
+    : forall bs,
+      padding bs = 0
+      -> length_ByteString bs = 8* numBytes bs.
+  Proof.
+    unfold length_ByteString; intros; rewrite H; omega.
+  Qed.
+
+    Lemma Vector_append_assoc {A}
+    : forall m n o H (v1 : Vector.t A m) (v2 : Vector.t A n)
+             (v3 : Vector.t A o),
+    Vector.append v1 (Vector.append v2 v3) =
+    eq_rect _ _ (Vector.append (Vector.append v1 v2) v3) _ H.
+  Proof.
+    intros ? ? ? ?; induction v1; simpl; intros.
+    - replace H with (eq_refl (n + o)); try reflexivity.
+      eapply UIP_dec; intros; decide equality.
+    - erewrite IHv1.
+      erewrite eq_rect_Vector_cons.
+      reflexivity.
+      Grab Existential Variables.
+      omega.
+  Qed.
+
+  Lemma Vector_append_assoc' {A}
+    : forall m n o z H H' (v1 : Vector.t A m) (v2 : Vector.t A n)
+             (v3 : Vector.t A o),
+    Vector.append v1 (eq_rect _ _ (Vector.append v2 v3) z H) =
+    eq_rect _ _ (Vector.append (Vector.append v1 v2) v3) _ H'.
+  Proof.
+    induction v1; simpl; intros.
+    - f_equal; eapply UIP_dec; intros; decide equality.
+    - erewrite IHv1.
+      erewrite eq_rect_Vector_cons.
+      reflexivity.
+      Grab Existential Variables.
+      omega.
+  Qed.
+
+  Lemma Vector_append_assoc'' {A}
+    : forall m n o z H H' (v1 : Vector.t A m) (v2 : Vector.t A n)
+             (v3 : Vector.t A o),
+    Vector.append (eq_rect _ _ (Vector.append v1 v2) z H) v3  =
+    eq_rect _ _ (Vector.append (Vector.append v1 v2) v3) _ H'.
+  Proof.
+    intros; subst; simpl.
+    erewrite (UIP_dec _ _ (eq_refl _)); simpl.
+    reflexivity.
+    Grab Existential Variables.
+    decide equality.
+  Qed.
+
+  Lemma Vector_append_split_fst:
+    forall (A : Type) (m n : nat) (v1 : Vector.t A m) (v2 : Vector.t A n),
+      v1 = fst (Vector_split m n (Vector.append v1 v2)).
+  Proof.
+    induction v1; simpl; intros; eauto.
+    rewrite (IHv1 v2) at 1.
+    destruct (Vector_split n0 n (Vector.append v1 v2)); reflexivity.
+  Qed.
+
+  Lemma Vector_append_split_snd:
+    forall (A : Type) (m n : nat) (v1 : Vector.t A m) (v2 : Vector.t A n),
+      v2 = snd (Vector_split m n (Vector.append v1 v2)).
+  Proof.
+    induction v1; simpl; intros; eauto.
+    rewrite (IHv1 v2) at 1.
+    destruct (Vector_split n0 n (Vector.append v1 v2)); reflexivity.
+  Qed.
+
+  Lemma Vector_split_lt {A} :
+    forall m n
+           (lt_m_n : (m <= n)%nat)
+           (v : Vector.t A n),
+      exists k
+             (v1 : Vector.t A m)
+             (v2 : Vector.t A k)
+             (H : m + k = n),
+        v = eq_rect _ (Vector.t A) (Vector.append v1 v2) _ H.
+  Proof.
+    intros ? ? lt_m_n; induction lt_m_n; intros.
+    - eexists 0, v, (Vector.nil _), _; apply Vector_append_nil_r.
+    - revert IHlt_m_n; pattern m0, v; eapply Vector.caseS; intros.
+      destruct (IHlt_m_n t) as [? [? [? [? ?] ] ] ]; subst; simpl; clear IHlt_m_n.
+      eexists _, (fst (Vector_split _ _ (eq_rect _ _ (Vector.cons A h _ x0) _ (plus_comm 1 m)))),
+      (Vector.append (snd (Vector_split _ _ (eq_rect _ _ (Vector.cons A h _ x0) _ (plus_comm 1 m)))) x1),
+      (eq_sym (plus_n_Sm _ _)).
+      erewrite Vector_append_assoc, <- Equality.transport_pp, <- Vector_split_append.
+      pose proof (fun z H H' => Vector_append_assoc'' _ _ _ z H H'
+                                               (Vector.cons A h _ (Vector.nil _)) x0 x1).
+      simpl in *.
+      erewrite H.
+      rewrite <- Equality.transport_pp.
+      erewrite (UIP_dec _ _ (eq_refl _)); simpl.
+      reflexivity.
+      Grab Existential Variables.
+      decide equality.
+      omega.
+      omega.
   Qed.
