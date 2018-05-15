@@ -13,6 +13,7 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedString
@@ -189,9 +190,43 @@ Section AlignedDecoders.
     f_equiv.
   Qed.
 
-  Corollary AlignedDecode2Nat {C}
+  Local Arguments split1 : simpl never.
+  Local Arguments split2 : simpl never.
+
+  Lemma CorrectAlignedEncoderForFormat2Char
+    : CorrectAlignedEncoder
+        (fun (w : word 16) => format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+        (fun (w : word 16) sz => AppendAlignedEncodeM (@SetCurrentByte _ _ sz (split2 8 8 w))
+                                                      (SetCurrentByte (split1 8 8 w))).
+  Proof.
+    pose proof (fun a : word 16 => @format_words 8 8 a) as H';
+    eapply refine_CorrectAlignedEncoder.
+    unfold flip, pointwise_relation; intros.
+    instantiate (1 := fun a => (format_word (split2 8 8 (eq_rect (8 + 8) word a (8 + 8) (trans_plus_comm 8 8)))
+       ThenC (format_word (split1 8 8 (eq_rect (8 + 8) word a (8 + 8) (trans_plus_comm 8 8)))) DoneC)).
+    rewrite (H' a a0).
+    unfold compose, Bind2; simpl.
+    repeat setoid_rewrite Monad.refineEquiv_bind_bind;
+      repeat setoid_rewrite <- Monad.refine_bind_unit'.
+    f_equiv; intro.
+    f_equiv; intro.
+    repeat setoid_rewrite <- Monad.refine_bind_unit'; simpl.
+    pose proof mempty_right as H; simpl in H; rewrite H.
+    reflexivity.
+    eauto with typeclass_instances.
+    eapply (CorrectAlignedEncoderForThenC
+              _ _ _
+              _
+              (fun a sz => SetCurrentByte (n := sz) a)).
+    simpl in *|-*.
+    eapply CorrectAlignedEncoderForDoneC.
+    eapply (CorrectAlignedEncoderForFormatChar_f).
+    eapply (CorrectAlignedEncoderForFormatChar_f).
+  Qed.
+
+    Corollary AlignedDecode2Nat {C}
             {numBytes}
-    : forall (v : Vector.t (word 8) (S (S numBytes)))
+      : forall (v : Vector.t (word 8) (S (S numBytes)))
              (t : _ -> C)
              e
              cd,
@@ -272,6 +307,14 @@ Section AlignedDecoders.
     unfold format_nat; cbv beta; intros.
     rewrite <- AlignedFormat2Char; eauto.
     reflexivity.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForFormatNat
+    : CorrectAlignedEncoder
+        (fun (n : nat) => format_nat 8 (monoidUnit := ByteString_QueueMonoidOpt) n)
+        (fun (n : nat) sz => @SetCurrentByte _ _ sz (natToWord 8 n)).
+  Proof.
+    eapply CorrectAlignedEncoderForFormatChar_f.
   Qed.
 
   Lemma optimize_under_if_opt {A ResultT}

@@ -6,6 +6,7 @@ Require Import
         Coq.Numbers.Natural.Peano.NPeano
         Coq.Logic.Eqdep_dec
         Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.BinLib.AlignedByteString.
 
@@ -114,7 +115,7 @@ Section AlignedEncodeM.
              {n : nat}
              (a : char)
     : AlignedEncodeM n :=
-    fun v idx ce => if (idx <? n) then Some (set_nth' v idx a, S idx, ce) else None.
+    fun v idx ce => if (idx <? n) then Some (set_nth' v idx a, S idx, addE ce 8) else None.
 
   (* Equivalence Criteria:
      A bit-aligned encoder and byte-aligned encoder are equivalent when
@@ -248,11 +249,11 @@ Section AlignedEncodeM.
           rewrite <- !build_aligned_ByteString_append in H7;
             apply build_aligned_ByteString_inj in H7; subst.
           rewrite <- !build_aligned_ByteString_append; repeat f_equal.
-          erewrite vector_append_assoc.
+          erewrite Vector_append_assoc.
           rewrite <- Equality.transport_pp.
           erewrite (UIP_dec _ _ (eq_refl _)); simpl.
           rewrite <- Vector_append_split_fst; reflexivity.
-          erewrite vector_append_assoc.
+          erewrite Vector_append_assoc.
           rewrite <- Equality.transport_pp.
           erewrite (UIP_dec _ _ (eq_refl _)); simpl.
           rewrite <- !Vector_append_split_snd; reflexivity.
@@ -279,8 +280,8 @@ Section AlignedEncodeM.
          replace (Vector.append (fst (Vector_split (numBytes c') (numBytes b) v))
                                 (Vector.append (snd (Vector_split (numBytes c') (numBytes b) v)) v2))
            with (eq_rect _ (Vector.t char) (Vector.append v v2) _ H0)
-           by (erewrite vector_append_assoc, <- Vector_split_append; reflexivity).
-         erewrite vector_append_assoc', vector_append_assoc, <- Equality.transport_pp.
+           by (erewrite Vector_append_assoc, <- Vector_split_append; reflexivity).
+         erewrite Vector_append_assoc', Vector_append_assoc, <- Equality.transport_pp.
          reflexivity.
          destruct H10; reflexivity.
       + apply encode1_OK.
@@ -306,7 +307,7 @@ Section AlignedEncodeM.
         * revert p Heqo H6.
           rewrite H5.
           rewrite <- x2; simpl; clear.
-          rewrite vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
+          rewrite Vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
           generalize v' (eq_sym (plus_assoc idx (numBytes c') x)).
           rewrite (plus_assoc idx (numBytes c') x).
           intros. erewrite (UIP_dec _ _ (eq_refl _)) in H6; simpl in H6.
@@ -317,7 +318,7 @@ Section AlignedEncodeM.
           revert p Heqo H6.
           rewrite H5.
           rewrite <- x2; simpl; clear.
-          rewrite vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
+          rewrite Vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
           generalize v' (eq_sym (plus_assoc idx (numBytes c') x)).
           rewrite (plus_assoc idx (numBytes c') x).
           intros. erewrite (UIP_dec _ _ (eq_refl _)) in H6; simpl in H6.
@@ -341,7 +342,7 @@ Section AlignedEncodeM.
         * revert p Heqo H6.
           rewrite H5.
           rewrite <- x2; simpl; clear.
-          rewrite vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
+          rewrite Vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
           generalize v' (eq_sym (plus_assoc idx (numBytes c') x)).
           rewrite (plus_assoc idx (numBytes c') x).
           intros. erewrite (UIP_dec _ _ (eq_refl _)) in H6; simpl in H6.
@@ -352,7 +353,7 @@ Section AlignedEncodeM.
           revert p Heqo H6.
           rewrite H5.
           rewrite <- x2; simpl; clear.
-          rewrite vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
+          rewrite Vector_append_assoc with (H := sym_eq (plus_assoc idx (numBytes c') x)), <- Vector_split_append.
           generalize v' (eq_sym (plus_assoc idx (numBytes c') x)).
           rewrite (plus_assoc idx (numBytes c') x).
           intros. erewrite (UIP_dec _ _ (eq_refl _)) in H6; simpl in H6.
@@ -371,7 +372,103 @@ Section AlignedEncodeM.
       omega.
   Qed.
 
+  Definition CorrectAlignedEncoder
+             {A}
+             (format : FormatM A ByteString)
+             (encoder : A -> forall sz, AlignedEncodeM sz)
+    := exists encoder',
+      (forall a ce, refine (format a ce) (ret (encoder' a ce)))
+      /\ (forall a ce, padding (fst (encoder' a ce)) = 0)
+      /\ forall a, EncodeMEquivAlignedEncodeM (encoder' a)
+                                              (encoder a).
+
+  Lemma CorrectAlignedEncoderForDoneC_f A B
+        (proj : B -> A)
+        (format_A : FormatM A ByteString)
+        (encode_A : A -> forall sz, AlignedEncodeM sz)
+        (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+    : CorrectAlignedEncoder
+        (fun b => format_A (proj b) DoneC)
+        (fun b => encode_A (proj b)).
+  Proof.
+    unfold CorrectAlignedEncoder; intros.
+    destruct encoder_A_OK as [encoder [? [? ?] ] ].
+    exists (fun b => encoder (proj b)); split; intros; eauto.
+    intros; rewrite <- H.
+    unfold compose, Bind2.
+    setoid_rewrite Monad.refineEquiv_bind_unit; simpl.
+    pose proof mempty_right as H'; simpl in H'; setoid_rewrite H'.
+    intros v Comp_v; computes_to_inv; subst.
+    destruct v; simpl in *; auto.
+    computes_to_econstructor; eauto.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForDoneC A
+        (format_A : FormatM A ByteString)
+        (encode_A : A -> forall sz, AlignedEncodeM sz)
+        (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+    : CorrectAlignedEncoder
+        (fun a => format_A a DoneC)
+        encode_A.
+  Proof.
+    unfold CorrectAlignedEncoder; intros.
+    destruct encoder_A_OK as [encoder [? [? ?] ] ].
+    exists encoder; split; intros; eauto.
+    intros; rewrite <- H.
+    unfold compose, Bind2.
+    setoid_rewrite Monad.refineEquiv_bind_unit; simpl.
+    pose proof mempty_right as H'; simpl in H'; setoid_rewrite H'.
+    intros v Comp_v; computes_to_inv; subst.
+    destruct v; simpl in *; auto.
+    computes_to_econstructor; eauto.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForThenC {A B}
+        (proj : A -> B)
+        (format_A : FormatM A ByteString)
+        (format_B : FormatM B ByteString)
+        (encode_A : A -> forall sz, AlignedEncodeM sz)
+        (encode_B : B -> forall sz, AlignedEncodeM sz)
+        (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+        (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+    : CorrectAlignedEncoder
+        (fun a => format_B (proj a) ThenC format_A a)
+        (fun a sz => AppendAlignedEncodeM (encode_B (proj a) sz) (encode_A a sz)).
+  Proof.
+    unfold CorrectAlignedEncoder; intros.
+    destruct encoder_A_OK as [encoder_A ?], encoder_B_OK as [encoder_B ?]; intuition
+    eexists; split; [ | split]; intros.
+    3: eapply Append_EncodeMEquivAlignedEncodeM.
+    4: apply H5.
+    4: apply H4.
+    3: apply H2.
+    unfold compose, Bind2.
+    rewrite H, Monad.refineEquiv_bind_unit.
+    rewrite H1, Monad.refineEquiv_bind_unit.
+    simpl; unfold AppendEncodeM.
+    destruct (encoder_B (proj a) ce); simpl;
+      destruct (encoder_A a c); simpl; reflexivity.
+    simpl; unfold AppendEncodeM.
+    specialize (H2 (proj a) ce); destruct (encoder_B (proj a) ce); simpl.
+    specialize (H0 a c); destruct (encoder_A a c); simpl.
+    simpl in *.
+    rewrite padding_ByteString_enqueue_aligned_ByteString; eauto.
+  Qed.
+
 End AlignedEncodeM.
+
+Add Parametric Morphism cache A
+: (@CorrectAlignedEncoder cache A)
+  with signature
+  (pointwise_relation _ (pointwise_relation _ (@refine _)))
+    --> (pointwise_relation _ eq) --> impl
+    as refine_CorrectAlignedEncoder.
+Proof.
+  unfold impl, pointwise_relation, CorrectAlignedEncoder; intros.
+  destruct H1; eexists; intuition.
+  - rewrite H; eauto.
+  - rewrite H0; eauto.
+Qed.
 
 Delimit Scope AlignedEncodeM_scope with AlignedEncodeM.
 Notation "x <- y ; z" := (AppendAlignedEncodeM y (fun x => z)) : AlignedEncodeM_scope.

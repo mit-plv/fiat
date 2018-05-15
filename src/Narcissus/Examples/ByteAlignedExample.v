@@ -15,6 +15,7 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedList
         Fiat.Narcissus.BinLib.AlignedDecoders
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.FixListOpt
@@ -40,6 +41,58 @@ Arguments weq : simpl never.
 Arguments natToWord : simpl never.
 Arguments Guarded_Vector_split : simpl never.
 Arguments Core.append_word : simpl never.
+
+Definition simple_encoder :
+  {encode : _ & CorrectAlignedEncoder Simple_Format encode}.
+Proof.
+  unfold Simple_Format; eexists.
+  eapply CorrectAlignedEncoderForThenC.
+  eapply CorrectAlignedEncoderForThenC.
+  eapply CorrectAlignedEncoderForDoneC_f.
+  apply CorrectAlignedEncoderForFormatList.
+  apply CorrectAlignedEncoderForFormatChar; auto.
+  apply CorrectAlignedEncoderForFormat2Char; auto.
+  apply CorrectAlignedEncoderForFormatNat.
+Defined.
+
+Definition simple_encoder_impl := 
+  Eval simpl in projT1 simple_encoder.
+
+Print simple_encoder_impl.
+
+Definition Simple_Format_decoder
+  : CorrectDecoderFor Simply_OK Simple_Format.
+Proof.
+  start_synthesizing_decoder.
+  normalize_compose monoid.
+  repeat decode_step idtac.
+  intros; eauto using FixedList_predicate_rest_True.
+  synthesize_cache_invariant.
+  cbv beta; optimize_decoder_impl.
+Defined.
+
+Definition SimpleDecoderImpl
+    := Eval simpl in (proj1_sig Simple_Format_decoder).
+
+Definition ByteAligned_SimpleDecoderTrial
+  : {impl : _ & DecodeMEquivAlignedDecodeM (fst SimpleDecoderImpl) impl}.
+Proof.
+  eexists; intros.
+  unfold SimpleDecoderImpl.
+  eapply (AlignedDecodeNatM (C := simple_record) (cache := test_cache)); intros.
+  eapply (AlignedDecodeBind2CharM (cache := test_cache)); intros; eauto.
+  eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
+  eapply AlignedDecodeListM with (A_decode := decode_word (sz := 8)) (n := b) (t := fun l bs cd' => Some (b0, l, bs, cd')).
+  eapply (AlignedDecodeCharM (cache := test_cache)); intros; eauto.
+  intros; eapply Return_DecodeMEquivAlignedDecodeM.
+  simpl; reflexivity.
+  simpl; higher_order_reflexivity.
+Defined.
+
+Definition ByteAligned_SimpleDecoderTrial_Impl := Eval simpl in projT1 ByteAligned_SimpleDecoderTrial.
+
+Print ByteAligned_SimpleDecoderTrial_Impl.
+(* Old, non-monadic derivations: 
 
 Definition refine_simple_format
   : { numBytes : _ &
@@ -75,22 +128,7 @@ Definition byte_aligned_simple_encoder
              (r : simple_record)
   := Eval simpl in (projT1 (projT2 refine_simple_format) r).
 
-Import Vectors.VectorDef.VectorNotations.
-Print byte_aligned_simple_encoder.
 
-Definition Simple_Format_decoder
-  : CorrectDecoderFor Simply_OK Simple_Format.
-Proof.
-  start_synthesizing_decoder.
-  normalize_compose monoid.
-  repeat decode_step idtac.
-  intros; eauto using FixedList_predicate_rest_True.
-  synthesize_cache_invariant.
-  cbv beta; optimize_decoder_impl.
-Defined.
-
-Definition SimpleDecoderImpl
-    := Eval simpl in (proj1_sig Simple_Format_decoder).
 
 Ltac rewrite_DecodeOpt2_fmap :=
   set_refine_evar;
@@ -99,25 +137,6 @@ Ltac rewrite_DecodeOpt2_fmap :=
   subst_refine_evar.
 
 Local Open Scope AlignedDecodeM_scope.
-
-Definition ByteAligned_SimpleDecoderTrial
-  : {impl : _ & DecodeMEquivAlignedDecodeM (fst SimpleDecoderImpl) impl}.
-Proof.
-  eexists; intros.
-  unfold SimpleDecoderImpl.
-  eapply (AlignedDecodeNatM (C := simple_record) (cache := test_cache)); intros.
-  eapply (AlignedDecodeBind2CharM (cache := test_cache)); intros; eauto.
-  eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
-  eapply AlignedDecodeListM with (A_decode := decode_word (sz := 8)) (n := b) (t := fun l bs cd' => Some (b0, l, bs, cd')).
-  eapply (AlignedDecodeCharM (cache := test_cache)); intros; eauto.
-  intros; eapply Return_DecodeMEquivAlignedDecodeM.
-  simpl; reflexivity.
-  simpl; higher_order_reflexivity.
-Defined.
-
-Definition ByteAligned_SimpleDecoderTrial_Impl := Eval simpl in projT1 ByteAligned_SimpleDecoderTrial.
-
-Print ByteAligned_SimpleDecoderTrial_Impl.
 
 Definition ByteAligned_SimpleDecoderImpl {A}
            (f : _ -> A)
@@ -169,4 +188,4 @@ Defined.
 Definition ByteAligned_SimpleDecoderImpl' n :=
   Eval simpl in (projT1 (ByteAligned_SimpleDecoderImpl id n)).
 
-Print ByteAligned_SimpleDecoderImpl'.
+Print ByteAligned_SimpleDecoderImpl'. *)

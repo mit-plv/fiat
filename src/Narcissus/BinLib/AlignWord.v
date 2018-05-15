@@ -4,7 +4,8 @@ Require Import
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
-        Fiat.Narcissus.Formats.WordOpt.
+        Fiat.Narcissus.Formats.WordOpt
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad.
 
 Require Import
         Coq.Vectors.Vector
@@ -747,6 +748,55 @@ Section AlignDecodeWord.
     rewrite <- eq_rect_eq_dec; eauto using eq_nat_dec.
     rewrite addD_addD_plus; reflexivity.
     intros; reflexivity.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForFormatChar_f
+        {A} (proj : A -> word 8)
+    : CorrectAlignedEncoder
+        (fun (a : A ) => format_word (monoidUnit := ByteString_QueueMonoidOpt) (proj a))
+        (fun (a : A) sz => SetCurrentByte (proj a)).
+  Proof.
+    unfold CorrectAlignedEncoder; eexists; split; [ | split].
+    - intros; rewrite aligned_format_char_eq.
+      higher_order_reflexivity.
+    - eauto.
+    - unfold EncodeMEquivAlignedEncodeM; intros; intuition; simpl.
+      + unfold SetCurrentByte.
+        destruct (NPeano.ltb idx (idx + S m)) eqn: ? ; try omega.
+        * eexists (Vector.append v1 (Vector.cons _ (proj a) _ v2)); split.
+          { repeat f_equal; try omega.
+            clear; simpl in v.
+            revert v v2; induction v1; intros.
+            - replace v with (Vector.cons _ (Vector.hd v) _ (Vector.tl v)).
+              + generalize (Vector.tl v); apply Vector.case0; reflexivity.
+              + revert v; generalize 0; apply Vector.caseS; simpl;
+                  intros; reflexivity.
+            - simpl; rewrite IHv1; reflexivity.
+          }
+          { rewrite !ByteString_enqueue_ByteString_assoc.
+            rewrite <- !build_aligned_ByteString_append.
+            assert (idx + 1 + m = idx + S m) by omega.
+            pose proof (Vector_append_assoc _ _ _ H0 v1 (Vector.cons (word 8) (proj a) 0 (Vector.nil (word 8))) v2).
+            simpl in H1; unfold Core.char in *; rewrite H1.
+            generalize (append (append v1 (Vector.cons (word 8) (proj a) 0 (Vector.nil (word 8)))) v2).
+            rewrite H0; reflexivity.
+          }
+        * destruct (le_lt_dec (idx + S m) idx); try omega.
+          apply NPeano.ltb_lt in l; congruence.
+      + unfold SetCurrentByte.
+        destruct (NPeano.ltb idx numBytes') eqn: ?; eauto.
+        apply NPeano.ltb_lt in Heqb.
+        unfold build_aligned_ByteString in H.
+        unfold length_ByteString in H; simpl padding in H; simpl numBytes in H.
+        omega.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForFormatChar
+    : CorrectAlignedEncoder
+        (fun (w : word 8) => format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+        (fun (w : word 8) sz => SetCurrentByte w).
+  Proof.
+    eapply (CorrectAlignedEncoderForFormatChar_f id).
   Qed.
 
 End AlignDecodeWord.
