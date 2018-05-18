@@ -117,6 +117,14 @@ Section AlignedEncodeM.
     : AlignedEncodeM n :=
     fun v idx ce => if (idx <? n) then Some (set_nth' v idx a, S idx, addE ce 8) else None.
 
+  Definition SetByteAt (* Sets the bytes at the specified index and sets the current index
+                          to the following position. *)
+             {n : nat}
+             (a : word 8)
+             (idx' : nat)
+    : AlignedEncodeM n :=
+    fun v idx ce => if (NPeano.ltb idx' n) then Some (set_nth' v idx' a, S idx', addE ce 8) else None.
+
   (* Equivalence Criteria:
      A bit-aligned encoder and byte-aligned encoder are equivalent when
      - the byte aligned encoder fails when the bit aligned encoder would write past
@@ -476,4 +484,4 @@ Definition CorrectAlignedEncoderFor {A} {cache}
           CorrectAlignedEncoder (format a) (encode a)}.
 
 Delimit Scope AlignedEncodeM_scope with AlignedEncodeM.
-Notation "y ++ z" := (AppendAlignedEncodeM y (fun x => z)) : AlignedEncodeM_scope.
+Notation "y >> z" := (AppendAlignedEncodeM y z) : AlignedEncodeM_scope.

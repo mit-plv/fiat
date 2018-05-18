@@ -634,6 +634,43 @@ Fixpoint checksum bytes : W16 :=
   | x :: y :: t => add_bytes_into_checksum x y (checksum t)
   end.
 
+Fixpoint Vector_checksum {sz} (bytes :Vector.t (word 8) sz) : W16 :=
+  match bytes with
+  | Vector.nil => wzero _
+  | Vector.cons x _ Vector.nil => add_bytes_into_checksum x (wzero _) (wzero _)
+  | Vector.cons x _ (Vector.cons y _ t) => add_bytes_into_checksum x y (Vector_checksum t)
+  end.
+
+Lemma Vector_checksum_eq_checksum'
+  : forall (sz' sz : nat)
+           (sz_lt : le sz sz')
+           (bytes : Vector.t (word 8) sz),
+    Vector_checksum bytes = checksum (VectorDef.to_list bytes).
+Proof.
+  induction sz'; simpl; eauto.
+  - intros; inversion sz_lt; subst.
+    revert bytes; apply Vector.case0; reflexivity.
+  - intros; inversion sz_lt; subst; eauto.
+    revert IHsz'; pattern sz', bytes; apply Vector.caseS;
+      simpl; intros.
+    destruct t; simpl in *; eauto.
+    rewrite IHsz'; eauto.
+Qed.
+
+Corollary Vector_checksum_eq_checksum {sz}
+  : forall (bytes : Vector.t (word 8) sz),
+    Vector_checksum bytes = checksum (VectorDef.to_list bytes).
+Proof.
+  intros; eapply Vector_checksum_eq_checksum'; eauto.
+Qed.
+
+Corollary checksum_eq_Vector_checksum
+  : forall (bytes : list (word 8)),
+    checksum bytes = Vector_checksum (VectorDef.of_list bytes).
+Proof.
+  intros; rewrite Vector_checksum_eq_checksum, Vector.to_list_of_list_opp; reflexivity.
+Qed.
+
 Fixpoint make_pairs {A} (ls: list A) zero :=
   match ls with
   | nil => nil

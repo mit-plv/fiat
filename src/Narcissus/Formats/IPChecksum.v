@@ -12,6 +12,7 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
@@ -401,6 +402,9 @@ Definition IPChecksum_Valid (n : nat) (b : ByteString) : Prop :=
 Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
   : {IPChecksum_Valid n b} + {~IPChecksum_Valid n b} := weq _ _.
 
+Definition IPChecksum_Valid' (n : nat) (b : AlignedByteString.ByteString) : Prop :=
+  onesComplement (ByteString2ListOfChar n (BoundedByteStringToByteString b)) = wones 16.
+
 Definition decode_IPChecksum
   : ByteString -> CacheDecode -> option (() * ByteString * CacheDecode) :=
   decode_unused_word 16.
@@ -552,7 +556,7 @@ Proof.
 Qed.
 
 Lemma monoid_dequeue_word_inj
-  : forall sz w w' p,
+  : forall sz (w w' : ByteString) p,
     WordOpt.monoid_dequeue_word sz w = Some p
     -> WordOpt.monoid_dequeue_word sz w' = Some p
     -> w = w'.
@@ -793,7 +797,7 @@ Proof.
     repeat split; eauto.
   intros; rewrite <- monoid_dequeue_word_eq_decode_word'.
   rewrite <- !ByteString_enqueue_ByteString_assoc.
-  pose proof monoid_dequeue_encode_word' as H''; simpl in H'';
+  pose proof (monoid_dequeue_encode_word' (B := ByteString)) as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
 Qed.
 
@@ -812,7 +816,7 @@ Proof.
     repeat split; eauto.
   unfold decode_unused_word'; intros.
   rewrite <- !ByteString_enqueue_ByteString_assoc.
-  pose proof monoid_dequeue_encode_word' as H''; simpl in H'';
+  pose proof (monoid_dequeue_encode_word' (B := ByteString)) as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
 Qed.
 

@@ -12,22 +12,16 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple
-        Fiat.Narcissus.BinLib.Core
+        Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
         Fiat.Narcissus.Common.ComposeCheckSum
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
-        Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Stores.EmptyStore
-        Fiat.Narcissus.Formats.Bool
-        Fiat.Narcissus.Formats.NatOpt
-        Fiat.Narcissus.Formats.Vector
-        Fiat.Narcissus.Formats.EnumOpt
-        Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.IPChecksum
-        Fiat.Narcissus.Formats.WordOpt.
+        Fiat.Narcissus.Automation.AlignedAutomation
+        Fiat.Narcissus.Formats
+        Fiat.Narcissus.Stores.EmptyStore.
 
 Require Import Bedrock.Word.
 
@@ -35,30 +29,29 @@ Import Vectors.VectorDef.VectorNotations.
 Open Scope string_scope.
 Open Scope Tuple_scope.
 
-(* Start Example Derivation. *)
-
+(* Our source data type for IP packets. *)
 Definition IPv4_Packet :=
   @Tuple <"TotalLength" :: word 16,
           "ID" :: word 16,
           "DF" :: bool, (* Don't fragment flag *)
           "MF" :: bool, (*  Multiple fragments flag *)
           "FragmentOffset" :: word 13,
-          "TTL" :: char,
+          "TTL" :: word 8,
           "Protocol" :: EnumType ["ICMP"; "TCP"; "UDP"],
-          (* So many to choose from: http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml*)
           "SourceAddress" :: word 32,
           "DestAddress" :: word 32,
           "Options" :: list (word 32)>.
 
-Definition ProtocolTypeCodes : Vector.t char 3 :=
-  [WO~0~0~0~0~0~0~0~1;
-   WO~0~0~0~0~0~1~1~0;
-   WO~0~0~0~1~0~0~0~1
+(* Protocol Numbers from [RFC5237]*)
+Definition ProtocolTypeCodes : Vector.t (word 8) 3 :=
+  [WO~0~0~0~0~0~0~0~1; (* ICMP: 1*)
+   WO~0~0~0~0~0~1~1~0; (* TCP:  6*)
+   WO~0~0~0~1~0~0~0~1  (* UDP:  17*)
   ].
 
 Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4!"Options"|.
 
-Definition format_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
+Definition IPv4_Packet_Format (ip4 : IPv4_Packet)  :=
           (format_word (natToWord 4 4)
     ThenC format_nat 4 (IPv4_Packet_Header_Len ip4)
     ThenC format_unused_word 8 (* TOS Field! *)
@@ -71,15 +64,51 @@ Definition format_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
     ThenC format_word ip4!"TTL"
     ThenC format_enum ProtocolTypeCodes ip4!"Protocol"
     DoneC)
-    ThenChecksum IPChecksum_Valid OfSize 16
+    ThenChecksum IPChecksum_Valid' OfSize 16
     ThenCarryOn (format_word ip4!"SourceAddress"
     ThenC format_word ip4!"DestAddress"
     ThenC format_list format_word ip4!"Options"
-    DoneC).
+    DoneC)%format.
 
 Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
   lt (|ipv4!"Options"|) 11 /\
   lt (20 + 4 * |ipv4!"Options"|) (wordToNat ipv4!"TotalLength").
+
+Definition calculate_Checksum {sz}
+  : AlignedEncodeM sz :=
+  fun v idx' ce =>
+    let checksum := InternetChecksum.Vector_checksum v in
+    (SetByteAt (split1 8 8 checksum) 10 >>
+    SetByteAt (split2 8 8 checksum) 11)%AlignedEncodeM v idx' ce.
+
+Lemma CorrectAlignedEncoderForIPChecksumThenC
+      (format_A format_B : CacheFormat -> Comp (ByteString * CacheFormat))
+      (encode_A : forall sz, AlignedEncodeM sz)
+      (encode_B : forall sz, AlignedEncodeM sz)
+      (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+      (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+    : CorrectAlignedEncoder
+        (format_B ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_A)
+        (fun sz => encode_B sz >>
+                   SetCurrentByte (wzero 8) >>
+                   SetCurrentByte (wzero 8) >>
+                   encode_A sz >>
+                   calculate_Checksum)% AlignedEncodeM.
+  Proof.
+  Admitted.
+
+(* Step One: Synthesize an encoder and a proof that it is correct. *)
+Definition ipv4_encoder :
+  CorrectAlignedEncoderFor IPv4_Packet_Format IPv4_Packet_OK.
+Proof.
+  start_synthesizing_encoder.
+  eapply CorrectAlignedEncoderForIPChecksumThenC.
+
+
+
+  synthesize_aligned_encoder.
+Defined.
+
 
 Definition IPv4_Packet_formatd_measure (ipv4_b : ByteString)
   : nat :=
