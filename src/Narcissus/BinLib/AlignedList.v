@@ -282,54 +282,56 @@ Section AlignedList.
   Lemma CorrectAlignedEncoderForFormatList {A}
         format_A
         encode_A
-    : (CorrectAlignedEncoder format_A encode_A)
-      -> CorrectAlignedEncoder (format_list format_A)
-                            (@AlignedEncodeList A encode_A).
+    : (forall a, CorrectAlignedEncoder (format_A a) (encode_A a))
+      -> forall l,
+        CorrectAlignedEncoder (format_list format_A l)
+                              (@AlignedEncodeList A encode_A l).
   Proof.
     unfold CorrectAlignedEncoder; intros.
-    destruct H as [encode_A' ?]; intuition.
-    eexists (fix AlignedEncodeList (As : list A) :=
+    eexists ((fix AlignedEncodeList (As : list A) :=
                match As with
                | nil => (fun ce : CacheFormat => (mempty, ce))
-               | a :: As' => AppendEncodeM _ (encode_A' a) (AlignedEncodeList As')
-               end); split; [ | split ].
-    - induction a; intros; simpl; eauto.
+               | a :: As' => AppendEncodeM _ (projT1 (X a)) (AlignedEncodeList As')
+               end) l); split; [ | split ].
+    - induction l; intros; simpl; eauto.
       + reflexivity.
-      + unfold Bind2; rewrite H0, refineEquiv_bind_unit.
-        rewrite IHa, refineEquiv_bind_unit; simpl.
+      + destruct (X a) as [encode_A' [? [? ?] ] ].
+        unfold Bind2; rewrite r, refineEquiv_bind_unit.
+        rewrite IHl, refineEquiv_bind_unit; simpl.
         unfold AppendEncodeM.
-        destruct (encode_A' a ce); simpl.
-        destruct ((fix AlignedEncodeList (As : list A) : 
+        destruct (encode_A' ce); simpl.
+        destruct ((fix AlignedEncodeList (As : list A) :
               CacheFormat -> ByteString * CacheFormat :=
                 match As with
                 | [] => fun ce0 : CacheFormat => (ByteString_id, ce0)
                 | a1 :: As' =>
                     fun ce0 : CacheFormat =>
-                    let (c0, ce') := encode_A' a1 ce0 in
+                    let (c0, ce') := (projT1 (X a1) ce0) in
                     let (c', ce'0) := AlignedEncodeList As' ce' in (ByteString_enqueue_ByteString c0 c', ce'0)
-                end) a0 c).
+                end) l c).
         reflexivity.
-    - induction a; intros; simpl; eauto.
-      unfold AppendEncodeM in *.
-      specialize (H a ce).
-      destruct (encode_A' a ce); simpl.
-      specialize (IHa c).
-      revert IHa.
+    - induction l; intros; simpl; eauto.
+      destruct (X a) as [encode_A' [? [? ?] ] ].
+      unfold AppendEncodeM in *; simpl.
+      specialize (e ce).
+      destruct (encode_A' ce); simpl.
+      specialize (IHl c).
+      revert IHl.
       simpl.
-      destruct ((fix AlignedEncodeList (As : list A) : 
+      destruct ((fix AlignedEncodeList (As : list A) :
                    CacheFormat -> ByteString * CacheFormat :=
                    match As with
                    | [] => fun ce0 : CacheFormat => (ByteString_id, ce0)
                 | a1 :: As' =>
                     fun ce0 : CacheFormat =>
-                    let (c0, ce') := encode_A' a1 ce0 in
+                    let (c0, ce') := (projT1 (X a1)) ce0 in
                     let (c', ce'0) := AlignedEncodeList As' ce' in (ByteString_enqueue_ByteString c0 c', ce'0)
-                end) a0 c); simpl in *; intros.
-      rewrite padding_ByteString_enqueue_ByteString, H, IHa; reflexivity.
-    - intros; induction a.
-      simpl; eapply Return_EncodeMEquivAlignedEncodeM.
-      simpl.
-      eapply Append_EncodeMEquivAlignedEncodeM; eauto.
+                end) l c); simpl in *; intros.
+      rewrite padding_ByteString_enqueue_ByteString, e, IHl; reflexivity.
+    - intros; induction l.
+      + simpl; eapply Return_EncodeMEquivAlignedEncodeM.
+      + simpl; destruct (X a) as [encode_A' [? [? ?] ] ];
+          eapply Append_EncodeMEquivAlignedEncodeM; eauto.
   Qed.
 
 End AlignedList.

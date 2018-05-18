@@ -194,37 +194,31 @@ Section AlignedDecoders.
   Local Arguments split2 : simpl never.
 
   Lemma CorrectAlignedEncoderForFormat2Char
-    : CorrectAlignedEncoder
-        (fun (w : word 16) => format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
-        (fun (w : word 16) sz => AppendAlignedEncodeM (@SetCurrentByte _ _ sz (split2 8 8 w))
+    : forall (w : word 16),
+      CorrectAlignedEncoder
+        (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+        (fun sz => AppendAlignedEncodeM (@SetCurrentByte _ _ sz (split2 8 8 w))
                                                       (SetCurrentByte (split1 8 8 w))).
   Proof.
-    pose proof (fun a : word 16 => @format_words 8 8 a) as H';
-    eapply refine_CorrectAlignedEncoder.
+    intro; pose proof (@format_words 8 8 w) as H';
+      eapply refine_CorrectAlignedEncoder.
     unfold flip, pointwise_relation; intros.
-    instantiate (1 := fun a => (format_word (split2 8 8 (eq_rect (8 + 8) word a (8 + 8) (trans_plus_comm 8 8)))
-       ThenC (format_word (split1 8 8 (eq_rect (8 + 8) word a (8 + 8) (trans_plus_comm 8 8)))) DoneC)).
-    rewrite (H' a a0).
+    instantiate (1 := (format_word (split2 8 8 (eq_rect (8 + 8) word w (8 + 8) (trans_plus_comm 8 8)))
+       ThenC (format_word (split1 8 8 (eq_rect (8 + 8) word w (8 + 8) (trans_plus_comm 8 8)))))).
+    rewrite (H' ce).
     unfold compose, Bind2; simpl.
     repeat setoid_rewrite Monad.refineEquiv_bind_bind;
       repeat setoid_rewrite <- Monad.refine_bind_unit'.
     f_equiv; intro.
-    f_equiv; intro.
-    repeat setoid_rewrite <- Monad.refine_bind_unit'; simpl.
-    pose proof mempty_right as H; simpl in H; rewrite H.
-    reflexivity.
-    eauto with typeclass_instances.
     eapply (CorrectAlignedEncoderForThenC
               _ _ _
-              _
-              (fun a sz => SetCurrentByte (n := sz) a)).
+              (fun sz => SetCurrentByte (n := sz) _)).
     simpl in *|-*.
-    eapply CorrectAlignedEncoderForDoneC.
     eapply (CorrectAlignedEncoderForFormatChar_f).
     eapply (CorrectAlignedEncoderForFormatChar_f).
   Qed.
 
-    Corollary AlignedDecode2Nat {C}
+  Corollary AlignedDecode2Nat {C}
             {numBytes}
       : forall (v : Vector.t (word 8) (S (S numBytes)))
              (t : _ -> C)
@@ -310,9 +304,10 @@ Section AlignedDecoders.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatNat
-    : CorrectAlignedEncoder
-        (fun (n : nat) => format_nat 8 (monoidUnit := ByteString_QueueMonoidOpt) n)
-        (fun (n : nat) sz => @SetCurrentByte _ _ sz (natToWord 8 n)).
+    : forall (n : nat),
+      CorrectAlignedEncoder
+        (format_nat 8 (monoidUnit := ByteString_QueueMonoidOpt) n)
+        (fun sz => @SetCurrentByte _ _ sz (natToWord 8 n)).
   Proof.
     eapply CorrectAlignedEncoderForFormatChar_f.
   Qed.

@@ -10,30 +10,25 @@ Require Import
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
-        Fiat.Narcissus.BinLib.AlignedByteString
-        Fiat.Narcissus.BinLib.AlignWord
-        Fiat.Narcissus.BinLib.AlignedList
-        Fiat.Narcissus.BinLib.AlignedDecoders
-        Fiat.Narcissus.BinLib.AlignedDecodeMonad
-        Fiat.Narcissus.BinLib.AlignedEncodeMonad
-        Fiat.Narcissus.Formats.WordOpt
-        Fiat.Narcissus.Formats.NatOpt
-        Fiat.Narcissus.Formats.FixListOpt
+        Fiat.Narcissus.BinLib
+        Fiat.Narcissus.Formats
         Fiat.Narcissus.Stores.EmptyStore.
 
-Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
+Open Scope nat_scope.
+Open Scope type_scope.
 
-Definition simple_record := ((word 16) * list (word 8))%type.
+Record simple_record :=
+  { id : word 16;
+    payload : list (word 8) }.
 
 Definition Simple_Format
            (p : simple_record) :=
-        format_nat 8 (|snd p|)
-  ThenC format_word (fst p)
-  ThenC format_list format_word (snd p)
+        format_nat 8 (|p.(payload)|)
+  ThenC format_word p.(id)
+  ThenC format_list format_word p.(payload)
   DoneC.
 
-Definition Simply_OK (p : simple_record) :=
-  ((|snd p|) < pow2 8)%nat.
+Definition Simply_OK (p : simple_record) := (|p.(payload)|) < pow2 8.
 
 Arguments split1 : simpl never.
 Arguments split2 : simpl never.
@@ -42,20 +37,16 @@ Arguments natToWord : simpl never.
 Arguments Guarded_Vector_split : simpl never.
 Arguments Core.append_word : simpl never.
 
+Locate Ltac pose_string_hyps.
+
 Definition simple_encoder :
-  {encode : _ & CorrectAlignedEncoder Simple_Format encode}.
+  CorrectAlignedEncoderFor Simple_Format (fun _ => True).
 Proof.
-  unfold Simple_Format; eexists.
-  eapply CorrectAlignedEncoderForThenC.
-  eapply CorrectAlignedEncoderForThenC.
-  eapply CorrectAlignedEncoderForDoneC_f.
-  apply CorrectAlignedEncoderForFormatList.
-  apply CorrectAlignedEncoderForFormatChar; auto.
-  apply CorrectAlignedEncoderForFormat2Char; auto.
-  apply CorrectAlignedEncoderForFormatNat.
+  start_synthesizing_encoder.
+  align_encoder.
 Defined.
 
-Definition simple_encoder_impl := 
+Definition simple_encoder_impl :=
   Eval simpl in projT1 simple_encoder.
 
 Print simple_encoder_impl.
@@ -92,7 +83,7 @@ Defined.
 Definition ByteAligned_SimpleDecoderTrial_Impl := Eval simpl in projT1 ByteAligned_SimpleDecoderTrial.
 
 Print ByteAligned_SimpleDecoderTrial_Impl.
-(* Old, non-monadic derivations: 
+(* Old, non-monadic derivations:
 
 Definition refine_simple_format
   : { numBytes : _ &

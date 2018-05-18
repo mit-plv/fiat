@@ -752,9 +752,10 @@ Section AlignDecodeWord.
 
   Lemma CorrectAlignedEncoderForFormatChar_f
         {A} (proj : A -> word 8)
-    : CorrectAlignedEncoder
-        (fun (a : A ) => format_word (monoidUnit := ByteString_QueueMonoidOpt) (proj a))
-        (fun (a : A) sz => SetCurrentByte (proj a)).
+    : forall a,
+      CorrectAlignedEncoder
+        (format_word (monoidUnit := ByteString_QueueMonoidOpt) (proj a))
+        (fun sz => SetCurrentByte (proj a)).
   Proof.
     unfold CorrectAlignedEncoder; eexists; split; [ | split].
     - intros; rewrite aligned_format_char_eq.
@@ -792,9 +793,10 @@ Section AlignDecodeWord.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatChar
+        w
     : CorrectAlignedEncoder
-        (fun (w : word 8) => format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
-        (fun (w : word 8) sz => SetCurrentByte w).
+        (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+        (fun sz => SetCurrentByte w).
   Proof.
     eapply (CorrectAlignedEncoderForFormatChar_f id).
   Qed.

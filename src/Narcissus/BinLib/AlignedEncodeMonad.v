@@ -111,7 +111,7 @@ Section AlignedEncodeM.
     | _, _ => @Vector.nil _
     end.
 
-  Definition SetCurrentByte (* Gets the current byte and increments the current index. *)
+  Definition SetCurrentByte (* Sets the bytes at the current index and increments the current index. *)
              {n : nat}
              (a : char)
     : AlignedEncodeM n :=
@@ -162,12 +162,17 @@ Section AlignedEncodeM.
 
   Local Arguments mult : simpl never.
 
+  Definition AlignedEncode_Nil
+             numBytes
+    : AlignedEncodeM numBytes :=
+    (fun v idx ce => (if idx <? S numBytes then @ReturnAlignedEncodeM _ v idx ce else None)).
+
   Lemma Return_EncodeMEquivAlignedEncodeM
     : EncodeMEquivAlignedEncodeM
         (fun (ce : CacheFormat) => (mempty, ce))
-        (fun numBytes v idx ce => (if idx <? S numBytes then @ReturnAlignedEncodeM _ v idx ce else None)).
+        AlignedEncode_Nil.
   Proof.
-    unfold EncodeMEquivAlignedEncodeM, ReturnAlignedEncodeM;
+    unfold EncodeMEquivAlignedEncodeM, AlignedEncode_Nil, ReturnAlignedEncodeM;
       intros; simpl in *; intuition.
     - assert (idx < S (idx + m))%nat as H' by omega;
         rewrite <- ltb_lt in H'; rewrite H'.
@@ -373,37 +378,26 @@ Section AlignedEncodeM.
   Qed.
 
   Definition CorrectAlignedEncoder
-             {A}
-             (format : FormatM A ByteString)
-             (encoder : A -> forall sz, AlignedEncodeM sz)
-    := exists encoder',
-      (forall a ce, refine (format a ce) (ret (encoder' a ce)))
-      /\ (forall a ce, padding (fst (encoder' a ce)) = 0)
-      /\ forall a, EncodeMEquivAlignedEncodeM (encoder' a)
-                                              (encoder a).
+             (format : CacheFormat -> Comp (ByteString * CacheFormat))
+             (encoder : forall sz, AlignedEncodeM sz)
+    := {encoder' : _ &
+                   (forall ce, refine (format ce) (ret (encoder' ce)))
+                   /\ (forall ce, padding (fst (encoder' ce)) = 0)
+                   /\ EncodeMEquivAlignedEncodeM encoder' encoder}.
 
-  Lemma CorrectAlignedEncoderForDoneC_f A B
-        (proj : B -> A)
-        (format_A : FormatM A ByteString)
-        (encode_A : A -> forall sz, AlignedEncodeM sz)
-        (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
-    : CorrectAlignedEncoder
-        (fun b => format_A (proj b) DoneC)
-        (fun b => encode_A (proj b)).
+  Lemma CorrectAlignedEncoderForDoneC
+    : CorrectAlignedEncoder (fun e => Return (ByteString_id, e))
+                            (fun numBytes v idx ce =>
+                               if idx <? S numBytes then ReturnAlignedEncodeM v idx ce else None).
   Proof.
     unfold CorrectAlignedEncoder; intros.
-    destruct encoder_A_OK as [encoder [? [? ?] ] ].
-    exists (fun b => encoder (proj b)); split; intros; eauto.
-    intros; rewrite <- H.
-    unfold compose, Bind2.
-    setoid_rewrite Monad.refineEquiv_bind_unit; simpl.
-    pose proof mempty_right as H'; simpl in H'; setoid_rewrite H'.
-    intros v Comp_v; computes_to_inv; subst.
-    destruct v; simpl in *; auto.
-    computes_to_econstructor; eauto.
+    eexists _; split; [ | split].
+    intros; higher_order_reflexivity.
+    reflexivity.
+    eapply Return_EncodeMEquivAlignedEncodeM.
   Qed.
 
-  Lemma CorrectAlignedEncoderForDoneC A
+  (* Lemma CorrectAlignedEncoderForDoneC A
         (format_A : FormatM A ByteString)
         (encode_A : A -> forall sz, AlignedEncodeM sz)
         (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
@@ -421,19 +415,17 @@ Section AlignedEncodeM.
     intros v Comp_v; computes_to_inv; subst.
     destruct v; simpl in *; auto.
     computes_to_econstructor; eauto.
-  Qed.
+  Qed. *)
 
-  Lemma CorrectAlignedEncoderForThenC {A B}
-        (proj : A -> B)
-        (format_A : FormatM A ByteString)
-        (format_B : FormatM B ByteString)
-        (encode_A : A -> forall sz, AlignedEncodeM sz)
-        (encode_B : B -> forall sz, AlignedEncodeM sz)
+  Lemma CorrectAlignedEncoderForThenC
+        (format_A format_B : CacheFormat -> Comp (ByteString * CacheFormat))
+        (encode_A : forall sz, AlignedEncodeM sz)
+        (encode_B : forall sz, AlignedEncodeM sz)
         (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
         (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
     : CorrectAlignedEncoder
-        (fun a => format_B (proj a) ThenC format_A a)
-        (fun a sz => AppendAlignedEncodeM (encode_B (proj a) sz) (encode_A a sz)).
+        (format_B ThenC format_A)
+        (fun sz => AppendAlignedEncodeM (encode_B sz) (encode_A sz)).
   Proof.
     unfold CorrectAlignedEncoder; intros.
     destruct encoder_A_OK as [encoder_A ?], encoder_B_OK as [encoder_B ?]; intuition
@@ -441,35 +433,49 @@ Section AlignedEncodeM.
     3: eapply Append_EncodeMEquivAlignedEncodeM.
     4: apply H5.
     4: apply H4.
-    3: apply H2.
+    3: apply H0.
     unfold compose, Bind2.
-    rewrite H, Monad.refineEquiv_bind_unit.
     rewrite H1, Monad.refineEquiv_bind_unit.
+    rewrite H, Monad.refineEquiv_bind_unit.
     simpl; unfold AppendEncodeM.
-    destruct (encoder_B (proj a) ce); simpl;
-      destruct (encoder_A a c); simpl; reflexivity.
+    destruct (encoder_B ce); simpl;
+      destruct (encoder_A c); simpl; reflexivity.
     simpl; unfold AppendEncodeM.
-    specialize (H2 (proj a) ce); destruct (encoder_B (proj a) ce); simpl.
-    specialize (H0 a c); destruct (encoder_A a c); simpl.
+    specialize (H0 ce); destruct (encoder_B ce); simpl.
+    specialize (H3 c); destruct (encoder_A c); simpl.
     simpl in *.
     rewrite padding_ByteString_enqueue_aligned_ByteString; eauto.
   Qed.
 
 End AlignedEncodeM.
 
-Add Parametric Morphism cache A
-: (@CorrectAlignedEncoder cache A)
-  with signature
-  (pointwise_relation _ (pointwise_relation _ (@refine _)))
-    --> (pointwise_relation _ eq) --> impl
-    as refine_CorrectAlignedEncoder.
+Lemma refine_CorrectAlignedEncoder {cache : Cache}
+  : forall format format' encode,
+    (forall ce : CacheFormat, refine (format ce) (format' ce))
+    -> (CorrectAlignedEncoder format' encode)
+    -> (CorrectAlignedEncoder format encode).
 Proof.
-  unfold impl, pointwise_relation, CorrectAlignedEncoder; intros.
-  destruct H1; eexists; intuition.
+  unfold CorrectAlignedEncoder; intros.
+  destruct X; eexists; intuition.
   - rewrite H; eauto.
-  - rewrite H0; eauto.
 Qed.
 
+Definition Format_Source_Intersection
+           {A B}
+           {cache}
+           (format : @FormatM A B cache)
+           (predicate : A -> Prop)
+  : @FormatM A B cache
+  := fun a ce bce =>
+       predicate a /\
+       format a ce bce.
+
+Definition CorrectAlignedEncoderFor {A} {cache}
+           (format : @FormatM A ByteString cache)
+           (predicate : A -> Prop)
+  := {encode : _ & forall a,
+          predicate a ->
+          CorrectAlignedEncoder (format a) (encode a)}.
+
 Delimit Scope AlignedEncodeM_scope with AlignedEncodeM.
-Notation "x <- y ; z" := (AppendAlignedEncodeM y (fun x => z)) : AlignedEncodeM_scope.
-Notation "'return' x" := (ReturnAlignedEncodeM x) (at level 10): AlignedEncodeM_scope.
+Notation "y ++ z" := (AppendAlignedEncodeM y (fun x => z)) : AlignedEncodeM_scope.
