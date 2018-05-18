@@ -499,6 +499,55 @@ Section AlignedDecodeM.
 
   Print Assumptions Bind_DecodeMEquivAlignedDecodeM.
 
+  Definition CorrectAlignedDecoder {A : Set}
+             (predicate : A -> Prop)
+             (format : FormatM A ByteString)
+             (decoder : forall sz, AlignedDecodeM A sz)
+    := {decodePlusCacheInv : _ &
+                   (exists P_inv : (CacheDecode -> Prop) -> Prop,
+                     (cache_inv_Property (snd decodePlusCacheInv) P_inv ->
+                      CorrectDecoder _ predicate (fun (_ : A) (_ : _) => True) format (fst decodePlusCacheInv) (snd decodePlusCacheInv)) /\
+                     cache_inv_Property (snd decodePlusCacheInv) P_inv)
+                   /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder}.
+
+  Definition CorrectAlignedDecoderFor {A : Set}
+             (predicate : A -> Prop)
+             (format : FormatM A ByteString)
+    := {decoder : forall sz, AlignedDecodeM A sz &
+                             {decodePlusCacheInv : _ &
+                                                   (exists P_inv : (CacheDecode -> Prop) -> Prop,
+                                                       (cache_inv_Property (snd decodePlusCacheInv) P_inv ->
+                                                        CorrectDecoder _ predicate (fun (_ : A) (_ : _) => True) format (fst decodePlusCacheInv) (snd decodePlusCacheInv)) /\
+                                                       cache_inv_Property (snd decodePlusCacheInv) P_inv)
+                                                   /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder} }.
+
+  Lemma Start_CorrectAlignedDecoderFor
+        {A : Set}
+        Invariant
+        FormatSpec
+        (decoder decoder_opt : DecodeM A ByteString)
+        (decoderM : forall sz, AlignedDecodeM A sz)
+        (cache_inv : CacheDecode -> Prop)
+        (P_inv : (CacheDecode -> Prop) -> Prop)
+        (decoder_OK :
+           cache_inv_Property cache_inv P_inv
+           -> CorrectDecoder (A := A) _ Invariant (fun _ _ => True)
+                             FormatSpec decoder cache_inv)
+        (cache_inv_OK : cache_inv_Property cache_inv P_inv)
+        (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)
+        (monadized_decoder : DecodeMEquivAlignedDecodeM decoder_opt decoderM)
+    : @CorrectAlignedDecoderFor A Invariant FormatSpec.
+  Proof.
+    exists decoderM.
+    exists (decoder_opt, cache_inv); split. exists P_inv; split; simpl; eauto.
+    unfold CorrectDecoder in *; intuition; intros.
+    - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4 H5).
+      rewrite decoder_opt_OK in H6; eauto.
+    - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
+    - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
+    - apply monadized_decoder.
+  Defined.
+
 End AlignedDecodeM.
 
 Delimit Scope AlignedDecodeM_scope with AlignedDecodeM.

@@ -307,6 +307,9 @@ src/FiniteSetADTs/FiniteSetADTMethodLaws.v
 src/FiniteSetADTs/FiniteSetRefinement.v
 src/FiniteSetADTs/NatWord.v
 src/FiniteSetADTs/WordInterface.v
+src/Narcissus/BinLib.v
+src/Narcissus/Formats.v
+src/Narcissus/Automation/AlignedAutomation.v
 src/Narcissus/Automation/CacheEncoders.v
 src/Narcissus/Automation/Solver.v
 src/Narcissus/Automation/SolverOpt.v
@@ -345,6 +348,7 @@ src/Narcissus/Examples/DNS/RRecordTypes.v
 src/Narcissus/Examples/DNS/SimpleDNSPacket.v
 src/Narcissus/Examples/DNS/SimpleDnsOpt.v
 src/Narcissus/Examples/DNS/SimpleRRecordTypes.v
+src/Narcissus/Examples/DNS/SimpleResourceRecord.v
 src/Narcissus/Examples/NetworkStack/ARPPacket.v
 src/Narcissus/Examples/NetworkStack/EthernetFrame.v
 src/Narcissus/Examples/NetworkStack/EthernetHeader.v

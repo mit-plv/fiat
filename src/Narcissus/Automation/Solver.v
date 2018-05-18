@@ -605,6 +605,8 @@ Ltac decode_step cleanup_tac :=
   | |- NoDupVector _ => Discharge_NoDupVector
   | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
     intros; apply Vector_predicate_rest_True
+  | |- context[FixList_predicate_rest (fun _ _ => True) _ _ _] =>
+    intros; eapply FixedList_predicate_rest_True
   | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
     let a'' := fresh in
     intro a''; intros; repeat instantiate (1 := fun _ _ => True);

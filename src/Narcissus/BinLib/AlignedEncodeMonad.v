@@ -386,9 +386,7 @@ Section AlignedEncodeM.
                    /\ EncodeMEquivAlignedEncodeM encoder' encoder}.
 
   Lemma CorrectAlignedEncoderForDoneC
-    : CorrectAlignedEncoder (fun e => Return (ByteString_id, e))
-                            (fun numBytes v idx ce =>
-                               if idx <? S numBytes then ReturnAlignedEncodeM v idx ce else None).
+    : CorrectAlignedEncoder (fun e => Return (ByteString_id, e)) AlignedEncode_Nil.
   Proof.
     unfold CorrectAlignedEncoder; intros.
     eexists _; split; [ | split].

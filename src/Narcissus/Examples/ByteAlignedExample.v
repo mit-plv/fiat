@@ -10,6 +10,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
+        Fiat.Narcissus.Automation.AlignedAutomation
         Fiat.Narcissus.BinLib
         Fiat.Narcissus.Formats
         Fiat.Narcissus.Stores.EmptyStore.
@@ -17,166 +18,55 @@ Require Import
 Open Scope nat_scope.
 Open Scope type_scope.
 
+(* Our source data is a record with two fields. *)
 Record simple_record :=
   { id : word 16;
     payload : list (word 8) }.
 
-Definition Simple_Format
+Definition simple_format
            (p : simple_record) :=
-        format_nat 8 (|p.(payload)|)
-  ThenC format_word p.(id)
-  ThenC format_list format_word p.(payload)
+        format_nat 8 (|p.(payload)|)        (* Format the length of the payload as an 8-bit word. *)
+  ThenC format_word p.(id)                  (* Format the id of the record. *)
+  ThenC format_list format_word p.(payload) (* Format the actual payload. *)
   DoneC.
 
-Definition Simply_OK (p : simple_record) := (|p.(payload)|) < pow2 8.
+(* A record needs to have fewer than 2^8 characters in its payload for
+   the format to be invertible. *)
+Definition simple_record_OK (p : simple_record) := (| p.(payload)| ) < pow2 8.
 
-Arguments split1 : simpl never.
-Arguments split2 : simpl never.
-Arguments weq : simpl never.
-Arguments natToWord : simpl never.
-Arguments Guarded_Vector_split : simpl never.
-Arguments Core.append_word : simpl never.
-
-Locate Ltac pose_string_hyps.
-
+(* Step One: Synthesize an encoder and a proof that it is correct. *)
 Definition simple_encoder :
-  CorrectAlignedEncoderFor Simple_Format (fun _ => True).
+  CorrectAlignedEncoderFor simple_format (fun _ => True).
 Proof.
-  start_synthesizing_encoder.
-  align_encoder.
+  synthesize_aligned_encoder.
 Defined.
 
-Definition simple_encoder_impl :=
-  Eval simpl in projT1 simple_encoder.
+(* Step Two: Extract the encoder function, and have it start encoding
+   at the start of the provided ByteString [v]. *)
+Definition simple_encoder_impl r {sz} v :=
+  Eval simpl in (projT1 simple_encoder r sz v 0 tt).
 
-Print simple_encoder_impl.
-
-Definition Simple_Format_decoder
-  : CorrectDecoderFor Simply_OK Simple_Format.
+(* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
+Definition simple_decoder
+  : CorrectAlignedDecoderFor simple_record_OK simple_format.
 Proof.
-  start_synthesizing_decoder.
-  normalize_compose monoid.
-  repeat decode_step idtac.
-  intros; eauto using FixedList_predicate_rest_True.
-  synthesize_cache_invariant.
-  cbv beta; optimize_decoder_impl.
+  synthesize_aligned_decoder.
 Defined.
 
-Definition SimpleDecoderImpl
-    := Eval simpl in (proj1_sig Simple_Format_decoder).
+(* Step Four: Extract the decoder function, and have /it/ start decoding 
+   at the start of the provided ByteString [v]. *)
+Definition simple_decoder_impl {sz} v :=
+  Eval simpl in (projT1 simple_decoder sz v 0 tt).
 
-Definition ByteAligned_SimpleDecoderTrial
-  : {impl : _ & DecodeMEquivAlignedDecodeM (fst SimpleDecoderImpl) impl}.
-Proof.
-  eexists; intros.
-  unfold SimpleDecoderImpl.
-  eapply (AlignedDecodeNatM (C := simple_record) (cache := test_cache)); intros.
-  eapply (AlignedDecodeBind2CharM (cache := test_cache)); intros; eauto.
-  eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
-  eapply AlignedDecodeListM with (A_decode := decode_word (sz := 8)) (n := b) (t := fun l bs cd' => Some (b0, l, bs, cd')).
-  eapply (AlignedDecodeCharM (cache := test_cache)); intros; eauto.
-  intros; eapply Return_DecodeMEquivAlignedDecodeM.
-  simpl; reflexivity.
-  simpl; higher_order_reflexivity.
-Defined.
+(* We can now run these functions. As expected, the decoder successfully
+   recovers the encoded packet.*)
+Eval compute in
+    Ifopt (simple_encoder_impl
+             {| id := natToWord _ 10;
+                payload := [wzero 8; wzero 8; wzero 8] |}
+             (initialize_Aligned_ByteString 15))
+  as bs Then simple_decoder_impl (fst (fst bs))
+        Else None.
 
-Definition ByteAligned_SimpleDecoderTrial_Impl := Eval simpl in projT1 ByteAligned_SimpleDecoderTrial.
-
-Print ByteAligned_SimpleDecoderTrial_Impl.
-(* Old, non-monadic derivations:
-
-Definition refine_simple_format
-  : { numBytes : _ &
-    { v : _ &
-    { c : _ & forall (p : simple_record)
-                     (p_OK : Simply_OK p),
-          refine (Simple_Format p ())
-                 (ret (@build_aligned_ByteString (numBytes p) (v p), c p)) } } }.
-Proof.
-  unfold Simple_Format.
-  eexists _, _, _; intros.
-  (* Step 1: simplification with monad laws so that any complex
-       subformats are inlined properly. (Not needed for this example) *)
-  eapply refine_refineEquiv_Proper;
-    [ unfold flip;
-      repeat first
-             [ etransitivity; [ apply refineEquiv_compose_compose with (monoid := monoid) | idtac ]
-             | etransitivity; [ apply refineEquiv_compose_Done with (monoid := monoid) | idtac ]
-             | apply refineEquiv_under_compose with (monoid := monoid) ];
-      intros; higher_order_reflexivity
-    | reflexivity | ].
-    etransitivity.
-    (* Replace formats with byte-aligned versions. *)
-    eapply AlignedFormatChar; eauto.
-    eapply AlignedFormat2Char; eauto.
-    eapply AlignedFormatListDoneC with (A_OK := fun _ => True); intros; eauto.
-    rewrite aligned_format_char_eq.
-    encoder_reflexivity.
-    encoder_reflexivity.
-Defined.
-
-Definition byte_aligned_simple_encoder
-             (r : simple_record)
-  := Eval simpl in (projT1 (projT2 refine_simple_format) r).
-
-
-
-Ltac rewrite_DecodeOpt2_fmap :=
-  set_refine_evar;
-  progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
-  ?DecodeOpt2_fmap_if_bool;
-  subst_refine_evar.
-
-Local Open Scope AlignedDecodeM_scope.
-
-Definition ByteAligned_SimpleDecoderImpl {A}
-           (f : _ -> A)
-           n
-  : {impl : _ & forall (v : Vector.t _ (3 + n)),
-         f (fst SimpleDecoderImpl (build_aligned_ByteString v) ()) =
-         impl v () }.
-Proof.
-  eexists _; intros.
-  etransitivity.
-  unfold SimpleDecoderImpl.
-  set_refine_evar; simpl.
-  unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
-  rewrite (@AlignedDecodeNat test_cache).
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
-  rewrite (@AlignedDecode2Char test_cache).
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
-  erewrite optimize_align_decode_list.
-  rewrite Ifopt_Ifopt; simpl.
-  etransitivity.
-  eapply optimize_under_if_opt; simpl; intros.
-  higher_order_reflexivity.
-  reflexivity.
-  Focus 2.
-  clear H; intros.
-  etransitivity.
-  match goal with
-    |- ?b = _ =>
-    let b' := (eval pattern (build_aligned_ByteString v0) in b) in
-    let b' := match b' with ?f _ => f end in
-      eapply (@optimize_Guarded_Decode n0 _ 1 b')
-  end.
-  destruct n0 as [ | [ | ?] ]; intros; try omega.
-  apply (@decode_word_aligned_ByteString_overflow test_cache) with (sz := 1); auto.
-  destruct n0 as [ | ?]; intros; try omega.
-  higher_order_reflexivity.
-  instantiate (1 := fun n1 v1 (cd0 : CacheDecode) =>
-                      If NPeano.leb 1 n1 Then (Some ((Vector.hd (Guarded_Vector_split 1 n1 v1), @existT _ (Vector.t _) _ (Vector.tl (Guarded_Vector_split 1 n1 v1))), cd0)) Else None).
-  simpl; find_if_inside; simpl; try reflexivity.
-  pattern n0, v0; apply Vector.caseS; simpl; intros.
-  unfold decode_word, WordOpt.decode_word.
-  rewrite aligned_decode_char_eq; reflexivity.
-  subst_refine_evar; higher_order_reflexivity.
-  higher_order_reflexivity.
-Defined.
-
-Definition ByteAligned_SimpleDecoderImpl' n :=
-  Eval simpl in (projT1 (ByteAligned_SimpleDecoderImpl id n)).
-
-Print ByteAligned_SimpleDecoderImpl'. *)
+(* We can also examine the synthesized functions*)
+Print simple_decoder_impl.

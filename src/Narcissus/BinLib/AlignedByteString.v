@@ -2090,3 +2090,9 @@ Fixpoint decode_list'
       omega.
       omega.
   Qed.
+
+  Fixpoint initialize_Aligned_ByteString (n : nat) :=
+    match n with
+    | 0 => Vector.nil (word 8)
+    | S n' => Vector.cons _ (wzero 8) _ (initialize_Aligned_ByteString n')
+    end.
