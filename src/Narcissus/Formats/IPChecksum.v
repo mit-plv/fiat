@@ -1709,8 +1709,6 @@ Proof.
   simpl; intros; higher_order_reflexivity.
 Qed.
 
-
-
 Ltac resolve_Checksum :=
   let a := fresh in
   let ctx := fresh in

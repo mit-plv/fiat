@@ -74,41 +74,18 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
   lt (|ipv4!"Options"|) 11 /\
   lt (20 + 4 * |ipv4!"Options"|) (wordToNat ipv4!"TotalLength").
 
-Definition calculate_Checksum {sz}
-  : AlignedEncodeM sz :=
-  fun v idx' ce =>
-    let checksum := InternetChecksum.Vector_checksum v in
-    (SetByteAt (split1 8 8 checksum) 10 >>
-    SetByteAt (split2 8 8 checksum) 11)%AlignedEncodeM v idx' ce.
-
-Lemma CorrectAlignedEncoderForIPChecksumThenC
-      (format_A format_B : CacheFormat -> Comp (ByteString * CacheFormat))
-      (encode_A : forall sz, AlignedEncodeM sz)
-      (encode_B : forall sz, AlignedEncodeM sz)
-      (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
-      (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
-    : CorrectAlignedEncoder
-        (format_B ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_A)
-        (fun sz => encode_B sz >>
-                   SetCurrentByte (wzero 8) >>
-                   SetCurrentByte (wzero 8) >>
-                   encode_A sz >>
-                   calculate_Checksum)% AlignedEncodeM.
-  Proof.
-  Admitted.
-
 (* Step One: Synthesize an encoder and a proof that it is correct. *)
+
 Definition ipv4_encoder :
   CorrectAlignedEncoderFor IPv4_Packet_Format IPv4_Packet_OK.
 Proof.
-  start_synthesizing_encoder.
-  eapply CorrectAlignedEncoderForIPChecksumThenC.
-
-
-
   synthesize_aligned_encoder.
 Defined.
 
+(* Step Two: Extract the encoder function, and have it start encoding
+   at the start of the provided ByteString [v]. *)
+Definition ipv4_encoder_impl r {sz} v :=
+  Eval simpl in (projT1 ipv4_encoder r sz v 0 tt).
 
 Definition IPv4_Packet_formatd_measure (ipv4_b : ByteString)
   : nat :=
@@ -117,9 +94,6 @@ Definition IPv4_Packet_formatd_measure (ipv4_b : ByteString)
   | Some n => 32 * wordToNat (fst n)
   | None => 0
   end.
-
-Arguments mult : simpl never.
-Arguments decode_word' : simpl never.
 
 Lemma IPv4_Packet_Headiner_Len_Bound
   : forall (a : IPv4_Packet) (a_OK : IPv4_Packet_OK a),
@@ -193,8 +167,6 @@ Qed.
 Hint Resolve IPv4_Packet_Header_Len_eq : data_inv_hints.
 
 
-Local Arguments mempty / .
-Local Arguments NPeano.modulo : simpl never.
 
 Definition EthernetHeader_decoder
   : CorrectDecoderFor IPv4_Packet_OK format_IPv4_Packet_Spec.

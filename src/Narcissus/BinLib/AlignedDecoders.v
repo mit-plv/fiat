@@ -30,7 +30,9 @@ Require Import
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Common.IterateBoundedIndex
-        Fiat.Common.Tactics.CacheStringConstant.
+        Fiat.Common.Tactics.CacheStringConstant
+        Fiat.Narcissus.Formats.IPChecksum
+        Fiat.Narcissus.Common.ComposeCheckSum.
 
 Require Import
         Bedrock.Word.
@@ -90,60 +92,6 @@ Section AlignedDecoders.
   Variable addE_addE_plus :
     forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).
 
-  Lemma format_words' {n m}
-    : forall (w : word (n + m)) ce,
-      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
-             ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1' _ _ w)
-                           ThenC (format_word (monoidUnit := ByteString_QueueMonoidOpt) (split2' _ _ w)))
-                ce).
-  Proof.
-    induction n.
-    - unfold compose; simpl; intros.
-      unfold format_word at 2; simpl.
-      autorewrite with monad laws.
-      simpl; rewrite addE_addE_plus.
-      pose proof mempty_left as H'; simpl in H'; rewrite H'.
-      reflexivity.
-    - simpl; intros.
-      rewrite (word_split_SW w) at 1.
-      rewrite format_SW_word.
-      unfold compose, Bind2.
-      rewrite (IHn (word_split_tl w) (addE ce 1)).
-      unfold compose, Bind2.
-      unfold format_word; autorewrite with monad laws.
-      simpl.
-      rewrite format_word_S.
-      pose proof mappend_assoc as H'; simpl in H'.
-      rewrite !H'.
-      rewrite !addE_addE_plus; simpl.
-      f_equiv.
-      f_equiv.
-      f_equiv.
-      rewrite !word_split_hd_SW_word, !word_split_tl_SW_word.
-      fold plus.
-      clear;
-        generalize (split1' n m (word_split_tl w))
-                   (ByteString_enqueue (word_split_hd w) ByteString_id).
-      induction w0; simpl in *.
-      + intros; pose proof (mempty_right b) as H; simpl in H; rewrite H; eauto.
-      + intros.
-        rewrite <- (IHw0 (wtl w) b0).
-        pose proof enqueue_mappend_opt as H'''; simpl in H'''.
-        rewrite <- H'''; eauto.
-      + eauto.
-  Qed.
-
-  Lemma format_words {n m}
-    : forall (w : word (n + m)) ce,
-      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
-             ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split2 m n (eq_rect _ _ w _ (trans_plus_comm _ _)))
-                           ThenC (format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1 m n (eq_rect _ _ w _ (trans_plus_comm _ _)))))
-                ce).
-  Proof.
-    intros; rewrite format_words'.
-    rewrite split1'_eq, split2'_eq; reflexivity.
-  Qed.
-
   Lemma AlignedFormat2Char' {numBytes}
     : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
@@ -154,7 +102,7 @@ Section AlignedDecoders.
                                                   (Vector.cons _ (split2' 8 8 w) _ v)), ce')).
   Proof.
     unfold compose, Bind2; intros.
-    intros; setoid_rewrite (@format_words' 8 8 w).
+    intros; setoid_rewrite (@format_words' _ _ 8 8 addE_addE_plus w).
     rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     simplify with monad laws.
     unfold snd.
@@ -177,7 +125,7 @@ Section AlignedDecoders.
                                                   (Vector.cons _ (split1 8 8 w) _ v)), ce')).
   Proof.
     unfold compose, Bind2; intros.
-    intros; setoid_rewrite (@format_words 8 8 w).
+    intros; setoid_rewrite (@format_words _ _ 8 8 addE_addE_plus w).
     rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     simplify with monad laws.
     unfold snd.
@@ -200,7 +148,7 @@ Section AlignedDecoders.
         (fun sz => AppendAlignedEncodeM (@SetCurrentByte _ _ sz (split2 8 8 w))
                                                       (SetCurrentByte (split1 8 8 w))).
   Proof.
-    intro; pose proof (@format_words 8 8 w) as H';
+    intro; pose proof (@format_words _ _ 8 8 addE_addE_plus w) as H';
       eapply refine_CorrectAlignedEncoder.
     unfold flip, pointwise_relation; intros.
     instantiate (1 := (format_word (split2 8 8 (eq_rect (8 + 8) word w (8 + 8) (trans_plus_comm 8 8)))
@@ -962,7 +910,7 @@ Section AlignedDecoders.
                                     (split2' 24 8 w) _ v)))), ce')).
   Proof.
     unfold compose, Bind2; intros.
-    intros; setoid_rewrite (@format_words' 8 24 w).
+    intros; setoid_rewrite (@format_words' _ _ 8 24 addE_addE_plus w).
     rewrite (@AlignedFormatChar _ _ 3).
     simplify with monad laws.
     unfold snd.
@@ -975,10 +923,10 @@ Section AlignedDecoders.
     instantiate (1 := Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _)))).
     unfold append.
     reflexivity.
-    setoid_rewrite (@format_words' 8 16 _).
+    setoid_rewrite (@format_words' _ _ 8 16 addE_addE_plus _).
     rewrite (@AlignedFormatChar _ _ 2).
     reflexivity.
-    setoid_rewrite (@format_words' 8 8).
+    setoid_rewrite (@format_words' _ _ 8 8 addE_addE_plus ).
     rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     rewrite !addE_addE_plus; simpl plus.
     rewrite !split2_split2.
@@ -1006,7 +954,7 @@ Section AlignedDecoders.
                                     (split1 8 24 w) _ v)))), ce')).
   Proof.
     unfold compose, Bind2; intros.
-    intros; setoid_rewrite (@format_words 8 24 w).
+    intros; setoid_rewrite (@format_words _ _ 8 24 addE_addE_plus w).
     rewrite (@AlignedFormatChar _ _ 3).
     simplify with monad laws.
     unfold snd.
@@ -1019,13 +967,14 @@ Section AlignedDecoders.
     instantiate (1 := Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _)))).
     unfold append.
     reflexivity.
-    setoid_rewrite (@format_words 8 16 _).
+    setoid_rewrite (@format_words _ _ 8 16 addE_addE_plus  _).
     rewrite (@AlignedFormatChar _ _ 2).
     reflexivity.
-    setoid_rewrite (@format_words 8 8).
+    setoid_rewrite (@format_words _ _ 8 8).
     rewrite (@AlignedFormatChar _ _ 1) by apply aligned_format_char_eq.
     rewrite !addE_addE_plus; simpl plus.
     f_equiv.
+    eauto.
   Qed.
 
   Fixpoint align_decode_list {A}
@@ -1111,12 +1060,12 @@ Section AlignedDecoders.
       destruct (ByteString_dequeue v) as [ [? ?] | ]; try reflexivity.
       simpl.
       pose proof (IHn m b0).
-      destruct (monoid_dequeue_word (n + m) b0) as [ [? ?] | ];
+      destruct (WordOpt.monoid_dequeue_word (n + m) b0) as [ [? ?] | ];
         simpl in *; try congruence.
       simpl in *.
-      destruct (monoid_dequeue_word n b0) as [ [? ?] | ];
+      destruct (WordOpt.monoid_dequeue_word n b0) as [ [? ?] | ];
         simpl in *; try congruence.
-      destruct (monoid_dequeue_word n b0) as [ [? ?] | ];
+      destruct (WordOpt.monoid_dequeue_word n b0) as [ [? ?] | ];
         simpl in *; try congruence.
   Qed.
 
@@ -1201,7 +1150,7 @@ Section AlignedDecoders.
       simpl.
       unfold decode_unused_word in H0.
       simpl in H0.
-      destruct (decode_unused_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
+      destruct (decode_unused_word' (8 * sz)
                                     (build_aligned_ByteString b));
         simpl in *; try congruence.
   Qed.
@@ -1242,15 +1191,7 @@ Section AlignedDecoders.
       simpl; intros; unfold Vector_split; simpl.
       reflexivity.
     - simpl.
-      replace (S
-                 (numBytes' +
-                  S
-                    (numBytes' +
-                     S
-                       (numBytes' +
-                        S
-                          (numBytes' +
-                           S (numBytes' + S (numBytes' + S (numBytes' + S (numBytes' + 0))))))))) with (8 + 8 * numBytes') by omega.
+      replace (8 * S numBytes') with (8 + 8 * numBytes') by omega.
       unfold decode_unused_word; intros.
       rewrite decode_unused_word_plus'.
       rewrite (@aligned_decode_unused_char_eq ).
@@ -1592,6 +1533,30 @@ Section AlignedDecoders.
       intro.
       rewrite <- NPeano.leb_le in H1; congruence.
   Qed.
+
+
+  Definition calculate_Checksum {sz}
+    : AlignedEncodeM sz :=
+    fun v idx' ce =>
+      let checksum := InternetChecksum.Vector_checksum v in
+      (SetByteAt (split1 8 8 checksum) 10 >>
+                 SetByteAt (split2 8 8 checksum) 11)%AlignedEncodeM v idx' ce.
+
+  Lemma CorrectAlignedEncoderForIPChecksumThenC
+        (format_A format_B : CacheFormat -> Comp (ByteString * CacheFormat))
+        (encode_A : forall sz, AlignedEncodeM sz)
+        (encode_B : forall sz, AlignedEncodeM sz)
+        (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+        (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+    : CorrectAlignedEncoder
+        (format_B ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_A)
+        (fun sz => encode_B sz >>
+                            SetCurrentByte (wzero 8) >>
+                            SetCurrentByte (wzero 8) >>
+                            encode_A sz >>
+                            calculate_Checksum)% AlignedEncodeM.
+  Proof.
+  Admitted.
 
 End AlignedDecoders.
 

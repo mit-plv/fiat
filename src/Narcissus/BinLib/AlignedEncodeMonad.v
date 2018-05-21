@@ -111,7 +111,7 @@ Section AlignedEncodeM.
     | _, _ => @Vector.nil _
     end.
 
-  Definition SetCurrentByte (* Sets the bytes at the current index and increments the current index. *)
+  Definition SetCurrentByte (* Sets a single byte at the current index and increments the current index. *)
              {n : nat}
              (a : char)
     : AlignedEncodeM n :=
@@ -464,6 +464,61 @@ Proof.
   unfold CorrectAlignedEncoder; intros.
   destruct X; eexists; intuition.
   - rewrite H; eauto.
+Qed.
+
+Lemma CorrectAlignedEncoderThenCAssoc {cache : Cache}
+      (format_A format_B format_C : CacheFormat -> Comp (ByteString * CacheFormat))
+      (encode : forall sz, AlignedEncodeM sz)
+  : CorrectAlignedEncoder
+      ((format_A ThenC format_B) ThenC format_C)
+      encode
+    -> CorrectAlignedEncoder
+         (format_A ThenC format_B ThenC format_C)
+         encode.
+Proof.
+  intros; eapply refine_CorrectAlignedEncoder; eauto.
+  unfold compose; intros.
+  unfold Bind2.
+  repeat setoid_rewrite Monad.refineEquiv_bind_bind.
+  setoid_rewrite Monad.refineEquiv_bind_unit; simpl; f_equiv; intro.
+  simpl; f_equiv; intro.
+  simpl; f_equiv; intro.
+  rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
+Qed.
+
+Corollary Guarded_CorrectAlignedEncoderThenCAssoc {cache : Cache}
+          (format_A format_B format_C : CacheFormat -> Comp (ByteString * CacheFormat))
+          (encode : forall sz, AlignedEncodeM sz)
+  : (forall ce bs ce', computes_to (format_A ce) (bs, ce') ->
+                       length_ByteString bs < 8)%nat
+    -> CorrectAlignedEncoder
+         ((format_A ThenC format_B) ThenC format_C)
+         encode
+    -> CorrectAlignedEncoder
+         (format_A ThenC format_B ThenC format_C)
+         encode.
+Proof.
+  intros; eapply CorrectAlignedEncoderThenCAssoc; eauto.
+Qed.
+
+Lemma CorrectAlignedEncoderThenCAssoc' {cache : Cache}
+      (format_A format_B format_C : CacheFormat -> Comp (ByteString * CacheFormat))
+      (encode : forall sz, AlignedEncodeM sz)
+  : CorrectAlignedEncoder
+      (format_A ThenC format_B ThenC format_C)
+      encode
+    -> CorrectAlignedEncoder
+         ((format_A ThenC format_B) ThenC format_C)
+         encode.
+Proof.
+  intros; eapply refine_CorrectAlignedEncoder; eauto.
+  unfold compose; intros.
+  unfold Bind2.
+  repeat setoid_rewrite Monad.refineEquiv_bind_bind.
+  setoid_rewrite Monad.refineEquiv_bind_unit; simpl; f_equiv; intro.
+  simpl; f_equiv; intro.
+  simpl; f_equiv; intro.
+  rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
 Qed.
 
 Definition Format_Source_Intersection

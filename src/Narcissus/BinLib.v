@@ -19,3 +19,9 @@ Global Arguments weq : simpl never.
 Global Arguments natToWord : simpl never.
 Global Arguments Guarded_Vector_split : simpl never.
 Global Arguments Core.append_word : simpl never.
+Global Arguments split1' : simpl never.
+Global Arguments split2' : simpl never.
+Global Arguments natToWord : simpl never.
+Global Arguments combine : simpl never.
+Global Arguments Vector.nth : simpl never.
+Global Arguments SetCurrentBytes : simpl never.

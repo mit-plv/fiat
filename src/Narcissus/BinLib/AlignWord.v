@@ -386,6 +386,44 @@ Section AlignWord.
         * simpl; rewrite <- IHw'; reflexivity.
   Qed.
 
+  Lemma CollapseFormatWord'
+    : forall {sz sz'} (w : word sz) (w' : word sz') k ce,
+      refine (((format_word (combine w' w))
+                 ThenC k) ce)
+             (((format_word w)
+                 ThenC (format_word w')
+                 ThenC k) ce).
+  Proof.
+    intros; unfold compose, format_word, Bind2.
+    autorewrite with monad laws.
+    simpl; rewrite addE_addE_plus.
+    f_equiv.
+    clear; rewrite Plus.plus_comm; reflexivity.
+    intro; rewrite mappend_assoc.
+    destruct a; simpl.
+    f_equiv; f_equiv; f_equiv.
+    revert sz' w'; induction w; simpl; intros.
+    - rewrite mempty_left.
+      generalize mempty; clear; induction w'; intros.
+      + reflexivity.
+      + simpl; rewrite IHw'; reflexivity.
+    - rewrite !enqueue_opt_format_word.
+      replace (encode_word' (sz' + S n) (combine w' (WS b0 w)) mempty)
+        with (encode_word' (S sz' + n) (combine (SW_word b0 w') w) mempty).
+      + rewrite IHw.
+        simpl; rewrite format_word_S.
+        rewrite <- mappend_assoc, word_split_tl_SW_word, word_split_hd_SW_word.
+        f_equal.
+        clear; induction w'.
+        * simpl; rewrite mempty_right; reflexivity.
+        * simpl; rewrite !enqueue_opt_format_word.
+          rewrite IHw'.
+          rewrite mappend_assoc; reflexivity.
+      + clear; revert n w; induction w'; intros.
+        * simpl; eauto.
+        * simpl; rewrite <- IHw'; reflexivity.
+  Qed.
+
   Lemma format_SW_word {n}
     : forall b (w : word n) ce,
       refine (format_word (SW_word b w) ce)
@@ -799,6 +837,197 @@ Section AlignDecodeWord.
         (fun sz => SetCurrentByte w).
   Proof.
     eapply (CorrectAlignedEncoderForFormatChar_f id).
+  Qed.
+
+  Lemma CorrectAlignedEncoderForFormatUnusedWord
+    : CorrectAlignedEncoder
+        (format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8)
+        (fun sz => SetCurrentByte (wzero 8)).
+  Proof.
+    intros; eapply refine_CorrectAlignedEncoder;
+      eauto using (CorrectAlignedEncoderForFormatChar_f id).
+    simpl; intros.
+    unfold format_unused_word, format_unused_word'; simpl.
+    refine pick val (wzero 8); eauto.
+    simplify with monad laws; reflexivity.
+  Qed.
+
+  Lemma CollapseCorrectAlignedEncoderFormatWord
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+    : forall {sz sz'} (w : word sz) (w' : word sz') k encoder,
+      CorrectAlignedEncoder
+        ((format_word (combine w' w))
+                 ThenC k)
+        encoder
+      -> CorrectAlignedEncoder
+           ((format_word w)
+              ThenC (format_word w')
+              ThenC k)
+           encoder.
+  Proof.
+    intros; eapply refine_CorrectAlignedEncoder; eauto.
+    intros; rewrite CollapseFormatWord; eauto.
+    reflexivity.
+  Qed.
+
+  Lemma CollapseCorrectAlignedEncoderFormatWord'
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+    : forall {sz sz'} (w : word sz) (w' : word sz') k encoder,
+      CorrectAlignedEncoder
+        ((format_word w)
+                 ThenC (format_word w')
+                 ThenC k)
+        encoder
+      ->
+      CorrectAlignedEncoder
+        ((format_word (combine w' w))
+                 ThenC k)
+        encoder.
+  Proof.
+    intros; eapply refine_CorrectAlignedEncoder; eauto.
+    intros; rewrite CollapseFormatWord'; eauto.
+    reflexivity.
+  Qed.
+
+  Lemma refine_CollapseFormatWord
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+    : forall {sz sz'} (w : word sz) (w' : word sz') format_1 format_2 ce,
+      refine (format_1 ce) (format_word w ce)
+      -> (forall ce, refine (format_2 ce) (format_word w' ce))
+      -> refine ((format_1
+                 ThenC format_2) ce)
+                ((format_word (combine w' w)) ce).
+  Proof.
+    intros.
+    etransitivity.
+    instantiate (1 := ((format_word (combine w' w)) ThenC (fun ce => ret (ByteString_id, ce))) ce).
+    rewrite <- CollapseFormatWord; eauto.
+    unfold compose, Bind2; intros.
+    rewrite H; setoid_rewrite H0; setoid_rewrite refineEquiv_bind_bind;
+      repeat setoid_rewrite refineEquiv_bind_unit.
+    simpl.
+    pose proof mempty_right; simpl in *; rewrite H1; reflexivity.
+    unfold compose, Bind2; intros; eauto.
+    repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+    pose proof mempty_right; simpl in *; rewrite H1; reflexivity.
+  Qed.
+
+  Lemma format_words' {n m}
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+    : forall (w : word (n + m)) ce,
+      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
+             ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1' _ _ w)
+                           ThenC (format_word (monoidUnit := ByteString_QueueMonoidOpt) (split2' _ _ w)))
+                ce).
+  Proof.
+    induction n.
+    - unfold compose; simpl; intros.
+      unfold format_word at 2; simpl.
+      autorewrite with monad laws.
+      simpl; rewrite addE_addE_plus.
+      pose proof mempty_left as H'; simpl in H'; rewrite H'.
+      reflexivity.
+    - simpl; intros.
+      rewrite (word_split_SW w) at 1.
+      rewrite format_SW_word.
+      unfold compose, Bind2.
+      rewrite (IHn (word_split_tl w) (addE ce 1)).
+      unfold compose, Bind2.
+      unfold format_word; autorewrite with monad laws.
+      simpl.
+      rewrite format_word_S.
+      pose proof mappend_assoc as H'; simpl in H'.
+      rewrite !H'.
+      rewrite !addE_addE_plus; simpl.
+      f_equiv.
+      f_equiv.
+      f_equiv.
+      rewrite !word_split_hd_SW_word, !word_split_tl_SW_word.
+      fold plus.
+      clear;
+        generalize (split1' n m (word_split_tl w))
+                   (ByteString_enqueue (word_split_hd w) ByteString_id).
+      induction w0; simpl in *.
+      + intros; pose proof (mempty_right b) as H; simpl in H; rewrite H; eauto.
+      + intros.
+        rewrite <- (IHw0 (wtl w) b0).
+        pose proof enqueue_mappend_opt as H'''; simpl in H'''.
+        rewrite <- H'''; eauto.
+      + eauto.
+  Qed.
+
+  Lemma format_words {n m}
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+    : forall (w : word (n + m)) ce,
+      refine (format_word (monoidUnit := ByteString_QueueMonoidOpt) w ce)
+             ((format_word (monoidUnit := ByteString_QueueMonoidOpt) (split2 m n (eq_rect _ _ w _ (trans_plus_comm _ _)))
+                           ThenC (format_word (monoidUnit := ByteString_QueueMonoidOpt) (split1 m n (eq_rect _ _ w _ (trans_plus_comm _ _)))))
+                ce).
+  Proof.
+    intros; rewrite format_words'.
+    rewrite split1'_eq, split2'_eq; reflexivity.
+    eauto.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForFormatNChar'
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+        {sz}
+    : forall (w : word (8 + sz)) encoder,
+      (forall w : word sz,
+          CorrectAlignedEncoder
+            (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+            (fun sz => encoder sz w))
+      -> CorrectAlignedEncoder
+           (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+           (fun sz' => AppendAlignedEncodeM (@SetCurrentByte _ _ sz' (split1' 8 sz w))
+                                            (encoder sz' (split2' 8 sz w))).
+  Proof.
+    intros; pose proof (format_words addE_addE_plus w) as H';
+      eapply refine_CorrectAlignedEncoder.
+    unfold flip, pointwise_relation; eapply H'.
+    eauto.
+    rewrite <- split2'_eq, <- split1'_eq.
+    eapply CorrectAlignedEncoderForThenC;
+      eauto using CorrectAlignedEncoderForFormatChar_f.
+  Qed.
+
+  Fixpoint SetCurrentBytes (* Sets the bytes at the current index and increments the current index. *)
+             {n sz : nat}
+             (w : word (sz * 8))
+    : AlignedEncodeM n :=
+      match sz return word (sz * 8) -> _ with
+      | 0 => fun w => AlignedEncode_Nil n
+      | S sz' => fun w => AppendAlignedEncodeM (SetCurrentByte (split1' 8 (sz' * 8) w))
+                                               (SetCurrentBytes (split2' 8 (sz' * 8) w))
+      end w.
+
+  Local Arguments split1' : simpl never.
+  Local Arguments split2' : simpl never.
+  
+  Corollary CorrectAlignedEncoderForFormatNChar
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+        (addE_0 :
+           forall ce, addE ce 0 = ce)
+        {sz}
+    : forall (w : word (sz * 8)),
+      CorrectAlignedEncoder
+        (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
+        (fun sz => @SetCurrentBytes sz _ w).
+  Proof.
+    induction sz; simpl; intros.
+    - shatter_word w; unfold format_word; simpl.
+      eapply refine_CorrectAlignedEncoder; intros.
+      + rewrite addE_0; higher_order_reflexivity.
+      + eapply CorrectAlignedEncoderForDoneC.
+    - eapply (CorrectAlignedEncoderForFormatNChar' addE_addE_plus w (fun sz' => @SetCurrentBytes sz' sz));
+        eauto.
   Qed.
 
 End AlignDecodeWord.
