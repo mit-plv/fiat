@@ -15,7 +15,7 @@ Section AlignedDecodeM.
   Context {cacheAddNat : CacheAdd cache nat}.
 
   Definition AlignedDecodeM
-             (A : Set)
+             (A : Type)
              (n : nat):=
     Vector.t char n (* Vector of bytes that is being decoded *)
     -> nat          (* The current vector index *)
@@ -23,7 +23,7 @@ Section AlignedDecodeM.
     -> option (A * nat * CacheDecode) (* Error monad + value + updated index + updated cache *).
 
   Definition BindAlignedDecodeM
-             {A B : Set}
+             {A B : Type}
              {n : nat}
              (a : AlignedDecodeM A n)
              (b : A -> AlignedDecodeM B n)
@@ -31,7 +31,7 @@ Section AlignedDecodeM.
     fun v idx c => (Ifopt a v idx c  as a' Then (b (fst (fst a')) v (snd (fst a')) (snd a')) Else None).
 
   Definition ReturnAlignedDecodeM
-             {A : Set}
+             {A : Type}
              {n : nat}
              (a : A)
     : AlignedDecodeM A n :=
@@ -42,21 +42,21 @@ Section AlignedDecodeM.
              (a1 a2 : AlignedDecodeM A n) : Prop :=
     forall v idx c, a1 v idx c = a2 v idx c.
 
-  Lemma AlignedDecodeMEquiv_refl {A : Set} {n}:
+  Lemma AlignedDecodeMEquiv_refl {A : Type} {n}:
     forall (a : AlignedDecodeM A n),
       AlignedDecodeMEquiv a a.
   Proof.
     unfold AlignedDecodeMEquiv; intros; reflexivity.
   Qed.
 
-  Lemma AlignedDecodeMEquiv_sym {A : Set} {n}:
+  Lemma AlignedDecodeMEquiv_sym {A : Type} {n}:
     forall (a1 a2 : AlignedDecodeM A n),
       AlignedDecodeMEquiv a1 a2 -> AlignedDecodeMEquiv a2 a1.
   Proof.
     unfold AlignedDecodeMEquiv; intros; congruence.
   Qed.
 
-  Lemma AlignedDecodeMEquiv_trans {A : Set} {n}:
+  Lemma AlignedDecodeMEquiv_trans {A : Type} {n}:
     forall (a1 a2 a3 : AlignedDecodeM A n),
       AlignedDecodeMEquiv a1 a2 ->
       AlignedDecodeMEquiv a2 a3 ->
@@ -65,12 +65,12 @@ Section AlignedDecodeM.
     unfold AlignedDecodeMEquiv; intros; congruence.
   Qed.
 
-  Global Instance PreOrder_AlignedDecodeMEquiv {A : Set} {n} :
+  Global Instance PreOrder_AlignedDecodeMEquiv {A : Type} {n} :
     PreOrder (@AlignedDecodeMEquiv A n) :=
     {| PreOrder_Reflexive := AlignedDecodeMEquiv_refl;
        PreOrder_Transitive := AlignedDecodeMEquiv_trans|}.
 
-  Lemma BindAlignedDecodeM_assoc {A B C : Set} {n}:
+  Lemma BindAlignedDecodeM_assoc {A B C : Type} {n}:
     forall (a : AlignedDecodeM A n)
            (f : A -> AlignedDecodeM B n)
            (g : B -> AlignedDecodeM C n),
@@ -81,7 +81,7 @@ Section AlignedDecodeM.
     destruct (a v idx c); simpl; eauto.
   Qed.
 
-  Lemma ReturnAlignedDecodeM_LeftUnit {A B : Set} {n}:
+  Lemma ReturnAlignedDecodeM_LeftUnit {A B : Type} {n}:
     forall (a : A)
            (f : A -> AlignedDecodeM B n),
       AlignedDecodeMEquiv (BindAlignedDecodeM (ReturnAlignedDecodeM a) f)
@@ -91,7 +91,7 @@ Section AlignedDecodeM.
     reflexivity.
   Qed.
 
-  Lemma ReturnAlignedDecodeM_RightUnit {A B : Set} {n}:
+  Lemma ReturnAlignedDecodeM_RightUnit {A B : Type} {n}:
     forall (f : AlignedDecodeM A n),
       AlignedDecodeMEquiv (BindAlignedDecodeM f ReturnAlignedDecodeM) f.
   Proof.
@@ -100,13 +100,13 @@ Section AlignedDecodeM.
   Qed.
 
   Definition ThrowAlignedDecodeM
-             {A : Set}
+             {A : Type}
              {n : nat}
     : AlignedDecodeM A n:=
     fun _ _ _ => None.
 
   Fixpoint nth_opt
-    {A : Set}
+    {A : Type}
     {n : nat}
     (v : Vector.t A n)
     (m : nat)
@@ -122,6 +122,13 @@ Section AlignedDecodeM.
     : AlignedDecodeM char n :=
     fun v idx c => Ifopt (nth_opt v idx) as b Then Some (b, S idx, addD c 8) Else None.
 
+  Definition GetByteAt (* Gets the current byte at the specified index and updates the
+                          current index to the following byte. *)
+             {n : nat}
+             (idx : nat)
+    : AlignedDecodeM char n :=
+    fun v _ c => Ifopt (nth_opt v idx) as b Then Some (b, S idx, addD c 8) Else None.
+
   (* Equivalence Criteria:
      A bit-aligned decoder and byte-aligned decoder are equivalent when
      - the byte aligned decoder fails when the bit aligned decoder does,
@@ -131,7 +138,7 @@ Section AlignedDecodeM.
    *)
 
   Definition DecodeMEquivAlignedDecodeM
-             {C : Set}
+             {C : Type}
              (f : DecodeM C ByteString)
              (f' : forall {numBytes}, AlignedDecodeM C numBytes)
     := (forall {numBytes_hd}
@@ -174,7 +181,7 @@ Section AlignedDecodeM.
       eauto.
   Qed.
 
-  Lemma Return_DecodeMEquivAlignedDecodeM {A : Set}
+  Lemma Return_DecodeMEquivAlignedDecodeM {A : Type}
         (a : A)
     : DecodeMEquivAlignedDecodeM
         (fun (b : ByteString) (cd : CacheDecode) => Some (a, b, cd))
@@ -194,7 +201,7 @@ Section AlignedDecodeM.
       simpl; eexists (@Vector.nil _); reflexivity.
   Qed.
 
-  Lemma A_decode_aligned_shift {A : Set}
+  Lemma A_decode_aligned_shift {A : Type}
         (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
     : (forall (numBytes_hd n : nat) (v : Vector.t char (S numBytes_hd)) (cd : CacheDecode),
           @A_decode_aligned (S numBytes_hd) v (S n) cd =
@@ -217,7 +224,7 @@ Section AlignedDecodeM.
       rewrite <- Heqp;  reflexivity.
   Qed.
 
-  (* Lemma A_decode_aligned_shift' {A : Set}
+  (* Lemma A_decode_aligned_shift' {A : Type}
         (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
     : (forall (numBytes_hd n : nat) (v : Vector.t char (S numBytes_hd)) (cd : CacheDecode),
           @A_decode_aligned (S numBytes_hd) v (S n) cd =
@@ -317,7 +324,7 @@ Section AlignedDecodeM.
       simpl; rewrite H; reflexivity.
   Qed.
 
-  Lemma Bind_DecodeMEquivAlignedDecodeM {A C : Set}
+  Lemma Bind_DecodeMEquivAlignedDecodeM {A C : Type}
         (A_decode : DecodeM A ByteString)
         (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
         (t : A -> DecodeM C ByteString)
@@ -499,7 +506,7 @@ Section AlignedDecodeM.
 
   Print Assumptions Bind_DecodeMEquivAlignedDecodeM.
 
-  Definition CorrectAlignedDecoder {A : Set}
+  Definition CorrectAlignedDecoder {A : Type}
              (predicate : A -> Prop)
              (format : FormatM A ByteString)
              (decoder : forall sz, AlignedDecodeM A sz)
@@ -510,7 +517,7 @@ Section AlignedDecodeM.
                      cache_inv_Property (snd decodePlusCacheInv) P_inv)
                    /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder}.
 
-  Definition CorrectAlignedDecoderFor {A : Set}
+  Definition CorrectAlignedDecoderFor {A : Type}
              (predicate : A -> Prop)
              (format : FormatM A ByteString)
     := {decoder : forall sz, AlignedDecodeM A sz &
@@ -522,7 +529,7 @@ Section AlignedDecodeM.
                                                    /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder} }.
 
   Lemma Start_CorrectAlignedDecoderFor
-        {A : Set}
+        {A : Type}
         Invariant
         FormatSpec
         (decoder decoder_opt : DecodeM A ByteString)

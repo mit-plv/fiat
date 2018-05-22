@@ -581,7 +581,7 @@ Section AlignDecodeWord.
           eexists (Vector.cons _ c _ (@Vector.nil _)); reflexivity.
   Qed.
 
-  Lemma AlignedDecodeBindCharM {C : Set}
+  Lemma AlignedDecodeBindCharM {C : Type}
         (t : word 8 -> DecodeM C ByteString)
         (t' : word 8 -> forall {numBytes}, AlignedDecodeM C numBytes)
     : (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
@@ -593,32 +593,6 @@ Section AlignDecodeWord.
     intro; eapply Bind_DecodeMEquivAlignedDecodeM.
     apply AlignedDecodeCharM.
     intros; eapply H.
-    (*intro; unfold DecodeMEquivAlignedDecodeM, BindAlignedDecodeM, DecodeBindOpt2, BindOpt; intros;
-      unfold decode_word, WordOpt.decode_word.
-    split; [ | split; [ | split ] ]; intros.
-    - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
-      unfold GetCurrentByte; simpl.
-      destruct (nth_opt t0 n); simpl; eauto.
-      rewrite (proj1 (H c)); reflexivity.
-    - destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H0; try discriminate.
-      + eapply decode_word'_le in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
-        eapply H in H0; omega.
-    - destruct v.
-      + simpl; intuition; discriminate.
-      + rewrite aligned_decode_char_eq; simpl; intuition.
-        * unfold AlignedDecodeMEquiv in *.
-          rewrite (proj1 (H h)); simpl; eapply H in H0; rewrite H0; reflexivity.
-        * rewrite (proj1 (H h)) in H0; simpl in *; eapply H; eauto.
-          destruct (t' h n v 0 (addD cd 8)); simpl in *; congruence.
-        * rewrite (proj1 (H h)); simpl.
-          generalize H0; intros.
-          eapply H in H0; eauto; rewrite H0.
-          simpl; repeat f_equal.
-          assert (length_ByteString (build_aligned_ByteString v) >= length_ByteString bs' )%nat by
-              (eapply H; eauto).
-          unfold length_ByteString in H2; simpl in H2.
-          destruct (numBytes bs'); try omega.
-    - admit. *)
   Qed.
 
   Lemma AlignedFormatChar {numBytes}
@@ -757,7 +731,7 @@ Section AlignDecodeWord.
       ; simpl in *; try congruence.
   Qed.
 
-  Lemma AlignedDecodeBind2CharM {C : Set}
+  Lemma AlignedDecodeBind2CharM {C : Type}
         (t : word 16 -> DecodeM C ByteString)
         (t' : word 16 -> forall {numBytes}, AlignedDecodeM C numBytes)
     : (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
@@ -1009,7 +983,7 @@ Section AlignDecodeWord.
 
   Local Arguments split1' : simpl never.
   Local Arguments split2' : simpl never.
-  
+
   Corollary CorrectAlignedEncoderForFormatNChar
         (addE_addE_plus :
            forall ce n m, addE (addE ce n) m = addE ce (n + m))
