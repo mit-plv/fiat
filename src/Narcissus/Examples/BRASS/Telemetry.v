@@ -52,9 +52,6 @@ intros; apply N.div_lt; reflexivity.
 apply N.lt_wf_0.
 Defined.
 
-
-Print AlignedByteString.length_ByteString.
-
 Definition N_to_string (n : N) :=
   match n with
   | N0 => "0"
@@ -160,8 +157,6 @@ Proof.
   induction n; simpl; auto.
   now rewrite string_length_append, IHn.
 Qed.
-
-Locate "_ <? _".
 
 Definition Nnat_to_string (z : nat * N) : string :=
   let s := N_to_string (snd z) in
@@ -311,7 +306,7 @@ Definition Coordinate_format
     ThenC format_string_with_term_char "." (Z_to_string (fst coords!"Longitude"))
     ThenC format_string_with_term_char newline (Nnat_to_string (snd coords!"Longitude"))
     DoneC.
-
+(*
 Definition Coordinate_decoder
   : CorrectDecoderFor (fun _ => True) Coordinate_format.
 Proof.
@@ -524,9 +519,9 @@ Proof.
         rewrite <- H' in H.
   apply Coordinate_decoder_impl_wf in H.
   eauto.
-Qed.
+Qed. *)
 
 End Coordinate_Decoder.
 
-Print Coordinate_decoder_impl.
-Print aligned_Coordinate_decoder_impl.
+(* Print Coordinate_decoder_impl.
+Print aligned_Coordinate_decoder_impl. *)

@@ -50,7 +50,6 @@ Ltac align_decoders_step :=
 
 Ltac align_decoders := repeat align_decoders_step.
 
-Locate Ltac normalize_compose .
 Ltac synthesize_aligned_decoder :=
   start_synthesizing_decoder;
   [ match goal with
@@ -58,7 +57,7 @@ Ltac synthesize_aligned_decoder :=
     end;
     repeat decode_step idtac
   | cbv beta; synthesize_cache_invariant
-  | cbv beta; optimize_decoder_impl
+  | cbv beta; unfold decode_nat; optimize_decoder_impl
   | ];
   cbv beta; align_decoders.
 

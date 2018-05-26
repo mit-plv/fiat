@@ -46,6 +46,7 @@ Require Import
 
 Section DnsPacket.
 
+  (*
   Local Open Scope Tuple_scope.
   Import Vectors.VectorDef.VectorNotations.
 
@@ -3450,4 +3451,6 @@ Qed.
   Qed.
 
 End DnsPacket.
-*) *)
+*) *) *)
+
+End DnsPacket.

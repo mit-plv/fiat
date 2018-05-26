@@ -86,7 +86,7 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
 
 (* Step One: Synthesize an encoder and a proof that it is correct. *)
 
-Definition ipv4_encoder :
+Definition IPv4_encoder :
   CorrectAlignedEncoderFor IPv4_Packet_Format IPv4_Packet_OK.
 Proof.
   synthesize_aligned_encoder.
@@ -94,8 +94,8 @@ Defined.
 
 (* Step Two: Extract the encoder function, and have it start encoding
    at the start of the provided ByteString [v]. *)
-Definition ipv4_encoder_impl r {sz} v :=
-  Eval simpl in (projT1 ipv4_encoder r sz v 0 tt).
+Definition IPv4_encoder_impl r {sz} v :=
+  Eval simpl in (projT1 IPv4_encoder r sz v 0 tt).
 
 (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
@@ -126,72 +126,63 @@ Hint Resolve IPv4_Packet_Header_Len_bound : data_inv_hints.
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
 Proof.
+  (* We have to use an extra lemma at the start, because of the 'exotic'
+     IP Checksum. *)
   eapply CorrectAlignedDecoderForIPChecksumThenC.
-  cbv beta; unfold Domain; simpl; repeat calculate_length_ByteString.
-  start_synthesizing_decoder.
-  normalize_compose AlignedByteString.ByteStringQueueMonoid.
-  repeat decode_step idtac.
-  cbv beta; synthesize_cache_invariant.
-  cbv beta; unfold decode_nat; optimize_decoder_impl.
-  repeat align_decoders_step.
+  repeat calculate_length_ByteString.
+  (* Once that's done, the normal automation works just fine :) *)
+  synthesize_aligned_decoder.
 Defined.
 
 (* Step Four: Extract the decoder function, and have /it/ start decoding
    at the start of the provided ByteString [v]. *)
+Arguments GetCurrentBytes : simpl never.
 Definition IPv4_decoder_impl {sz} v :=
   Eval simpl in (projT1 IPv4_Packet_Header_decoder sz v 0 ()).
 
-Definition pkt' : Vector.t (word 8) _ :=
-  [WO~1~0~1~0~0~0~1~0;
-     WO~0~0~0~0~0~0~0~0;
 
-     WO~0~0~0~0~0~0~0~0;
-     WO~0~0~0~0~0~0~0~0;
-
-     WO~0~0~0~0~0~0~0~0;
-     WO~0~0~0~0~0~0~0~0;
-
-     WO~0~0~0~0~0~0~0~0;
-     WO~0~0~0~0~0~0~0~0;
-
-     WO~0~1~1~0~0~1~0~0;
-     WO~1~0~0~0~0~0~0~0;
-
-     WO~0~0~0~0~0~0~0~0;
-     WO~0~0~0~0~0~0~0~0;
-
-     WO~0~0~0~0~0~0~1~1;
-     WO~0~0~0~1~0~1~0~1;
-
-     WO~0~1~1~1~1~0~1~1;
-     WO~0~1~0~1~0~0~0~0;
-
-     WO~0~0~0~0~0~0~1~1;
-     WO~0~0~0~1~0~1~0~1;
-
-     WO~0~1~1~1~1~0~1~1;
-     WO~1~0~0~0~0~0~0~0].
-
-Definition pkt : Vector.t (word 8) _ :=
+(* Some example uses of the encoder and decoder functions. *)
+(* A binary version of a packet, sourced directly from the web. *)
+Definition bin_pkt : Vector.t (word 8) _ :=
   Eval compute in Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;243;159;192;168;222;10;192;168;222;1;0;0;0;0].
 
-Eval vm_compute in (IPv4_decoder_impl _ pkt 0 ()).
+(* An source version of a packet. *)
+Definition pkt :=
+  {| TotalLength := WO~0~1~1~1~0~1~0~0~0~0~0~0~0~0~0~0;
+     ID := wones _;
+     DF := false;
+     MF := false;
+     FragmentOffset := wzero _;
+     TTL := WO~0~0~1~0~0~1~1~0;
+     Protocol := Fin.F1;
+     SourceAddress := WO~1~0~0~1~1~1~1~1~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0;
+     DestAddress := WO~0~0~0~0~1~0~1~0~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0;
+     Options := [ ]%list |}.
 
-Compute (InternetChecksum.checksum pkt).
+Definition bad_pkt :=
+  {| TotalLength := wzero _; (* length is too short *)
+     ID := wones _;
+     DF := false;
+     MF := false;
+     FragmentOffset := wzero _;
+     TTL := WO~0~0~1~0~0~1~1~0;
+     Protocol := Fin.F1;
+     SourceAddress := WO~1~0~0~1~1~1~1~1~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0;
+     DestAddress := WO~0~0~0~0~1~0~1~0~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0;
+     Options := [ ]%list |}.
 
-Definition address : list char :=
-  Eval compute in map (@natToWord 8) [172;16;254;1].
+Eval vm_compute in (IPv4_decoder_impl bin_pkt).
 
-Lemma zero_lt_eight : (lt 0 8)%nat.
-Proof. omega. Qed.
+(* This should succeed, *)
+Eval compute in
+    Ifopt (IPv4_encoder_impl pkt (initialize_Aligned_ByteString 100))
+  as bs Then IPv4_decoder_impl (fst (fst bs))
+        Else None.
+(* and it does! *)
 
-Definition fiat_ipv4_decode (buffer: list char) : option (IPv4_Packet * list char) :=
-  let bs := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := buffer |} in
-  match IPv4_decoder_impl bs () with
-  | Some (pkt', bs, _) => Some (pkt', bs.(byteString))
-  | None => None
-  end.
-
-Compute (fiat_ipv4_decode pkt).
-
-Compute (InternetChecksum.checksum pkt).
+(* This should fail because the total length field is too short, *)
+Eval compute in
+    Ifopt (IPv4_encoder_impl bad_pkt (initialize_Aligned_ByteString 100))
+  as bs Then IPv4_decoder_impl (fst (fst bs))
+        Else None.
+(* and it does! *)
