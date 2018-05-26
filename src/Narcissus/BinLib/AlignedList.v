@@ -195,7 +195,7 @@ Section AlignedList.
               return (a :: l)
     end%AlignedDecodeM%list.
 
-  Lemma AlignedDecodeListM {A C : Set}
+  Lemma AlignedDecodeListM {A C : Type}
         (A_decode : DecodeM A ByteString)
         (A_decode_align : forall {m}, AlignedDecodeM A m)
         (n : nat)

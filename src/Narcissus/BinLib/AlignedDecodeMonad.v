@@ -106,10 +106,10 @@ Section AlignedDecodeM.
     fun _ _ _ => None.
 
   Fixpoint nth_opt
-    {A : Type}
-    {n : nat}
-    (v : Vector.t A n)
-    (m : nat)
+           {A : Type}
+           {n : nat}
+           (v : Vector.t A n)
+           (m : nat)
     : option A :=
     match m, v with
     | 0,  Vector.cons a _ _ => Some a
@@ -128,6 +128,38 @@ Section AlignedDecodeM.
              (idx : nat)
     : AlignedDecodeM char n :=
     fun v _ c => Ifopt (nth_opt v idx) as b Then Some (b, S idx, addD c 8) Else None.
+
+  Definition SkipCurrentByte (* Gets the current byte and increments the current index. *)
+             {n : nat}
+    : AlignedDecodeM () n :=
+    fun v idx c => Ifopt (nth_opt v idx) as b Then Some ((), S idx, addD c 8) Else None.
+
+  Fixpoint SkipCurrentBytes (* Skips the next m bytes and increments the current index. *)
+               {n : nat}
+               (m : nat)
+      : AlignedDecodeM () n :=
+    match m return AlignedDecodeM () n with
+    | 0 => ReturnAlignedDecodeM ()
+    | S m' => BindAlignedDecodeM
+                SkipCurrentByte
+                (fun _ => BindAlignedDecodeM
+                            (SkipCurrentBytes m')
+                            (fun _ => ReturnAlignedDecodeM ()))
+    end.
+
+  Fixpoint GetCurrentBytes (* Gets the current byte and increments the current index. *)
+           {n : nat}
+           (m : nat)
+    : AlignedDecodeM (word (m * 8)) n :=
+    match m return AlignedDecodeM (word (m * 8)) n with
+    | 0 => ReturnAlignedDecodeM WO
+    | S m' => BindAlignedDecodeM
+                GetCurrentByte
+                (fun w => BindAlignedDecodeM
+                            (GetCurrentBytes m')
+                            (fun w' =>  ReturnAlignedDecodeM (
+                                             eq_rect _ _ (Core.append_word w' w) _ (plus_comm (m' * 8) 8))))
+    end.
 
   (* Equivalence Criteria:
      A bit-aligned decoder and byte-aligned decoder are equivalent when
@@ -156,14 +188,14 @@ Section AlignedDecodeM.
                   f (build_aligned_ByteString v) cd = Some (c, bs', cd') ->
                   f' v 0 cd = Some (c, n - (numBytes bs'), cd')
                   /\ exists v' : Vector.t _ (n - (numBytes bs')),
-                    (build_aligned_ByteString v) = ByteString_enqueue_ByteString (build_aligned_ByteString v') bs'
-                                                                                 ))
-              (*       /\ (forall n (v : Vector.t (word 8) n) cd c n' cd', *)
-              (* f' v 0 cd = Some (c, n', cd') -> *)
-              (* exists m', *)
-              (*   {H : n = n' + m' & *)
-              (*        f (build_aligned_ByteString v) cd = *)
-              (*        Some (c, build_aligned_ByteString (snd (Vector_split _ _ (eq_rect _ _ v _ H))), cd')}) *).
+                      (build_aligned_ByteString v) = ByteString_enqueue_ByteString (build_aligned_ByteString v') bs'
+          ))
+  (*       /\ (forall n (v : Vector.t (word 8) n) cd c n' cd', *)
+  (* f' v 0 cd = Some (c, n', cd') -> *)
+  (* exists m', *)
+  (*   {H : n = n' + m' & *)
+  (*        f (build_aligned_ByteString v) cd = *)
+  (*        Some (c, build_aligned_ByteString (snd (Vector_split _ _ (eq_rect _ _ v _ H))), cd')}) *).
 
   Lemma DecodeMEquivAlignedDecodeM_trans  {C} :
     forall bit_decoder1 byte_decoder1 bit_decoder2 byte_decoder2,
@@ -178,14 +210,14 @@ Section AlignedDecodeM.
     - eapply H4; rewrite H1; eauto.
     - eapply H4; rewrite H0; eauto.
     - rewrite <- H0 in H3; apply H4 in H3; destruct H3 as [? [? ?] ];
-      eauto.
+        eauto.
   Qed.
 
   Lemma Return_DecodeMEquivAlignedDecodeM {A : Type}
         (a : A)
     : DecodeMEquivAlignedDecodeM
         (fun (b : ByteString) (cd : CacheDecode) => Some (a, b, cd))
-     (fun numBytes => ReturnAlignedDecodeM a).
+        (fun numBytes => ReturnAlignedDecodeM a).
   Proof.
     unfold DecodeMEquivAlignedDecodeM; intros; intuition.
     - injections; eauto.
@@ -195,7 +227,7 @@ Section AlignedDecodeM.
       simpl; repeat f_equal; omega.
     - unfold ReturnAlignedDecodeM in H; injections.
       assert ((n - numBytes (build_aligned_ByteString v)) = 0)
-             by (unfold numBytes; simpl; omega).
+        by (unfold numBytes; simpl; omega).
       rewrite H.
       setoid_rewrite <- build_aligned_ByteString_append.
       simpl; eexists (@Vector.nil _); reflexivity.
@@ -206,12 +238,12 @@ Section AlignedDecodeM.
     : (forall (numBytes_hd n : nat) (v : Vector.t char (S numBytes_hd)) (cd : CacheDecode),
           @A_decode_aligned (S numBytes_hd) v (S n) cd =
           (Ifopt @A_decode_aligned numBytes_hd (Vector.tl v) n cd as a0
-        Then Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
+                                                                       Then Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
       -> forall (numBytes_hd numBytes_tl : nat)
                 (v : Vector.t char (numBytes_hd + numBytes_tl)) (cd : CacheDecode),
-          @A_decode_aligned _ v numBytes_hd cd =
-          (Ifopt @A_decode_aligned _ (snd (Vector_split _ _ v)) 0 cd as a0
-        Then Some (fst (fst a0), numBytes_hd + (snd (fst a0)), snd a0) Else None).
+        @A_decode_aligned _ v numBytes_hd cd =
+        (Ifopt @A_decode_aligned _ (snd (Vector_split _ _ v)) 0 cd as a0
+                                                                        Then Some (fst (fst a0), numBytes_hd + (snd (fst a0)), snd a0) Else None).
   Proof.
     induction numBytes_hd; simpl; intros.
     - destruct ( A_decode_aligned numBytes_tl v 0 cd) as [ [ [? ?] ?]  | ]; reflexivity.
@@ -263,7 +295,7 @@ Section AlignedDecodeM.
         (t'_OK : forall (numBytes_hd n0 : nat) (v0 : Vector.t char (S numBytes_hd)) (cd0 : CacheDecode),
             @t' (S numBytes_hd) v0 (S n0) cd0 =
             (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
-        Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
+                                                               Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
     : forall {n m} (v : Vector.t (word 8) (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
       t' v2 0 cd = None ->
       build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2)  ->
@@ -284,7 +316,7 @@ Section AlignedDecodeM.
         (t'_OK : forall (numBytes_hd n0 : nat) (v0 : Vector.t char (S numBytes_hd)) (cd0 : CacheDecode),
             @t' (S numBytes_hd) v0 (S n0) cd0 =
             (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
-        Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
+                                                               Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
     : forall {n m} (v : Vector.t (word 8) (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
       t' v m cd = None ->
       build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2) ->
@@ -308,7 +340,7 @@ Section AlignedDecodeM.
         (t'_OK : forall (numBytes_hd n0 : nat) (v0 : Vector.t char (S numBytes_hd)) (cd0 : CacheDecode),
             @t' (S numBytes_hd) v0 (S n0) cd0 =
             (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
-        Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
+                                                               Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
     : forall {n m} (v : Vector.t (word 8) (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd c k cd',
       t' v2 0 cd = Some (c, k, cd')
       -> build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2)
@@ -332,9 +364,9 @@ Section AlignedDecodeM.
     : DecodeMEquivAlignedDecodeM A_decode (@A_decode_aligned)
       -> (forall a, DecodeMEquivAlignedDecodeM (t a) (@t' a))
       -> DecodeMEquivAlignedDecodeM
-     (fun (b : ByteString) (c : CacheDecode) =>
-        `(a, bs, cd') <- A_decode b c; t a bs cd')
-     (fun numBytes => BindAlignedDecodeM A_decode_aligned (fun a => @t' a numBytes)).
+           (fun (b : ByteString) (c : CacheDecode) =>
+              `(a, bs, cd') <- A_decode b c; t a bs cd')
+           (fun numBytes => BindAlignedDecodeM A_decode_aligned (fun a => @t' a numBytes)).
   Proof.
     unfold DecodeMEquivAlignedDecodeM; intros; intuition.
     - unfold BindAlignedDecodeM.
@@ -347,7 +379,7 @@ Section AlignedDecodeM.
       eapply H in H4.
       symmetry in H5; eapply H0 in H5; omega.
     - destruct (A_decode (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ?;
-        simpl in *; try discriminate.
+                                                                                     simpl in *; try discriminate.
       assert (numBytes b <= n)%nat as nb_le_n.
       { eapply H in Heqo.
         unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
@@ -365,8 +397,8 @@ Section AlignedDecodeM.
       }
       pose proof (fun v => proper_consumer_t_None (m := n - numBytes b) (t' a) H6 v x _ _ H2).
       assert (forall v0 : Vector.t (word 8) n,
-        build_aligned_ByteString v0 = build_aligned_ByteString (Vector.append x x0) ->
-        t' a n v0 (n - numBytes b) c = None).
+                 build_aligned_ByteString v0 = build_aligned_ByteString (Vector.append x x0) ->
+                 t' a n v0 (n - numBytes b) c = None).
       { revert H10; clear; intro.
         assert (n = n - numBytes b + (n - (n - numBytes b))) by omega.
         intros.
@@ -504,18 +536,84 @@ Section AlignedDecodeM.
       rewrite <- H4; reflexivity.
   Qed.
 
-  Print Assumptions Bind_DecodeMEquivAlignedDecodeM.
+  Lemma AlignedDecode_assoc {A B C : Type}
+        (decode_A : DecodeM A ByteString)
+        (decode_B : A -> DecodeM B ByteString)
+        (decode_C : A -> B -> DecodeM C ByteString)
+        (aligned_decoder : forall numBytes : nat, AlignedDecodeM C numBytes)
+    : DecodeMEquivAlignedDecodeM
+        (fun bs cd => `(ab, bs', cd') <- (`(a, bs', cd') <- decode_A bs cd;
+                                            `(b, bs', cd') <- decode_B a bs' cd';
+                                            Some (a, b, bs', cd'));
+                        decode_C (fst ab) (snd ab) bs' cd')
+        aligned_decoder
+      -> DecodeMEquivAlignedDecodeM
+           (fun bs cd => `(a, bs', cd') <- decode_A bs cd;
+                           `(b, bs', cd') <- decode_B a bs' cd';
+                           decode_C a b bs' cd')
+           aligned_decoder.
+  Proof.
+    intros; eapply DecodeMEquivAlignedDecodeM_trans; eauto;
+      intros; simpl; try reflexivity.
+    simpl; destruct (decode_A b cd) as [ [ [? ?] ?] | ]; simpl; eauto.
+    destruct (decode_B a b0 c) as [ [ [? ?] ?] | ]; simpl; eauto.
+  Qed.
+
+
+  Lemma AlignedDecode_Throw {A}
+    : DecodeMEquivAlignedDecodeM (fun (_ : ByteString) (_ : CacheDecode) => None)
+                                 (fun sz : nat => ThrowAlignedDecodeM (A := A)).
+  Proof.
+    unfold DecodeMEquivAlignedDecodeM; intuition; try discriminate.
+  Qed.
+
+  Lemma AlignedDecode_ifb {A : Type}
+        (decode_A : DecodeM A ByteString)
+        (cond : bool)
+        (aligned_decoder : forall numBytes : nat, AlignedDecodeM A numBytes)
+    : DecodeMEquivAlignedDecodeM
+        decode_A
+        aligned_decoder
+      -> DecodeMEquivAlignedDecodeM
+           (fun bs cd => if cond
+                         then decode_A bs cd
+                         else None)
+           (fun sz => if cond
+                      then aligned_decoder sz
+                      else ThrowAlignedDecodeM).
+  Proof.
+    intros; destruct cond; simpl; eauto using AlignedDecode_Throw.
+  Qed.
+
+  Lemma AlignedDecode_Sumb {A : Type}
+        (decode_A : DecodeM A ByteString)
+        (P : Prop)
+        (cond : {P} + {~P})
+        (aligned_decoder : forall numBytes : nat, AlignedDecodeM A numBytes)
+    : DecodeMEquivAlignedDecodeM
+        decode_A
+        aligned_decoder
+      -> DecodeMEquivAlignedDecodeM
+           (fun bs cd => if cond
+                         then decode_A bs cd
+                         else None)
+           (fun sz => if cond
+                      then aligned_decoder sz
+                      else ThrowAlignedDecodeM).
+  Proof.
+    intros; destruct cond; simpl; eauto using AlignedDecode_Throw.
+  Qed.
 
   Definition CorrectAlignedDecoder {A : Type}
              (predicate : A -> Prop)
              (format : FormatM A ByteString)
              (decoder : forall sz, AlignedDecodeM A sz)
     := {decodePlusCacheInv : _ &
-                   (exists P_inv : (CacheDecode -> Prop) -> Prop,
-                     (cache_inv_Property (snd decodePlusCacheInv) P_inv ->
-                      CorrectDecoder _ predicate (fun (_ : A) (_ : _) => True) format (fst decodePlusCacheInv) (snd decodePlusCacheInv)) /\
-                     cache_inv_Property (snd decodePlusCacheInv) P_inv)
-                   /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder}.
+                             (exists P_inv : (CacheDecode -> Prop) -> Prop,
+                                 (cache_inv_Property (snd decodePlusCacheInv) P_inv ->
+                                  CorrectDecoder _ predicate (fun (_ : A) (_ : _) => True) format (fst decodePlusCacheInv) (snd decodePlusCacheInv)) /\
+                                 cache_inv_Property (snd decodePlusCacheInv) P_inv)
+                             /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder}.
 
   Definition CorrectAlignedDecoderFor {A : Type}
              (predicate : A -> Prop)

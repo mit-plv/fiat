@@ -53,7 +53,7 @@ Proof.
   synthesize_aligned_decoder.
 Defined.
 
-(* Step Four: Extract the decoder function, and have /it/ start decoding 
+(* Step Four: Extract the decoder function, and have /it/ start decoding
    at the start of the provided ByteString [v]. *)
 Definition simple_decoder_impl {sz} v :=
   Eval simpl in (projT1 simple_decoder sz v 0 tt).
@@ -70,3 +70,4 @@ Eval compute in
 
 (* We can also examine the synthesized functions*)
 Print simple_decoder_impl.
+Print simple_encoder_impl.

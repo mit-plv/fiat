@@ -8,7 +8,8 @@ Require Export
         Fiat.Narcissus.BinLib.AlignedList
         Fiat.Narcissus.BinLib.AlignedDecoders
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
-        Fiat.Narcissus.BinLib.AlignedEncodeMonad.
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad
+        Fiat.Narcissus.BinLib.AlignedIPChecksum.
 
 Global Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
 
