@@ -1,6 +1,8 @@
 Require Import Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
+        Fiat.Narcissus.Common.ComposeCheckSum
+        Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Formats
         Fiat.Narcissus.Automation.Solver.
 
@@ -9,7 +11,7 @@ Require Import Bedrock.Word.
 Ltac start_synthesizing_decoder :=
   match goal with
   | |- CorrectAlignedDecoderFor ?Invariant ?Spec =>
-    try unfold Spec; try unfold Invariant
+    try unfold Spec (*; try unfold Invariant *)
   end;
 
   (* Memoize any string constants *)
@@ -20,9 +22,31 @@ Ltac align_decoders_step :=
   first [
       eapply @AlignedDecodeNatM; intros
     | eapply @AlignedDecodeBind2CharM; intros; eauto
+    | eapply @AlignedDecodeBindCharM; intros; eauto
+    | eapply @AlignedDecodeBind4CharM; intros; eauto
+    | eapply @AlignedDecodeBindEnumM; intros; eauto
+    | eapply @AlignedDecodeBindUnused2CharM; simpl;
+      eapply DecodeMEquivAlignedDecodeM_trans;
+      [ | intros; reflexivity
+        |  ]
+    |   eapply @AlignedDecodeBindUnusedCharM; simpl;
+        eapply DecodeMEquivAlignedDecodeM_trans;
+        [ | intros; reflexivity
+          | intros ]
     | eapply @AlignedDecodeListM; intros; eauto
     | eapply @AlignedDecodeCharM; intros; eauto
-    | eapply @Return_DecodeMEquivAlignedDecodeM].
+    | eapply (fun H H' => @AlignedDecodeNCharM _ _ H H' 4); eauto; simpl; intros
+    | eapply @AlignedDecode_shift_if_Sumb
+    | eapply @AlignedDecode_shift_if_bool
+    | eapply @Return_DecodeMEquivAlignedDecodeM
+    | eapply @AlignedDecode_Sumb
+    | eapply @AlignedDecode_ifb
+    | intros; higher_order_reflexivity
+    |   eapply AlignedDecode_CollapseWord';
+        eauto using decode_word_eq_decode_unused_word,
+        decode_word_eq_decode_bool,
+        decode_word_eq_decode_word
+    ].
 
 Ltac align_decoders := repeat align_decoders_step.
 
@@ -86,23 +110,28 @@ Proof.
   reflexivity.
 Qed.
 
-Locate "ThenC".
+Lemma length_ByteString_ret
+  : forall (b' b : ByteString) (ctx ctx' : CacheFormat),
+    ret (b', ctx) ↝ (b, ctx') -> length_ByteString b = length_ByteString b'.
+Proof.
+  intros; computes_to_inv; injections; eauto.
+Qed.
 
 Lemma length_ByteString_compose:
   forall (format1 format2 : CacheFormat -> Comp (ByteString * CacheFormat))
          (b : ByteString) (ctx ctx' : CacheFormat)
          (n n' : nat),
+    (format1 ThenC format2) ctx ↝ (b, ctx') ->
     (forall (ctx0 : CacheFormat) (b0 : ByteString) (ctx'0 : CacheFormat),
         format1 ctx0 ↝ (b0, ctx'0) -> length_ByteString b0 = n) ->
     (forall (ctx0 : CacheFormat) (b0 : ByteString) (ctx'0 : CacheFormat),
         format2 ctx0 ↝ (b0, ctx'0) -> length_ByteString b0 = n') ->
-    (format1 ThenC format2) ctx ↝ (b, ctx') ->
     length_ByteString b = n + n'.
 Proof.
   intros.
-  unfold compose, Bind2 in H1; computes_to_inv.
+  unfold compose, Bind2 in H; computes_to_inv.
   destruct v; destruct v0; simpl in *; injections.
-  erewrite length_ByteString_enqueue_ByteString, H, H0; eauto with arith.
+  erewrite length_ByteString_enqueue_ByteString, H0, H1; eauto with arith.
 Qed.
 
 Ltac eapply_in_hyp lem :=
@@ -158,6 +187,28 @@ Proof.
   intros; unfold format_bool.
   reflexivity.
 Qed.
+
+Ltac calculate_length_ByteString :=
+  intros;
+  match goal with
+  | H:_ ↝ _
+    |- _ =>
+    (first
+       [ eapply (length_ByteString_composeChecksum _ _ _ _ _ _ _ H);
+         try (simpl mempty; rewrite length_ByteString_ByteString_id)
+       | eapply (length_ByteString_composeIf _ _ _ _ _ _ _ H);
+         try (simpl mempty; rewrite length_ByteString_ByteString_id)
+       | eapply (length_ByteString_compose _ _ _ _ _ _ _ H);
+         try (simpl mempty; rewrite length_ByteString_ByteString_id)
+       | eapply (fun H' H'' => length_ByteString_format_option _ _ _ _ _ _ _ H' H'' H)
+       | eapply (length_ByteString_unused_word _ _ _ _ H)
+       | eapply (length_ByteString_bool _ _ _ _ H)
+       | eapply (length_ByteString_word _ _ _ _ _ H)
+       | eapply (fun H' => length_ByteString_format_list _ _ _ _ _ _ H' H)
+       | eapply (length_ByteString_ret _ _ _ _ H) ]);
+    clear H
+  end.
+
 
 Ltac collapse_unaligned_words :=
   intros; eapply refine_CorrectAlignedEncoder;

@@ -26,3 +26,5 @@ Global Arguments natToWord : simpl never.
 Global Arguments combine : simpl never.
 Global Arguments Vector.nth : simpl never.
 Global Arguments SetCurrentBytes : simpl never.
+Global Arguments wordToNat : simpl never.
+Global Arguments plus : simpl never.
