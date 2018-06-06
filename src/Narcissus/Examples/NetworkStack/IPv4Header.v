@@ -140,7 +140,6 @@ Arguments GetCurrentBytes : simpl never.
 Definition IPv4_decoder_impl {sz} v :=
   Eval simpl in (projT1 IPv4_Packet_Header_decoder sz v 0 ()).
 
-
 (* Some example uses of the encoder and decoder functions. *)
 (* A binary version of a packet, sourced directly from the web. *)
 Definition bin_pkt : Vector.t (word 8) _ :=
