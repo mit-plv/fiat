@@ -365,6 +365,7 @@ src/Narcissus/Formats/CInt.v
 src/Narcissus/Formats/DomainNameOpt.v
 src/Narcissus/Formats/Enum.v
 src/Narcissus/Formats/EnumOpt.v
+src/Narcissus/Formats/FixFormat.v
 src/Narcissus/Formats/FixList.v
 src/Narcissus/Formats/FixListOpt.v
 src/Narcissus/Formats/FixStringOpt.v

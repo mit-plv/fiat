@@ -126,6 +126,35 @@ Section FixList.
                                        let (b1, env1) := A_format_Impl x env in
                                        (mappend bacc b1, env1)).
 
+  Require Import Fiat.Narcissus.Formats.FixFormat.
+  Import Fiat.Computation.FixComp.LeastFixedPointFun.
+
+  Definition format_list' : FormatM (store := cache) (list A) B := 
+    LeastFixedPoint
+      (fDom := [list A; CacheFormat])
+      (fun format_list' xs =>
+         match xs with
+         | nil => fun env => ret (mempty, env)
+         | x :: xs' =>
+           format_A x ThenC format_list' xs'
+         end).
+  
+  Lemma foo
+    : exists decode_DomainName,
+    forall (bin : B),
+      CorrectDecoder_simpl' format_list' decode_DomainName bin.
+  Proof.
+    eexists _; intros.
+    eapply fix_format_correct_simpl''.
+    unfold Frame.monotonic_function; simpl; intros.
+    destruct t; try reflexivity.
+    unfold compose.
+    unfold Bind2.
+    setoid_rewrite H; reflexivity.
+    Focus 2.
+    intros.
+  Abort. 
+
   Lemma format_list_body_characterization A_format_Impl :
     forall xs base env,
       fold_left (format_list_body A_format_Impl) xs (base, env) =

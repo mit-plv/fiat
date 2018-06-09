@@ -1,5 +1,7 @@
 Require Import
-        Fiat.Narcissus.Common.Specs.
+        Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.Common.ComposeOpt.
+
 Require Export
         Coq.Lists.List.
 

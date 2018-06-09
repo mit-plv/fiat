@@ -66,21 +66,36 @@ Definition CorrectDecoder_simpl'
         -> exists xenv,
             computes_to (format data env) (bin, xenv) /\ Equiv xenv xenv').
 
+Lemma CorrectDecoder_simpl'_equiv
+           {A B}
+           {cache: Cache}
+           (format : FormatM A B)
+           (decode : B -> CacheDecode -> option (A * CacheDecode))
+  : (forall b, CorrectDecoder_simpl' format decode b) <->
+    CorrectDecoder_simpl format decode.
+Proof.
+  unfold CorrectDecoder_simpl, CorrectDecoder_simpl'; intuition.
+  eapply H; eauto.
+  eapply H; eauto.
+  eapply H0; eauto.
+  eapply H1; eauto.
+Qed.
+
 Lemma fix_format_correct_simpl''
       {A B}
       {cache : Cache}
       {monoid : Monoid B}
-      (format_body : funType [A * B; CacheFormat]%type (B * CacheFormat) ->
-                     funType [A * B; CacheFormat]%type (B * CacheFormat))
+      (format_body : funType [A; CacheFormat]%type (B * CacheFormat) ->
+                     funType [A; CacheFormat]%type (B * CacheFormat))
       (decode_body : forall b : B,
-          (forall b' : B, lt_B b' b -> CacheDecode -> option (A * B * CacheDecode)) ->
-          CacheDecode -> option (A * B * CacheDecode))
+          (forall b' : B, lt_B b' b -> CacheDecode -> option (A * CacheDecode)) ->
+          CacheDecode -> option (A * CacheDecode))
       (format_body_OK : Frame.monotonic_function format_body)
       (decode_body_OK :
-         forall (x : B) (f g : forall y : B, lt_B y x -> CacheDecode -> option (A * B * CacheDecode)),
+         forall (x : B) (f g : forall y : B, lt_B y x -> CacheDecode -> option (A * CacheDecode)),
            (forall (y : B) (p : lt_B y x), f y p = g y p) -> decode_body x f = decode_body x g)
       (decode_body_correct :
-         forall bin (format : funType [A * B; CacheFormat]%type (B * CacheFormat)) decode,
+         forall bin (format : funType [A; CacheFormat]%type (B * CacheFormat)) decode,
            (forall bin' (lt_bin' : lt_B bin' bin),
                CorrectDecoder_simpl' format decode bin')
            -> CorrectDecoder_simpl' (format_body format) (fun b => decode_body b (fun b _ => decode b)) bin)
