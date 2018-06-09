@@ -145,6 +145,95 @@ Proof.
   }
 Qed.
 
+Lemma compose_format_correct_simpl
+      {A A' B}
+      {cache : Cache}
+      {monoid : Monoid B}
+      (project : A -> A')
+      (format1 : FormatM A' B)
+      (format2 : FormatM A B)
+      (decode1 : DecodeM A' B)
+      (*oblivious_decoder : forall bs data env bs' env',
+          decode1 bs env = Some (data, bs', env') ->
+          forall bs'', decode1 (mappend bs bs'') env = Some (data, mappend bs' bs'', env')*)
+      (decode1_pf : CorrectDecoder_simpl
+                      (fun data_rest env binxenv =>
+                         exists bin', fst binxenv = mappend bin' (snd data_rest) /\
+                                      format1 (fst data_rest) env (bin', snd binxenv))
+                      decode1)
+      (decode2 : A' -> B -> CacheDecode -> option (A * CacheDecode))
+      (decode2_pf : forall proj,
+          CorrectDecoder_simpl (RestrictFormat format2 (fun data => project data = proj))
+                               (decode2 proj))
+  : CorrectDecoder_simpl
+      (fun (data : A) (ctx : CacheFormat) =>
+         compose _ (format1 (project data)) (format2 data) ctx
+      )%comp
+      (fun (bin : B) (env : CacheDecode) =>
+         `(proj, env') <- decode1 bin env;
+           decode2 (fst proj) (snd proj) env').
+Proof.
+  split.
+  { intros; unfold compose, Bind2 in *; computes_to_inv;
+      destruct v; destruct v0; simpl in *; injections.
+    destruct decode1_pf.
+    destruct (H1 _ _ c (project data, b0) (mappend b b0) H) as [? [? ?] ].
+    apply unfold_computes.
+    rewrite unfold_computes in H0; simpl; eauto.
+    specialize (decode2_pf (project data)); destruct decode2_pf.
+    destruct (H5 c x xenv data b0 H4) as [? [? ?] ].
+    unfold RestrictFormat; rewrite unfold_computes; intuition.
+    rewrite H3; simpl; rewrite H7; eauto. }
+  { intros.
+    destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
+      simpl in *; try discriminate.
+    eapply (proj2 decode1_pf) in Heqo; eauto.
+    destruct Heqo as [? [? ?] ].
+    apply unfold_computes in H1; intuition; simpl in *;
+      destruct_ex; intuition; subst.
+    eapply (proj2 (decode2_pf _)) in H0; eauto.
+    destruct H0 as [? ?]; destruct_ex; intuition; subst.
+    unfold RestrictFormat in H1; apply unfold_computes in H1; intuition.
+    rewrite H5.
+    unfold compose; eexists; intuition eauto.
+    repeat first [computes_to_econstructor
+                  | apply unfold_computes; eauto ]. }
+Qed.
+
+Lemma compose_format_correct_simpl'
+      {A A' B}
+      {cache : Cache}
+      {monoid : Monoid B}
+      (project : A -> A')
+      (format1 : FormatM A' B)
+      (format2 : FormatM A B)
+      (decode1 : DecodeM A' B)
+      (*oblivious_decoder : forall bs data env bs' env',
+          decode1 bs env = Some (data, bs', env') ->
+          forall bs'', decode1 (mappend bs bs'') env = Some (data, mappend bs' bs'', env')*)
+      (decode1_pf : CorrectDecoder_simpl
+                      (fun data_rest env binxenv =>
+                         exists bin', fst binxenv = mappend bin' (snd data_rest) /\
+                                      format1 (fst data_rest) env (bin', snd binxenv))
+                      decode1)
+      (decode2 : A' -> B -> CacheDecode -> option (A * CacheDecode))
+      (decode2_pf : forall proj,
+          CorrectDecoder_simpl (RestrictFormat format2 (fun data => project data = proj))
+                               (decode2 proj))
+  : CorrectDecoder_simpl
+      (fun (data : A) (ctx : CacheFormat) =>
+         compose _ (format1 (project data)) (format2 data) ctx
+      )%comp
+      (fun (bin : B) (env : CacheDecode) =>
+         `(proj, env') <- decode1 bin env;
+           decode2 (fst proj) (snd proj) env').
+Proof.
+  eapply CorrectDecoder_simpl_equiv_format; eauto.
+  eapply CorrectDecoder_simpl_equiv_decode; try eassumption.
+  eapply CorrectDecoder_simpl_no_inv.
+  eapply CorrectDecoder_simpl_strict_equiv.
+Abort.
+
 (* For decoding fixed fields that do no depend on the object *)
 (* being formatd, e.g. version numbers in an IP packet. This *)
 (* allows us to avoid polluting the data invariant with  *)

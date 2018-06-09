@@ -278,6 +278,60 @@ Definition decode_strict
          Then Some (fst abscd', mempty, snd abscd')
          Else None.
 
+Definition RestrictFormat
+           {A B}
+           {cache : Cache}
+           (format : FormatM A B)
+           (predicate : A -> Prop)
+  : FormatM A B :=
+  fun data env binxenv => format data env binxenv /\ predicate data.
+
+Lemma CorrectDecoder_simpl_equiv_format
+      {A B}
+      (cache : Cache)
+  : forall (format format' : FormatM A B)
+           (decode : B -> CacheDecode -> option (A * CacheDecode)),
+    CorrectDecoder_simpl format decode
+    -> (forall a env b env', format a env (b, env') <-> format' a env (b, env'))
+    -> CorrectDecoder_simpl format' decode.
+Proof.
+  unfold CorrectDecoder_simpl, RestrictFormat; intros; split_and; split; intros.
+  - eapply H1; eauto.
+    apply unfold_computes; apply unfold_computes in H3; apply H0; eauto.
+  - eapply H2 in H3; eauto.
+    destruct_ex; split_and; apply_in_hyp @unfold_computes.
+    eexists; rewrite unfold_computes; split; eauto; apply H0; eauto.
+Qed.
+
+Lemma CorrectDecoder_simpl_equiv_decode
+      {A B}
+      (cache : Cache)
+  : forall (format : FormatM A B)
+           (decode decode' : B -> CacheDecode -> option (A * CacheDecode)),
+    CorrectDecoder_simpl format decode
+    -> (forall env b, decode b env = decode' b env)
+    -> CorrectDecoder_simpl format decode'.
+Proof.
+  unfold CorrectDecoder_simpl, RestrictFormat; intros; split_and; split; intros.
+  - rewrite <- H0. eapply H1; eauto.
+  - eapply H2; eauto.
+    rewrite H0; eauto.
+Qed.
+
+Lemma CorrectDecoder_simpl_no_inv
+      {A B}
+      (cache : Cache)
+  : forall (format : FormatM A B)
+           (decode : B -> CacheDecode -> option (A * CacheDecode)),
+    CorrectDecoder_simpl
+      (store := Cache_plus_inv cache (fun _ => True))
+      format decode
+    <-> CorrectDecoder_simpl (store := cache) format decode.
+Proof.
+  unfold CorrectDecoder_simpl; simpl; setoid_rewrite LogicFacts.and_True;
+    intuition.
+Qed.
+
 Lemma CorrectDecoder_simpl_strict_equiv
       {A B}
       (cache : Cache)
@@ -288,39 +342,57 @@ Lemma CorrectDecoder_simpl_strict_equiv
            (decode : B -> CacheDecode -> option (A * CacheDecode)),
     CorrectDecoder_simpl
       (store := Cache_plus_inv cache decode_inv)
-      (fun data env binxenv => format data env binxenv /\ predicate data)
+      (RestrictFormat format predicate)
       decode
     <-> CorrectDecoder (store := cache) monoid predicate (fun _ b => b = mempty) format
                        (decode_strict decode)
                    decode_inv.
 Proof.
-  unfold CorrectDecoder, CorrectDecoder_simpl, decode_strict; intuition.
-  destruct (H0 env env' xenv data bin); simpl; eauto.
-  rewrite unfold_computes; simpl; intuition.
-  simpl in *; intuition; subst.
-  rewrite mempty_right.
-  destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
-  eexists x; intuition eauto.
-  destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
-  eapply H1 in Heqo; destruct_ex; intuition eauto.
-  destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
-  eapply H1 in Heqo; destruct_ex; simpl in *; intuition eauto.
-  rewrite unfold_computes in H4; eexists _, _; rewrite mempty_right, unfold_computes; intuition eauto.
-  rewrite unfold_computes in H2; simpl in *; intuition.
-  rewrite <- unfold_computes in H; eapply H0 in H; eauto.
-  rewrite mempty_right in H; intuition eauto.
-  destruct (decode bin env') as [ [? ?] | ] eqn: ?; destruct_ex;
-    simpl in *; try discriminate; intuition; injections.
-  eexists; intuition eauto.
-  discriminate.
-  simpl in *; intuition.
-  destruct (H1 env env' xenv' data bin mempty); eauto.
-  destruct (decode bin env') as [ [? ?] | ] eqn: ?; destruct_ex;
-    simpl in *; try discriminate; intuition; injections; eauto.
-  destruct_ex; intuition; eexists.
-  subst; rewrite unfold_computes in *; intuition eauto.
-  rewrite unfold_computes in H6; rewrite mempty_right; eauto.
+  unfold CorrectDecoder, CorrectDecoder_simpl, decode_strict, RestrictFormat; intuition.
+  - destruct (H0 env env' xenv data bin); simpl; eauto.
+    rewrite unfold_computes; simpl; intuition.
+    simpl in *; intuition; subst.
+    rewrite mempty_right.
+    destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
+    eexists x; intuition eauto.
+  - destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
+    eapply H1 in Heqo; destruct_ex; intuition eauto.
+  - destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
+    eapply H1 in Heqo; destruct_ex; simpl in *; intuition eauto.
+    rewrite unfold_computes in H4; eexists _, _; rewrite mempty_right, unfold_computes; intuition eauto.
+  - rewrite unfold_computes in H2; simpl in *; intuition.
+    rewrite <- unfold_computes in H; eapply H0 in H; eauto.
+    rewrite mempty_right in H; intuition eauto.
+    destruct (decode bin env') as [ [? ?] | ] eqn: ?; destruct_ex;
+      simpl in *; try discriminate; intuition; injections.
+    eexists; intuition eauto.
+    discriminate.
+  - simpl in *; intuition.
+    destruct (H1 env env' xenv' data bin mempty); eauto.
+    destruct (decode bin env') as [ [? ?] | ] eqn: ?; destruct_ex;
+      simpl in *; try discriminate; intuition; injections; eauto.
+    destruct_ex; intuition; eexists.
+    subst; rewrite unfold_computes in *; intuition eauto.
+    rewrite unfold_computes in H6; rewrite mempty_right; eauto.
 Qed.
+
+(* DoneLax 'appends' a supplied bytestring onto the end of a format *)
+Definition DoneLax {A B}
+           {cache : Cache}
+           {monoid : Monoid B}
+           (format : FormatM A B)
+  : FormatM (A * B) B :=
+  fun data_rest env binxenv =>
+    exists bin', fst binxenv = mappend bin' (snd data_rest) /\
+                 format (fst data_rest) env (bin', snd binxenv).
+
+Definition decode_obliviously
+           {A B}
+           {cache : Cache}
+           {monoid : Monoid B}
+           (decode : DecodeM A B)
+  : B -> CacheDecode -> option (A * CacheDecode) :=
+  fun bs cd => option_map (fun abc => (fst (fst abc), snd abc)) (decode bs cd).
 
 Lemma CorrectDecoder_simpl_lax_equiv
       {A B}
@@ -333,24 +405,32 @@ Lemma CorrectDecoder_simpl_lax_equiv
     CorrectDecoder (store := cache) monoid predicate (fun _ _ => True)  format
                    decode
                    decode_inv
-    -> CorrectDecoder_simpl
-      (store := Cache_plus_inv cache decode_inv)
-      (fun data env binxenv => exists bin ext,
-           fst binxenv = mappend bin ext /\
-           format data env (bin, snd binxenv) /\ predicate data)
-      (fun bs cd => option_map (fun abc => (fst (fst abc), snd abc)) (decode bs cd)).
+    <-> CorrectDecoder_simpl
+         (store := Cache_plus_inv cache decode_inv)
+         (DoneLax (RestrictFormat format predicate))
+         decode.
 Proof.
-  unfold CorrectDecoder, CorrectDecoder_simpl; intuition.
-  rewrite unfold_computes in H2; simpl in *; destruct_ex; intuition.
-  rewrite <- unfold_computes in H2; eapply H0 in H2; eauto.
-  destruct_ex; intuition; eauto.
-  eexists _; rewrite H, H5; simpl; eauto.
-  destruct (decode bin env') as [ [ [? ?] ?] | ] eqn: ?; destruct_ex;
-    simpl in *; try discriminate; intuition; injections; eauto.
-  eapply H1 in Heqo; eauto.
-  intuition; destruct_ex; intuition; subst.
-  eexists; rewrite unfold_computes; simpl; intuition eauto.
-  eexists _, _; intuition eauto.
+  unfold CorrectDecoder, CorrectDecoder_simpl, DoneLax, RestrictFormat, decode_obliviously; split.
+  - intuition.
+    + rewrite unfold_computes in H2; simpl in *; destruct_ex; intuition.
+      destruct (H0 env env' xenv a x b); simpl; intuition eauto.
+      rewrite H, H7; simpl; eauto.
+    + destruct (decode bin env') as [ [ [? ?] ?] | ] eqn: ?; destruct_ex;
+        simpl in *; try discriminate; intuition; injections; eauto.
+      eapply H1 in Heqo; intuition eauto; destruct_ex; intuition.
+      rewrite H2; eexists; rewrite unfold_computes; intuition eauto.
+      rewrite unfold_computes in H5; simpl; eauto.
+  - intros; split_and; split; intros.
+    + destruct (H0 env env' xenv (data, ext) (mappend bin ext)).
+      simpl; intuition.
+      apply unfold_computes; simpl.
+      eexists; intuition eauto.
+      split_and; eauto.
+    + destruct (H1 env env' xenv' (data, ext) bin); eauto.
+      split_and. apply unfold_computes in H5; destruct_ex; split_and.
+      subst; split; eauto.
+      eexists _, _; intuition eauto.
+      eauto using unfold_computes.
 Qed.
 
 Definition DecodeOpt2_fmap
