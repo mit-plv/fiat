@@ -138,22 +138,6 @@ Section FixList.
          | x :: xs' =>
            format_A x ThenC format_list' xs'
          end).
-  
-  Lemma foo
-    : exists decode_DomainName,
-    forall (bin : B),
-      CorrectDecoder_simpl' format_list' decode_DomainName bin.
-  Proof.
-    eexists _; intros.
-    eapply fix_format_correct_simpl''.
-    unfold Frame.monotonic_function; simpl; intros.
-    destruct t; try reflexivity.
-    unfold compose.
-    unfold Bind2.
-    setoid_rewrite H; reflexivity.
-    Focus 2.
-    intros.
-  Abort. 
 
   Lemma format_list_body_characterization A_format_Impl :
     forall xs base env,

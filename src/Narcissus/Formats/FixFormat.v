@@ -81,28 +81,79 @@ Proof.
   eapply H1; eauto.
 Qed.
 
-Lemma fix_format_correct_simpl''
+Fixpoint FueledFix' {A B C}
+         (f : (B -> C -> option A) -> B -> C -> option A)
+         (n : nat)
+  : B -> C -> option A :=
+  match n with
+  | S n' => f (FueledFix' f n')
+  | _ => fun _ _ => None
+  end.
+
+Definition FueledFix {A B C}
+           {monoid : Monoid B}
+           (f : (B -> C -> option A) -> B -> C -> option A)
+  := fun b => FueledFix' f (S (bin_measure b)) b.
+
+(*Lemma fix_format_correct_simpl''
       {A B}
       {cache : Cache}
       {monoid : Monoid B}
       (format_body : funType [A; CacheFormat]%type (B * CacheFormat) ->
                      funType [A; CacheFormat]%type (B * CacheFormat))
-      (decode_body : forall b : B,
-          (forall b' : B, lt_B b' b -> CacheDecode -> option (A * CacheDecode)) ->
-          CacheDecode -> option (A * CacheDecode))
+      (decode_body : (B ->  CacheDecode -> option (A * CacheDecode)) ->
+                     B -> CacheDecode -> option (A * CacheDecode))
       (format_body_OK : Frame.monotonic_function format_body)
-      (decode_body_OK :
-         forall (x : B) (f g : forall y : B, lt_B y x -> CacheDecode -> option (A * CacheDecode)),
-           (forall (y : B) (p : lt_B y x), f y p = g y p) -> decode_body x f = decode_body x g)
       (decode_body_correct :
-         forall bin (format : funType [A; CacheFormat]%type (B * CacheFormat)) decode,
-           (forall bin' (lt_bin' : lt_B bin' bin),
-               CorrectDecoder_simpl' format decode bin')
-           -> CorrectDecoder_simpl' (format_body format) (fun b => decode_body b (fun b _ => decode b)) bin)
-  : forall (bin : B),
-    CorrectDecoder_simpl' (LeastFixedPoint format_body)
-                          (Fix well_founded_lt_b _ decode_body) bin.
+         forall (format : funType [A; CacheFormat]%type (B * CacheFormat)) decode,
+           (CorrectDecoder_simpl' format decode bin')
+           -> CorrectDecoder_simpl' (format_body format) (decode_body decode) bin)
+  : CorrectDecoder_simpl (LeastFixedPoint format_body)
+                         (FueledFix decode_body).
 Proof.
+  unfold CorrectDecoder_simpl.
+  assert (forall n bin, bin_measure bin < n ->
+          (forall (env : CacheFormat) (env' : CacheDecode) (xenv : CacheFormat) (data : A),
+    Equiv env env' ->
+    LeastFixedPoint format_body data env ↝ (bin, xenv) ->
+    exists xenv' : CacheDecode, FueledFix' decode_body n bin env' = Some (data, xenv') /\ Equiv xenv xenv') /\
+   (forall (env : CacheFormat) (env' xenv' : CacheDecode) (data : A),
+    Equiv env env' ->
+    FueledFix' decode_body n bin env' = Some (data, xenv') ->
+    exists xenv : CacheFormat, LeastFixedPoint format_body data env ↝ (bin, xenv) /\ Equiv xenv xenv'));
+  try (intuition eauto; eapply H; eauto).
+  intros ? ?.
+  specialize (decode_body_correct bin); revert bin decode_body_correct.
+  induction n.
+  intros; inversion H.
+  intros; pose proof (fun a b c d e f g => proj1  (decode_body_correct a b c) d e f g);
+    pose proof (fun a b c d e f g => proj2 (decode_body_correct a b c) d e f g).
+  clear decode_body_correct.
+  split.
+  intros.
+  eapply (unroll_LeastFixedPoint format_body_OK) in H3; eauto.
+  simpl; eapply H0; try eauto.
+  intros.
+  eapply
+  split.
+  intros; eapply IHn; eauto.
+  admit.
+  intros.
+  simpl in H3; eapply H0 in H3; eauto.
+  destruct_ex; eexists; intuition eauto.
+  eapply (unroll_LeastFixedPoint' format_body_OK); eauto.
+  admit.
+
+  destruct H3.
+  eexists.
+
+  intros; eapply H; eauto.
+  admit.
+
+  eapply (proj1 IHn).
+  split.
+
+
   eapply (well_founded_ind well_founded_lt_b); intros.
   split; intros.
   -  rewrite Init.Wf.Fix_eq by eassumption.
@@ -112,4 +163,4 @@ Proof.
     eapply decode_body_correct in H1; eauto.
     destruct_ex; eexists; intuition eauto.
     eapply (unroll_LeastFixedPoint' format_body_OK); eauto.
-Qed.
+Qed. *)

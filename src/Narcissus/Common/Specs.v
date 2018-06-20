@@ -90,6 +90,46 @@ Section Specifications.
         -> exists xenv,
             (format data env ∋ (bin, xenv)) /\ Equiv xenv xenv').
 
+  Definition CorrectEncoder
+             (format : FormatM)
+             (encode : A -> CacheFormat -> B * CacheFormat)
+    := forall (a : A) (env : CacheFormat) (b : B) (xenv : CacheFormat),
+      format a env ∋ (b, xenv)
+      -> format a env ∋ encode a env.
+  
+  Lemma CorrectDecoder_CorrectEncoder_inverse
+    : forall (format : FormatM)
+             (encode : A -> CacheFormat -> B * CacheFormat)
+             (decode : B -> CacheDecode -> option (A * CacheDecode)),
+      CorrectDecoder_simpl format decode
+      -> CorrectEncoder format encode
+      -> forall (a : A) (env : CacheFormat) (b : B) (xenv : CacheFormat),
+          format a env ∋ (b, xenv)
+          -> forall (env' : CacheDecode),
+            Equiv env env'
+            -> exists xenv',
+              decode (fst (encode a env)) env' = Some (a, xenv').
+  Proof.
+    intros; eapply H0 in H1; destruct (encode a env).
+    destruct (proj1 H _ _ _ _ _ H2 H1); simpl in *; intuition eauto.
+  Qed.
+
+  Lemma CorrectEncoder_CorrectDecoder_inverse
+    : forall (format : FormatM)
+             (encode : A -> CacheFormat -> B * CacheFormat)
+             (decode : B -> CacheDecode -> option (A * CacheDecode)),
+      CorrectDecoder_simpl format decode
+      -> CorrectEncoder format encode
+      -> forall (a : A) (env : CacheDecode) (b : B) (xenv : CacheDecode),
+          decode b env = Some (a, xenv)
+          -> forall (env' : CacheFormat),
+            Equiv env' env
+            -> format a env' ∋ encode a env'.
+  Proof.
+    intros.
+    destruct (proj2 H _ _ _ _ _ H2 H1); simpl in *; intuition eauto.
+  Qed.
+    
     (* Definition that identifies properties of cache invariants for automation. *)
   Definition cache_inv_Property
              (P : CacheDecode -> Prop)

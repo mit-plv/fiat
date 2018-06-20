@@ -12,7 +12,7 @@ Definition compose E B
            (format2 : E -> Comp (B * E)) :=
   (fun e0 =>
      `(p, e1) <- format1 e0;
-       `(q, e2) <- format2 e1;
+     `(q, e2) <- format2 e1;
        ret (mappend p q, e2))%comp.
 
 Notation "x 'ThenC' y" := (compose _ x y) : format_scope .
