@@ -2,73 +2,124 @@ Require Import
         Fiat.Computation
         Fiat.Common.DecideableEnsembles
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Common.Notations.
+        Fiat.Narcissus.Common.Notations
+        Fiat.Narcissus.Formats.Base.FMapFormat
+        Fiat.Narcissus.Formats.Base.LaxTerminalFormat.
 
-Set Implicit Arguments.
+Section SequenceFormat.
 
-Definition compose E B
-           (monoid : Monoid B)
-           (format1 : E -> Comp (B * E))
-           (format2 : E -> Comp (B * E)) :=
-  (fun e0 =>
-     `(p, e1) <- format1 e0;
-     `(q, e2) <- format2 e1;
-       ret (mappend p q, e2))%comp.
+  Context {S : Type}. (* Source Type *)
+  Context {T : Type}. (* Target Type *)
+  Context {cache : Cache}. (* State Type *)
+  Context {monoid : Monoid T}. (* Target type is a monoid. *)
 
-Notation "x 'ThenC' y" := (compose _ x y) : format_scope .
-Notation "x 'DoneC'"   := (x ThenC fun e => ret (mempty, e)) : format_scope.
+  Definition sequence_Format
+             (format1 format2 : FormatM S T)
+    := (fun s env =>
+          `(t1, env') <- format1 s env ;
+          `(t2, env'') <- format2 s env';
+           ret (mappend t1 t2, env''))%comp.
 
-Lemma refineEquiv_compose_compose E B
-      (monoid : Monoid B)
-      (format1 format2 format3 : E -> Comp (B * E))
-  : forall ctx,
-    refineEquiv (compose _ (compose _ format1 format2) format3 ctx)
-                (compose _ format1 (compose _ format2 format3) ctx).
+  Definition sequence_Decode
+             {S' : Type}
+             (decode1 : DecodeM (S' * T) T)
+             (decode2 : S' -> DecodeM S T)
+    : DecodeM S T
+    := (fun t env =>
+          match decode1 t env with
+          | Some (s', t', env') => decode2 s' t' env
+          | None => None
+          end).
+
+  Definition sequence_Encode
+             (encode1 encode2 : EncodeM S T)
+    := (fun s env =>
+          `(t1, env') <- encode1 s env ;
+          `(t2, env'') <- encode2 s env';
+          Some (mappend t1 t2, env'')).
+
+  Notation "x ++ y" := (sequence_Format _ x y) : format_scope .
+
+  Lemma sequeunce_Format_assoc
+        (format1 format2 format3 : FormatM S T)
+    : forall s env,
+      refineEquiv (sequence_Format (sequence_Format format1 format2) format3 s env)
+                  (sequence_Format format1 (sequence_Format format2 format3) s env).
+  Proof.
+    unfold sequence_Format; intros.
+    rewrite refineEquiv_bind2_bind.
+    eapply refineEquiv_bind; [ reflexivity | ].
+    intro; rewrite refineEquiv_bind2_bind.
+    symmetry; rewrite refineEquiv_bind2_bind.
+    eapply refineEquiv_bind; [ reflexivity | ].
+    intro; rewrite refineEquiv_bind2_bind.
+    rewrite refineEquiv_bind2_unit.
+    eapply refineEquiv_bind; [ reflexivity | ].
+    intro; rewrite refineEquiv_bind2_unit; simpl.
+    rewrite mappend_assoc; reflexivity.
+  Qed.
+
+  Lemma refineEquiv_under_sequence_Format
+        (format1 format2 format2' : FormatM S T)
+    : (forall s env, refineEquiv (format2 s env) (format2' s env))
+      -> forall s env,
+        refineEquiv (sequence_Format format1 format2 s env)
+                    (sequence_Format format1 format2' s env).
+  Proof.
+    unfold sequence_Format; intros.
+    eapply refineEquiv_bind; [ reflexivity | ].
+    intro ab; destruct ab; simpl.
+    eapply refineEquiv_bind; [ apply H | reflexivity ].
+  Qed.
+
+  Lemma sequence_Format_format_correct_simpl'
+      (format1 format2 : FormatM A B)
+      (decode1 : DecodeM (A' * B) B)
+      (decode2 : A' -> DecodeM A B)
+      (decode1_pf : CorrectDecoder_simpl
+                      format1 ++
+                      (fun data_rest env binxenv =>
+                         exists bin', fst binxenv = mappend bin' (snd data_rest) /\
+                                      format1 (fst data_rest) env (bin', snd binxenv))
+                      decode1)
+      (decode2 : A' -> B -> CacheDecode -> option (A * CacheDecode))
+      (decode2_pf : forall proj,
+          CorrectDecoder_simpl (RestrictFormat format2 (fun data => project data = proj))
+                               (decode2 proj))
+  : CorrectDecoder_simpl
+      (fun (data : A) (env : CacheFormat) =>
+         sequence_Format _ (format1 (project data)) (format2 data) env
+      )%comp
+      (fun (bin : B) (env : CacheDecode) =>
+         `(proj, env') <- decode1 bin env;
+           decode2 (fst proj) (snd proj) env').
 Proof.
-  unfold compose; intros.
-  rewrite refineEquiv_bind2_bind.
-  eapply refineEquiv_bind; [ reflexivity | ].
-  intro; rewrite refineEquiv_bind2_bind.
-  symmetry; rewrite refineEquiv_bind2_bind.
-  eapply refineEquiv_bind; [ reflexivity | ].
-  intro; rewrite refineEquiv_bind2_bind.
-  rewrite refineEquiv_bind2_unit.
-  eapply refineEquiv_bind; [ reflexivity | ].
-  intro; rewrite refineEquiv_bind2_unit; simpl.
-  rewrite mappend_assoc; reflexivity.
-Qed.
+  eapply CorrectDecoder_simpl_equiv_format; eauto.
+  eapply CorrectDecoder_simpl_equiv_decode; try eassumption.
+  eapply CorrectDecoder_simpl_no_inv.
+  eapply CorrectDecoder_simpl_strict_equiv.
+Abort.
 
-Lemma refineEquiv_compose_Done E B
-      (monoid : Monoid B)
-      (format2 : E -> Comp (B * E))
-  : forall ctx,
-    refineEquiv (compose _ (fun ctx => ret (mempty, ctx)) format2 ctx)
-                (format2 ctx).
-Proof.
-  unfold compose; simpl; intros.
-  rewrite refineEquiv_bind2_unit; simpl.
-  split; unfold Bind2; intros v Comp_v.
-  - computes_to_econstructor; eauto; destruct v; simpl;
-      rewrite mempty_left; eauto.
-  - computes_to_inv; subst; destruct v0;
-      rewrite mempty_left; eauto.
-Qed.
+  Lemma CorrectDecoder_Enqueue
+    : CorrectDecoder_simpl (Enqueue_Format (decode).
+  Proof.
+    unfold CorrectDecoder_simpl, FMap_Decode, FMap_Format in *; split; intros.
+    { repeat (apply_in_hyp @unfold_computes; destruct_ex; intuition).
+      pose proof (g_inverts_f  _ _ _ _ H3 H4).
+      rewrite <- unfold_computes in H3.
+      eapply H1 in H3; destruct_ex; intuition eauto.
+      eexists; rewrite H5; simpl; intuition eauto.
+      subst; eauto.
+    }
+    { apply_in_hyp DecodeBindOpt_inv; destruct_ex; intuition.
+      eapply H2 in H3; eauto; injections.
+      destruct_ex; eexists; intuition eauto.
+      apply unfold_computes.
+      eexists; intuition eauto.
+    }
+  Qed.
 
-Lemma refineEquiv_under_compose E B
-      (monoid : Monoid B)
-      (format1 format2 format2' : E -> Comp (B * E))
-  : (forall ctx', refineEquiv (format2 ctx') (format2' ctx'))
-    -> forall ctx,
-      refineEquiv (compose _ format1 format2 ctx)
-                  (compose _ format1 format2' ctx).
-Proof.
-  unfold compose; intros.
-  eapply refineEquiv_bind; [ reflexivity | ].
-  intro ab; destruct ab; simpl.
-  eapply refineEquiv_bind; [ apply H | reflexivity ].
-Qed.
-
-Lemma compose_format_correct
+Lemma sequence_Format_format_correct
       {A A' B}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
@@ -112,8 +163,8 @@ Lemma compose_format_correct
       monoid
       (fun a => predicate a)
       predicate_rest'
-      (fun (data : A) (ctx : CacheFormat) =>
-         compose _ (format1 (project data)) (format2 data)  ctx
+      (fun (data : A) (env : CacheFormat) =>
+         sequence_Format _ (format1 (project data)) (format2 data)  env
       )%comp
       (fun (bin : B) (env : CacheDecode) =>
          `(proj, rest, env') <- decode1 bin env;
@@ -121,7 +172,7 @@ Lemma compose_format_correct
 Proof.
   unfold cache_inv_Property in *; split.
   { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
-    unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
+    unfold sequence_Format, Bind2 in com_pf; computes_to_inv; destruct v;
       destruct v0.
     destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend b0 ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
     setoid_rewrite <- mappend_assoc; rewrite H2.
@@ -145,7 +196,7 @@ Proof.
   }
 Qed.
 
-Lemma compose_format_correct_simpl
+Lemma sequence_Format_format_correct_simpl
       {A A' B}
       {cache : Cache}
       {monoid : Monoid B}
@@ -166,15 +217,15 @@ Lemma compose_format_correct_simpl
           CorrectDecoder_simpl (RestrictFormat format2 (fun data => project data = proj))
                                (decode2 proj))
   : CorrectDecoder_simpl
-      (fun (data : A) (ctx : CacheFormat) =>
-         compose _ (format1 (project data)) (format2 data) ctx
+      (fun (data : A) (env : CacheFormat) =>
+         sequence_Format _ (format1 (project data)) (format2 data) env
       )%comp
       (fun (bin : B) (env : CacheDecode) =>
          `(proj, env') <- decode1 bin env;
            decode2 (fst proj) (snd proj) env').
 Proof.
   split.
-  { intros; unfold compose, Bind2 in *; computes_to_inv;
+  { intros; unfold sequence_Format, Bind2 in *; computes_to_inv;
       destruct v; destruct v0; simpl in *; injections.
     destruct decode1_pf.
     destruct (H1 _ _ c (project data, b0) (mappend b b0) H) as [? [? ?] ].
@@ -195,12 +246,12 @@ Proof.
     destruct H0 as [? ?]; destruct_ex; intuition; subst.
     unfold RestrictFormat in H1; apply unfold_computes in H1; intuition.
     rewrite H5.
-    unfold compose; eexists; intuition eauto.
+    unfold sequence_Format; eexists; intuition eauto.
     repeat first [computes_to_econstructor
                   | apply unfold_computes; eauto ]. }
 Qed.
 
-Lemma compose_format_correct_simpl'
+Lemma sequence_Format_format_correct_simpl'
       {A A' B}
       {cache : Cache}
       {monoid : Monoid B}
@@ -221,8 +272,8 @@ Lemma compose_format_correct_simpl'
           CorrectDecoder_simpl (RestrictFormat format2 (fun data => project data = proj))
                                (decode2 proj))
   : CorrectDecoder_simpl
-      (fun (data : A) (ctx : CacheFormat) =>
-         compose _ (format1 (project data)) (format2 data) ctx
+      (fun (data : A) (env : CacheFormat) =>
+         sequence_Format _ (format1 (project data)) (format2 data) env
       )%comp
       (fun (bin : B) (env : CacheDecode) =>
          `(proj, env') <- decode1 bin env;
@@ -243,7 +294,7 @@ Abort.
 (* could compare the binary values of the field instead of *)
 (* decoding and comparing. *)
 
-Lemma compose_format_correct_no_dep
+Lemma sequence_Format_format_correct_no_dep
       {A A' B}
       (* Need decideable equality on the type of the fixed field. *)
       (A'_eq_dec : Query_eq A')
@@ -286,8 +337,8 @@ Lemma compose_format_correct_no_dep
       monoid
       (fun a => predicate a)
       predicate_rest'
-      (fun (data : A) (ctx : CacheFormat) =>
-         compose _ (format1 a') (format2 data)  ctx
+      (fun (data : A) (env : CacheFormat) =>
+         sequence_Format _ (format1 a') (format2 data)  env
       )%comp
       (fun (bin : B) (env : CacheDecode) =>
          `(a, rest, env') <- decode1 bin env;
@@ -295,7 +346,7 @@ Lemma compose_format_correct_no_dep
 Proof.
   unfold cache_inv_Property in *; split.
   { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
-    unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
+    unfold sequence_Format, Bind2 in com_pf; computes_to_inv; destruct v;
       destruct v0.
     destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend b0 ext) env_OK env_pm predicate_a' H com_pf); intuition; simpl in *; injections.
     eapply predicate_rest_impl; eauto.
@@ -337,8 +388,8 @@ Lemma CorrectDecoderinish {A B}
          monoid
          predicate
          rest_predicate
-         (fun a' ctxE => ret (mempty, ctxE))
-         (fun b' ctxD => if b then Some (a, b', ctxD) else None)
+         (fun a' envE => ret (mempty, envE))
+         (fun b' envD => if b then Some (a, b', envD) else None)
          decode_inv.
 Proof.
   unfold CorrectDecoder; split; intros.
@@ -386,17 +437,17 @@ Proof.
 Qed.
 
 Lemma refine_If_Then_Else_ThenC
-  : forall (E B : Type) (monoid : Monoid B) (format1 format2 format3 : E -> Comp (B * E)) (ctx : E) b,
-    refine (((If b Then format1 Else format2) ThenC format3) ctx)
-           (If b Then ((format1 ThenC format3) ctx) Else ((format2 ThenC format3) ctx)).
+  : forall (E B : Type) (monoid : Monoid B) (format1 format2 format3 : E -> Comp (B * E)) (env : E) b,
+    refine (((If b Then format1 Else format2) ThenC format3) env)
+           (If b Then ((format1 ThenC format3) env) Else ((format2 ThenC format3) env)).
 Proof.
   intros; destruct b; reflexivity.
 Qed.
 
 Lemma refineEquiv_If_Then_Else_ThenC
-  : forall (E B : Type) (monoid : Monoid B) (format1 format2 format3 : E -> Comp (B * E)) (ctx : E) b,
-    refineEquiv (((If b Then format1 Else format2) ThenC format3) ctx)
-                (If b Then ((format1 ThenC format3) ctx) Else ((format2 ThenC format3) ctx)).
+  : forall (E B : Type) (monoid : Monoid B) (format1 format2 format3 : E -> Comp (B * E)) (env : E) b,
+    refineEquiv (((If b Then format1 Else format2) ThenC format3) env)
+                (If b Then ((format1 ThenC format3) env) Else ((format2 ThenC format3) env)).
 Proof.
   intros; destruct b; reflexivity.
 Qed.

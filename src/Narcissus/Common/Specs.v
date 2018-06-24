@@ -25,14 +25,14 @@ Section Specifications.
      - or an error value, i.e. None. *)
 
   Definition DecodeM : Type :=
-    B -> CacheDecode -> option (A * B * CacheDecode).
+    B -> CacheDecode -> option (A * CacheDecode).
 
   (* Encoders take a source value and store and produce either a
      - target value and updated store
      - or an error value, i.e. None. *)
 
   Definition EncodeM : Type :=
-    CacheFormat -> B * CacheFormat.
+    A -> CacheFormat -> option (B * CacheFormat).
 
   Local Notation "a ∋ b" := (@computes_to _ a b) (at level 90).
   Local Notation "a ∌ b" := (~ @computes_to _ a b) (at level 90).
@@ -54,7 +54,7 @@ Section Specifications.
              (predicate : A -> Prop)
              (rest_predicate : A -> B -> Prop)
              (format : FormatM)
-             (decode : DecodeM)
+             (decode : B -> CacheDecode -> option (A * B * CacheDecode))
              (decode_inv : CacheDecode -> Prop) :=
     (forall env env' xenv data bin ext
             (env_OK : decode_inv env'),
@@ -78,7 +78,7 @@ Section Specifications.
 
   Definition CorrectDecoder_simpl
              (format : FormatM)
-             (decode : B -> CacheDecode -> option (A * CacheDecode)) :=
+             (decode : DecodeM) :=
     (forall env env' xenv data bin,
         Equiv env env' ->
         format data env ∋ (bin, xenv) ->
@@ -92,15 +92,19 @@ Section Specifications.
 
   Definition CorrectEncoder
              (format : FormatM)
-             (encode : A -> CacheFormat -> B * CacheFormat)
-    := forall (a : A) (env : CacheFormat) (b : B) (xenv : CacheFormat),
-      format a env ∋ (b, xenv)
-      -> format a env ∋ encode a env.
-  
-  Lemma CorrectDecoder_CorrectEncoder_inverse
+             (encode : EncodeM)
+    :=
+      (forall (a : A) (env : CacheFormat) (b : B) (xenv : CacheFormat),
+          encode a env = Some (b, xenv)
+          -> format a env ∋ (b, xenv))
+      /\ (forall (a : A) (env : CacheFormat),
+             encode a env = None
+             -> forall b xenv, ~ (format a env ∋ (b, xenv))).
+
+  (* Lemma CorrectDecoder_CorrectEncoder_inverse
     : forall (format : FormatM)
-             (encode : A -> CacheFormat -> B * CacheFormat)
-             (decode : B -> CacheDecode -> option (A * CacheDecode)),
+             (encode : EncodeM)
+             (decode : DecodeM),
       CorrectDecoder_simpl format decode
       -> CorrectEncoder format encode
       -> forall (a : A) (env : CacheFormat) (b : B) (xenv : CacheFormat),
@@ -128,8 +132,8 @@ Section Specifications.
   Proof.
     intros.
     destruct (proj2 H _ _ _ _ _ H2 H1); simpl in *; intuition eauto.
-  Qed.
-    
+  Qed. *)
+
     (* Definition that identifies properties of cache invariants for automation. *)
   Definition cache_inv_Property
              (P : CacheDecode -> Prop)
@@ -141,7 +145,7 @@ Section Specifications.
     : forall (predicate : A -> Prop)
              (rest_predicate : A -> B -> Prop)
              (format : FormatM)
-             (decode : DecodeM)
+             (decode : _)
              (decode_inv : CacheDecode -> Prop),
       CorrectDecoder _ predicate rest_predicate format decode decode_inv
       -> forall b b' s_d,
@@ -166,7 +170,7 @@ Section Specifications.
              (predicate_dec : forall a, predicate a \/ ~ predicate a)
              (rest_predicate_dec : forall a b, rest_predicate a b \/ ~ rest_predicate a b)
              (format : FormatM)
-             (decode : DecodeM)
+             (decode : _)
              (decode_inv : CacheDecode -> Prop),
       CorrectDecoder _ predicate rest_predicate format decode decode_inv
       -> forall b b' s_d,
@@ -311,8 +315,8 @@ Definition decode_strict
            {A B}
            {cache : Cache}
            {monoid : Monoid B}
-           (decode : B -> CacheDecode -> option (A * CacheDecode))
-  : DecodeM A B :=
+           (decode : DecodeM A B)
+  : DecodeM (A * B) B :=
   fun cd bs => Ifopt decode cd bs
     as abscd'
          Then Some (fst abscd', mempty, snd abscd')
@@ -330,7 +334,7 @@ Lemma CorrectDecoder_simpl_equiv_format
       {A B}
       (cache : Cache)
   : forall (format format' : FormatM A B)
-           (decode : B -> CacheDecode -> option (A * CacheDecode)),
+           (decode : DecodeM A B),
     CorrectDecoder_simpl format decode
     -> (forall a env b env', format a env (b, env') <-> format' a env (b, env'))
     -> CorrectDecoder_simpl format' decode.
@@ -347,7 +351,7 @@ Lemma CorrectDecoder_simpl_equiv_decode
       {A B}
       (cache : Cache)
   : forall (format : FormatM A B)
-           (decode decode' : B -> CacheDecode -> option (A * CacheDecode)),
+           (decode decode' : DecodeM A B),
     CorrectDecoder_simpl format decode
     -> (forall env b, decode b env = decode' b env)
     -> CorrectDecoder_simpl format decode'.
@@ -362,7 +366,7 @@ Lemma CorrectDecoder_simpl_no_inv
       {A B}
       (cache : Cache)
   : forall (format : FormatM A B)
-           (decode : B -> CacheDecode -> option (A * CacheDecode)),
+           (decode : DecodeM A B),
     CorrectDecoder_simpl
       (store := Cache_plus_inv cache (fun _ => True))
       format decode
@@ -379,7 +383,7 @@ Lemma CorrectDecoder_simpl_strict_equiv
       (predicate : A -> Prop)
   : forall (decode_inv : CacheDecode -> Prop)
            (format : FormatM A B)
-           (decode : B -> CacheDecode -> option (A * CacheDecode)),
+           (decode : DecodeM A B),
     CorrectDecoder_simpl
       (store := Cache_plus_inv cache decode_inv)
       (RestrictFormat format predicate)
@@ -430,7 +434,7 @@ Definition decode_obliviously
            {A B}
            {cache : Cache}
            {monoid : Monoid B}
-           (decode : DecodeM A B)
+           (decode : DecodeM (A * B) B)
   : B -> CacheDecode -> option (A * CacheDecode) :=
   fun bs cd => option_map (fun abc => (fst (fst abc), snd abc)) (decode bs cd).
 
@@ -441,7 +445,7 @@ Lemma CorrectDecoder_simpl_lax_equiv
       (predicate : A -> Prop)
   : forall (decode_inv : CacheDecode -> Prop)
            (format : FormatM A B)
-           (decode : DecodeM A B),
+           (decode : DecodeM (A * B) B),
     CorrectDecoder (store := cache) monoid predicate (fun _ _ => True)  format
                    decode
                    decode_inv
@@ -859,7 +863,11 @@ Definition CorrectDecoderFor {A B} {cache : Cache}
 
 Definition CorrectEncoderFor {A B} {cache : Cache}
       {monoid : Monoid B} FormatSpec :=
-  { encoder' : A -> EncodeM B & forall a ce, refine (FormatSpec a ce) (ret (encoder' a ce))}.
+  { encoder' : EncodeM A B & forall a env,
+        (forall benv', encoder' a env = Some benv' ->
+                       refine (FormatSpec a env) (ret benv'))
+        /\ (encoder' a env = None ->
+            forall benv', ~ computes_to (FormatSpec a env) benv')}.
 
 (* Here are the expected correctness lemmas for synthesized functions. *)
 Lemma CorrectDecodeEncode
@@ -869,24 +877,24 @@ Lemma CorrectDecodeEncode
            (FormatSpec : FormatM A B)
            (encoder : CorrectEncoderFor FormatSpec)
            (decoder : CorrectDecoderFor Invariant FormatSpec),
-    forall a ce cd,
-      Equiv ce cd
+    forall a envE envD b envE',
+      Equiv envE envD
       -> Invariant a
-      -> snd (projT1 decoder) cd
-      -> exists cd',
-        fst (projT1 decoder) (fst (projT1 encoder a ce)) cd = Some (a, mempty, cd').
+      -> snd (projT1 decoder) envD
+      -> projT1 encoder a envE = Some (b, envE')
+      -> exists envD',
+          fst (projT1 decoder) b envD = Some (a, mempty, envD').
 Proof.
   intros.
   destruct encoder as [encoder encoder_OK].
   destruct decoder as [decoder [Inv [decoder_OK Inv_cd] ] ]; simpl in *.
-  specialize (encoder_OK a ce _ (ReturnComputes _)) .
+  specialize (proj1 (encoder_OK a envE) _ H2); intro.
   specialize (decoder_OK Inv_cd).
   destruct decoder_OK as [decoder_OK _].
-  destruct (encoder a ce) as [bin ce'].
   unfold cache_inv_Property in Inv_cd.
-  eapply decoder_OK  with (ext := mempty) in encoder_OK; eauto.
+  eapply decoder_OK  with (ext := mempty) in H3; eauto.
   destruct_ex; intuition.
-  rewrite mempty_right in H3; eauto.
+  rewrite mempty_right in H4; eauto.
 Qed.
 
 Lemma CorrectEncodeDecode

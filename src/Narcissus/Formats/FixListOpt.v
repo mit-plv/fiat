@@ -126,10 +126,10 @@ Section FixList.
                                        let (b1, env1) := A_format_Impl x env in
                                        (mappend bacc b1, env1)).
 
-  Require Import Fiat.Narcissus.Formats.FixFormat.
+  Require Import Fiat.Narcissus.Formats.Base.FixFormat.
   Import Fiat.Computation.FixComp.LeastFixedPointFun.
 
-  Definition format_list' : FormatM (store := cache) (list A) B := 
+  Definition format_list' : FormatM (store := cache) (list A) B :=
     LeastFixedPoint
       (fDom := [list A; CacheFormat])
       (fun format_list' xs =>

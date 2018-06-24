@@ -307,6 +307,7 @@ src/FiniteSetADTs/FiniteSetADTMethodLaws.v
 src/FiniteSetADTs/FiniteSetRefinement.v
 src/FiniteSetADTs/NatWord.v
 src/FiniteSetADTs/WordInterface.v
+src/Narcissus/BaseFormats.v
 src/Narcissus/BinLib.v
 src/Narcissus/Formats.v
 src/Narcissus/Automation/AlignedAutomation.v
@@ -365,7 +366,6 @@ src/Narcissus/Formats/CInt.v
 src/Narcissus/Formats/DomainNameOpt.v
 src/Narcissus/Formats/Enum.v
 src/Narcissus/Formats/EnumOpt.v
-src/Narcissus/Formats/FixFormat.v
 src/Narcissus/Formats/FixList.v
 src/Narcissus/Formats/FixListOpt.v
 src/Narcissus/Formats/FixStringOpt.v
@@ -383,6 +383,12 @@ src/Narcissus/Formats/SumTypeOpt.v
 src/Narcissus/Formats/Vector.v
 src/Narcissus/Formats/Word.v
 src/Narcissus/Formats/WordOpt.v
+src/Narcissus/Formats/Base/EnqueueFormat.v
+src/Narcissus/Formats/Base/FMapFormat.v
+src/Narcissus/Formats/Base/FixFormat.v
+src/Narcissus/Formats/Base/LaxTerminalFormat.v
+src/Narcissus/Formats/Base/StrictTerminalFormat.v
+src/Narcissus/Formats/Base/UnionFormat.v
 src/Narcissus/Stores/Cache.v
 src/Narcissus/Stores/DomainNameStore.v
 src/Narcissus/Stores/EmptyStore.v
