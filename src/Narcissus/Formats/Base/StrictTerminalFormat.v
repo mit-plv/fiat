@@ -35,7 +35,7 @@ Section StrictTerminalFormat.
   Lemma CorrectDecoder_StrictTerminal
         (s : S)
         (Singleton_Format : forall s' env tenv',
-            computes_to (StrictTerminal_Format s env) tenv' ->
+            StrictTerminal_Format s env ∋ tenv' ->
             s = s')
     : CorrectDecoder_simpl StrictTerminal_Format (StrictTerminal_Decode s).
   Proof.
@@ -53,7 +53,7 @@ Section StrictTerminalFormat.
     }
   Qed.
 
-  Lemma CorrectEncoder_Enqueue
+  Lemma CorrectEncoder_StrictTerminal
     : CorrectEncoder StrictTerminal_Format StrictTerminal_Encode.
   Proof.
     unfold CorrectEncoder, StrictTerminal_Format, StrictTerminal_Encode;

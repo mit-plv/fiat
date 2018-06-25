@@ -83,30 +83,38 @@ Section SequenceFormat.
 
   Lemma CorrectDecoder_sequence
         {S S' : Type}
-        (f : S -> S')
-        (format1 : FormatM S' T)
-        (format2 : FormatM S T)
+        (f : S -> S' -> Prop)
+        (format1' : FormatM (S' * T) T)
+        (format1 format2 : FormatM S T)
         (decode1 : DecodeM (S' * T) T)
         (decode2 : S' -> DecodeM S T)
-        (decode1_correct : CorrectDecoder_simpl ((Projection_Format (fun st => (fst st)) format1) ++ ?* ) decode1)
-        (decode2_correct : forall (s' : S'), CorrectDecoder_simpl format2 (decode2 s'))
-    : CorrectDecoder_simpl (Projection_Format f format1 ++ format2)
+        (format1_overlap : forall s env tenv',
+            format1 s env ∋ tenv' -> exists s',
+              forall t, format1' (s', t) env ∋ (mappend (fst tenv') t, snd tenv') /\ f s s')
+        (format1'_overlap : forall s' t env tenv',
+            format1' (s', t) env ∋ tenv'
+            -> forall s,
+              f s s'
+              -> exists t', format1 s env ∋ (t', snd tenv') /\ fst tenv' = mappend t' t)
+        (decode1_correct : CorrectDecoder_simpl format1' decode1)
+        (decode2_correct : forall (s' : S'), CorrectDecoder_simpl (Restrict_Format (fun s => f s s') format2) (decode2 s'))
+    : CorrectDecoder_simpl (format1 ++ format2)
                            (sequence_Decode decode1 decode2).
   Proof.
     unfold CorrectDecoder_simpl, Projection_Format,
     sequence_Decode, sequence_Format, FMap_Format; split; intros.
     - unfold Bind2 in H0; computes_to_inv; subst.
+      eapply format1_overlap in H0; destruct_ex; split_and.
       repeat apply_in_hyp @unfold_computes.
-      destruct v; destruct v0; simpl in *.
-      destruct_ex; intuition; injections.
+      destruct v; destruct v0; simpl in *; injections.
       destruct decode1_correct as [? _].
-      destruct (decode2_correct (f data)) as [? _].
-      destruct (H0 env env' c (f data, t0) (mappend t t0)) as (xenv', (decode1_eq, Equiv_xenv));
+      destruct (decode2_correct x) as [? _].
+      destruct (H0 env env' c (x, t0) (mappend t t0)) as (xenv', (decode1_eq, Equiv_xenv));
         eauto.
-      { unfold Projection_Format, FMap_Format, LaxTerminal_Format; repeat computes_to_econstructor; eauto.
-        apply unfold_computes; eexists; intuition eauto.
-        computes_to_econstructor. }
       rewrite decode1_eq; eauto.
+      eapply H3; eauto.
+      unfold Restrict_Format, FMap_Format; apply unfold_computes.
+      setoid_rewrite unfold_computes; eexists; intuition eauto.
     - destruct (decode1 bin env') as [ [ [s' t'] xenv'']  | ] eqn: ?; try discriminate.
       destruct decode1_correct as [decode1_correct' decode1_correct].
       specialize (decode2_correct s'); destruct decode2_correct as [_ decode2_correct].
@@ -116,20 +124,40 @@ Section SequenceFormat.
       eapply decode2_correct in H0; eauto.
       destruct_ex; split_and.
       eexists; intuition eauto.
-      unfold Projection_Format, FMap_Format, LaxTerminal_Format, sequence_Format,
+      unfold Restrict_Format, FMap_Format, LaxTerminal_Format, sequence_Format,
         Bind2 in *; computes_to_inv.
-      repeat apply_in_hyp @unfold_computes.
-      destruct_ex; split_and; simpl in *.
-      injections; simpl in *.
-      computes_to_econstructor.
-      apply unfold_computes.
-      eexists; split; try reflexivity.
-      Focus 2.
-      computes_to_econstructor; eauto.
-      apply unfold_computes; eauto.
-      eauto.
-  Admitted.
+      apply @unfold_computes in H1.
+      destruct_ex; split_and; simpl in *; subst.
+      eapply format1'_overlap in H2; destruct_ex; split_and; subst; eauto.
+  Qed.
 
-            End SequenceFormat.
+  Corollary CorrectDecoder_sequence_Projection
+        {S S' : Type}
+        (f : S -> S')
+        (format1 : FormatM S' T)
+        (format2 : FormatM S T)
+        (decode1 : DecodeM (S' * T) T)
+        (decode2 : S' -> DecodeM S T)
+        (decode1_correct : CorrectDecoder_simpl (Projection_Format fst format1 ++ ?* ) decode1)
+        (decode2_correct : forall (s' : S'), CorrectDecoder_simpl (Restrict_Format (fun s => f s = s') format2) (decode2 s'))
+    : CorrectDecoder_simpl (Projection_Format f format1 ++ format2)
+                           (sequence_Decode decode1 decode2).
+  Proof.
+    unfold Projection_Format.
+    eapply (CorrectDecoder_sequence (fun s s' => f s = s')); eauto; intros;
+      unfold Projection_Format, FMap_Format, sequence_Format, Bind2, LaxTerminal_Format in *.
+    - apply_in_hyp @unfold_computes.
+      destruct_ex; split_and; subst.
+      eexists; intros; intuition.
+      destruct tenv'; simpl; computes_to_econstructor.
+      rewrite unfold_computes; eauto.
+      simpl; computes_to_econstructor; eauto.
+    - computes_to_inv; subst.
+      apply_in_hyp @unfold_computes; destruct_ex; split_and; subst.
+      eexists; simpl; intuition eauto.
+      destruct v; apply unfold_computes; eauto.
+  Qed.
 
-            Notation "x ++ y" := (sequence_Format x y) : format_scope .
+End SequenceFormat.
+
+Notation "x ++ y" := (sequence_Format x y) : format_scope .

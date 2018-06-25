@@ -7,7 +7,7 @@ Require Import
         Fiat.Computation
         Fiat.Narcissus.Common.Specs.
 
-Section UnionFormat.
+Section FMapFormat.
 
   Context {S : Type}. (* Source Type *)
   Context {T : Type}. (* Target Type *)
@@ -20,7 +20,7 @@ Section UnionFormat.
              (format_a : FormatM S T)
     : FormatM S' T :=
     fun a' env benv' =>
-      exists a, computes_to (format_a a env) benv' /\ f a a'.
+      exists a, format_a a env ∋ benv' /\ f a a'.
 
   Variable g : S -> S'. (* Transformation Function *)
 
@@ -28,6 +28,12 @@ Section UnionFormat.
              (decode : DecodeM S T)
     : DecodeM S' T  :=
     fun b env => `(a, env') <- decode b env; Some (g a, env').
+
+  Definition FMap_Encode
+             (encode : EncodeM S T)
+             (f' : S' -> S)
+    : EncodeM S' T :=
+    fun s => encode (f' s).
 
   Lemma CorrectDecoder_FMap
         (format : FormatM S T)
@@ -54,7 +60,27 @@ Section UnionFormat.
     }
   Qed.
 
-End UnionFormat.
+  Lemma CorrectEncoder_FMap
+        (format : FormatM S T)
+        (encode : EncodeM S T)
+        (f' : S' -> S)
+        (f'_inverts_f : forall a a' env benv,
+            format a env ∋ benv -> f a a' -> a = f' a')
+        (f'_OK : forall a, f (f' a) a)
+    : CorrectEncoder format encode
+      -> CorrectEncoder (FMap_Format format) (FMap_Encode encode f').
+  Proof.
+    unfold CorrectEncoder, FMap_Encode, FMap_Format in *; split; intros.
+    - apply unfold_computes.
+      repeat (apply_in_hyp @unfold_computes; destruct_ex; intuition).
+      eapply H in H0; eexists; intuition eauto.
+    - intro; apply_in_hyp @unfold_computes;
+        destruct_ex; split_and.
+      eapply H4; eauto.
+      rewrite <- (f'_inverts_f _ _ _ _ H2 H3); eauto.
+  Qed.
+
+End FMapFormat.
 
 Definition Restrict_Format
            {S T : Type}
