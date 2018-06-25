@@ -995,3 +995,6 @@ Proof.
     destruct_ex; intuition.
     rewrite H5; reflexivity.
 Qed.
+
+Notation "a ∋ b" := (@computes_to _ a b) (at level 65) : format_scope.
+Notation "a ∌ b" := (~ @computes_to _ a b) (at level 65) : format_scope.

@@ -30,7 +30,7 @@ Section LaxTerminalFormat.
   Lemma CorrectDecoder_LaxTerminal
         (s : S)
         (Singleton_Format : forall s' env tenv',
-            computes_to (LaxTerminal_Format s' env) tenv' ->
+            LaxTerminal_Format s' env ∋ tenv' ->
             s = fst s')
     : CorrectDecoder_simpl LaxTerminal_Format (LaxTerminal_Decode s).
   Proof.
@@ -44,7 +44,7 @@ Section LaxTerminalFormat.
     }
   Qed.
 
-  Lemma CorrectEncoder_Enqueue
+  Lemma CorrectEncoder_LaxTerminal
     : CorrectEncoder LaxTerminal_Format LaxTerminal_Encode.
   Proof.
     unfold CorrectEncoder, LaxTerminal_Format, LaxTerminal_Encode;
