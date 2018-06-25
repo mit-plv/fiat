@@ -18,9 +18,6 @@ Section ComplementaryFormats.
   Variable NFormat : @FormatM NA B Nstore. (* The format of invalid bytestrings *)
   Variable NA_OK : NA -> Prop. (* Not source data property that ensures it will
                                 generate invalid bytestrings *)
-  
-  Notation "a ∋ b" := (@computes_to _ a b) (at level 90).
-  Notation "a ∌ b" := (~ @computes_to _ a b) (at level 90).
 
   (* To start, we define the set of invalid bytestrings for a format. *)
   Definition ComplementaryFormat
@@ -35,9 +32,9 @@ Section ComplementaryFormats.
 
   (* We can use a correct decoder to ensure that an invalid format is
      complementary. *)
-  Definition ComplementaryDecoder
+(*  Definition ComplementaryDecoder
              (decode : @DecodeM A B store)
-             (decode_inv : @CacheDecode store -> Prop) := 
+             (decode_inv : @CacheDecode store -> Prop) :=
     forall na b ns ns',
       NA_OK na
       -> NFormat na ns ∋ (b, ns')
@@ -52,7 +49,7 @@ Section ComplementaryFormats.
                   Format a s ∋ (b, s')
                   -> predicate a)
              (rest_predicate : A -> B -> Prop := fun _ _ => True)
-             (decode : @DecodeM A B store)
+             (decode : @DecodeM (A * B) B store)
              (decode_inv : CacheDecode -> Prop),
       CorrectDecoder _ predicate rest_predicate Format decode decode_inv
       -> ComplementaryDecoder decode decode_inv
@@ -63,7 +60,7 @@ Section ComplementaryFormats.
     eapply H0 in H1; eauto.
     exact (@CorrectDecoderNone _ _ _ _ _ _ _ _ _ H _ mempty _ H3 H1 _ _ _ H4 (predicate_OK _ _ _ _ H5) I H5).
   Qed.
- 
+
 End ComplementaryFormats.
 
 Local Transparent computes_to.
@@ -78,7 +75,7 @@ Definition DeriveComplementaryDecoder
            (rest_predicate : A -> B -> Prop := fun _ _ => True)
            (decode : @DecodeM A B store)
            (decode_inv : CacheDecode -> Prop)
-           (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'), 
+           (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'),
     CorrectDecoder monoid_B predicate rest_predicate Format decode decode_inv
     -> (forall a, predicate a -> predicate' a)
     -> (forall a a' b s s' s'',
@@ -109,7 +106,7 @@ Definition DeriveComplementaryDecoder_hetero
            (rest_predicate : A -> B -> Prop := fun _ _ => True)
            (decode : @DecodeM A B store)
            (decode_inv : CacheDecode -> Prop)
-           (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'), 
+           (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'),
     CorrectDecoder monoid_B predicate rest_predicate (fun a => Format (proj a)) decode decode_inv
     -> (forall a, predicate a -> predicate' (proj a))
     -> (forall na na' b s s' s'',
@@ -139,7 +136,7 @@ Lemma silly
            (rest_predicate : A -> B -> Prop := fun _ _ => True)
            (decode : @DecodeM A B store)
            (decode_inv : CacheDecode -> Prop)
-           (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'), 
+           (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'),
     CorrectDecoder monoid_B predicate rest_predicate (fun a => Format (proj a)) decode decode_inv
     -> (forall a, predicate a -> predicate' (proj a))
     -> (forall na na' b s s' s'',
@@ -161,4 +158,7 @@ Proof.
   destruct (H0 env env' xenv' data bin ext) as [? [? [? ?] ] ]; intuition eauto.
   eexists _, _; intuition eauto.
   unfold computes_to; eauto.
-Qed.  
+Qed.
+*)
+
+End ComplementaryFormats.

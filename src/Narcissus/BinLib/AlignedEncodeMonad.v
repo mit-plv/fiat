@@ -134,7 +134,7 @@ Section AlignedEncodeM.
    *)
 
   Definition EncodeMEquivAlignedEncodeM
-             (f : EncodeM ByteString)
+             (f : EncodeM S ByteString)
              (f' : forall numBytes, AlignedEncodeM numBytes)
     := forall ce idx,
       (padding (fst (f ce)) = 0 ->

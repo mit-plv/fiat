@@ -171,7 +171,7 @@ Section AlignedDecodeM.
 
   Definition DecodeMEquivAlignedDecodeM
              {C : Type}
-             (f : DecodeM C ByteString)
+             (f : DecodeM (C * ByteString) ByteString)
              (f' : forall {numBytes}, AlignedDecodeM C numBytes)
     := (forall {numBytes_hd}
                (n : nat)
@@ -357,9 +357,9 @@ Section AlignedDecodeM.
   Qed.
 
   Lemma Bind_DecodeMEquivAlignedDecodeM {A C : Type}
-        (A_decode : DecodeM A ByteString)
+        (A_decode : DecodeM (A * ByteString) ByteString)
         (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
-        (t : A -> DecodeM C ByteString)
+        (t : A -> DecodeM (C * ByteString) ByteString)
         (t' : A -> forall {numBytes}, AlignedDecodeM C numBytes)
     : DecodeMEquivAlignedDecodeM A_decode (@A_decode_aligned)
       -> (forall a, DecodeMEquivAlignedDecodeM (t a) (@t' a))
@@ -537,9 +537,9 @@ Section AlignedDecodeM.
   Qed.
 
   Lemma AlignedDecode_assoc {A B C : Type}
-        (decode_A : DecodeM A ByteString)
-        (decode_B : A -> DecodeM B ByteString)
-        (decode_C : A -> B -> DecodeM C ByteString)
+        (decode_A : DecodeM (A * ByteString) ByteString)
+        (decode_B : A -> DecodeM (B * ByteString) ByteString)
+        (decode_C : A -> B -> DecodeM (C * ByteString) ByteString)
         (aligned_decoder : forall numBytes : nat, AlignedDecodeM C numBytes)
     : DecodeMEquivAlignedDecodeM
         (fun bs cd => `(ab, bs', cd') <- (`(a, bs', cd') <- decode_A bs cd;
@@ -568,7 +568,7 @@ Section AlignedDecodeM.
   Qed.
 
   Lemma AlignedDecode_ifb {A : Type}
-        (decode_A : DecodeM A ByteString)
+        (decode_A : DecodeM (A * ByteString) ByteString)
         (cond : bool)
         (aligned_decoder : forall numBytes : nat, AlignedDecodeM A numBytes)
     : DecodeMEquivAlignedDecodeM
@@ -586,7 +586,7 @@ Section AlignedDecodeM.
   Qed.
 
   Lemma AlignedDecode_Sumb {A : Type}
-        (decode_A : DecodeM A ByteString)
+        (decode_A : DecodeM (A * ByteString) ByteString)
         (P : Prop)
         (cond : {P} + {~P})
         (aligned_decoder : forall numBytes : nat, AlignedDecodeM A numBytes)
@@ -630,7 +630,7 @@ Section AlignedDecodeM.
         {A : Type}
         Invariant
         FormatSpec
-        (decoder decoder_opt : DecodeM A ByteString)
+        (decoder decoder_opt : DecodeM (A * _) ByteString)
         (decoderM : forall sz, AlignedDecodeM A sz)
         (cache_inv : CacheDecode -> Prop)
         (P_inv : (CacheDecode -> Prop) -> Prop)

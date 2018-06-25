@@ -38,7 +38,7 @@ Section DomainNameCache.
     | _ => nil
     end.
 
-  Fixpoint association_list_add {K V}
+  Definition association_list_add {K V}
            {K_eq : DecideableEnsembles.Query_eq K}
            (l : association_list K V)
            (k : K) (v : V) : list (K * V)  :=
@@ -140,14 +140,14 @@ Section DomainNameCache.
       Equiv (fst ce, association_list_add (snd ce) (fst t) (snd t))
             (fst cd, association_list_add (snd cd) (snd t) (fst t)).
   Proof.
-    simpl; intuition eauto; simpl in *; subst; eauto.
-    unfold add_ptr_OK in *.
-    destruct t; simpl in *; simpl; econstructor; eauto.
+    simpl; intuition eauto; simpl in *; subst; eauto;
+      unfold add_ptr_OK in *.
+    destruct t; simpl in *; simpl association_list_add; try econstructor; eauto.
     clear H3; induction b0; simpl.
     - intuition.
     - simpl in H0; destruct a; find_if_inside;
-        try discriminate.
-      intuition.
+          try discriminate.
+        intuition.
   Qed.
 
   Global Instance cacheAddDNPointer
@@ -568,10 +568,6 @@ Section DomainNameCache.
       rewrite mult_pow2_8; simpl; omega.
       apply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
     + eapply (mult_lt_compat_l' _ _ 8); try omega.
       eapply le_lt_trans.
       apply NPeano.Nat.mul_div_le; omega.

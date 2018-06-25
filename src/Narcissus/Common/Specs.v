@@ -343,7 +343,7 @@ Proof.
   - eapply H1; eauto.
     apply unfold_computes; apply unfold_computes in H3; apply H0; eauto.
   - eapply H2 in H3; eauto.
-    destruct_ex; split_and; apply_in_hyp @unfold_computes.
+    destruct_ex; split_and; rewrite unfold_computes in H4.
     eexists; rewrite unfold_computes; split; eauto; apply H0; eauto.
 Qed.
 
@@ -417,7 +417,7 @@ Proof.
       simpl in *; try discriminate; intuition; injections; eauto.
     destruct_ex; intuition; eexists.
     subst; rewrite unfold_computes in *; intuition eauto.
-    rewrite unfold_computes in H6; rewrite mempty_right; eauto.
+    rewrite mempty_right; eauto.
 Qed.
 
 (* DoneLax 'appends' a supplied bytestring onto the end of a format *)
@@ -471,7 +471,7 @@ Proof.
       eexists; intuition eauto.
       split_and; eauto.
     + destruct (H1 env env' xenv' (data, ext) bin); eauto.
-      split_and. apply unfold_computes in H5; destruct_ex; split_and.
+      split_and. rewrite unfold_computes in H5; destruct_ex; split_and.
       subst; split; eauto.
       eexists _, _; intuition eauto.
       eauto using unfold_computes.
@@ -880,10 +880,10 @@ Lemma CorrectDecodeEncode
     forall a envE envD b envE',
       Equiv envE envD
       -> Invariant a
-      -> snd (projT1 decoder) envD
+      -> snd (proj1_sig decoder) envD
       -> projT1 encoder a envE = Some (b, envE')
       -> exists envD',
-          fst (projT1 decoder) b envD = Some (a, mempty, envD').
+          fst (proj1_sig decoder) b envD = Some (a, mempty, envD').
 Proof.
   intros.
   destruct encoder as [encoder encoder_OK].
@@ -905,8 +905,8 @@ Lemma CorrectEncodeDecode
            (decoder : CorrectDecoderFor Invariant FormatSpec),
     forall bs ce cd cd' a ext,
       Equiv ce cd
-      -> snd (projT1 decoder) cd
-      -> fst (projT1 decoder) bs cd = Some (a, ext, cd')
+      -> snd (proj1_sig decoder) cd
+      -> fst (proj1_sig decoder) bs cd = Some (a, ext, cd')
       -> Invariant a /\
          exists ce' bs',
            bs = mappend bs' ext

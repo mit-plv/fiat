@@ -81,10 +81,10 @@ Section FixFormat.
   Proof.
     induction n; simpl; intros.
     - split; unfold FMap_Target; intros.
-      + apply_in_hyp @unfold_computes; omega.
+      + rewrite @unfold_computes in H0; omega.
       + discriminate.
     - split; unfold FMap_Target in *; intros.
-      + apply_in_hyp @unfold_computes; split_and.
+      + rewrite @unfold_computes in H0; split_and.
         apply_in_hyp (unroll_LeastFixedPoint format_body_OK).
         eapply decode_body_correct; eauto.
         apply unfold_computes; intuition eauto.
@@ -92,7 +92,7 @@ Section FixFormat.
         destruct_ex; split_and.
         eexists; intuition eauto.
         apply unfold_computes.
-        repeat apply_in_hyp @unfold_computes.
+        rewrite @unfold_computes in H1.
         intuition.
         eapply (unroll_LeastFixedPoint' format_body_OK).
         apply unfold_computes; eauto.
@@ -139,7 +139,7 @@ Section FixFormat.
       eapply H1 in H;
         try solve [simpl; unfold Fix_Decode in H0; eauto].
       destruct_ex; split_and;  eexists; intuition eauto.
-      unfold FMap_Target in H2; apply_in_hyp @unfold_computes; intuition.
+      unfold FMap_Target in H2; rewrite @unfold_computes in H2; intuition.
   Qed.
   
   Definition Fix_Encode
@@ -171,15 +171,15 @@ Section FixFormat.
     induction n; simpl; intros.
     - split; unfold Restrict_Format, FMap_Format; intros.
       + discriminate.
-      + intro; apply_in_hyp @unfold_computes;
+      + intro H'; rewrite @unfold_computes in H';
           destruct_ex; omega.
     - split; unfold Restrict_Format, FMap_Format in *; intros.
       + apply unfold_computes; intuition eauto.
         eapply encode_body_correct in H; eauto.
-        apply_in_hyp @unfold_computes; destruct_ex; split_and.
+        rewrite @unfold_computes in H; destruct_ex; split_and.
         apply_in_hyp (unroll_LeastFixedPoint' format_body_OK); eauto.
-      + intro; eapply encode_body_correct in H; eauto; eapply H.
-        repeat apply_in_hyp @unfold_computes.
+      + intro H'; rewrite unfold_computes in H'.
+        eapply encode_body_correct in H; eauto; eapply H.
         destruct_ex; split_and.
         apply unfold_computes.
         eexists; subst; intuition eauto.
@@ -220,7 +220,7 @@ Section FixFormat.
       eapply H0 in H;
         try solve [unfold FMap_Target; apply unfold_computes; split; eauto].      
       unfold Restrict_Format, FMap_Format in H.
-      repeat apply_in_hyp @unfold_computes.
+      rewrite  @unfold_computes in H.
       destruct_ex; split_and; subst; eauto.
     - destruct (CorrectEncoder_Fix'
                   encode_body format_body format_body_OK measure

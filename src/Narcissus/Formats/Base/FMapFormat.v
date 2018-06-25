@@ -45,7 +45,9 @@ Section FMapFormat.
     : CorrectDecoder_simpl (FMap_Format format) (FMap_Decode decode).
   Proof.
     unfold CorrectDecoder_simpl, FMap_Decode, FMap_Format in *; split; intros.
-    { repeat (apply_in_hyp @unfold_computes; destruct_ex; intuition).
+    { rewrite @unfold_computes in H0.
+      destruct_ex; intuition.
+      rewrite @unfold_computes in H3.
       pose proof (g_inverts_f  _ _ _ _ H3 H4).
       rewrite <- unfold_computes in H3.
       eapply H1 in H3; destruct_ex; intuition eauto.
@@ -72,10 +74,8 @@ Section FMapFormat.
   Proof.
     unfold CorrectEncoder, FMap_Encode, FMap_Format in *; split; intros.
     - apply unfold_computes.
-      repeat (apply_in_hyp @unfold_computes; destruct_ex; intuition).
       eapply H in H0; eexists; intuition eauto.
-    - intro; apply_in_hyp @unfold_computes;
-        destruct_ex; split_and.
+    - intro H'; rewrite unfold_computes in H'; destruct_ex; split_and.
       eapply H4; eauto.
       rewrite <- (f'_inverts_f _ _ _ _ H2 H3); eauto.
   Qed.

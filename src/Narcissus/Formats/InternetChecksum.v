@@ -636,9 +636,9 @@ Fixpoint checksum bytes : W16 :=
 
 Fixpoint Vector_checksum {sz} (bytes :Vector.t (word 8) sz) : W16 :=
   match bytes with
-  | Vector.nil => wzero _
-  | Vector.cons x _ Vector.nil => add_bytes_into_checksum x (wzero _) (wzero _)
-  | Vector.cons x _ (Vector.cons y _ t) => add_bytes_into_checksum x y (Vector_checksum t)
+  | Vector.nil _ => wzero _
+  | Vector.cons _ x _ (Vector.nil _) => add_bytes_into_checksum x (wzero _) (wzero _)
+  | Vector.cons _ x _ (Vector.cons _ y _ t) => add_bytes_into_checksum x y (Vector_checksum t)
   end.
 
 Lemma Vector_checksum_eq_checksum'
@@ -820,14 +820,14 @@ Qed. *)
    Lemma wmsb_combine {sz} :
   forall (w : word (S sz)) b,
   exists w' : word sz,
-    w = match eq_sym (NPeano.Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
+    w = match eq_sym (Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
         | eq_refl => fun w' => w'
         end (w' +^+ WS (wmsb w b) WO).
 Proof.
   induction sz; intros;
     destruct (shatter_word_S w) as (b' & [ w' ? ]); subst.
   - exists WO; pose proof (shatter_word_0 w'); subst; simpl.
-    rewrite (UIP_nat _ _ (NPeano.Nat.add_1_r 0) eq_refl); reflexivity.
+    rewrite (UIP_nat _ _ (Nat.add_1_r 0) eq_refl); reflexivity.
   - specialize (IHsz w' b'); destruct IHsz as (w'' & Heq).
     simpl.
     exists (WS b' w'').
@@ -844,7 +844,7 @@ Proof.
   apply normalizeZ_noop.
   unfold OneCToZ.
   pose proof (Npow2_ge_one sz).
-  (* (* 8.7 script:  *)
+  (* 8.7 script:  *)
      destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with
            | _ => lia
@@ -861,9 +861,9 @@ Proof.
                rewrite wordToN_combine in Heqn;
                pose proof (wordToN_bound w');
                simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
-           end.  *)
+           end. 
   (* 8.4 script *)
-  destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
+     (* destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with
            | _ => lia
            | [ H: wordToN (wnot ?w) = _, Heqb: wmsb ?w _ = _ |- _ ] =>
@@ -879,7 +879,7 @@ Proof.
                rewrite wordToN_combine in Heqn;
                pose proof (wordToN_bound w');
                simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
-           end.
+           end. *)
 Qed.
 
 Lemma NToWord_zero {sz} :

@@ -508,14 +508,14 @@ Proof.
     pose proof (build_aligned_ByteString_append byteString0 (Vector.nil _)).
     unfold ByteString_enqueue_ByteString in H; simpl in H.
     unfold build_aligned_ByteString in H; simpl in H.
-    replace paddingOK0 with (build_aligned_ByteString_subproof numBytes0 byteString0)
+    replace paddingOK0 with (build_aligned_ByteString_subproof)
       by apply le_uniqueness_proof; rewrite H.
     simpl.
     rewrite fold_left_rev_right.
     replace {|
         padding := 0;
         front := WO;
-        paddingOK := build_aligned_ByteString_subproof 0 (Vector.nil char);
+        paddingOK := build_aligned_ByteString_subproof;
         numBytes := 0;
         byteString := Vector.nil char |} with ByteString_id
       by (eapply byteString_f_equal; simpl;

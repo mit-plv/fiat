@@ -7,7 +7,7 @@ Require Import
         Fiat.Computation
         Fiat.Narcissus.Common.Specs.
 
-Section UnionFormat.
+Section EnqueueFormat.
 
   Context {S : Type}. (* Source Type *)
   Context {T : Type}. (* Target Type *)
@@ -28,7 +28,7 @@ Section UnionFormat.
     : EncodeM S T :=
     fun a env => Some (enqueue_opt a mempty, env).
 
-  Lemma CorrectDecoder_Enqueue
+  (* Lemma CorrectDecoder_Enqueue
     : CorrectDecoder_simpl (Enqueue_Format (decode).
   Proof.
     unfold CorrectDecoder_simpl, FMap_Decode, FMap_Format in *; split; intros.
@@ -45,23 +45,6 @@ Section UnionFormat.
       apply unfold_computes.
       eexists; intuition eauto.
     }
-  Qed.
+  Qed. *)
 
-End UnionFormat.
-
-Definition Restrict_Format
-           {S T : Type}
-           {cache : Cache}
-           (P : S -> Prop)
-           (format : FormatM S T)
-  := FMap_Format (fun s s' => s = s' /\ P s) format.
-
-Definition Projection_Format
-           {S S' T : Type}
-           {cache : Cache}
-           (f : S -> S')
-           (format : FormatM S' T)
-  : FormatM S T :=
-  FMap_Format (fun s' s => f s = s') format.
-
-Notation "f <$> format" := (FMap_Format f format) (at level 99) : format_scope.
+End EnqueueFormat.

@@ -105,7 +105,7 @@ Section SequenceFormat.
     sequence_Decode, sequence_Format, FMap_Format; split; intros.
     - unfold Bind2 in H0; computes_to_inv; subst.
       eapply format1_overlap in H0; destruct_ex; split_and.
-      repeat apply_in_hyp @unfold_computes.
+      rewrite @unfold_computes in H0'.
       destruct v; destruct v0; simpl in *; injections.
       destruct decode1_correct as [? _].
       destruct (decode2_correct x) as [? _].
@@ -126,7 +126,7 @@ Section SequenceFormat.
       eexists; intuition eauto.
       unfold Restrict_Format, FMap_Format, LaxTerminal_Format, sequence_Format,
         Bind2 in *; computes_to_inv.
-      apply @unfold_computes in H1.
+      rewrite @unfold_computes in H1.
       destruct_ex; split_and; simpl in *; subst.
       eapply format1'_overlap in H2; destruct_ex; split_and; subst; eauto.
   Qed.
@@ -146,7 +146,7 @@ Section SequenceFormat.
     unfold Projection_Format.
     eapply (CorrectDecoder_sequence (fun s s' => f s = s')); eauto; intros;
       unfold Projection_Format, FMap_Format, sequence_Format, Bind2, LaxTerminal_Format in *.
-    - apply_in_hyp @unfold_computes.
+    - rewrite @unfold_computes in H.
       destruct_ex; split_and; subst.
       eexists; intros; intuition.
       destruct tenv'; simpl; computes_to_econstructor.

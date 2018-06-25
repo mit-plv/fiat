@@ -46,7 +46,7 @@ Ltac makeEvar T k :=
 
 Ltac build_ilist_evar :=
   match goal with
-  | |- appcontext[ith (m := ?n) (B := ?encT) (As := ?q ) ?z] =>
+  | |- context[ith (m := ?n) (B := ?encT) (As := ?q ) ?z] =>
     is_evar z;
     match n with
     | S ?n' => let T := eval simpl in (Vector.hd q) in
@@ -72,10 +72,10 @@ Ltac build_ilist_evar :=
 
 Ltac build_prim_prod_evar :=
   match goal with
-  | |- appcontext[ @ilist.prim_fst ?A unit ?z ?k] =>
+  | |- context[ @ilist.prim_fst ?A unit ?z ?k] =>
     is_evar z;
     makeEvar A ltac:(fun a => unify z (Build_prim_prod a tt))
-  | |- appcontext[ @ilist.prim_fst ?A ?B ?z] =>
+  | |- context[ @ilist.prim_fst ?A ?B ?z] =>
     is_evar z;
     makeEvar A ltac:(fun a =>
                        makeEvar B ltac:(fun b =>
@@ -140,11 +140,11 @@ Ltac start_synthesizing_decoder :=
   match goal with
   | |- CorrectDecoderFor ?Invariant ?Spec =>
     try unfold Spec; try unfold Invariant
-  | |- appcontext [CorrectDecoder _ ?dataInv ?restInv ?formatSpec] =>
+  | |- context [CorrectDecoder _ ?dataInv ?restInv ?formatSpec] =>
     first [unfold dataInv
           | unfold restInv
           | unfold formatSpec ]
-  | |- appcontext [CorrectDecoder _ ?dataInv ?restInv (?formatSpec _)] =>
+  | |- context [CorrectDecoder _ ?dataInv ?restInv (?formatSpec _)] =>
     first [unfold dataInv
           | unfold restInv
           | unfold formatSpec ]
@@ -491,7 +491,7 @@ Ltac Vector_of_evar n T k :=
 Ltac decode_step cleanup_tac :=
   (* Processes the goal by either: *)
   match goal with
-  | |- appcontext [CorrectDecoder _ _ _ ?H _ _] =>
+  | |- context [CorrectDecoder _ _ _ ?H _ _] =>
     progress unfold H
 
   (* D) Solving the goal once all the byte string has been parsed *)
@@ -502,45 +502,45 @@ Ltac decode_step cleanup_tac :=
            [ build_fully_determined_type cleanup_tac
            | decide_data_invariant ] ]
 
-  | |- appcontext [format_unused_word] =>
+  | |- context [format_unused_word] =>
     unfold format_unused_word
   (* A) decomposing one of the parser combinators, *)
   | |- _ => apply_compose
   (* B) applying one of the rules for a base type  *)
   | H : cache_inv_Property _ _
-    |- appcontext [CorrectDecoder _ _ _ format_word _ _] =>
+    |- context [CorrectDecoder _ _ _ format_word _ _] =>
     intros; revert H; eapply Word_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ (format_unused_word' _ _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_unused_word' _ _) _ _] =>
     let H := eval simpl in unused_word_decode_correct in
         apply H
 
-  | |- appcontext [CorrectDecoder _ _ _ (format_Vector _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_Vector _) _ _] =>
     intros; eapply Vector_decode_correct
 
-  | |- appcontext [CorrectDecoder _ _ _ format_word _ _] =>
+  | |- context [CorrectDecoder _ _ _ format_word _ _] =>
     eapply Word_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ (format_nat _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_nat _) _ _] =>
     eapply Nat_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ (format_list _) _ _] => intros; apply FixList_decode_correct
+  | |- context [CorrectDecoder _ _ _ (format_list _) _ _] => intros; apply FixList_decode_correct
 
-  | |- appcontext [CorrectDecoder _ _ _ (format_bool) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
     apply bool_decode_correct
 
-  | |- appcontext [CorrectDecoder _ _ _ (format_bool) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
     eapply bool_decode_correct
 
-  | |- appcontext [CorrectDecoder _ _ _ (format_option _ _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_option _ _) _ _] =>
     intros; eapply option_format_correct;
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]
 
-  | |- appcontext [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
     eapply (@Enum_decode_correct _ _ _ _ _ _ _ tb)
 
-  | |- appcontext[CorrectDecoder _ _ _ format_string _ _ ] =>
+  | |- context[CorrectDecoder _ _ _ format_string _ _ ] =>
     eapply String_decode_correct
-  | |- appcontext [CorrectDecoder _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
     let cache_inv_H := fresh in
     intros cache_inv_H;
     first
