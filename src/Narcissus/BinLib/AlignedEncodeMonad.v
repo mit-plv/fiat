@@ -14,11 +14,13 @@ Section AlignedEncodeM.
 
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
+  Context {S : Type}.
 
   Definition AlignedEncodeM
              (n : nat) :=
     Vector.t char n (* Vector of bytes that is being written to *)
     -> nat          (* The current index *)
+    -> S
     -> CacheFormat  (* The current environment *)
     -> option (Vector.t char n * nat * CacheFormat) (* Error monad + value + updated index + updated cache *).
 
@@ -27,17 +29,17 @@ Section AlignedEncodeM.
              (a : AlignedEncodeM n)
              (b : AlignedEncodeM n)
     : AlignedEncodeM n :=
-    fun v idx c => (Ifopt a v idx c  as a' Then (b (fst (fst a')) (snd (fst a')) (snd a')) Else None).
+    fun v idx s c => (Ifopt a v idx s c  as a' Then (b (fst (fst a')) (snd (fst a')) s (snd a')) Else None).
 
   Definition ReturnAlignedEncodeM
              {numBytes : nat}
     : AlignedEncodeM numBytes :=
-    fun v idx c => Some (v, idx, c).
+    fun v idx s c => Some (v, idx, c).
 
   Definition AlignedEncodeMEquiv
              {n}
              (a1 a2 : AlignedEncodeM n) : Prop :=
-    forall v idx c, a1 v idx c = a2 v idx c.
+    forall v idx s c, a1 v idx s c = a2 v idx s c.
 
   Lemma AlignedEncodeMEquiv_refl  {n}:
     forall (a : AlignedEncodeM n),
@@ -75,7 +77,7 @@ Section AlignedEncodeM.
                           (AppendAlignedEncodeM a (AppendAlignedEncodeM f g)).
   Proof.
     unfold AppendAlignedEncodeM, AlignedEncodeMEquiv; simpl; intros.
-    destruct (a v idx c); simpl; eauto.
+    destruct (a v idx s c); simpl; eauto.
   Qed.
 
   Lemma ReturnAlignedEncodeM_LeftUnit {n}:
@@ -91,13 +93,13 @@ Section AlignedEncodeM.
       AlignedEncodeMEquiv (AppendAlignedEncodeM f ReturnAlignedEncodeM) f.
   Proof.
     unfold ReturnAlignedEncodeM, AppendAlignedEncodeM, AlignedEncodeMEquiv; simpl; intros.
-    destruct (f v idx c) as [ [ [? ?] ?] | ] ; simpl; reflexivity.
+    destruct (f v idx s c) as [ [ [? ?] ?] | ] ; simpl; reflexivity.
   Qed.
 
   Definition ThrowAlignedEncodeM
              {n : nat}
     : AlignedEncodeM n:=
-    fun _ _ _ => None.
+    fun _ _ _ _ => None.
 
   Fixpoint set_nth'
            {n : nat}
@@ -107,7 +109,7 @@ Section AlignedEncodeM.
     : Vector.t char n :=
     match m, v with
     | 0,  Vector.cons _ _ v' => Vector.cons _ a _ v'
-    | S m', Vector.cons a' _ v' => Vector.cons _ a' _ (set_nth' v' m' a)
+    | Datatypes.S m', Vector.cons a' _ v' => Vector.cons _ a' _ (set_nth' v' m' a)
     | _, _ => @Vector.nil _
     end.
 
@@ -115,7 +117,7 @@ Section AlignedEncodeM.
              {n : nat}
              (a : char)
     : AlignedEncodeM n :=
-    fun v idx ce => if (idx <? n) then Some (set_nth' v idx a, S idx, addE ce 8) else None.
+    fun v idx s ce => if (idx <? n) then Some (set_nth' v idx a, Datatypes.S idx, addE ce 8) else None.
 
   Definition SetByteAt (* Sets the bytes at the specified index and sets the current index
                           to the following position. *)
@@ -123,7 +125,7 @@ Section AlignedEncodeM.
              (a : word 8)
              (idx' : nat)
     : AlignedEncodeM n :=
-    fun v idx ce => if (NPeano.ltb idx' n) then Some (set_nth' v idx' a, S idx', addE ce 8) else None.
+    fun v idx s ce => if (NPeano.ltb idx' n) then Some (set_nth' v idx' a, Datatypes.S idx', addE ce 8) else None.
 
   (* Equivalence Criteria:
      A bit-aligned encoder and byte-aligned encoder are equivalent when
@@ -133,11 +135,11 @@ Section AlignedEncodeM.
        say about the rest of the .
    *)
 
-  Definition EncodeMEquivAlignedEncodeM
+  (* Definition EncodeMEquivAlignedEncodeM
              (f : EncodeM S ByteString)
              (f' : forall numBytes, AlignedEncodeM numBytes)
-    := forall ce idx,
-      (padding (fst (f ce)) = 0 ->
+    := forall ce s idx,
+      (padding (fst (f s ce)) = 0 ->
        forall (v1 : Vector.t char idx) v m v2,
        exists v',
          f' _ (Vector.append v1 (Vector.append (n := numBytes (fst (f ce))) (p := m)
@@ -539,4 +541,5 @@ Definition CorrectAlignedEncoderFor {A} {cache}
           CorrectAlignedEncoder (format a) (encode a)}.
 
 Delimit Scope AlignedEncodeM_scope with AlignedEncodeM.
-Notation "y >> z" := (AppendAlignedEncodeM y z) : AlignedEncodeM_scope.
+Notation "y >> z" := (AppendAlignedEncodeM y z) : AlignedEncodeM_scope. *)
+End AlignedEncodeM.
