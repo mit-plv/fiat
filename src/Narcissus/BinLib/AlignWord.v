@@ -5,6 +5,7 @@ Require Import
         Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats.WordOpt
+        Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.BinLib.AlignedEncodeMonad.
 
 Require Import
@@ -52,21 +53,21 @@ Section AlignWord.
 
   Definition trans_S_comm : forall n m : nat, S (n + m) = n + S m.
   Proof.
-    fix 1; destruct n.
+    fix trans_S_comm 1. destruct n.
     - intro; reflexivity.
     - simpl; intro; destruct (trans_S_comm n m); reflexivity.
   Defined.
 
   Lemma trans_plus_comm : forall n m, n + m = m + n.
   Proof.
-    fix 1.
+    fix rec_n 1.
     destruct n.
-    - fix 1.
+    - fix rec_m 1.
       destruct m.
       + reflexivity.
       + simpl.
-        destruct (trans_plus_comm0 m); reflexivity.
-    - simpl; intro; rewrite (trans_plus_comm n m).
+        destruct (rec_m m); reflexivity.
+    - simpl; intro; rewrite (rec_n n m).
       apply trans_S_comm.
   Defined.
 
@@ -493,7 +494,7 @@ End AlignWord.
 Require Import Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignedDecodeMonad.
 
-Section AlignDecodeWord.
+Section AlignEncodeWord.
 
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
@@ -591,7 +592,7 @@ Section AlignDecodeWord.
     - erewrite <- !WS_eq_rect_eq.
       rewrite IHw; reflexivity.
   Qed.
-  
+
   Lemma decode_word_plus':
     forall (n m : nat) (v : ByteString),
       decode_word' (n + m) v =
@@ -629,9 +630,9 @@ Section AlignDecodeWord.
         omega.
         omega.
   Qed.
-  
+
   Lemma AlignedDecodeBindCharM {C : Type}
-        (t : word 8 -> DecodeM C ByteString)
+        (t : word 8 -> DecodeM (C * ByteString) ByteString)
         (t' : word 8 -> forall {numBytes}, AlignedDecodeM C numBytes)
     : (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
       -> DecodeMEquivAlignedDecodeM
@@ -680,7 +681,7 @@ Section AlignDecodeWord.
   Qed.
 
   Lemma AlignedDecodeBindCharM' {A C : Type}
-        (t : word 8 -> DecodeM C ByteString)
+        (t : word 8 -> DecodeM (C * ByteString) ByteString)
         (t' : word 8 -> forall {numBytes}, AlignedDecodeM C numBytes)
         decode_w
     : (forall v cd,
@@ -783,7 +784,7 @@ Section AlignDecodeWord.
     repeat f_equal; apply Core.le_uniqueness_proof.
     apply (@mempty_left _ ByteStringQueueMonoid).
   Qed.
-  
+
   Lemma AlignedDecodeUnusedCharM
     : DecodeMEquivAlignedDecodeM
         (decode_unused_word 8)
@@ -819,7 +820,7 @@ Section AlignDecodeWord.
           setoid_rewrite <- build_aligned_ByteString_append.
           eexists (Vector.cons _ h _ (@Vector.nil _)); reflexivity.
   Qed.
-  
+
   Lemma AlignedDecodeNUnusedCharM
         (addD_O : forall cd, addD cd 0 = cd)
         {m}
@@ -836,7 +837,7 @@ Section AlignDecodeWord.
       Local Arguments plus : simpl never.
       unfold decode_unused_word; simpl.
       eapply DecodeMEquivAlignedDecodeM_trans;
-        intros; try eapply AlignedDecodeMEquiv_refl.  
+        intros; try eapply AlignedDecodeMEquiv_refl.
       Focus 2.
       intros; unfold mult; simpl; rewrite decode_unused_word_plus'; simpl; fold mult.
       instantiate (1 := fun b cd => `(w, v', cd') <- decode_unused_word 8 b cd;
@@ -850,9 +851,9 @@ Section AlignDecodeWord.
         eauto using @Return_DecodeMEquivAlignedDecodeM.
       eapply AlignedDecodeUnusedCharM.
   Qed.
-    
+
   Lemma AlignedDecodeBindUnusedCharM {C : Type}
-        (t : unit -> DecodeM C ByteString)
+        (t : unit -> DecodeM (C * ByteString) ByteString)
         (t' : unit -> forall {numBytes}, AlignedDecodeM C numBytes)
     : (DecodeMEquivAlignedDecodeM (t ()) (@t' ()))
       -> DecodeMEquivAlignedDecodeM
@@ -864,7 +865,7 @@ Section AlignDecodeWord.
     intro; destruct a; eauto.
   Qed.
 
-  
+
   Lemma AlignedFormatChar {numBytes}
     : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
@@ -956,7 +957,7 @@ Section AlignDecodeWord.
   Qed.
 
   Lemma AlignedDecodeBind2CharM {C : Type}
-        (t : word 16 -> DecodeM C ByteString)
+        (t : word 16 -> DecodeM (C * ByteString) ByteString)
         (t' : word 16 -> forall {numBytes}, AlignedDecodeM C numBytes)
     : (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
       -> DecodeMEquivAlignedDecodeM
@@ -987,21 +988,25 @@ Section AlignDecodeWord.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatChar_f
-        {A} (proj : A -> word 8)
-    : forall a,
-      CorrectAlignedEncoder
-        (format_word (monoidUnit := ByteString_QueueMonoidOpt) (proj a))
-        (fun sz => SetCurrentByte (proj a)).
+        {S} (proj : S -> word 8)
+    : CorrectAlignedEncoder
+        (Projection_Format proj format_word)
+        (fun sz v idx s => SetCurrentByte v idx (proj s)).
   Proof.
-    unfold CorrectAlignedEncoder; eexists; split; [ | split].
-    - intros; rewrite aligned_format_char_eq.
-      higher_order_reflexivity.
-    - eauto.
-    - unfold EncodeMEquivAlignedEncodeM; intros; intuition; simpl.
-      + unfold SetCurrentByte.
+    intros.
+    unfold CorrectAlignedEncoder; eexists (FMap_Encode (fun c env => Some ((build_aligned_ByteString (cons (word 8) c 0 (nil (word 8))), addE env 8))) proj); split; [ | split].
+    - unfold FMap_Encode, Projection_Format, FMap_Format; intros.
+      setoid_rewrite aligned_format_char_eq.
+      injections.
+      intros ? ?;
+      apply unfold_computes; eexists; intuition eauto.
+    - unfold FMap_Encode; simpl; intros.
+      injections; reflexivity.
+    - unfold FMap_Encode, EncodeMEquivAlignedEncodeM; intros; injections; intuition; simpl.
+      + injections; simpl; unfold SetCurrentByte.
         unfold plus; fold plus.
-        destruct (NPeano.ltb idx (idx + S m)) eqn: ? ; try omega.
-        * eexists (Vector.append v1 (Vector.cons _ (proj a) _ v2)); split.
+        destruct (NPeano.ltb idx (idx + Datatypes.S m)) eqn: ? ; try omega.
+        * eexists (Vector.append v1 (Vector.cons _ (proj s) _ v2)); split.
           { repeat f_equal; try omega.
             clear; simpl in v.
             revert v v2; induction v1; intros.
@@ -1013,80 +1018,175 @@ Section AlignDecodeWord.
           }
           { rewrite !ByteString_enqueue_ByteString_assoc.
             rewrite <- !build_aligned_ByteString_append.
-            assert (idx + 1 + m = idx + S m) by omega.
-            pose proof (Vector_append_assoc _ _ _ H0 v1 (Vector.cons (word 8) (proj a) 0 (Vector.nil (word 8))) v2).
+            assert (idx + 1 + m = idx + Datatypes.S m) by omega.
+            pose proof (Vector_append_assoc _ _ _ H v1 (Vector.cons (word 8) (proj s) 0 (Vector.nil (word 8))) v2).
             simpl in H1; unfold Core.char in *;             unfold plus in *; fold plus in *; rewrite H1.
-            generalize (append (append v1 (Vector.cons (word 8) (proj a) 0 (Vector.nil (word 8)))) v2).
-            rewrite H0; reflexivity.
+            generalize (append (append v1 (Vector.cons (word 8) (proj s) 0 (Vector.nil (word 8)))) v2).
+            rewrite H; reflexivity.
           }
-        * destruct (le_lt_dec (idx + S m) idx); try omega.
+        * destruct (le_lt_dec (idx + Datatypes.S m) idx); try omega.
           apply NPeano.ltb_lt in l; congruence.
-      + unfold SetCurrentByte.
+      + injections; simpl; unfold SetCurrentByte.
         destruct (NPeano.ltb idx numBytes') eqn: ?; eauto.
         apply NPeano.ltb_lt in Heqb.
-        unfold build_aligned_ByteString in H.
-        unfold length_ByteString in H; simpl padding in H; simpl numBytes in H.
+        unfold build_aligned_ByteString in H0.
+        unfold length_ByteString in H0; simpl padding in H0; simpl numBytes in H0.
         omega.
+      + injections; simpl in *; omega.
+      + discriminate.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatChar
-        w
     : CorrectAlignedEncoder
-        (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
-        (fun sz => SetCurrentByte w).
+        (format_word (monoidUnit := ByteString_QueueMonoidOpt))
+        (@SetCurrentByte _ _).
   Proof.
-    eapply (CorrectAlignedEncoderForFormatChar_f id).
+    replace (@SetCurrentByte _ _)
+      with (fun (sz : nat) v idx s => SetCurrentByte (n := sz) v idx (id s)).
+    eapply refine_CorrectAlignedEncoder.
+    2: eapply (CorrectAlignedEncoderForFormatChar_f id).
+    intros.
+    unfold Projection_Format, FMap_Format.
+    intros v Comp_v; rewrite unfold_computes in Comp_v; destruct_ex; intuition.
+    subst; eauto.
+    eapply functional_extensionality_dep; intros.
+    repeat (eapply functional_extensionality; intros).
+    reflexivity.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatUnusedWord
+        {S}
     : CorrectAlignedEncoder
-        (format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8)
-        (fun sz => SetCurrentByte (wzero 8)).
+        (fun w => format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8)
+        (fun sz v idx (s : S) => SetCurrentByte v idx (wzero 8)).
   Proof.
     intros; eapply refine_CorrectAlignedEncoder;
-      eauto using (CorrectAlignedEncoderForFormatChar_f id).
+      eauto using (CorrectAlignedEncoderForFormatChar_f (fun _ => wzero 8)).
     simpl; intros.
     unfold format_unused_word, format_unused_word'; simpl.
     refine pick val (wzero 8); eauto.
-    simplify with monad laws; reflexivity.
+    simplify with monad laws.
+    unfold Projection_Format, FMap_Format; intros ? ?.
+    rewrite unfold_computes in H; destruct_ex; intuition; subst.
+    eauto.
+  Qed.
+
+  Lemma refine_Projection_Format
+        {S S' T : Type}
+        (f : S -> S')
+        (format : FormatM S' T)
+    : forall s env,
+      refineEquiv (Projection_Format f format s env)
+             (format (f s) env).
+  Proof.
+    unfold Projection_Format, FMap_Format; intros; split.
+    - intros v Comp_v.
+      apply unfold_computes; eexists; intuition eauto.
+    - intros v Comp_v.
+      rewrite unfold_computes in Comp_v; destruct_ex; intuition eauto.
+      subst; eauto.
+  Qed.
+
+  Lemma refine_sequence_Format
+        {S T : Type}
+        {monoid : Monoid T}
+        (format1 format2 : FormatM S T)
+    : forall s env,
+      refineEquiv ((format1 ++ format2) s env)
+                  ((fun (s : S) => (format1 s ThenC format2 s)) s env).
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForProjection_Format
+        {S S'}
+        (f : S -> S')
+        (format : FormatM S' ByteString)
+        (encoder : forall n, AlignedEncodeM n)
+    :
+      CorrectAlignedEncoder format encoder
+      -> CorrectAlignedEncoder (Projection_Format f format)
+                            (fun sz v idx (s : S) => encoder sz v idx (f s)).
+  Proof.
+    intros; eapply refine_CorrectAlignedEncoder.
+    intros. rewrite refine_Projection_Format at 1. higher_order_reflexivity.
+    destruct X; intuition.
+    eexists (fun s env => x (f s) env); intuition eauto.
+    unfold EncodeMEquivAlignedEncodeM in *; intros.
+    specialize (H2 env (f s) idx); intuition eauto.
   Qed.
 
   Lemma CollapseCorrectAlignedEncoderFormatWord
+        {S : Type}
         (addE_addE_plus :
            forall ce n m, addE (addE ce n) m = addE ce (n + m))
-    : forall {sz sz'} (w : word sz) (w' : word sz') k encoder,
+    : forall {sz sz'} (f : S ->  word sz) (f' : S -> word sz') k encoder,
       CorrectAlignedEncoder
-        ((format_word (combine w' w))
-           ThenC k)
+        (Projection_Format (fun s => combine (f' s) (f s)) format_word
+                           ++ k)
         encoder
       -> CorrectAlignedEncoder
-           ((format_word w)
-              ThenC (format_word w')
-              ThenC k)
+           (Projection_Format f format_word
+                              ++ Projection_Format f' format_word
+                              ++ k)
            encoder.
   Proof.
     intros; eapply refine_CorrectAlignedEncoder; eauto.
-    intros; rewrite CollapseFormatWord; eauto.
+    intros.
+    rewrite !refine_sequence_Format.
+    unfold compose, Bind2.
+    rewrite !refine_Projection_Format.
+    pose proof CollapseFormatWord.
+    unfold compose, Bind2 in H.
+    rewrite <- H; eauto.
+    f_equiv; intro.
+    rewrite !refine_sequence_Format.
+    simpl.
+    unfold compose, Bind2.
+    simplify with monad laws.
+    rewrite !refine_Projection_Format.
+    setoid_rewrite refineEquiv_bind_bind.
+    f_equiv; intro.
+    setoid_rewrite refineEquiv_bind_bind.
+    f_equiv; intro.
+    setoid_rewrite refineEquiv_bind_unit.
     reflexivity.
   Qed.
 
   Lemma CollapseCorrectAlignedEncoderFormatWord'
+        {S : Type}
         (addE_addE_plus :
            forall ce n m, addE (addE ce n) m = addE ce (n + m))
-    : forall {sz sz'} (w : word sz) (w' : word sz') k encoder,
+    : forall {sz sz'} (f : S ->  word sz) (f' : S -> word sz') k encoder,
       CorrectAlignedEncoder
-        ((format_word w)
-           ThenC (format_word w')
-           ThenC k)
+        (Projection_Format f format_word
+                           ++ Projection_Format f' format_word
+                           ++ k)
         encoder
-      ->
-      CorrectAlignedEncoder
-        ((format_word (combine w' w))
-           ThenC k)
-        encoder.
+      -> CorrectAlignedEncoder
+           (Projection_Format (fun s => combine (f' s) (f s)) format_word
+                              ++ k)
+           encoder.
   Proof.
     intros; eapply refine_CorrectAlignedEncoder; eauto.
-    intros; rewrite CollapseFormatWord'; eauto.
+    intros.
+    rewrite !refine_sequence_Format.
+    unfold compose, Bind2.
+    rewrite !refine_Projection_Format.
+    pose proof CollapseFormatWord'.
+    unfold compose, Bind2 in H.
+    rewrite H; eauto.
+    f_equiv; intro.
+    rewrite !refine_sequence_Format.
+    simpl.
+    unfold compose, Bind2.
+    simplify with monad laws.
+    rewrite !refine_Projection_Format.
+    setoid_rewrite refineEquiv_bind_bind.
+    f_equiv; intro.
+    setoid_rewrite refineEquiv_bind_bind.
+    f_equiv; intro.
+    setoid_rewrite refineEquiv_bind_unit.
     reflexivity.
   Qed.
 
@@ -1177,34 +1277,39 @@ Section AlignDecodeWord.
         (addE_addE_plus :
            forall ce n m, addE (addE ce n) m = addE ce (n + m))
         {sz}
-    : forall (w : word (8 + sz)) encoder,
-      (forall w : word sz,
-          CorrectAlignedEncoder
-            (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
-            (fun sz => encoder sz w))
+    : forall encoder,
+      (CorrectAlignedEncoder
+            (format_word (monoidUnit := ByteString_QueueMonoidOpt))
+            (fun sz => encoder sz))
       -> CorrectAlignedEncoder
-           (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
-           (fun sz' => AppendAlignedEncodeM (@SetCurrentByte _ _ sz' (split1' 8 sz w))
-                                            (encoder sz' (split2' 8 sz w))).
+           (format_word (monoidUnit := ByteString_QueueMonoidOpt))
+           (fun sz' => AppendAlignedEncodeM (fun v idx w => @SetCurrentByte _ _ sz' v idx (split1' 8 sz w))
+                                            (fun v idx w => encoder sz' v idx (split2' 8 sz w))).
   Proof.
-    intros; pose proof (format_words addE_addE_plus w) as H';
+    intros; pose proof (format_words addE_addE_plus (n := 8) (m := sz)) as H';
       eapply refine_CorrectAlignedEncoder.
     unfold flip, pointwise_relation; eapply H'.
-    eauto.
+    eapply refine_CorrectAlignedEncoder.
+    intros.
     rewrite <- split2'_eq, <- split1'_eq.
-    eapply CorrectAlignedEncoderForThenC;
-      eauto using CorrectAlignedEncoderForFormatChar_f.
+    2: eapply CorrectAlignedEncoderForThenC.
+    3: eapply (@CorrectAlignedEncoderForFormatChar_f (word (8 + sz))
+                                                     (split1' 8 sz)).
+    instantiate (1 := Projection_Format (split2' 8 sz) format_word).
+    rewrite refine_sequence_Format.
+    unfold compose, Bind2; rewrite refine_Projection_Format; f_equiv.
+    intro; rewrite refine_Projection_Format; f_equiv.
+    eapply CorrectAlignedEncoderForProjection_Format; eauto.
   Qed.
 
   Fixpoint SetCurrentBytes (* Sets the bytes at the current index and increments the current index. *)
            {n sz : nat}
-           (w : word (sz * 8))
-    : AlignedEncodeM n :=
-    match sz return word (sz * 8) -> _ with
-    | 0 => fun w => AlignedEncode_Nil n
-    | S sz' => fun w => AppendAlignedEncodeM (SetCurrentByte (split1' 8 (sz' * 8) w))
-                                             (SetCurrentBytes (split2' 8 (sz' * 8) w))
-    end w.
+    : @AlignedEncodeM _ (word (sz * 8)) n :=
+    match sz return @AlignedEncodeM _ (word (sz * 8)) _ with
+    | 0 => AlignedEncode_Nil n
+    | S sz' => AppendAlignedEncodeM (fun v idx w => SetCurrentByte v idx (split1' 8 (sz' * 8) w))
+                                    (fun v idx w => SetCurrentBytes v idx (split2' 8 (sz' * 8) w))
+    end.
 
   Local Arguments split1' : simpl never.
   Local Arguments split2' : simpl never.
@@ -1215,21 +1320,20 @@ Section AlignDecodeWord.
             (addE_0 :
                forall ce, addE ce 0 = ce)
             {sz}
-    : forall (w : word (sz * 8)),
-      CorrectAlignedEncoder
-        (format_word (monoidUnit := ByteString_QueueMonoidOpt) w)
-        (fun sz => @SetCurrentBytes sz _ w).
+    : CorrectAlignedEncoder
+        (format_word (monoidUnit := ByteString_QueueMonoidOpt))
+        (fun n => @SetCurrentBytes n sz).
   Proof.
     induction sz; simpl; intros.
-    - shatter_word w; unfold format_word; simpl.
-      eapply refine_CorrectAlignedEncoder; intros.
-      + rewrite addE_0; higher_order_reflexivity.
+    - eapply refine_CorrectAlignedEncoder; intros.
+      shatter_word s; unfold format_word; simpl.
+      unfold format_word; rewrite addE_0; higher_order_reflexivity.
       + eapply CorrectAlignedEncoderForDoneC.
-    - eapply (CorrectAlignedEncoderForFormatNChar' addE_addE_plus w (fun sz' => @SetCurrentBytes sz' sz));
+    - eapply (CorrectAlignedEncoderForFormatNChar' addE_addE_plus (fun sz' => @SetCurrentBytes sz' sz));
         eauto.
   Qed.
 
-End AlignDecodeWord.
+End AlignEncodeWord.
 
 Ltac collapse_word addD_addD_plus :=
   match goal with

@@ -60,6 +60,6 @@ Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
          (fun a => (format_A a) ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn (format_B a)).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists x, (d, P).
+  eexists x.
   admit.
 Defined.

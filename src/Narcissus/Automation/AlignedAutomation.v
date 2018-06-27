@@ -1,4 +1,6 @@
-Require Import Fiat.Narcissus.BinLib
+Require Import
+        Coq.omega.Omega
+        Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Common.ComposeCheckSum
@@ -149,8 +151,7 @@ Ltac associate_for_ByteAlignment :=
                 | eassumption]; omega
   | ].
 
-
-Lemma CollapseCorrectAlignedEncoderFormatWord
+(*Lemma CollapseCorrectAlignedEncoderFormatWord
       (addE_addE_plus :
          forall ce n m, addE (addE ce n) m = addE ce (n + m))
   : forall sz {sz'} (w' : word sz') k encoder,
@@ -169,7 +170,7 @@ Proof.
   unfold compose, Bind2; f_equiv.
   unfold format_unused_word, format_unused_word'.
   repeat computes_to_econstructor; eauto.
-Qed.
+Qed. *)
 
 Lemma refine_format_unused_word
   : forall sz ce,
@@ -236,7 +237,7 @@ Ltac start_synthesizing_encoder :=
 
 Ltac align_encoder_step :=
   first
-    [ apply CorrectAlignedEncoderForFormatList
+    [ (*apply CorrectAlignedEncoderForFormatList*) fail
     | apply CorrectAlignedEncoderForFormatChar; eauto
     | apply CorrectAlignedEncoderForFormatNat
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto

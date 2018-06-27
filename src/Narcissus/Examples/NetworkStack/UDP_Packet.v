@@ -5,32 +5,146 @@ Require Import
 
 Require Import
         Fiat.Common.SumType
+        Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple
-        Fiat.Narcissus.BinLib.Core
+        Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
         Fiat.Narcissus.Common.ComposeCheckSum
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
-        Fiat.Narcissus.Automation.Solver
-        Fiat.Narcissus.Formats.FixListOpt
+        Fiat.Narcissus.Formats
         Fiat.Narcissus.Stores.EmptyStore
-        Fiat.Narcissus.Formats.NatOpt
-        Fiat.Narcissus.Formats.Vector
-        Fiat.Narcissus.Formats.EnumOpt
-        Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.IPChecksum
-        Fiat.Narcissus.Formats.WordOpt.
+        Fiat.Narcissus.Automation.Solver
+        Fiat.Narcissus.Automation.AlignedAutomation.
 
-Require Import IfDec.
-Require Import Decidable.
+Require Import Bedrock.Word.
 
-Lemma refine_IfDec_Under_Bind {B} P (P_dec : Decidable P)
+Import Vectors.VectorDef.VectorNotations.
+Open Scope string_scope.
+Open Scope Tuple_scope.
+
+Section UDP_Decoder.
+
+  (* These values are provided by the IP header for checksum calculation.*)
+  Variable srcAddr : word 32.
+  Variable destAddr : word 32.
+  Variable udpLength : word 16.
+
+  Record UDP_Packet :=
+    { SourcePort : word 16;
+      DestPort : word 16;
+      Payload : list (word 8)}.
+
+  Definition UDP_Checksum_Valid
+           (srcAddr : word 32)
+           (destAddr : word 32)
+           (udpLength : word 16)
+           (n : nat)
+           (b : ByteString)
+  := IPChecksum_Valid' (96 + n)
+                (mappend (mappend (AlignedIPChecksum.encode_word srcAddr)
+                (mappend (AlignedIPChecksum.encode_word destAddr)
+                (mappend (AlignedIPChecksum.encode_word (wzero 8))
+                (mappend (AlignedIPChecksum.encode_word (natToWord 8 17))
+                           (AlignedIPChecksum.encode_word udpLength)))))
+                b).
+
+  Definition UDP_Packet_Format
+             (udp : UDP_Packet) :=
+         (format_word (udp.(SourcePort))
+    ThenC format_word (udp.(DestPort))
+    ThenC format_nat 16 (8 + |udp.(Payload)|) DoneC)
+    ThenChecksum (UDP_Checksum_Valid srcAddr destAddr udpLength) OfSize 16
+    ThenCarryOn (format_list format_word udp.(Payload) DoneC).
+
+
+Definition UDP_encoder_impl (r : UDP_Packet) :=
+( SetCurrentBytes (SourcePort r) >>
+  SetCurrentBytes (DestPort r) >>
+  SetCurrentBytes (natToWord |(Payload r)|) >>
+  SetCurrentBytes (wzero 16) >>
+  AlignedEncodeList (fun c => SetCurrentByte c) (Payload r) >>
+  calculate_Checksum srcAddr destAddr updLength)
+  (* The checksum takes three values provided by the IP header for
+     checksum calculuation. *)
+
+  Definition UDP_Packet_OK (udp : UDP_Packet) :=
+    lt (|udp.(Payload)|) (pow2 16 - 8).
+
+  (* Step One: Synthesize an encoder and a proof that it is correct. *)
+
+  Arguments NPeano.modulo : simpl never.
+
+  Opaque pow2.
+
+  Definition UDP_encoder :
+    CorrectAlignedEncoderFor UDP_Packet_Format UDP_Packet_OK.
+  Proof.
+    start_synthesizing_encoder.
+    Print Ltac decompose_aligned_encoder.
+    eapply @CorrectAlignedEncoderForIPChecksumThenC.
+    align_encoder_step.
+  Defined.
+
+  (* Step Two: Extract the encoder function, and have it start encoding
+     at the start of the provided ByteString [v]. *)
+  Definition UDP_encoder_impl r {sz} v :=
+    Eval simpl in (projT1 UDP_encoder r sz v 0 tt).
+
+(* Step Two and a Half: Add some simple facts about correct packets
+   for the decoder automation. *)
+Lemma UDP_Packet_Header_Len_eq
+  : forall packet len,
+    UDP_Packet_Header_Len packet = len
+    -> ((|packet.(Options) |) = len - 5).
+Proof.
+  unfold UDP_Packet_Header_Len; intros.
+  apply Minus.plus_minus.
+  rewrite H; reflexivity.
+Qed.
+
+Lemma UDP_Packet_Header_Len_bound
+  : forall packet,
+    UDP_Packet_OK packet ->
+    lt (UDP_Packet_Header_Len packet) (pow2 4)%nat.
+Proof.
+  intros; replace (pow2 4) with 16 by reflexivity.
+  unfold UDP_Packet_OK in H; unfold UDP_Packet_Header_Len.
+  omega.
+Qed.
+
+Hint Resolve UDP_Packet_Header_Len_eq : data_inv_hints.
+Hint Resolve UDP_Packet_Header_Len_bound : data_inv_hints.
+
+(* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
+Definition UDP_Packet_Header_decoder
+  : CorrectAlignedDecoderFor UDP_Packet_OK UDP_Packet_Format.
+Proof.
+  (* We have to use an extra lemma at the start, because of the 'exotic'
+     IP Checksum. *)
+  eapply CorrectAlignedDecoderForIPChecksumThenC.
+  repeat calculate_length_ByteString.
+  (* Once that's done, the normal automation works just fine :) *)
+  synthesize_aligned_decoder.
+Defined.
+
+(* Step Four: Extract the decoder function, and have /it/ start decoding
+   at the start of the provided ByteString [v]. *)
+Arguments GetCurrentBytes : simpl never.
+Definition UDP_decoder_impl {sz} v :=
+  Eval simpl in (projT1 UDP_Packet_Header_decoder sz v 0 ()).
+
+
+
+
+
+(*Lemma refine_IfDec_Under_Bind {B} P (P_dec : Decidable P)
   : forall (tb eb : Comp B) tb' eb',
     (forall (p : P), refine tb (tb' p))
     -> (forall (np : ~ P), refine eb (eb' np))
@@ -47,10 +161,9 @@ Proof.
     generalize (Decidable_sound P P_dec) (Decidable_complete_alt P P_dec).
   destruct Decidable_witness; intros; eauto.
   eapply H; eauto.
-  eapply H0; eauto. 
-Qed.
+  eapply H0; eauto.
+Qed. *)
 
-Require Import Bedrock.Word.
 
 Import Vectors.VectorDef.VectorNotations.
 Open Scope string_scope.

@@ -19,19 +19,18 @@ Lemma CorrectDecodeEncode
       {sz}
   : forall Invariant
            (FormatSpec : Specs.FormatM A _)
-           (encoder : CorrectAlignedEncoderFor FormatSpec Invariant)
+           (encoder : CorrectAlignedEncoderFor FormatSpec)
            (decoder : CorrectAlignedDecoderFor Invariant FormatSpec),
     forall a ce cd v,
       Cache.Equiv ce cd
       -> Invariant a
       -> snd (projT1 (projT2 decoder)) cd
       -> forall cd' idx ce' v',
-          projT1 encoder a sz v 0 ce = Some (v', idx, ce')
+          projT1 encoder sz v 0 a ce = Some (v', idx, ce')
           -> (projT1 decoder sz) v' 0 cd = Some (a, idx, cd').
 Proof.
   intros.
   destruct encoder as [aligned_encoder aligned_encoder_OK].
-  simpl in *; specialize (aligned_encoder_OK _ H0).
   destruct aligned_encoder_OK as [encoder [encoder_OK [padding_OK encoder_equiv] ] ].
   destruct decoder as [aligned_decoder [ [decoder Inv] [ [Inv' [decoder_OK Inv_cd] ] decoder_equiv ] ] ]; simpl in *.
   specialize (decoder_OK Inv_cd).

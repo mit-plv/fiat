@@ -1,29 +1,18 @@
 Require Import
+        Coq.omega.Omega
         Coq.Strings.String
         Coq.Vectors.Vector.
 
 Require Import
-        Fiat.Common.EnumType
-        Fiat.Common.BoundedLookup
-        Fiat.Common.ilist
-        Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
-        Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
-        Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Stores.EmptyStore
-        Fiat.Narcissus.Formats.WordOpt
-        Fiat.Narcissus.Formats.NatOpt
-        Fiat.Narcissus.Formats.Vector
-        Fiat.Narcissus.Formats.EnumOpt
-        Fiat.Narcissus.Formats.SumTypeOpt.
+        Fiat.Narcissus.BinLib
+        Fiat.Narcissus.Formats
+        Fiat.Narcissus.Stores.EmptyStore.
 
 Require Import Bedrock.Word.
 

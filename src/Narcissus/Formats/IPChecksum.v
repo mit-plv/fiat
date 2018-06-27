@@ -797,7 +797,7 @@ Proof.
     repeat split; eauto.
   intros; rewrite <- monoid_dequeue_word_eq_decode_word'.
   rewrite <- !ByteString_enqueue_ByteString_assoc.
-  pose proof (monoid_dequeue_encode_word' (B := ByteString)) as H''; simpl in H'';
+  pose proof (monoid_dequeue_encode_word' (T := ByteString)) as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
 Qed.
 
@@ -816,7 +816,7 @@ Proof.
     repeat split; eauto.
   unfold decode_unused_word'; intros.
   rewrite <- !ByteString_enqueue_ByteString_assoc.
-  pose proof (monoid_dequeue_encode_word' (B := ByteString)) as H''; simpl in H'';
+  pose proof (monoid_dequeue_encode_word' (T := ByteString)) as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
 Qed.
 
