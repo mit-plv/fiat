@@ -31,6 +31,10 @@ Require Import
 Require Import Bedrock.Word.
 
 Import Vectors.VectorDef.VectorNotations.
+Require Import
+        Fiat.Narcissus.BinLib.AlignedDecodeMonad
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad.
+
 Open Scope string_scope.
 Open Scope Tuple_scope.
 
@@ -38,95 +42,101 @@ Definition InjectEnum {n A}
            (gallina_constructors: VectorDef.t A n)
            (enum_member: Fin.t n) : A :=
   VectorDef.nth gallina_constructors enum_member.
-  Require Import IPv4Header.
 
-Definition MakeDecoder {A}
-           (impl: ByteString -> unit -> option (A * ByteString * unit))
-           (bs: ByteString) : option (A * ByteString) :=
-  (* let bs := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := buffer |} in *)
-  match impl bs () with
-  | Some (pkt, bs, _) => Some (pkt, bs)
+Definition MakeDecoder {A B} sz
+           (impl: forall {sz}, Vector.t char sz -> option (A * nat * B))
+           (bs: Vector.t char sz) : option A :=
+  match impl bs with
+  | Some (pkt, _, _) => Some (pkt)
   | None => None
   end.
 
-Section FormatWord.
-  Context {B : Type}.
-  Context {cache : Cache}.
-  Context {cacheAddNat : CacheAdd cache nat}.
-  Context {monoid : Monoid B}.
-  Context {monoidUnit : QueueMonoidOpt monoid bool}.
+Definition MakeEncoder {A B} sz
+           (impl: A -> forall {sz}, Vector.t char sz -> option (Vector.t char sz * nat * B))
+           (pkt: A) (out: Vector.t char sz) : option (Vector.t char sz) :=
+  match impl pkt out with
+  | Some (out, _, _) => Some out
+  | None => None
+  end.
 
-  (* Extracting words as Int64 prevents us from recursing on them directly *)
+(* Section FormatWord. *)
+(*   Context {B : Type}. *)
+(*   Context {cache : Cache}. *)
+(*   Context {cacheAddNat : CacheAdd cache nat}. *)
+(*   Context {monoid : Monoid B}. *)
+(*   Context {monoidUnit : QueueMonoidOpt monoid bool}. *)
 
-  Fixpoint encode_word'_recurse_on_size (sz : nat) (w : word sz) (b' : B) {struct sz} : B.
-  Proof.
-    destruct sz.
-    - apply b'.
-    - apply (enqueue_opt (whd w) (encode_word'_recurse_on_size sz (wtl w) b')).
-  Defined.
+(*   (* Extracting words as Int64 prevents us from recursing on them directly *) *)
 
-  Lemma format'_on_size_correct :
-    forall sz w b', encode_word' sz w b' = encode_word'_recurse_on_size sz w b'.
-  Proof.
-    induction sz; dependent destruction w; intros; simpl.
-    - reflexivity.
-    - rewrite IHsz; reflexivity.
-  Qed.
-End FormatWord.
+(*   Fixpoint encode_word'_recurse_on_size (sz : nat) (w : word sz) (b' : B) {struct sz} : B. *)
+(*   Proof. *)
+(*     destruct sz. *)
+(*     - apply b'. *)
+(*     - apply (enqueue_opt (whd w) (encode_word'_recurse_on_size sz (wtl w) b')). *)
+(*   Defined. *)
 
-Section Ethernet.
-  Require Import EthernetHeader.
+(*   Lemma format'_on_size_correct : *)
+(*     forall sz w b', encode_word' sz w b' = encode_word'_recurse_on_size sz w b'. *)
+(*   Proof. *)
+(*     induction sz; dependent destruction w; intros; simpl. *)
+(*     - reflexivity. *)
+(*     - rewrite IHsz; reflexivity. *)
+(*   Qed. *)
+(* End FormatWord. *)
 
-  Inductive fiat_ethernet_type := ARP | IP | RARP.
+(* Section Ethernet. *)
+(*   Require Import EthernetHeader. *)
 
-  Definition fiat_ethernet_decode packet_length := MakeDecoder (fst (frame_decoder packet_length)).
+(*   Inductive fiat_ethernet_type := ARP | IP | RARP. *)
 
-  Definition List_of_vector {A n} (v: Vector.t A n) : list A :=
-    Vector.fold_right List.cons v nil.
+(*   Definition fiat_ethernet_decode packet_length := MakeDecoder (fst (frame_decoder packet_length)). *)
 
-  Definition fiat_ethernet_destruct_packet {A}
-             (f: forall (Destination : list char)
-                   (Source : list char)
-                   (type : fiat_ethernet_type),
-                 A)
-             (packet: EthernetHeader) :=
-    f  (List_of_vector packet!"Destination")
-       (List_of_vector packet!"Source")
-       (InjectEnum [ARP; IP; RARP] packet!"Type").
-End Ethernet.
+(*   Definition List_of_vector {A n} (v: Vector.t A n) : list A := *)
+(*     Vector.fold_right List.cons v nil. *)
 
-Section ARPv4.
-  Require Import ARPPacket.
+(*   Definition fiat_ethernet_destruct_packet {A} *)
+(*              (f: forall (Destination : list char) *)
+(*                    (Source : list char) *)
+(*                    (type : fiat_ethernet_type), *)
+(*                  A) *)
+(*              (packet: EthernetHeader) := *)
+(*     f  (List_of_vector packet!"Destination") *)
+(*        (List_of_vector packet!"Source") *)
+(*        (InjectEnum [ARP; IP; RARP] packet!"Type"). *)
+(* End Ethernet. *)
 
-  Inductive fiat_arpv4_hardtype := Ethernet | IEEE802 | Chaos.
-  Inductive fiat_arpv4_prottype := IPv4 | IPv6.
-  Inductive fiat_arpv4_operation := Request | Reply | RARPRequest | RARPReply.
+(* Section ARPv4. *)
+(*   Require Import ARPPacket. *)
 
-  Definition fiat_arpv4_decode := MakeDecoder (fst ARP_Packet_decoder).
+(*   Inductive fiat_arpv4_hardtype := Ethernet | IEEE802 | Chaos. *)
+(*   Inductive fiat_arpv4_prottype := IPv4 | IPv6. *)
+(*   Inductive fiat_arpv4_operation := Request | Reply | RARPRequest | RARPReply. *)
 
-  Definition fiat_arpv4_destruct_packet {A}
-             (f: forall (HardType : fiat_arpv4_hardtype)
-                   (ProtType : fiat_arpv4_prottype)
-                   (Operation : fiat_arpv4_operation)
-                   (SenderHardAddress : list char)
-                   (SenderProtAddress : list char)
-                   (TargetHardAddress : list char)
-                   (TargetProtAddress : list char),
-                 A)
-             (packet: ARPPacket) : A :=
-    f (InjectEnum [Ethernet; IEEE802; Chaos] packet!"HardType")
-      (InjectEnum [IPv4; IPv6] packet!"ProtType")
-      (InjectEnum [Request; Reply; RARPRequest; RARPReply] packet!"Operation")
-      packet!"SenderHardAddress"
-      packet!"SenderProtAddress"
-      packet!"TargetHardAddress"
-      packet!"TargetProtAddress".
-End ARPv4.
+(*   Definition fiat_arpv4_decode := MakeDecoder (fst ARP_Packet_decoder). *)
+
+(*   Definition fiat_arpv4_destruct_packet {A} *)
+(*              (f: forall (HardType : fiat_arpv4_hardtype) *)
+(*                    (ProtType : fiat_arpv4_prottype) *)
+(*                    (Operation : fiat_arpv4_operation) *)
+(*                    (SenderHardAddress : list char) *)
+(*                    (SenderProtAddress : list char) *)
+(*                    (TargetHardAddress : list char) *)
+(*                    (TargetProtAddress : list char), *)
+(*                  A) *)
+(*              (packet: ARPPacket) : A := *)
+(*     f (InjectEnum [Ethernet; IEEE802; Chaos] packet!"HardType") *)
+(*       (InjectEnum [IPv4; IPv6] packet!"ProtType") *)
+(*       (InjectEnum [Request; Reply; RARPRequest; RARPReply] packet!"Operation") *)
+(*       packet!"SenderHardAddress" *)
+(*       packet!"SenderProtAddress" *)
+(*       packet!"TargetHardAddress" *)
+(*       packet!"TargetProtAddress". *)
+(* End ARPv4. *)
 
 Section IPv4.
-  Require Import IPv4Header.
+  Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
 
-  Definition fiat_ipv4_decode := MakeDecoder IPv4_decoder_impl.
+  Definition fiat_ipv4_decode {sz} := MakeDecoder sz (@IPv4_decoder_impl).
 
   Inductive fiat_ipv4_protocol :=
   | ICMP | TCP | UDP.
@@ -138,149 +148,128 @@ Section IPv4.
     | UDP => ```"UDP"
     end.
 
-  Definition fiat_ipv4_construct_packet
-             (TotalLength : (word 16))
-             (ID : (word 16))
-             (DF : bool)
-             (MF : bool)
-             (FragmentOffset : word 13)
-             (TTL : char)
-             (Protocol : fiat_ipv4_protocol)
-             (SourceAddress : word 32)
-             (DestAddress : word 32)
-             (Options : list (word 32)) : IPv4_Packet :=
-    <"TotalLength" :: TotalLength,
-     "ID" :: ID,
-     "DF" :: DF,
-     "MF" :: MF,
-     "FragmentOffset" :: FragmentOffset,
-     "TTL" :: TTL,
-     "Protocol" :: fiat_ipv4_protocol_to_enum Protocol,
-     "SourceAddress" :: SourceAddress,
-     "DestAddress" :: DestAddress,
-     "Options" :: Options>.
+  Definition fiat_ipv4_enum_to_protocol (proto: EnumType ["ICMP"; "TCP"; "UDP"]) : fiat_ipv4_protocol :=
+    InjectEnum [ICMP; TCP; UDP] proto.
 
-  Definition fiat_ipv4_destruct_packet {A}
-             (f: forall (TotalLength : (word 16))
-                   (ID : (word 16))
-                   (DF : bool)
-                   (MF : bool)
-                   (FragmentOffset : word 13)
-                   (TTL : char)
-                   (Protocol : fiat_ipv4_protocol)
-                   (SourceAddress : word 32)
-                   (DestAddress : word 32)
-                   (Options : list (word 32)),
-                 A)
-              (packet : IPv4_Packet) : A :=
-    f packet!"TotalLength"
-      packet!"ID"
-      packet!"DF"
-      packet!"MF"
-      packet!"FragmentOffset"
-      packet!"TTL"
-      (InjectEnum [ICMP; TCP; UDP] packet!"Protocol")
-      packet!"SourceAddress"
-      packet!"DestAddress"
-      packet!"Options".
+  Definition fiat_ipv4_encode {sz} := MakeEncoder sz (@IPv4_encoder_impl).
 End IPv4.
 
-Section TCP.
-  Require Import TCP_Packet.
+(* Section TCP. *)
+(*   Require Import TCP_Packet. *)
 
-  Definition fiat_tcp_decode srcAddress dstAddress tcpLength :=
-    MakeDecoder (TCP_Packet_decoder_impl srcAddress dstAddress tcpLength).
+(*   Definition fiat_tcp_decode srcAddress dstAddress tcpLength := *)
+(*     MakeDecoder (TCP_Packet_decoder_impl srcAddress dstAddress tcpLength). *)
 
-  Definition fiat_tcp_destruct_packet {A}
-             (f: forall (SourcePort : word 16)
-                   (DestPort : word 16)
-                   (SeqNumber : word 32)
-                   (AckNumber : word 32)
-                   (NS : bool) (* ECN-nonce concealment protection flag *)
-                   (CWR : bool) (* Congestion Window Reduced (CWR) flag *)
-                   (ECE : bool) (* ECN-Echo flag *)
-                   (ACK : bool) (* Acknowledgment field is significant flag *)
-                   (PSH : bool) (* Push function flag *)
-                   (RST : bool) (* Reset the connection flag *)
-                   (SYN : bool) (* Synchronize sequence numbers flag *)
-                   (FIN : bool) (* N srcAddress dstAddress udpLength o more data from sender flag*)
-                   (WindowSize : word 16)
-                   (UrgentPointer : option (word 16))
-                   (Options : list (word 32))
-                   (Payload : list char),
-                 A)
-             (packet: TCP_Packet) : A :=
-    f packet!"SourcePort"
-      packet!"DestPort"
-      packet!"SeqNumber"
-      packet!"AckNumber"
-      packet!"NS"
-      packet!"CWR"
-      packet!"ECE"
-      packet!"ACK"
-      packet!"PSH"
-      packet!"RST"
-      packet!"SYN"
-      packet!"FIN"
-      packet!"WindowSize"
-      packet!"UrgentPointer"
-      packet!"Options"
-      packet!"Payload".
-End TCP.
+(*   Definition fiat_tcp_destruct_packet {A} *)
+(*              (f: forall (SourcePort : word 16) *)
+(*                    (DestPort : word 16) *)
+(*                    (SeqNumber : word 32) *)
+(*                    (AckNumber : word 32) *)
+(*                    (NS : bool) (* ECN-nonce concealment protection flag *) *)
+(*                    (CWR : bool) (* Congestion Window Reduced (CWR) flag *) *)
+(*                    (ECE : bool) (* ECN-Echo flag *) *)
+(*                    (ACK : bool) (* Acknowledgment field is significant flag *) *)
+(*                    (PSH : bool) (* Push function flag *) *)
+(*                    (RST : bool) (* Reset the connection flag *) *)
+(*                    (SYN : bool) (* Synchronize sequence numbers flag *) *)
+(*                    (FIN : bool) (* N srcAddress dstAddress udpLength o more data from sender flag*) *)
+(*                    (WindowSize : word 16) *)
+(*                    (UrgentPointer : option (word 16)) *)
+(*                    (Options : list (word 32)) *)
+(*                    (Payload : list char), *)
+(*                  A) *)
+(*              (packet: TCP_Packet) : A := *)
+(*     f packet!"SourcePort" *)
+(*       packet!"DestPort" *)
+(*       packet!"SeqNumber" *)
+(*       packet!"AckNumber" *)
+(*       packet!"NS" *)
+(*       packet!"CWR" *)
+(*       packet!"ECE" *)
+(*       packet!"ACK" *)
+(*       packet!"PSH" *)
+(*       packet!"RST" *)
+(*       packet!"SYN" *)
+(*       packet!"FIN" *)
+(*       packet!"WindowSize" *)
+(*       packet!"UrgentPointer" *)
+(*       packet!"Options" *)
+(*       packet!"Payload". *)
+(* End TCP. *)
 
-Section UDP.
-  Require Import UDP_Packet.
+(* Section UDP. *)
+(*   Require Import UDP_Packet. *)
 
-  Definition fiat_udp_decode srcAddress dstAddress udpLength :=
-    MakeDecoder (UDP_Packet_decoder_impl srcAddress dstAddress udpLength).
+(*   Definition fiat_udp_decode srcAddress dstAddress udpLength := *)
+(*     MakeDecoder (UDP_Packet_decoder_impl srcAddress dstAddress udpLength). *)
 
-  Definition fiat_udp_destruct_packet {A}
-             (f: forall (SourcePort : word 16)
-                   (DestPort : word 16)
-                   (Payload : list char),
-                 A)
-             (packet: UDP_Packet) : A :=
-    f packet!"SourcePort"
-      packet!"DestPort"
-      packet!"Payload".
-End UDP.
+(*   Definition fiat_udp_destruct_packet {A} *)
+(*              (f: forall (SourcePort : word 16) *)
+(*                    (DestPort : word 16) *)
+(*                    (Payload : list char), *)
+(*                  A) *)
+(*              (packet: UDP_Packet) : A := *)
+(*     f packet!"SourcePort" *)
+(*       packet!"DestPort" *)
+(*       packet!"Payload". *)
+(* End UDP. *)
 
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
 
 Extract Inductive prod => "(*)"  [ "(,)" ].
 
 (** * Inline a few functions *)
-Extraction Inline DecodeBindOpt2.
+Extraction Inline fst snd.
 Extraction Inline If_Opt_Then_Else.
-Extraction Inline decode_nat decode_word decode_word'.
+Extraction Inline BindAlignedDecodeM ReturnAlignedDecodeM ThrowAlignedDecodeM.
+Extraction Inline AppendAlignedEncodeM ReturnAlignedEncodeM ThrowAlignedEncodeM.
+(* Extraction Inline decode_nat decode_word decode_word'. *)
 
 (** * Extract words as int64
       (Only works for word length < 64) *)
-Extract Constant whd => "(fun _ w -> ((Int64.logand Int64.one w) = Int64.one))".
-Extract Constant wtl => "(fun _ w -> (Int64.shift_right_logical w 1))".
-Extract Constant wplus => "(fun _ w w' -> Int64.add w w')".
-Extract Constant wmult => "(fun _ w w' -> Int64.mul w w')".
-Extract Constant wminus => "(fun _ w w' -> Int64.max (Int64.zero) (Int64.sub w w'))".
-Extract Constant weq => "(fun _ w w' -> w = w')".
-Extract Constant weqb => "(fun _ w w' -> w = w')".
-Extract Constant wlt => "(fun _ w w' -> w < w')".
-Extract Constant wlt_dec => "(fun _ w w' -> w < w')".
-Extract Constant wand => "(fun _ w w' -> Int64.logand w w')".
-Extract Constant wor => "(fun _ w w' -> Int64.logor w w')".
-Extract Constant wnot => "(fun _ w -> Int64.lognot w)".
-Extract Constant wneg => "(fun _ w w' -> failwith ""Called Wneg"")".
-Extract Constant combine => "(fun _ w w' -> failwith ""Using combine"")".
-Extract Constant wordToNat => "(fun _ w -> Int64.to_int w)". (* Not ideal *)
-Extract Constant natToWord => "(fun _ w -> Int64.of_int w)".
-Extract Constant wzero => "(fun _ -> Int64.zero)".
-Extract Constant wzero' => "(fun _ -> Int64.zero)".
-Extract Constant wones => "(fun n -> Int64.sub (Int64.shift_left Int64.one n) Int64.one)".
+Extract Inlined Constant whd => "Int64Word.whd".
+Extract Inlined Constant wtl => "Int64Word.wtl".
+Extract Inlined Constant wplus => "Int64Word.wplus".
+Extract Inlined Constant wmult => "Int64Word.wmult".
+Extract Inlined Constant wminus => "Int64Word.wminus".
+Extract Inlined Constant weq => "Int64Word.weq".
+Extract Inlined Constant weqb => "Int64Word.weqb".
+Extract Inlined Constant wlt => "Int64Word.wlt".
+Extract Inlined Constant wlt_dec => "Int64Word.wlt_dec".
+Extract Inlined Constant wand => "Int64Word.wand".
+Extract Inlined Constant wor => "Int64Word.wor".
+Extract Inlined Constant wnot => "Int64Word.wnot".
+Extract Inlined Constant wneg => "Int64Word.wneg".
+Extract Inlined Constant wordToNat => "Int64Word.wordToNat".
+Extract Inlined Constant natToWord => "Int64Word.natToWord".
+Extract Inlined Constant wzero => "Int64Word.wzero".
+Extract Inlined Constant wzero' => "Int64Word.wzero'".
+Extract Inlined Constant wones => "Int64Word.wones".
 
-Extract Constant SW_word => "(fun sz b n -> Int64.add (if b then Int64.shift_left Int64.one sz else Int64.zero) n)".
+Extract Inlined Constant word_split_hd => "Int64Word.word_split_hd".
+Extract Inlined Constant word_split_tl => "Int64Word.word_split_tl".
+Extract Inlined Constant AlignWord.split1' => "Int64Word.split1'".
+Extract Inlined Constant AlignWord.split2' => "Int64Word.split2'".
+Extract Inlined Constant split1 => "Int64Word.split1".
+Extract Inlined Constant split2 => "Int64Word.split2".
+Extract Inlined Constant SW_word => "Int64Word.SW_word".
+Extract Inlined Constant combine => "Int64Word.combine".
+
+Definition combine_test := wordToNat (combine (natToWord 5 30) (natToWord 7 14)).
+Definition word_split_hd_test := word_split_hd (natToWord 5 30).
+Definition word_split_tl_test := wordToNat (word_split_tl (natToWord 5 30)).
+Definition alignword_split1'_test := wordToNat (AlignWord.split1' 2 3 (natToWord 5 30)).
+Definition alignword_split2'_test := wordToNat (AlignWord.split2' 2 3 (natToWord 5 30)).
+Definition split1_test := wordToNat (split1 3 2 (natToWord 5 30)).
+Definition split2_test := wordToNat (split2 3 2 (natToWord 5 30)).
 
 Extract Inductive Word.word =>
-int64 ["Int64.zero" "(fun (b, _, w') -> Int64.add (if b then Int64.one else Int64.zero) (Int64.shift_left w' 1))"]
-      "failwith ""Destructing an int64""".
+"Int64Word.t"
+  ["(Int64Word.w0)" "Int64Word.ws"]
+  "Int64Word.destruct".
+
+Extract Constant append_word => "(fun n m wn wm -> Int64.logor (Int64.shift_left wm n) wn)".
+Definition test_append_word := wordToNat (append_word (@natToWord 8 5) (@natToWord 12 126)).
 
 (** * Don't recurse on int64 *)
 Extract Constant encode_word' => "encode_word'_recurse_on_size".
@@ -297,28 +286,52 @@ Extract Constant InternetChecksum.add_bytes_into_checksum =>
 
 Extract Constant InternetChecksum.OneC_plus => "failwith ""Calling OneC_plus""".
 
-(** Efficient bit strings *)
+(** Efficient bytestrings *)
 
-Extract Inductive ByteString =>
-  "BitString.t"
-    ["(fun _ -> failwith ""Constructing a ByteString"")"]
-    "(fun _ _ -> failwith ""Destructing a ByteString"")".
+Extract Inductive Fin.t =>
+"ArrayVector.idx_t"
+  ["ArrayVector.zero" "ArrayVector.succ"]
+  "ArrayVector.destruct".
 
-Extract Constant ByteString_id => "(BitString.create ())".
-Extract Constant ByteString_enqueue => "BitString.enqueue".
-Extract Constant ByteString_dequeue => "BitString.dequeue".
-Extract Constant length_ByteString => "BitString.bitlength".
-Extract Constant ByteString_enqueue_ByteString => "BitString.append".
+Extract Inductive Vector.t =>
+"ArrayVector.storage_t"
+  ["ArrayVector.empty ()" "ArrayVector.cons"]
+  "ArrayVector.destruct".
+Extract Inductive VectorDef.t =>
+"ArrayVector.storage_t"
+  ["ArrayVector.empty ()" "ArrayVector.cons"]
+  "ArrayVector.destruct".
+Extract Constant nth_opt => "ArrayVector.nth_opt".
+Extract Constant word_indexed => "ArrayVector.index".
+
+Definition fiat_ipv4_decode_test := fiat_ipv4_decode bin_pkt.
+Definition fiat_ipv4_decode_bench (_: unit) := fiat_ipv4_decode bin_pkt.
+Definition fiat_ipv4_decode_reference := Eval compute in fiat_ipv4_decode bin_pkt.
 
 Extraction "Fiat4Mirage"
-           fiat_ethernet_decode
-           fiat_ethernet_destruct_packet
-           fiat_arpv4_decode
-           fiat_arpv4_destruct_packet
+           (* fiat_ethernet_decode *)
+           (* fiat_ethernet_destruct_packet *)
+           (* fiat_arpv4_decode *)
+           (* fiat_arpv4_destruct_packet *)
+
+           word_split_hd_test
+           word_split_tl_test
+           split1_test
+           split2_test
+           alignword_split1'_test
+           alignword_split2'_test
+
            fiat_ipv4_decode
-           fiat_ipv4_destruct_packet
-           fiat_tcp_decode
-           fiat_tcp_destruct_packet
-           fiat_udp_decode
-           fiat_udp_destruct_packet
-           encode_word'_recurse_on_size.
+           fiat_ipv4_decode_test
+           fiat_ipv4_decode_bench
+           fiat_ipv4_decode_reference
+           fiat_ipv4_encode
+
+           (* fiat_ipv4_destruct_packet *)
+           (* fiat_tcp_decode *)
+           (* fiat_tcp_destruct_packet *)
+           (* fiat_udp_decode *)
+           (* fiat_udp_destruct_packet *)
+           (* encode_word'_recurse_on_size *)
+.
+
