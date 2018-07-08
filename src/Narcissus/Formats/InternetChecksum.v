@@ -719,6 +719,49 @@ Proof.
   - etransitivity; eauto.
 Qed.
 
+Fixpoint Vector_fold_left_pair {A B} (f: A -> A -> B -> B) {sz: nat} (v: Vector.t A sz) (acc: B) (pad: A) : B :=
+  match v with
+  | Vector.nil _ => acc
+  | Vector.cons _ x _ (Vector.nil _) => f x pad acc
+  | Vector.cons _ x _ (Vector.cons _ y _ tl) => Vector_fold_left_pair f tl (f x y acc) pad
+  end.
+
+Definition checksum'' byte_pairs acc : W16 :=
+  fold_left (fun chk p => add_bytes_into_checksum (fst p) (snd p) chk) byte_pairs acc.
+
+Lemma checksum'_checksum'' :
+  forall pairs, checksum' pairs = checksum'' pairs (wzero _).
+Proof.
+  unfold checksum', checksum''; intros.
+  rewrite <- fold_left_rev_right, (checksum'_permutation _ _ (Permutation_rev _)).
+  reflexivity.
+Qed.
+
+Definition Vector_checksum' {sz} (bytes : Vector.t (word 8) sz) : W16 :=
+  Vector_fold_left_pair add_bytes_into_checksum bytes (wzero _) (wzero _).
+
+Lemma Vector_checksum'_checksum'' :
+  forall {sz} (bytes: Vector.t (word 8) sz) acc,
+    Vector_fold_left_pair add_bytes_into_checksum bytes acc (wzero _) =
+    checksum'' (make_pairs (Vector.to_list bytes) (wzero _)) acc.
+Proof.
+  fix IH 2.
+  destruct bytes as [ | hd sz [ | hd' sz' tl ] ]; intros; simpl.
+  - reflexivity.
+  - reflexivity.
+  - rewrite IH. reflexivity.
+Qed.
+
+Lemma Vector_checksum_Vector_checksum' :
+  forall {sz} (bytes: Vector.t (word 8) sz),
+    Vector_checksum bytes = Vector_checksum' bytes.
+Proof.
+  intros.
+  rewrite Vector_checksum_eq_checksum, checksum_checksum'.
+  unfold Vector_checksum'; rewrite Vector_checksum'_checksum''.
+  apply checksum'_checksum''.
+Qed.
+
 Lemma checksum'_app :
   forall bs1 bs2,
     checksum' (bs1 ++ bs2) = checksum' (bs2 ++ bs1).

@@ -1542,7 +1542,6 @@ Section AlignedDecoders.
       rewrite <- NPeano.leb_le in H1; congruence.
   Qed.
 
-
   Lemma AlignedDecode_shift_if_bool {A B C : Type}
         (decode_A : DecodeM (A * _) ByteString)
         (decode_B : A -> DecodeM (B * _) ByteString)

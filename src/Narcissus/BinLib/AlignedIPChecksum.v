@@ -60,7 +60,7 @@ Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
 Definition calculate_IPChecksum {S} {sz}
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
-     (let checksum := InternetChecksum.Vector_checksum v in
+     (let checksum := InternetChecksum.Vector_checksum' v in
       (fun v idx s => SetByteAt (n := sz) 10 v 0 (wnot (split2 8 8 checksum)) ) >>
       (fun v idx s => SetByteAt (n := sz) 11 v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
@@ -120,7 +120,7 @@ Definition calculate_PseudoChecksum {S} {sz}
            (idx' : nat)
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
-     (let checksum := InternetChecksum.Vector_checksum (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
+     (let checksum := InternetChecksum.Vector_checksum' (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
                                                           (append v (append srcAddr (append destAddr udpLength))))) in
       (fun v idx s => SetByteAt (n := sz) idx' v 0 (wnot (split2 8 8 checksum)) ) >>
       (fun v idx s => SetByteAt (n := sz) (1 + idx') v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.

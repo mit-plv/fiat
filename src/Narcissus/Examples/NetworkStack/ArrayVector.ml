@@ -8,14 +8,13 @@ type 'a storage_t =
     data: 'a array;
     latest_version: int ref }
 
-let destruct _ _ _ =
-  failwith "Not implemented: ArrayVector.destruct"
+let destruct_idx _ _ _ =
+  failwith "Not implemented: ArrayVector.destruct_idx"
+
+let destruct_storage _ _ _ =
+  failwith "Not implemented: ArrayVector.destruct_storage"
 
 let throw_if_stale (fn: string) (arr: 'a storage_t) =
-  if arr.version <> 0 then
-    failwith (Printf.sprintf "Unexpected version in %s: %d" fn arr.version);
-  if !(arr.latest_version) <> 0 then
-    failwith (Printf.sprintf "Unexpected version in %s: %d" fn !(arr.latest_version));
   if arr.version <> !(arr.latest_version) then
     failwith (Printf.sprintf "ArrayVector: Array version mismatch in '%s': %d != %d."
                 fn arr.version !(arr.latest_version))
@@ -28,11 +27,36 @@ let index (_: int) (_: int) (x: 'a) (arr: 'a storage_t) : idx_t option =
     else loop x arr (i + 1)
   in loop x arr.data 0
 
+let nth _ (arr: 'a storage_t) (idx: idx_t) : 'a =
+  throw_if_stale "nth" arr;
+  Array.unsafe_get arr.data idx
+
 let nth_opt _ (arr: 'a storage_t) (idx: idx_t) : 'a option =
   throw_if_stale "nth_opt" arr;
   if 0 <= idx && idx < Array.length arr.data then
     Some (Array.unsafe_get arr.data idx)
   else None
+
+let set_nth _ (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
+  throw_if_stale "set_nth'" arr;
+  incr arr.latest_version;
+  Array.unsafe_set arr.data idx x;
+  { version = !(arr.latest_version);
+    latest_version = arr.latest_version;
+    data = arr.data }
+
+let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ (arr: 'a storage_t) (init: 'b) (pad: 'a) =
+  let rec loop f arr acc pad len offset =
+    if offset >= len then
+      acc
+    else if offset = len - 1  then
+      f (arr.data.(offset)) pad acc
+    else
+      let acc = f (Array.unsafe_get arr.data offset)
+                  (Array.unsafe_get arr.data (offset + 1))
+                  acc in
+      loop f arr acc pad len (offset  + 2)
+  in loop f arr init pad (Array.length arr.data) 0
 
 let cons ((hd, _, tl): ('a * 'b * 'a storage_t)) : 'a storage_t =
   throw_if_stale "cons" tl;

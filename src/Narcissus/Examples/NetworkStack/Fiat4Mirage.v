@@ -217,6 +217,8 @@ End IPv4.
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
 
 Extract Inductive prod => "(*)"  [ "(,)" ].
+Extract Inlined Constant NPeano.ltb => "(<)".
+Extract Inlined Constant NPeano.leb => "(<=)".
 
 (** * Inline a few functions *)
 Extraction Inline fst snd.
@@ -226,7 +228,13 @@ Extraction Inline AppendAlignedEncodeM ReturnAlignedEncodeM ThrowAlignedEncodeM.
 (* Extraction Inline decode_nat decode_word decode_word'. *)
 
 (** * Extract words as int64
-      (Only works for word length < 64) *)
+      (Only works for words with length < 64) *)
+
+Extract Inductive Word.word =>
+"Int64Word.t"
+  ["(Int64Word.w0)" "Int64Word.ws"]
+  "Int64Word.destruct".
+
 Extract Inlined Constant whd => "Int64Word.whd".
 Extract Inlined Constant wtl => "Int64Word.wtl".
 Extract Inlined Constant wplus => "Int64Word.wplus".
@@ -254,22 +262,16 @@ Extract Inlined Constant split1 => "Int64Word.split1".
 Extract Inlined Constant split2 => "Int64Word.split2".
 Extract Inlined Constant SW_word => "Int64Word.SW_word".
 Extract Inlined Constant combine => "Int64Word.combine".
+Extract Inlined Constant append_word => "Int64Word.append".
 
-Definition combine_test := wordToNat (combine (natToWord 5 30) (natToWord 7 14)).
 Definition word_split_hd_test := word_split_hd (natToWord 5 30).
 Definition word_split_tl_test := wordToNat (word_split_tl (natToWord 5 30)).
 Definition alignword_split1'_test := wordToNat (AlignWord.split1' 2 3 (natToWord 5 30)).
 Definition alignword_split2'_test := wordToNat (AlignWord.split2' 2 3 (natToWord 5 30)).
 Definition split1_test := wordToNat (split1 3 2 (natToWord 5 30)).
 Definition split2_test := wordToNat (split2 3 2 (natToWord 5 30)).
-
-Extract Inductive Word.word =>
-"Int64Word.t"
-  ["(Int64Word.w0)" "Int64Word.ws"]
-  "Int64Word.destruct".
-
-Extract Constant append_word => "(fun n m wn wm -> Int64.logor (Int64.shift_left wm n) wn)".
-Definition test_append_word := wordToNat (append_word (@natToWord 8 5) (@natToWord 12 126)).
+Definition combine_test := wordToNat (combine (natToWord 5 30) (natToWord 7 14)).
+Definition append_word_test := wordToNat (append_word (@natToWord 8 5) (@natToWord 12 126)).
 
 (** * Don't recurse on int64 *)
 Extract Constant encode_word' => "encode_word'_recurse_on_size".
@@ -296,17 +298,38 @@ Extract Inductive Fin.t =>
 Extract Inductive Vector.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
-  "ArrayVector.destruct".
+  "ArrayVector.destruct_idx".
 Extract Inductive VectorDef.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
-  "ArrayVector.destruct".
-Extract Constant nth_opt => "ArrayVector.nth_opt".
-Extract Constant word_indexed => "ArrayVector.index".
+  "ArrayVector.destruct_storage".
 
-Definition fiat_ipv4_decode_test := fiat_ipv4_decode bin_pkt.
-Definition fiat_ipv4_decode_bench (_: unit) := fiat_ipv4_decode bin_pkt.
-Definition fiat_ipv4_decode_reference := Eval compute in fiat_ipv4_decode bin_pkt.
+Extract Inlined Constant Vector.nth => "ArrayVector.nth".
+Extract Inlined Constant VectorDef.nth => "ArrayVector.nth".
+Extract Inlined Constant nth_opt => "ArrayVector.nth_opt".
+Extract Inlined Constant set_nth' => "ArrayVector.set_nth".
+Extract Inlined Constant word_indexed => "ArrayVector.index".
+Extract Inlined Constant InternetChecksum.Vector_fold_left_pair => "ArrayVector.fold_left_pair".
+
+Print InternetChecksum.Vector_checksum.
+
+Extraction IPv4_encoder_impl.
+
+Definition fiat_ipv4_decode_bench (_: unit) :=
+  fiat_ipv4_decode bin_pkt.
+Definition fiat_ipv4_decode_test := fiat_ipv4_decode_bench ().
+Definition fiat_ipv4_decode_reference := Eval compute in fiat_ipv4_decode_test.
+
+Definition fiat_ipv4_encode_bench (_: unit) :=
+  fiat_ipv4_encode pkt (AlignedByteString.initialize_Aligned_ByteString 20).
+Definition fiat_ipv4_encode_test := fiat_ipv4_encode_bench ().
+Definition fiat_ipv4_encode_reference := Eval compute in fiat_ipv4_encode_test.
+
+(* Definition should_fail := *)
+(*   let bs := (AlignedByteString.initialize_Aligned_ByteString 20) in *)
+(*   let bs' := set_nth' bs 10 (wone _) in *)
+(*   let bs'' := set_nth' bs 10 (wone _) in *)
+(*   (bs', bs''). *)
 
 Extraction "Fiat4Mirage"
            (* fiat_ethernet_decode *)
@@ -320,12 +343,17 @@ Extraction "Fiat4Mirage"
            split2_test
            alignword_split1'_test
            alignword_split2'_test
+           combine_test
+           append_word_test
 
            fiat_ipv4_decode
-           fiat_ipv4_decode_test
            fiat_ipv4_decode_bench
+           fiat_ipv4_decode_test
            fiat_ipv4_decode_reference
            fiat_ipv4_encode
+           fiat_ipv4_decode_bench
+           fiat_ipv4_encode_test
+           fiat_ipv4_encode_reference
 
            (* fiat_ipv4_destruct_packet *)
            (* fiat_tcp_decode *)
@@ -334,4 +362,3 @@ Extraction "Fiat4Mirage"
            (* fiat_udp_destruct_packet *)
            (* encode_word'_recurse_on_size *)
 .
-

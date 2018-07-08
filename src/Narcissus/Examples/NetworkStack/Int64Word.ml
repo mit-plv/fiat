@@ -92,4 +92,7 @@ let sw_word sz b w =
   if b then Int64.logor (Int64.shift_left Int64.one sz) w else w
 
 let combine sz w sz' w' =
-  Int64.logor (Int64.shift_left w sz') w'
+  Int64.logor (Int64.shift_left w' sz) w
+
+let append sz sz' w w' =
+  Int64.logor (Int64.shift_left w' sz) w
