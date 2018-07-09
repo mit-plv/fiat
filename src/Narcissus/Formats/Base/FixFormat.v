@@ -31,7 +31,7 @@ Section FixFormat.
     | _ => fun _ _ => None
     end.
 
-  
+
   Theorem FueledFix_continuous {A B C} (F : (B -> C -> option A) -> B -> C -> option A)
     : (forall n a b c,
           FueledFix' F n b c = Some a ->
@@ -44,46 +44,46 @@ Section FixFormat.
   Proof.
     intros; induction H0; eauto.
   Qed.
-  
+
   Definition Fix_Decode
              {monoid : Monoid T}
              (decode_body : DecodeM S T -> DecodeM S T)
     : DecodeM S T :=
     fun t env => FueledFix' decode_body (Datatypes.S (bin_measure t)) t env.
 
-  Definition FMap_Target
+  Definition Compose_Target
              (P : T -> Prop)
              (format : FormatM S T)
     : FormatM S T :=
     fun s env tenv' =>
       format s env ∋ tenv'
        /\ P (fst tenv').
-  
+
   Lemma CorrectDecoder_Fix'
         (decode_body : DecodeM S T -> DecodeM S T)
         (format_body : FormatM S T -> FormatM S T)
         (format_body_OK : Frame.monotonic_function (format_body : funType [S; CacheFormat] (T * CacheFormat) ->
                                                                   funType [S; CacheFormat] (T * CacheFormat)))
-        (bound : T -> nat)        
+        (bound : T -> nat)
         (decode_body_correct :
            forall n,
              (CorrectDecoder_simpl
-                (FMap_Target (fun t => bound t < n)  (Fix_Format format_body))
+                (Compose_Target (fun t => bound t < n)  (Fix_Format format_body))
                 (FueledFix' decode_body n)) ->
              CorrectDecoder_simpl
-               (FMap_Target (fun t => bound t < Datatypes.S n)
+               (Compose_Target (fun t => bound t < Datatypes.S n)
                             (format_body (Fix_Format format_body)))
                (decode_body (FueledFix' decode_body n)))
     : forall n,
       CorrectDecoder_simpl
-        (FMap_Target (fun t => bound t < n) (Fix_Format format_body))
+        (Compose_Target (fun t => bound t < n) (Fix_Format format_body))
         (FueledFix' decode_body n).
   Proof.
     induction n; simpl; intros.
-    - split; unfold FMap_Target; intros.
+    - split; unfold Compose_Target; intros.
       + rewrite @unfold_computes in H0; omega.
       + discriminate.
-    - split; unfold FMap_Target in *; intros.
+    - split; unfold Compose_Target in *; intros.
       + rewrite @unfold_computes in H0; split_and.
         apply_in_hyp (unroll_LeastFixedPoint format_body_OK).
         eapply decode_body_correct; eauto.
@@ -107,11 +107,11 @@ Section FixFormat.
         (decode_body_correct :
            forall n,
              (CorrectDecoder_simpl
-                (FMap_Target (fun t => bin_measure t < n)
+                (Compose_Target (fun t => bin_measure t < n)
                              (Fix_Format format_body))
                 (FueledFix' decode_body n)) ->
              CorrectDecoder_simpl
-               (FMap_Target (fun t => bin_measure t < Datatypes.S n)
+               (Compose_Target (fun t => bin_measure t < Datatypes.S n)
                             (format_body (Fix_Format format_body)))
                (decode_body (FueledFix' decode_body n)))
         (decode_body_continuous :
@@ -131,7 +131,7 @@ Section FixFormat.
                   decode_body format_body format_body_OK bin_measure
                   decode_body_correct (Datatypes.S (bin_measure bin))) as [? _]; eauto.
       eapply H1 in H;
-        try solve [unfold FMap_Target; apply unfold_computes; split; eauto].
+        try solve [unfold Compose_Target; apply unfold_computes; split; eauto].
       destruct_ex; split_and;  eexists; intuition eauto.
     - destruct (CorrectDecoder_Fix'
                   decode_body format_body format_body_OK bin_measure
@@ -139,9 +139,9 @@ Section FixFormat.
       eapply H1 in H;
         try solve [simpl; unfold Fix_Decode in H0; eauto].
       destruct_ex; split_and;  eexists; intuition eauto.
-      unfold FMap_Target in H2; rewrite @unfold_computes in H2; intuition.
+      unfold Compose_Target in H2; rewrite @unfold_computes in H2; intuition.
   Qed.
-  
+
   Definition Fix_Encode
              (measure : S -> nat)
              (encode_body : EncodeM S T -> EncodeM S T)
@@ -153,27 +153,27 @@ Section FixFormat.
         (format_body : FormatM S T -> FormatM S T)
         (format_body_OK : Frame.monotonic_function (format_body : funType [S; CacheFormat] (T * CacheFormat) ->
                                                                   funType [S; CacheFormat] (T * CacheFormat)))
-        (measure : S -> nat)        
+        (measure : S -> nat)
         (encode_body_correct :
-           forall n,
+           forall n encode,
              (CorrectEncoder
                 (Restrict_Format (fun s => measure s < n) (Fix_Format format_body))
-                (FueledFix' encode_body n)) ->
+                encode) ->
              CorrectEncoder
                (Restrict_Format (fun s => measure s < Datatypes.S n)
                                 (format_body (Fix_Format format_body)))
-               (encode_body (FueledFix' encode_body n)))
+               (encode_body encode))
     : forall n,
       CorrectEncoder
         (Restrict_Format (fun s => measure s < n) (Fix_Format format_body))
         (FueledFix' encode_body n).
     Proof.
     induction n; simpl; intros.
-    - split; unfold Restrict_Format, FMap_Format; intros.
+    - split; unfold Restrict_Format, Compose_Format; intros.
       + discriminate.
       + intro H'; rewrite @unfold_computes in H';
           destruct_ex; omega.
-    - split; unfold Restrict_Format, FMap_Format in *; intros.
+    - split; unfold Restrict_Format, Compose_Format in *; intros.
       + apply unfold_computes; intuition eauto.
         eapply encode_body_correct in H; eauto.
         rewrite @unfold_computes in H; destruct_ex; split_and.
@@ -191,24 +191,27 @@ Section FixFormat.
         (format_body : FormatM S T -> FormatM S T)
         (format_body_OK : Frame.monotonic_function (format_body : funType [S; CacheFormat] (T * CacheFormat) ->
                                                                   funType [S; CacheFormat] (T * CacheFormat)))
-        (measure : S -> nat)        
+        (measure : S -> nat)
         (encode_body_correct :
-           forall n,
+           forall n encode,
              (CorrectEncoder
                 (Restrict_Format (fun s => measure s < n) (Fix_Format format_body))
-                (FueledFix' encode_body n)) ->
+                encode) ->
              CorrectEncoder
                (Restrict_Format (fun s => measure s < Datatypes.S n)
                                 (format_body (Fix_Format format_body)))
-               (encode_body (FueledFix' encode_body n)))
-        (encode_body_continuous :
-           forall encode,
-             (forall t env s env',
-                 encode t env = Some (s, env') ->
-                 encode_body encode t env = Some (s, env')) ->
-             forall t env s env',
-               encode_body encode t env = Some (s, env') ->
-               encode_body (encode_body encode) t env = Some (s, env'))
+               (encode_body encode))
+        (*
+          (encode_body_continuous :
+          forall encode,
+          (forall t env s env',
+          encode t env = Some (s, env') ->
+          encode_body encode t env = Some (s, env')) ->
+          forall t env s env',
+          encode_body encode t env = Some (s, env') ->
+                      encode_body (encode_body encode) t env = Some (s, env'))
+
+         *)
     : CorrectEncoder
         (Fix_Format format_body)
         (Fix_Encode measure encode_body).
@@ -218,8 +221,8 @@ Section FixFormat.
                   encode_body format_body format_body_OK measure
                   encode_body_correct (Datatypes.S (measure a))) as [? _]; eauto.
       eapply H0 in H;
-        try solve [unfold FMap_Target; apply unfold_computes; split; eauto].      
-      unfold Restrict_Format, FMap_Format in H.
+        try solve [unfold Compose_Target; apply unfold_computes; split; eauto].
+      unfold Restrict_Format, Compose_Format in H.
       rewrite  @unfold_computes in H.
       destruct_ex; split_and; subst; eauto.
     - destruct (CorrectEncoder_Fix'
@@ -228,7 +231,7 @@ Section FixFormat.
       eapply H0 in H;
         try solve [simpl; unfold Fix_Encode in H0; eauto].
       intro; eapply H.
-      unfold Restrict_Format, FMap_Format; apply unfold_computes.
+      unfold Restrict_Format, Compose_Format; apply unfold_computes.
       eexists; split_and; eauto.
   Qed.
 

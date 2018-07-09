@@ -4,7 +4,8 @@ Require Import
         Fiat.Narcissus.Common.Notations
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Common.WordFacts
-        Fiat.Narcissus.Formats.WordOpt.
+        Fiat.Narcissus.Formats.WordOpt
+        Fiat.Narcissus.BaseFormats.
 
 Section Checksum.
 
@@ -33,12 +34,12 @@ Section Checksum.
 
   Definition format_checksum c := encode_word' checksum_sz c mempty.
 
-  Definition composeChecksum {Env}
-             (format1 : Env -> Comp (B * Env))
-             (format2 : Env -> Comp (B * Env))
-             (ctx : Env) :=
-    `(p, ctx) <- format1 ctx;
-    `(q, ctx) <- format2 ctx;
+  Definition composeChecksum
+             (format1 : FormatM A B)
+             (format2 : FormatM A B)
+             (a : A) (ctx : _) :=
+    `(p, ctx) <- format1 a ctx;
+    `(q, ctx) <- format2 a ctx;
     c <- { c : word checksum_sz | forall ext,
              checksum_Valid
                (bin_measure (mappend p (mappend (format_checksum c) q)))
@@ -153,8 +154,7 @@ Section Checksum.
         monoid
         predicate
         predicate_rest'
-        (fun (data : A) =>
-           composeChecksum (format1 (project data)) (format2 data)
+        (composeChecksum (Projection_Format format1 project) format2
         )%comp
         (fun (bin : B) (env : CacheDecode) =>
            if checksum_Valid_dec (formatd_A_measure bin) bin then
@@ -169,11 +169,15 @@ Section Checksum.
       unfold composeChecksum, Bind2 in com_pf; computes_to_inv; destruct v;
         destruct v0.
       simpl in *.
-      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend (mappend (format_checksum v1) b0) ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
+      assert (format1 (project data) env ∋ (b, c)) as com_pf4
+          by (unfold Projection_Format, Compose_Format in com_pf;
+              rewrite unfold_computes in com_pf; destruct_ex; split_and;
+              subst; eauto).
+      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend (mappend (format_checksum v1) b0) ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf4); intuition; simpl in *; injections; eauto.
       find_if_inside.
       - setoid_rewrite <- mappend_assoc; rewrite H2.
         simpl.
-        simpl; rewrite (decodeChecksum_pf _ _ _ _ _ _ _ _ _ _ _ com_pf (eq_refl _) pred_pm com_pf' pred_pm_rest); simpl; eauto.
+        simpl; rewrite (decodeChecksum_pf _ _ _ _ _ _ _ _ _ _ _ com_pf4 (eq_refl _) pred_pm com_pf' pred_pm_rest); simpl; eauto.
         destruct (fun H'' => proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H)
                                    _ _ _ _ _ ext H5 H1 (conj pred_pm (eq_refl _)) H'' com_pf');
           intuition; simpl in *; injections.
@@ -199,8 +203,10 @@ Section Checksum.
         erewrite <- formatd_A_measure_OK in c; try eassumption;
           try (eapply H16; eauto).
         eexists; eexists; repeat split.
-        unfold composeChecksum.
+        unfold composeChecksum, Projection_Format, Compose_Format.
         repeat computes_to_econstructor; eauto.
+        apply unfold_computes; eexists; split; eauto.
+        simpl; intros; eauto.
         simpl; intros; eauto.
         rewrite !mappend_assoc.
         eauto.
@@ -564,4 +570,4 @@ End ComposeComposeChecksum.
   Qed. *) *)
 
 Notation "format1 'ThenChecksum' c 'OfSize' sz 'ThenCarryOn' format2"
-  := (composeChecksum _ _ _ sz c format1 format2) : format_scope.
+  := (composeChecksum _ _ _ _ sz c _ format1 format2) : format_scope.

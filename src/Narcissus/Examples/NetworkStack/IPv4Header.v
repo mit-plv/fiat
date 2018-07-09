@@ -19,6 +19,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats
+        Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Automation.AlignedAutomation.
@@ -61,24 +62,22 @@ Definition ProtocolTypeCodes : Vector.t (word 8) 3 :=
 
 Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4.(Options)|.
 
-Definition IPv4_Packet_Format (ip4 : IPv4_Packet)  :=
-  (format_word (natToWord 4 4)
-               ThenC format_nat 4 (IPv4_Packet_Header_Len ip4)
-               ThenC format_unused_word 8 (* TOS Field! *)
-               ThenC format_word ip4.(TotalLength)
-               ThenC format_word ip4.(ID)
-               ThenC format_unused_word 1 (* Unused flag! *)
-               ThenC format_bool ip4.(DF)
-               ThenC format_bool ip4.(MF)
-               ThenC format_word ip4.(FragmentOffset)
-               ThenC format_word ip4.(TTL)
-               ThenC format_enum ProtocolTypeCodes ip4.(Protocol)
-               DoneC)
-    ThenChecksum IPChecksum_Valid' OfSize 16
-    ThenCarryOn (format_word ip4.(SourceAddress)
-                             ThenC format_word ip4.(DestAddress)
-                             ThenC format_list format_word ip4.(Options)
-                             DoneC)%format.
+Definition IPv4_Packet_Format : FormatM IPv4_Packet ByteString :=
+  (format_word ◦ (fun _ => natToWord 4 4)
+++ (format_nat 4) ◦ IPv4_Packet_Header_Len
+++ format_unused_word 8 (* TOS Field! *)
+++ format_word ◦ TotalLength
+++ format_word ◦ ID
+++ format_unused_word 1 (* Unused flag! *)
+++ format_bool ◦ DF
+++ format_bool ◦ MF
+++ format_word ◦ FragmentOffset
+++ format_word ◦ TTL
+++ format_enum ProtocolTypeCodes ◦ Protocol)%format
+ ThenChecksum IPChecksum_Valid' OfSize 16
+    ThenCarryOn (format_word ◦ SourceAddress
+                 ++ format_word ◦ DestAddress
+                 ++ format_list format_word ◦ Options)%format.
 
 Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
   lt (|ipv4.(Options)|) 11 /\
@@ -87,15 +86,46 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
 (* Step One: Synthesize an encoder and a proof that it is correct. *)
 
 Definition IPv4_encoder :
-  CorrectAlignedEncoderFor IPv4_Packet_Format IPv4_Packet_OK.
+  CorrectAlignedEncoderFor IPv4_Packet_Format.
 Proof.
-  synthesize_aligned_encoder.
+Ltac decompose_aligned_encoder :=
+  first [
+           eapply @CorrectAlignedEncoderForIPChecksumThenC
+         | associate_for_ByteAlignment
+         | apply @CorrectAlignedEncoderForThenC
+         | apply @CorrectAlignedEncoderForDoneC].
+
+synthesize_aligned_encoder.
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+(decompose_aligned_encoder; eauto).
+
+repeat align_encoder_step.
+repeat align_encoder_step.
+repeat align_encoder_step.
+repeat align_encoder_step.
+repeat align_encoder_step.
+repeat align_encoder_step.
+repeat align_encoder_step.
+decompose_aligned_encoder; eauto.
+decompose_aligned_encoder; eauto.
+repeat align_encoder_step.
+repeat align_encoder_step.
+repeat align_encoder_step.
 Defined.
 
 (* Step Two: Extract the encoder function, and have it start encoding
    at the start of the provided ByteString [v]. *)
-Definition IPv4_encoder_impl r {sz} v :=
-  Eval simpl in (projT1 IPv4_encoder r sz v 0 tt).
+Definition IPv4_encoder_impl {sz} v r :=
+  Eval simpl in (projT1 IPv4_encoder sz v 0 r tt).
+Print IPv4_encoder_impl.
 
 (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
@@ -129,9 +159,20 @@ Proof.
   (* We have to use an extra lemma at the start, because of the 'exotic'
      IP Checksum. *)
   eapply CorrectAlignedDecoderForIPChecksumThenC.
+  unfold IPv4_Packet_Format, sequence_Format, Basics.compose.
   repeat calculate_length_ByteString.
   (* Once that's done, the normal automation works just fine :) *)
-  synthesize_aligned_decoder.
+  start_synthesizing_decoder.
+  normalize_compose ByteStringQueueMonoid.
+  repeat decode_step ltac:(idtac).
+  cbv beta; synthesize_cache_invariant.
+  cbv beta; unfold decode_nat; optimize_decoder_impl.
+  cbv beta; align_decoders.
+  Grab Existential Variables.
+  shelve.
+  synthesize_cache_invariant.
+  synthesize_cache_invariant.
+  synthesize_cache_invariant.
 Defined.
 
 (* Step Four: Extract the decoder function, and have /it/ start decoding
@@ -174,14 +215,14 @@ Eval vm_compute in (IPv4_decoder_impl bin_pkt).
 
 (* This should succeed, *)
 Eval compute in
-    Ifopt (IPv4_encoder_impl pkt (initialize_Aligned_ByteString 100))
+    Ifopt (IPv4_encoder_impl (initialize_Aligned_ByteString 100) pkt)
   as bs Then IPv4_decoder_impl (fst (fst bs))
         Else None.
 (* and it does! *)
 
 (* This should fail because the total length field is too short, *)
 Eval compute in
-    Ifopt (IPv4_encoder_impl bad_pkt (initialize_Aligned_ByteString 100))
+    Ifopt (IPv4_encoder_impl (initialize_Aligned_ByteString 100) bad_pkt)
   as bs Then IPv4_decoder_impl (fst (fst bs))
         Else None.
 (* and it does! *)

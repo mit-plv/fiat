@@ -28,6 +28,14 @@ Section EnqueueFormat.
     : EncodeM S T :=
     fun a env => Some (enqueue_opt a mempty, env).
 
+  Lemma CorrectEncoder_Enqueue
+    : CorrectEncoder Enqueue_Format Enqueue_Encode.
+  Proof.
+    unfold CorrectEncoder, Enqueue_Encode, Enqueue_Format in *; split; intros.
+    - injections; computes_to_econstructor.
+    - discriminate.
+  Qed.
+
   (* Lemma CorrectDecoder_Enqueue
     : CorrectDecoder_simpl (Enqueue_Format (decode).
   Proof.

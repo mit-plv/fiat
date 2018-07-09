@@ -626,6 +626,19 @@ Section AlignedDecodeM.
                                                        cache_inv_Property (snd decodePlusCacheInv) P_inv)
                                                    /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder} }.
 
+  Lemma Refine_CorrectAlignedDecoderFormat {A: Type}
+    : forall (Invariant : A -> Prop) (FormatSpec FormatSpec'  : FormatM A ByteString),
+      EquivFormat FormatSpec FormatSpec'
+      -> CorrectAlignedDecoderFor Invariant FormatSpec'
+      -> CorrectAlignedDecoderFor Invariant FormatSpec.
+  Proof.
+    unfold EquivFormat; intros.
+    exists (projT1 X), (projT1 (projT2 X)).
+    pose proof (projT2 (projT2 X)).
+    abstract (split_and; destruct_ex; intuition eauto;
+              eexists; split; try solve [eapply Specs.format_decode_correct_refineEquiv; eapply EquivFormat_sym; eassumption]; eauto).
+  Defined.
+
   Lemma Start_CorrectAlignedDecoderFor
         {A : Type}
         Invariant

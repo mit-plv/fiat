@@ -24,13 +24,14 @@ Require Import
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats
+        Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.Stores.EmptyStore.
 
 Require Import Bedrock.Word.
 
 Definition decode_IPChecksum
   : ByteString -> CacheDecode -> option (() * ByteString * CacheDecode) :=
-  decode_unused_word 16.
+  decode_unused_word (sz := 16).
 
 Definition encode_word {sz} (w : word sz) : ByteString :=
   encode_word' sz w ByteString_id.
@@ -45,6 +46,31 @@ Definition IPChecksum (b b' : ByteString) : ByteString :=
 Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
   : {IPChecksum_Valid' n b} + {~IPChecksum_Valid' n b} := weq _ _.
 
+Definition calculate_IPChecksum {S} {sz}
+  : AlignedEncodeM (S := S) sz :=
+  (fun v =>
+     (let checksum := InternetChecksum.Vector_checksum v in
+      (fun v idx s => SetByteAt (n := sz) 10 v 0 (split1 8 8 checksum) ) >>
+      (fun v idx s => SetByteAt (n := sz) 11 v 0 (split2 8 8 checksum))) v)%AlignedEncodeM.
+
+
+  Lemma CorrectAlignedEncoderForIPChecksumThenC
+        {S}
+        (format_A format_B : FormatM S ByteString)
+        (encode_A : forall sz, AlignedEncodeM sz)
+        (encode_B : forall sz, AlignedEncodeM sz)
+        (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+        (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+    : CorrectAlignedEncoder
+        (format_B ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_A)
+        (fun sz => encode_B sz >>
+                   (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
+                   (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
+                   encode_A sz >>
+                   calculate_IPChecksum)% AlignedEncodeM.
+  Proof.
+  Admitted.
+
 Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
       predicate
       (format_A format_B : FormatM A ByteString)
@@ -54,10 +80,78 @@ Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
           -> length_ByteString b = len_format_A a')
   : CorrectAlignedDecoderFor
       predicate
-      (fun a => (format_A a) ThenC format_unused_word 16 ThenC (format_B a))
+      (format_A ++ format_unused_word 16 ++ format_B)%format
     -> CorrectAlignedDecoderFor
          predicate
-         (fun a => (format_A a) ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn (format_B a)).
+         (format_A ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_B).
+Proof.
+  intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
+  eexists x.
+  admit.
+Defined.
+
+Definition Pseudo_Checksum_Valid
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
+           (udpLength : Vector.t (word 8) 2)
+           (protoCode : word 8)
+           (n : nat)
+           (b : ByteString)
+  := onesComplement (wzero 8 :: protoCode ::
+                                      (ByteString2ListOfChar (96 + n) (BoundedByteStringToByteString b))
+                                      ++ to_list srcAddr ++ to_list destAddr ++ to_list udpLength)%list
+     = wones 16.
+
+Definition calculate_PseudoChecksum {S} {sz}
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
+           (udpLength : Vector.t (word 8) 2)
+           (protoCode : word 8)
+  : AlignedEncodeM (S := S) sz :=
+  (fun v =>
+     (let checksum := InternetChecksum.Vector_checksum (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
+                                                          (append v (append srcAddr (append destAddr udpLength))))) in
+      (fun v idx s => SetByteAt (n := sz) 10 v 0 (split1 8 8 checksum) ) >>
+      (fun v idx s => SetByteAt (n := sz) 11 v 0 (split2 8 8 checksum))) v)%AlignedEncodeM.
+
+Lemma CorrectAlignedEncoderForPseudoChecksumThenC
+      {S}
+      (srcAddr : Vector.t (word 8) 4)
+      (destAddr : Vector.t (word 8) 4)
+      (udpLength : Vector.t (word 8) 2)
+      (protoCode : word 8)
+      (format_A format_B : FormatM S ByteString)
+      (encode_A : forall sz, AlignedEncodeM sz)
+      (encode_B : forall sz, AlignedEncodeM sz)
+      (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+      (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+  : CorrectAlignedEncoder
+      (format_B ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_A)
+      (fun sz => encode_B sz >>
+                          (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
+                          (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
+                          encode_A sz >>
+                          calculate_PseudoChecksum srcAddr destAddr udpLength protoCode)% AlignedEncodeM.
+Proof.
+Admitted.
+
+Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
+      (srcAddr : Vector.t (word 8) 4)
+      (destAddr : Vector.t (word 8) 4)
+      (udpLength : Vector.t (word 8) 2)
+      protoCode
+      predicate
+      (format_A format_B : FormatM A ByteString)
+      (len_format_A : A -> nat)
+      (len_format_A_OK : forall a' b ctx ctx',
+          computes_to (format_A a' ctx) (b, ctx')
+          -> length_ByteString b = len_format_A a')
+  : CorrectAlignedDecoderFor
+      predicate
+      (format_A ++ format_unused_word 16 ++ format_B)%format
+    -> CorrectAlignedDecoderFor
+         predicate
+         (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
   eexists x.

@@ -33,6 +33,7 @@ Ltac apply_compose :=
   match goal with
     H : cache_inv_Property ?P ?P_inv |- _ =>
     first [eapply (compose_format_correct_no_dep _ H); clear H
+          | eapply (compose_unused_correct _ _ H); clear H
           | eapply (compose_format_correct H); clear H
           | eapply (composeIf_format_correct H); clear H;
             [ |
@@ -502,15 +503,15 @@ Ltac decode_step cleanup_tac :=
            [ build_fully_determined_type cleanup_tac
            | decide_data_invariant ] ]
 
-  | |- context [format_unused_word] =>
-    unfold format_unused_word
+  (*| |- context [format_unused_word] =>
+    unfold format_unused_word *)
   (* A) decomposing one of the parser combinators, *)
   | |- _ => apply_compose
   (* B) applying one of the rules for a base type  *)
   | H : cache_inv_Property _ _
     |- context [CorrectDecoder _ _ _ format_word _ _] =>
     intros; revert H; eapply Word_decode_correct
-  | |- context [CorrectDecoder _ _ _ (format_unused_word' _ _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ (format_unused_word _ _) _ _] =>
     let H := eval simpl in unused_word_decode_correct in
         apply H
 
@@ -629,16 +630,64 @@ Proof.
   unfold Proper, respectful; intros; destruct c; auto.
 Qed.
 
+Lemma refineEquiv_under_compose_map {cache : Cache}
+  : forall (S S' T : Type) (monoid : Monoid T) (format1 : FormatM S' T) (format2 format2' : CacheFormat -> Comp (T * CacheFormat)) s (f : S -> S'),
+    (forall ctx', refineEquiv (format2 ctx') (format2' ctx')) ->
+    forall ctx, refineEquiv (((FMapFormat.Projection_Format format1 f s) ThenC format2) ctx) ((format1 (f s) ThenC format2') ctx).
+Proof.
+  unfold refineEquiv, refine; intros; intuition.
+  unfold compose, Bind2 in *.
+  computes_to_inv.
+  computes_to_econstructor.
+  eapply FMapFormat.EquivFormat_Projection_Format; eauto.
+  computes_to_econstructor; eauto.
+  eapply H; eauto.
+  subst; eauto.
+  unfold compose, Bind2 in *.
+  computes_to_inv.
+  computes_to_econstructor.
+  eapply FMapFormat.EquivFormat_Projection_Format; eauto.
+  computes_to_econstructor; eauto.
+  eapply H; eauto.
+  subst; eauto.
+Qed.
+
+Lemma EquivFormat_Projection_Format_DoneC
+      {S S' T}
+      {monoid : Monoid T}
+      (format : FormatM S' T)
+      (f : S -> S')
+  : EquivFormat (FMapFormat.Projection_Format format f)
+                (fun s => (format (f s)) DoneC).
+Proof.
+  unfold EquivFormat, FMapFormat.Projection_Format, FMapFormat.Compose_Format,
+  compose, Bind2; split; intros ? ?.
+  - apply unfold_computes; computes_to_inv; subst.
+    eexists; split; simpl; eauto.
+    rewrite mempty_right; destruct v0; eauto.
+  - rewrite unfold_computes in H; destruct_ex; intuition; subst; eauto.
+    repeat computes_to_econstructor; eauto.
+    simpl.
+    rewrite mempty_right; destruct v; eauto.
+Qed.
+
 Ltac normalize_compose BitStringT :=
   (* Normalize formats by performing algebraic simplification. *)
-  intros; eapply format_decode_correct_refineEquiv;
+  intros; eapply Specs.format_decode_correct_refineEquiv;
+  unfold SequenceFormat.sequence_Format, Basics.compose;
   [intros ? ?; symmetry;
-     repeat first [ etransitivity; [apply refineEquiv_compose_compose with (monoid := BitStringT)| ]
+     repeat (first [ etransitivity; [apply refineEquiv_compose_compose with (monoid := BitStringT)| ]
                | etransitivity; [apply refineEquiv_compose_Done with (monoid := BitStringT) | ]
                | etransitivity; [apply refineEquiv_If_Then_Else_ThenC with (monoid := BitStringT) | ]
                | apply refineEquiv_If_Then_Else_Proper
-               | apply refineEquiv_under_compose with (monoid := BitStringT) ];
-   intros; higher_order_reflexivity
+               | match goal with
+                   |- refineEquiv _ (_ ?env) =>
+                   eapply refineEquiv_under_compose_map with (monoid := BitStringT)
+                                                             (ctx := env)
+                 end
+               | apply refineEquiv_under_compose with (monoid := BitStringT)
+               | eapply EquivFormat_Projection_Format_DoneC]; intros);
+     intros; higher_order_reflexivity
   | pose_string_ids ].
 
 Lemma optimize_under_if {A B}

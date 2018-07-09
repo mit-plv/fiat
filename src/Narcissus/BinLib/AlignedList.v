@@ -267,7 +267,7 @@ Section AlignedList.
     intros; rewrite zeta_to_fst; simpl; reflexivity.
   Qed.
 
-  Fixpoint AlignedEncodeList {A}
+  Fixpoint AlignedEncodeList' {A}
            (A_format_align : forall sz, AlignedEncodeM (S := A) sz)
            (sz : nat)
            v
@@ -277,11 +277,16 @@ Section AlignedList.
       match As with
       | nil => if NPeano.ltb idx (S sz) then @ReturnAlignedEncodeM _ (list A) _ v idx nil env else None
       | a :: As' => Ifopt (A_format_align sz v idx a env) as a' Then
-                                                                AlignedEncodeList A_format_align sz (fst (fst a'))
+                                                                AlignedEncodeList' A_format_align sz (fst (fst a'))
                                                               (snd (fst a'))
                                                               As' (snd a')
                                                               Else None
     end.
+
+  Definition AlignedEncodeList {A}
+             (A_format_align : forall sz, AlignedEncodeM (S := A) sz)
+    : forall sz, AlignedEncodeM (S := list A) sz :=
+    AlignedEncodeList' A_format_align.
 
   Lemma CorrectAlignedEncoderForFormatList {A}
         format_A
@@ -330,9 +335,20 @@ Section AlignedList.
                           end)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
         injections.
         erewrite padding_ByteString_enqueue_ByteString, e, IHs; eauto.
-    - (* unfold EncodeMEquivAlignedEncodeM; intros; intuition; induction s;
-        try solve [eapply Return_EncodeMEquivAlignedEncodeM; eauto].
-      + destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
+    - unfold EncodeMEquivAlignedEncodeM; intros.
+      pose proof (Append_EncodeMEquivAlignedEncodeM (Basics.compose (projT1 X) fst)
+                                                    (Basics.compose (fix AlignedEncodeList (As : list A) env :=
+                                                                match As with
+                                                                | nil => Some (mempty, env)
+                                                                | a :: As' => `(t1, env') <- projT1 X a env;
+                                                                              `(t2, env'') <- AlignedEncodeList As' env';
+                                                                              Some (mappend t1 t2, env'')
+                                                                end) snd)).
+      revert env idx. induction s; intros.
+      + admit.
+      +
+
+        destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
         destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
         destruct ((fix AlignedEncodeList (As : list A) (env : CacheFormat) {struct As} :
                           option (ByteString * CacheFormat) :=
@@ -343,17 +359,114 @@ Section AlignedList.
                               `(t2, env'') <- AlignedEncodeList As' env';
                               Some (ByteString_enqueue_ByteString t1 t2, env'')
                           end)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+  Admitted.
+  (*injections.
+        revert b0.
+        rewrite numBytes_ByteString_enqueue_ByteString; intros.
+        destruct (proj1 (e0 env a idx) _ _ Heqo) with
+            (v1 := v1) (v := fst (Vector_split _ _ v))
+            (v2 := append (snd (Vector_split _ _ v)) v2); split_and.
+        eapply e; eauto.
+        rewrite ByteString_enqueue_ByteString_assoc in H2.
+        eapply (IHs _ (idx + numBytes b) _ m (append v1 (fst (Vector_split _ _ v)))  (snd (Vector_split _ _ v))) in Heqo0;
+          destruct_ex; split_and.
+        assert (idx + numBytes b + (numBytes b0 + m) =
+                idx + (numBytes b + numBytes b0 + m)) by Omega.omega.
+        eexists (eq_rect _ _ x0 _ H).
+        replace (encode_A (idx + (numBytes b + numBytes b0 + m)) (append v1 (append v v2)) idx a env)
+          with (Some (eq_rect _ (fun m => t Core.char (idx + m) )%type x _ (plus_assoc (numBytes b) (numBytes b0) m), idx + numBytes b, c)); simpl.
+        split.
+        admit.
+        admit.
+        admit.
+        admit.
+        eapply e; eauto.
+        (*generalize (PeanoNat.Nat.add_assoc (numBytes b) (numBytes b0) m); intros.
+        assert (exists (v' : Vector.t _ (numBytes b)), b = build_aligned_ByteString v').
+        { eexists (byteString b); destruct b; simpl.
+          apply e in Heqo; simpl in Heqo; generalize Heqo front paddingOK; clear; intro.
+          rewrite Heqo; intro; shatter_word front; intros.
+          eapply byteString_f_equal; simpl; eauto.
+          instantiate (1 := eq_refl _); reflexivity. }
+        admit. *)
+      + revert env idx t env' numBytes' v H H0; induction s; intros.
+        * injections.
+          simpl.
+          rewrite (proj2 (NPeano.Nat.ltb_nlt idx (S numBytes'))); eauto.
+          intro.
+          rewrite length_ByteString_id in H0.
+          Omega.omega.
+        * destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
+          unfold DecodeBindOpt, BindOpt in H.
+          destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+          pose proof (proj2 (e0 env a idx)).
+          erewrite (proj1 H1); simpl; eauto.
+          edestruct (proj1 (e0 env a idx) _ _ Heqo).
+          eapply e; eauto.
+          admit.
+      + revert env idx t env' numBytes' v H H0; induction s; intros.
+        * injections; simpl in H0; Omega.omega.
+        * simpl.
+          shelve.
+      + revert env idx numBytes' v H; induction s; intros.
+        * discriminate.
+        * simpl.
+          admit.
+
+  Admitted.
+  (*(* injections.
+          simpl.
+          rewrite (proj2 (NPeano.Nat.ltb_nlt idx (S numBytes'))); eauto.
+          intro.
+          rewrite length_ByteString_id in H0.
+          Omega.omega. *)
+        * simpl.
+          destruct (encode_A numBytes' v idx a env) as [ [? ?] | ] eqn: ?; simpl; eauto.
+          eapply IHs.
+          shelve.
+          shelve.
+
+        *  simpl; eapply Return_EncodeMEquivAlignedEncodeM.
+      + simpl; destruct (X a) as [encode_A' [? [? ?] ] ];
+          eapply Append_EncodeMEquivAlignedEncodeM; eauto.
+      (*eapply (IHs _ (idx + numBytes b) _ m (append v1 (fst (Vector_split _ _ v)))  (snd (Vector_split _ _ v))) in Heqo0;
+          destruct_ex; split_and.
+        assert (idx + numBytes b + (numBytes b0 + m) =
+                idx + (numBytes b + numBytes b0 + m)) by Omega.omega.
+        eexists (eq_rect _ _ x0 _ H).
+        replace (encode_A (idx + (numBytes b + numBytes b0 + m)) (append v1 (append v v2)) idx a env)
+          with (Some (eq_rect _ (fun m => t Core.char (idx + m) )%type x _ (plus_assoc (numBytes b) (numBytes b0) m), idx + numBytes b, c)); simpl.
+        split.
+        generalize (PeanoNat.Nat.add_assoc (numBytes b) (numBytes b0) m); intros.
+
+        revert x0 H3 H4.
+        clear.
+        destruct H.
+        rewrite (plus_assoc idx (numBytes b) (numBytes b0)).
+        rewrite <- H3.
+        erewrite Vector_append_assoc in H3.
+
+        rewrite
+        rewrite H.
+
+
+
+        destruct Heqo0.
+        replace (numBytes (ByteString_enqueue_ByteString b b0)) with
+            (numBytes b + numBytes b0) at 1.
+        setoid_rewrite numBytes_ByteString_enqueue_ByteString.
+
+        rewrite H1.
+        destruct_ex
+
+        injections. *)
+
+
 
       +
 
 
-      unfold AlignedEncodeList.
 
-      intros; induction l.
-      + simpl; eapply Return_EncodeMEquivAlignedEncodeM.
-      + simpl; destruct (X a) as [encode_A' [? [? ?] ] ];
-          eapply Append_EncodeMEquivAlignedEncodeM; eauto.
-  Qed. *)
-  Abort.
+  Qed. *) *)
 
 End AlignedList.

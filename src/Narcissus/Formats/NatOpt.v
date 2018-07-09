@@ -21,25 +21,6 @@ Section Nat.
     format_word (natToWord sz n) ce.
 
   Open Scope vector_scope.
-  Definition format_nat'
-    : FormatM nat T :=
-    Fix_Format
-      (fun rec : FormatM nat T =>
-         Union_Format [(fun (_ : unit) s => s = 0) <$> StrictTerminal_Format;
-                         (fun n' s => s = S n') <$> Projection_Format (fun n' => Nat.eqb (n' mod 2) 1) format_bool
-                                                ++ rec]%format).
-
-  Theorem Nat_decode_correct 
-    : {decode_nat : _ &
-                     CorrectDecoder_simpl format_nat' decode_nat}.
-  Proof.
-    eexists; unfold format_nat'; intros.
-    eapply CorrectDecoder_Fix; intros.
-    - unfold Frame.monotonic_function; simpl; intros.
-      admit.
-    - 
-  Abort.
-
 
   Definition encode_nat (n : nat) (ce : CacheFormat) : T * CacheFormat :=
     encode_word (natToWord sz n) ce.

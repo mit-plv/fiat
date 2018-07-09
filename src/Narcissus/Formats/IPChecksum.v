@@ -29,7 +29,8 @@ Require Import
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.InternetChecksum
-        Fiat.Narcissus.Formats.WordOpt.
+        Fiat.Narcissus.Formats.WordOpt
+        Fiat.Narcissus.BaseFormats.
 
 Require Import Bedrock.Word.
 
@@ -407,7 +408,7 @@ Definition IPChecksum_Valid' (n : nat) (b : AlignedByteString.ByteString) : Prop
 
 Definition decode_IPChecksum
   : ByteString -> CacheDecode -> option (() * ByteString * CacheDecode) :=
-  decode_unused_word 16.
+  decode_unused_word (sz := 16).
 
 (*Lemma ByteString_monoid_eq_app :
   forall (b b' : ByteString),
@@ -730,12 +731,12 @@ Proof.
   rewrite ByteString_enqueue_ByteString_measure; erewrite H0, H1; eauto.
 Qed.
 
-Lemma length_ByteString_composeChecksum :
-  forall sz checksum_Valid format1 format2 b (ctx ctx' : CacheFormat) n n' ,
-    computes_to (composeChecksum _ _ _ sz checksum_Valid format1 format2 ctx) (b, ctx')
-    -> (forall ctx b ctx', computes_to (format1 ctx) (b, ctx')
+Lemma length_ByteString_composeChecksum {S} :
+  forall (s : S) sz checksum_Valid format1 format2 b (ctx ctx' : CacheFormat) n n' ,
+    computes_to (composeChecksum _ _ _ _ sz checksum_Valid _ format1 format2 s ctx) (b, ctx')
+    -> (forall ctx b ctx', computes_to (format1 s ctx) (b, ctx')
                            -> length_ByteString b = n)
-    -> (forall ctx b ctx', computes_to (format2 ctx) (b, ctx')
+    -> (forall ctx b ctx', computes_to (format2 s ctx) (b, ctx')
                            -> length_ByteString b = n')
     -> length_ByteString b = n + n' + sz.
 Proof.
@@ -831,13 +832,15 @@ Proof.
   intros; computes_to_inv; injections; reflexivity.
 Qed.
 
-Lemma length_ByteString_unused_word
-  : forall sz (b : ByteString) (ctx ctx' : CacheFormat),
-    format_unused_word sz ctx ↝ (b, ctx')
+Lemma length_ByteString_unused_word {S}
+  : forall sz (s : S) (b : ByteString) (ctx ctx' : CacheFormat),
+    format_unused_word sz s ctx ↝ (b, ctx')
     -> length_ByteString b = sz.
 Proof.
-  unfold format_unused_word, format_unused_word'; simpl.
-  intros; computes_to_inv; injections.
+  unfold format_unused_word; simpl.
+  unfold FMapFormat.Compose_Format.
+  intros; rewrite unfold_computes in H; destruct_ex; intuition.
+  unfold format_word in H0; computes_to_inv; injections.
   rewrite length_encode_word'; simpl.
   rewrite length_ByteString_id.
   omega.
@@ -1026,8 +1029,7 @@ Lemma compose_IPChecksum_format_correct
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' format2
                                       (decode2 proj) P) ->
           CorrectDecoder monoid predicate predicate_rest'
-                                  (fun data : A =>
-                                     format1 (project data) ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2 data)
+                                  (Projection_Format format1 project ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
                                   (fun (bin : B) (env : CacheDecode) =>
                                      if checksum_Valid_dec (formatd_A_measure bin) bin
                                      then
@@ -1049,13 +1051,17 @@ Proof.
   - eassumption.
   - eassumption.
   - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
-            decode_unused_word, decode_unused_word'.
+            decode_unused_word, decode_unused_word', FMapFormat.Compose_Decode,
+            DecodeBindOpt.
     rewrite <- !mappend_assoc.
     unfold B in *.
     unfold format_checksum.
+    unfold decode_word.
     rewrite monoid_dequeue_encode_word'; simpl; eauto.
-  - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
-    intros; destruct (WordOpt.monoid_dequeue_word 16 b) eqn : ? ;
+  - unfold decodeChecksum, IPChecksum, decode_IPChecksum,
+    decode_unused_word, decode_unused_word', FMapFormat.Compose_Decode,
+    DecodeBindOpt, BindOpt, decode_word.
+    intros; destruct (decode_word' 16 b) eqn : ? ;
       try discriminate; intuition.
     destruct p.
     injections.
@@ -1167,8 +1173,7 @@ Lemma compose_IPChecksum_format_correct'
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' format2
                                       (decode2 proj) P) ->
           CorrectDecoder monoid predicate predicate_rest'
-                                  (fun data : A =>
-                                     format1 data ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2 data)
+                                  (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
                                   (fun (bin : B) (env : CacheDecode) =>
                                      if checksum_Valid_dec (formatd_A_measure bin) bin
                                      then
@@ -1194,6 +1199,8 @@ Proof.
   - eapply H9; eauto.
     unfold composeChecksum in *.
     unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    unfold Projection_Format, Compose_Format.
+    apply unfold_computes; eexists; split; eauto.
     apply refine_format1; eauto.
     computes_to_econstructor; eauto.
     computes_to_econstructor; eauto.
@@ -1202,7 +1209,9 @@ Proof.
   - destruct (H10 _ _ _ _ _ _ H11 H13 H14); destruct_ex;
       eexists _, _; intuition eauto.
     unfold composeChecksum in *.
+    unfold Projection_Format, Compose_Format in H17.
     unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    rewrite unfold_computes in H17; destruct_ex; intuition; subst; eauto.
     apply refine_format1; eauto.
     computes_to_econstructor; eauto.
     computes_to_econstructor; eauto.
@@ -1329,8 +1338,7 @@ Lemma compose_IPChecksum_format_correct_dep
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' format2
                                       (decode2 proj) P) ->
           CorrectDecoder monoid predicate predicate_rest'
-                                  (fun data : A =>
-                                     format1 (project data) ThenChecksum checksum_Valid OfSize 16 ThenCarryOn format2 data)
+                                  (Projection_Format format1 project ThenChecksum checksum_Valid OfSize 16 ThenCarryOn format2)
                                   (fun (bin : B) (env : CacheDecode) =>
                                      if checksum_Valid_dec (formatd_A_measure bin) bin
                                      then
@@ -1358,14 +1366,17 @@ Proof.
   - eassumption.
   - eassumption.
   - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
-            decode_unused_word, decode_unused_word'.
+    decode_unused_word, decode_unused_word', FMapFormat.Compose_Decode,
+    DecodeBindOpt, BindOpt, decode_word.
     rewrite <- !mappend_assoc.
     unfold B in *.
     unfold format_checksum.
     rewrite monoid_dequeue_encode_word'; simpl; eauto.
-  - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
+  - unfold decodeChecksum, IPChecksum, decode_IPChecksum,
+    decode_unused_word, decode_unused_word', FMapFormat.Compose_Decode,
+    DecodeBindOpt, BindOpt, decode_word.
     unfold B in *.
-    intros; destruct (WordOpt.monoid_dequeue_word 16 b) eqn : ? ;
+    intros; destruct (decode_word' 16 b) eqn : ? ;
       try discriminate; intuition.
     destruct p.
     simpl in H10.
@@ -1496,8 +1507,7 @@ Lemma compose_IPChecksum_format_correct_dep'
                                       (fun data : A => predicate data /\ project data = proj) predicate_rest' format2
                                       (decode2 proj) P) ->
           CorrectDecoder  monoid predicate predicate_rest'
-                                  (fun data : A =>
-                                     format1 data ThenChecksum checksum_Valid OfSize 16 ThenCarryOn format2 data)
+                                  (format1 ThenChecksum checksum_Valid OfSize 16 ThenCarryOn format2)
                                   (fun (bin : B) (env : CacheDecode) =>
                                      if checksum_Valid_dec (formatd_A_measure bin) bin
                                      then
@@ -1530,6 +1540,7 @@ Proof.
   - eapply H0; eauto.
     unfold composeChecksum in *.
     unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    unfold Projection_Format, Compose_Format; apply unfold_computes; eexists; split; eauto.
     apply refine_format1; eauto.
     computes_to_econstructor; eauto.
     computes_to_econstructor; eauto.
@@ -1539,6 +1550,8 @@ Proof.
       eexists _, _; intuition eauto.
     unfold composeChecksum in *.
     unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    unfold Projection_Format, Compose_Format in H6.
+    rewrite unfold_computes in H6; destruct_ex; intuition; subst; eauto.
     apply refine_format1; eauto.
     computes_to_econstructor; eauto.
     computes_to_econstructor; eauto.

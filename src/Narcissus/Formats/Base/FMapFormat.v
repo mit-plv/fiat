@@ -4,47 +4,49 @@ Require Import
         Coq.Vectors.Vector.
 
 Require Import
+        Fiat.Common.DecideableEnsembles
         Fiat.Computation
         Fiat.Narcissus.Common.Specs.
 
-Section FMapFormat.
+Section ComposeFormat.
 
   Context {S : Type}. (* Source Type *)
   Context {T : Type}. (* Target Type *)
   Context {cache : Cache}. (* State Type *)
-
   Context {S' : Type}. (* Transformed Type *)
-  Variable f : S -> S' -> Prop. (* Transformation Relation *)
 
-  Definition FMap_Format
-             (format_a : FormatM S T)
-    : FormatM S' T :=
-    fun a' env benv' =>
-      exists a, format_a a env ∋ benv' /\ f a a'.
+  Definition Compose_Format
+    (format : FormatM S' T)
+      (f : S -> S' -> Prop) (* Transformation Relation *)
+    : FormatM S T :=
+    fun s env benv' =>
+      exists s', format s' env ∋ benv' /\ f s s'.
 
-  Variable g : S -> S'. (* Transformation Function *)
+  Definition Compose_Decode {S' : Type}
+             (decode : DecodeM S' T)
+             (g : S' -> S) (* Transformation Function *)
+    : DecodeM S T  :=
+    fun b env => `(s, env') <- decode b env; Some (g s, env').
 
-  Definition FMap_Decode
-             (decode : DecodeM S T)
-    : DecodeM S' T  :=
-    fun b env => `(a, env') <- decode b env; Some (g a, env').
+  Definition Compose_Encode
+             {S' : Type}
+             (encode : EncodeM S' T)
+             (f' : S -> option S')
+    : EncodeM S T :=
+    fun s => Ifopt f' s as s' Then encode s' Else fun _ => None.
 
-  Definition FMap_Encode
-             (encode : EncodeM S T)
-             (f' : S' -> S)
-    : EncodeM S' T :=
-    fun s => encode (f' s).
-
-  Lemma CorrectDecoder_FMap
-        (format : FormatM S T)
-        (decode : DecodeM S T)
+  Lemma CorrectDecoder_Compose
+        (format : FormatM S' T)
+        (decode : DecodeM S' T)
+        (f : S -> S' -> Prop) (* Transformation Relation *)
+        (g : S' -> S) (* Transformation Function *)
         (format_decode_corect : CorrectDecoder_simpl format decode)
-        (g_inverts_f : forall a a' env benv,
-            format a env benv -> f a a' -> g a = a')
-        (g_OK : forall a, f a (g a))
-    : CorrectDecoder_simpl (FMap_Format format) (FMap_Decode decode).
+        (g_inverts_f : forall s s' env benv,
+            format s' env benv -> f s s' -> g s' = s)
+        (g_OK : forall s, f (g s) s)
+    : CorrectDecoder_simpl (Compose_Format format f) (Compose_Decode decode g).
   Proof.
-    unfold CorrectDecoder_simpl, FMap_Decode, FMap_Format in *; split; intros.
+    unfold CorrectDecoder_simpl, Compose_Decode, Compose_Format in *; split; intros.
     { rewrite @unfold_computes in H0.
       destruct_ex; intuition.
       rewrite @unfold_computes in H3.
@@ -62,39 +64,110 @@ Section FMapFormat.
     }
   Qed.
 
-  Lemma CorrectEncoder_FMap
-        (format : FormatM S T)
-        (encode : EncodeM S T)
-        (f' : S' -> S)
-        (f'_inverts_f : forall a a' env benv,
-            format a env ∋ benv -> f a a' -> a = f' a')
-        (f'_OK : forall a, f (f' a) a)
+  Lemma CorrectEncoder_Compose
+        (format : FormatM S' T)
+        (encode : EncodeM S' T)
+        (f : S -> S' -> Prop)
+        (f' : S -> option S')
+        (f'_refines_f_1 :
+           forall s s',
+             f' s = Some s' ->
+             f s s')
+        (f'_refines_f_2 :
+           forall s,
+             f' s = None ->
+             forall s', ~ f s s')
+        (f'_sound_choice :
+           forall s s',
+             f' s = Some s' ->
+             forall x env benv,
+               format x env ∋ benv
+               -> f s x
+               -> format s' env ∋ benv)
     : CorrectEncoder format encode
-      -> CorrectEncoder (FMap_Format format) (FMap_Encode encode f').
+      -> CorrectEncoder (Compose_Format format f) (Compose_Encode encode f').
   Proof.
-    unfold CorrectEncoder, FMap_Encode, FMap_Format in *; split; intros.
+    unfold CorrectEncoder, Compose_Encode, Compose_Format in *; split; intros.
     - apply unfold_computes.
+      destruct (f' a) eqn: ?; simpl in *; try discriminate.
       eapply H in H0; eexists; intuition eauto.
-    - intro H'; rewrite unfold_computes in H'; destruct_ex; split_and.
+    - rewrite unfold_computes; intro;  destruct_ex; split_and.
+      destruct (f' a) eqn: ?; simpl in *; try discriminate.
       eapply H4; eauto.
-      rewrite <- (f'_inverts_f _ _ _ _ H2 H3); eauto.
+      eapply f'_refines_f_2; eauto.
   Qed.
 
-End FMapFormat.
+End ComposeFormat.
 
-Definition Restrict_Format
-           {S T : Type}
-           {cache : Cache}
-           (P : S -> Prop)
-           (format : FormatM S T)
-  := FMap_Format (fun s s' => s = s' /\ P s) format.
+Section ComposeSpecializations.
 
-Definition Projection_Format
-           {S S' T : Type}
-           {cache : Cache}
-           (f : S -> S')
-           (format : FormatM S' T)
-  : FormatM S T :=
-  FMap_Format (fun s' s => f s = s') format.
+  Context {S : Type}. (* Source Type *)
+  Context {T : Type}. (* Target Type *)
+  Context {cache : Cache}. (* State Type *)
+  Context {S' : Type}. (* Transformed Type *)
 
-Notation "f <$> format" := (FMap_Format f format) (at level 99) : format_scope.
+  Definition Restrict_Format
+             (P : S -> Prop)
+             (format : FormatM S T)
+    : FormatM S T
+    := Compose_Format format (fun s s' => s = s' /\ P s').
+
+  Corollary CorrectEncoder_Restrict_Format
+            (format : FormatM S T)
+            (encode : EncodeM S T)
+            (P : S -> Prop)
+            (decideable_P : DecideableEnsemble P)
+    : CorrectEncoder format encode
+      -> CorrectEncoder (Restrict_Format P format) (fun s => if (DecideableEnsembles.dec s) then encode s else fun _ => None).
+  Proof.
+    intros; replace
+              (fun s : S => if DecideableEnsembles.dec s then encode s else fun _ : CacheFormat => None)
+              with (Compose_Encode encode (fun s => if DecideableEnsembles.dec s then Some s else None)).
+    eapply CorrectEncoder_Compose; intros;
+      try (destruct (DecideableEnsembles.dec s) eqn: ?; first [discriminate | injections]);
+      intuition eauto.
+    - eapply dec_decides_P; eauto.
+    - eapply Decides_false; subst; eauto.
+    - subst; eauto.
+    - apply functional_extensionality; intros; unfold Compose_Encode;
+        find_if_inside; reflexivity.
+  Qed.
+
+  Definition Projection_Format
+             (format : FormatM S' T)
+             (f : S -> S')
+    : FormatM S T :=
+    Compose_Format format (fun s s' => f s = s').
+
+  Lemma EquivFormat_Projection_Format
+        (format : FormatM S' T)
+        (f : S -> S')
+    : EquivFormat (Projection_Format format f)
+                  (fun s => format (f s)).
+  Proof.
+    unfold EquivFormat, Projection_Format, Compose_Format; split; intros ? ?.
+    apply unfold_computes.
+    eexists; eauto.
+    rewrite unfold_computes in H; destruct_ex; intuition; subst; eauto.
+  Qed.
+
+  Corollary CorrectEncoder_Projection_Format
+            (format : FormatM S' T)
+            (encode : EncodeM S' T)
+            (g : S -> S')
+    : CorrectEncoder format encode
+      -> CorrectEncoder (Projection_Format format g) (compose encode g).
+  Proof.
+    intros; replace
+              (compose encode g)
+              with (Compose_Encode encode (fun s => Some (g s))).
+    eapply CorrectEncoder_Compose; intros;
+      try (destruct (DecideableEnsembles.dec s') eqn: ?; first [discriminate | injections]);
+      intuition eauto.
+    apply functional_extensionality; intros; reflexivity.
+  Qed.
+
+End ComposeSpecializations.
+
+Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
+Notation "P ∩ format" := (Restrict_Format P format) (at level 55) : format_scope.

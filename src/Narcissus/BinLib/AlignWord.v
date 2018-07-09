@@ -785,27 +785,42 @@ Section AlignEncodeWord.
     apply (@mempty_left _ ByteStringQueueMonoid).
   Qed.
 
+  Lemma aligned_decode_unused_char_eq'
+        {numBytes}
+    : forall (v : Vector.t _ (S numBytes)) env,
+      WordOpt.decode_unused_word (sz := 8) (monoidUnit := ByteString_QueueMonoidOpt) (build_aligned_ByteString v) env
+      = Some ((), build_aligned_ByteString (Vector.tl v), addD env 8).
+  Proof.
+    unfold decode_unused_word; simpl; intros.
+    etransitivity.
+    unfold Compose_Decode, DecodeBindOpt.
+    unfold BindOpt.
+    eapply AlignedDecodeChar.
+    pattern numBytes, v.
+    eapply Vector.caseS; simpl; intros.
+    reflexivity.
+  Qed.
+
   Lemma AlignedDecodeUnusedCharM
     : DecodeMEquivAlignedDecodeM
-        (decode_unused_word 8)
+        (decode_unused_word (sz := 8))
         (fun numBytes => SkipCurrentByte).
   Proof.
-    unfold DecodeMEquivAlignedDecodeM, BindAlignedDecodeM, DecodeBindOpt2, BindOpt; intros;
-      unfold decode_unused_word, WordOpt.decode_word.
+    unfold DecodeMEquivAlignedDecodeM, BindAlignedDecodeM, DecodeBindOpt2, BindOpt, Compose_Decode; intros;
+      unfold WordOpt.decode_word, Compose_Decode.
     split; [ | split ]; intros.
     - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
       unfold SkipCurrentByte; simpl.
       destruct (nth_opt t n); simpl; eauto.
-    - destruct (decode_unused_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
-      unfold decode_unused_word' in Heqo.
-      rewrite monoid_dequeue_word_eq_decode_word' in Heqo.
-      destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; try discriminate.
-      eapply decode_word'_lt in Heqo0; unfold le_B, bin_measure in Heqo; simpl in Heqo.
-      unfold lt_B in Heqo0; simpl in Heqo0.
+    - unfold decode_unused_word, Compose_Decode, decode_word in H.
+      destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
+      injections.
+      eapply decode_word'_lt in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
+      unfold lt_B in Heqo; simpl in Heqo.
       injections; omega.
     - destruct v.
       + simpl; intuition; discriminate.
-      + rewrite aligned_decode_unused_char_eq; simpl; intuition.
+      + rewrite aligned_decode_unused_char_eq'; simpl; intuition.
         * discriminate.
         * unfold GetCurrentByte in H; simpl in H; discriminate.
         * unfold SkipCurrentByte; injections; simpl.
@@ -825,28 +840,53 @@ Section AlignEncodeWord.
         (addD_O : forall cd, addD cd 0 = cd)
         {m}
     : DecodeMEquivAlignedDecodeM
-        (decode_unused_word (m * 8))
+        (decode_unused_word (sz := m * 8))
         (fun numBytes => SkipCurrentBytes m).
   Proof.
     induction m.
     - unfold decode_unused_word; simpl;
         pose proof (@Return_DecodeMEquivAlignedDecodeM).
-      eapply DecodeMEquivAlignedDecodeM_trans; intros; try rewrite addD_O; try higher_order_reflexivity.
+      eapply DecodeMEquivAlignedDecodeM_trans; intros; try rewrite addD_O.
       eapply H.
+      unfold Compose_Decode, DecodeBindOpt, BindOpt.
+      simpl; rewrite addD_O; reflexivity.
+      simpl; reflexivity.
     - Local Arguments decode_word' : simpl never.
       Local Arguments plus : simpl never.
       unfold decode_unused_word; simpl.
       eapply DecodeMEquivAlignedDecodeM_trans;
         intros; try eapply AlignedDecodeMEquiv_refl.
-      Focus 2.
-      intros; unfold mult; simpl; rewrite decode_unused_word_plus'; simpl; fold mult.
-      instantiate (1 := fun b cd => `(w, v', cd') <- decode_unused_word 8 b cd;
-                                    `(w', v'', cd') <- decode_unused_word (m * 8) v' cd';
+      (*intros; unfold mult; simpl; rewrite decode_unused_word_plus'; simpl; fold mult. *)
+      2: { idtac.
+      instantiate (1 := fun b cd => `(w, v', cd') <- decode_unused_word (sz := 8) b cd;
+                                    `(w', v'', cd') <- decode_unused_word (sz := m * 8) v' cd';
                                     Some ((), v'', cd')); simpl.
-      unfold decode_unused_word.
-      destruct (decode_unused_word' 8 b) as [ [? ?] | ]; simpl; eauto.
-      destruct (decode_unused_word' (m * 8) b0) as [ [? ?] | ]; simpl; eauto.
-      rewrite addD_addD_plus; eauto.
+      unfold decode_unused_word, Compose_Decode, DecodeBindOpt, BindOpt.
+      unfold decode_word, decode_word'; simpl in *.
+      destruct (ByteString_dequeue b) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      destruct (ByteString_dequeue b1) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      destruct (ByteString_dequeue b3) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      destruct (ByteString_dequeue b5) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      destruct (ByteString_dequeue b7) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      destruct (ByteString_dequeue b9) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      rewrite !DecodeBindOpt_assoc.
+      destruct (ByteString_dequeue b11) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      destruct (ByteString_dequeue b13) as [ [? ?] | ]; simpl in *; try discriminate; eauto.
+      destruct (ByteString_dequeue b15) as [ [? ?] | ]; simpl in *; try discriminate; eauto;
+      intros; rewrite !DecodeBindOpt_assoc.
+      simpl;  match goal with
+                |- context [DecodeBindOpt ?z] => destruct z as [ [? ?] | ] eqn: ? ;
+                                                   simpl in *; try discriminate
+              end.
+      rewrite addD_addD_plus; reflexivity.
+      eauto.
+      simpl;  match goal with
+                |- context [DecodeBindOpt ?z] => destruct z as [ [? ?] | ] eqn: ? ;
+                                                   simpl in *; try discriminate
+              end.
+      rewrite addD_addD_plus; reflexivity.
+      eauto.
+      }
       repeat (intros; eapply Bind_DecodeMEquivAlignedDecodeM);
         eauto using @Return_DecodeMEquivAlignedDecodeM.
       eapply AlignedDecodeUnusedCharM.
@@ -857,14 +897,13 @@ Section AlignEncodeWord.
         (t' : unit -> forall {numBytes}, AlignedDecodeM C numBytes)
     : (DecodeMEquivAlignedDecodeM (t ()) (@t' ()))
       -> DecodeMEquivAlignedDecodeM
-           (fun v cd => `(a, b0, cd') <- decode_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8 v cd;
+           (fun v cd => `(a, b0, cd') <- decode_unused_word (sz := 8) (monoidUnit := ByteString_QueueMonoidOpt) v cd;
                           t a b0 cd')
            (fun numBytes => b <- SkipCurrentByte; @t' b numBytes)%AlignedDecodeM.
   Proof.
     intro; eapply Bind_DecodeMEquivAlignedDecodeM; eauto using AlignedDecodeUnusedCharM.
     intro; destruct a; eauto.
   Qed.
-
 
   Lemma AlignedFormatChar {numBytes}
     : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
@@ -914,9 +953,6 @@ Section AlignEncodeWord.
     omega.
     omega.
   Qed.
-
-
-
 
   Lemma decode_word_aligned_ByteString_overflow
         {sz'}
@@ -990,19 +1026,19 @@ Section AlignEncodeWord.
   Lemma CorrectAlignedEncoderForFormatChar_f
         {S} (proj : S -> word 8)
     : CorrectAlignedEncoder
-        (Projection_Format proj format_word)
+        (Projection_Format format_word proj)
         (fun sz v idx s => SetCurrentByte v idx (proj s)).
   Proof.
     intros.
-    unfold CorrectAlignedEncoder; eexists (FMap_Encode (fun c env => Some ((build_aligned_ByteString (cons (word 8) c 0 (nil (word 8))), addE env 8))) proj); split; [ | split].
-    - unfold FMap_Encode, Projection_Format, FMap_Format; intros.
+    unfold CorrectAlignedEncoder. eexists (Compose_Encode  (fun c env => Some ((build_aligned_ByteString (cons (word 8) c 0 (nil (word 8))), addE env 8))) (fun s => Some (proj s))); split; [ | split].
+    - unfold Compose_Encode, Projection_Format, Compose_Format; intros.
       setoid_rewrite aligned_format_char_eq.
       injections.
       intros ? ?;
       apply unfold_computes; eexists; intuition eauto.
-    - unfold FMap_Encode; simpl; intros.
+    - unfold Compose_Encode; simpl; intros.
       injections; reflexivity.
-    - unfold FMap_Encode, EncodeMEquivAlignedEncodeM; intros; injections; intuition; simpl.
+    - unfold Compose_Encode, EncodeMEquivAlignedEncodeM; intros; injections; intuition; simpl.
       + injections; simpl; unfold SetCurrentByte.
         unfold plus; fold plus.
         destruct (NPeano.ltb idx (idx + Datatypes.S m)) eqn: ? ; try omega.
@@ -1046,7 +1082,7 @@ Section AlignEncodeWord.
     eapply refine_CorrectAlignedEncoder.
     2: eapply (CorrectAlignedEncoderForFormatChar_f id).
     intros.
-    unfold Projection_Format, FMap_Format.
+    unfold Projection_Format, Compose_Format.
     intros v Comp_v; rewrite unfold_computes in Comp_v; destruct_ex; intuition.
     subst; eauto.
     eapply functional_extensionality_dep; intros.
@@ -1057,18 +1093,18 @@ Section AlignEncodeWord.
   Lemma CorrectAlignedEncoderForFormatUnusedWord
         {S}
     : CorrectAlignedEncoder
-        (fun w => format_unused_word (monoidUnit := ByteString_QueueMonoidOpt) 8)
+        (format_unused_word 8 (monoidUnit := ByteString_QueueMonoidOpt))
         (fun sz v idx (s : S) => SetCurrentByte v idx (wzero 8)).
   Proof.
     intros; eapply refine_CorrectAlignedEncoder;
       eauto using (CorrectAlignedEncoderForFormatChar_f (fun _ => wzero 8)).
     simpl; intros.
-    unfold format_unused_word, format_unused_word'; simpl.
-    refine pick val (wzero 8); eauto.
-    simplify with monad laws.
-    unfold Projection_Format, FMap_Format; intros ? ?.
-    rewrite unfold_computes in H; destruct_ex; intuition; subst.
-    eauto.
+    unfold format_unused_word, Projection_Format, Compose_Format; simpl.
+    intros ? ?.
+    rewrite unfold_computes in *.
+    destruct_ex; split_and; subst.
+    eexists; split; eauto.
+    rewrite unfold_computes; eauto.
   Qed.
 
   Lemma refine_Projection_Format
@@ -1076,10 +1112,10 @@ Section AlignEncodeWord.
         (f : S -> S')
         (format : FormatM S' T)
     : forall s env,
-      refineEquiv (Projection_Format f format s env)
+      refineEquiv (Projection_Format format f s env)
              (format (f s) env).
   Proof.
-    unfold Projection_Format, FMap_Format; intros; split.
+    unfold Projection_Format, Compose_Format; intros; split.
     - intros v Comp_v.
       apply unfold_computes; eexists; intuition eauto.
     - intros v Comp_v.
@@ -1105,7 +1141,7 @@ Section AlignEncodeWord.
         (encoder : forall n, AlignedEncodeM n)
     :
       CorrectAlignedEncoder format encoder
-      -> CorrectAlignedEncoder (Projection_Format f format)
+      -> CorrectAlignedEncoder (Projection_Format format f)
                             (fun sz v idx (s : S) => encoder sz v idx (f s)).
   Proof.
     intros; eapply refine_CorrectAlignedEncoder.
@@ -1122,12 +1158,12 @@ Section AlignEncodeWord.
            forall ce n m, addE (addE ce n) m = addE ce (n + m))
     : forall {sz sz'} (f : S ->  word sz) (f' : S -> word sz') k encoder,
       CorrectAlignedEncoder
-        (Projection_Format (fun s => combine (f' s) (f s)) format_word
+        (Projection_Format format_word (fun s => combine (f' s) (f s))
                            ++ k)
         encoder
       -> CorrectAlignedEncoder
-           (Projection_Format f format_word
-                              ++ Projection_Format f' format_word
+           (Projection_Format format_word f
+                              ++ Projection_Format format_word f'
                               ++ k)
            encoder.
   Proof.
@@ -1159,12 +1195,12 @@ Section AlignEncodeWord.
            forall ce n m, addE (addE ce n) m = addE ce (n + m))
     : forall {sz sz'} (f : S ->  word sz) (f' : S -> word sz') k encoder,
       CorrectAlignedEncoder
-        (Projection_Format f format_word
-                           ++ Projection_Format f' format_word
+        (Projection_Format format_word f
+                           ++ Projection_Format format_word f'
                            ++ k)
         encoder
       -> CorrectAlignedEncoder
-           (Projection_Format (fun s => combine (f' s) (f s)) format_word
+           (Projection_Format format_word (fun s => combine (f' s) (f s))
                               ++ k)
            encoder.
   Proof.
@@ -1212,6 +1248,45 @@ Section AlignEncodeWord.
     unfold compose, Bind2; intros; eauto.
     repeat setoid_rewrite refineEquiv_bind_unit; simpl.
     pose proof mempty_right; simpl in *; rewrite H1; reflexivity.
+  Qed.
+
+  Lemma refine_CollapseFormatWord'
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+        {S}
+    : forall {sz sz'} (f : S -> word sz) (f' : S -> word sz')
+             (format_1 format_2 : FormatM S _),
+      (forall s env, refine (format_1 s env) (Projection_Format format_word f s env))
+      -> (forall s env, refine (format_2 s env) (Projection_Format format_word f' s env))
+      -> (forall s env, refine ((format_1 ++ format_2) s env)
+                               (Projection_Format format_word (fun s => combine (f' s) (f s)) s env)).
+  Proof.
+    intros.
+    unfold sequence_Format, compose, Projection_Format, Compose_Format, Bind2.
+    rewrite H; setoid_rewrite H0.
+    intros ? ?.
+    rewrite unfold_computes in H1.
+    destruct_ex; intuition; subst.
+    pose proof (CollapseFormatWord (sz' := sz') (sz := sz) addE_addE_plus (f s) (f' s)
+               (fun ce => ret (ByteString_id, ce)) env); eauto.
+    unfold compose in H1.
+    unfold Bind2 in H1.
+    repeat setoid_rewrite refineEquiv_bind_unit in H1.
+    simpl in H1.
+    unfold format_word in H2.
+    pose proof mempty_right.
+    simpl in H3.
+    rewrite !H3 in H1.
+    eapply H1 in H2.
+    computes_to_inv; subst.
+    computes_to_econstructor.
+    unfold Projection_Format, Compose_Format; apply unfold_computes; eexists; intuition eauto.
+    unfold format_word; computes_to_econstructor.
+    computes_to_econstructor.
+    unfold Projection_Format, Compose_Format; apply unfold_computes; eexists; intuition eauto.
+    unfold format_word; computes_to_econstructor.
+    simpl.
+    eauto.
   Qed.
 
   Lemma format_words' {n m}
@@ -1295,7 +1370,7 @@ Section AlignEncodeWord.
     2: eapply CorrectAlignedEncoderForThenC.
     3: eapply (@CorrectAlignedEncoderForFormatChar_f (word (8 + sz))
                                                      (split1' 8 sz)).
-    instantiate (1 := Projection_Format (split2' 8 sz) format_word).
+    instantiate (1 := Projection_Format format_word (split2' 8 sz)).
     rewrite refine_sequence_Format.
     unfold compose, Bind2; rewrite refine_Projection_Format; f_equiv.
     intro; rewrite refine_Projection_Format; f_equiv.
@@ -1332,6 +1407,19 @@ Section AlignEncodeWord.
     - eapply (CorrectAlignedEncoderForFormatNChar' addE_addE_plus (fun sz' => @SetCurrentBytes sz' sz));
         eauto.
   Qed.
+
+  Lemma CorrectAlignedEncoderForFormatMChar_f n
+        {S}
+        (addE_addE_plus :
+           forall ce n m, addE (addE ce n) m = addE ce (n + m))
+        (addE_0 :
+           forall ce, addE ce 0 = ce)
+        (proj : S -> word (n * 8))
+    : CorrectAlignedEncoder
+        (Projection_Format format_word proj)
+        (fun sz v idx s => SetCurrentBytes v idx (proj s)).
+  Proof.
+  Admitted.
 
 End AlignEncodeWord.
 

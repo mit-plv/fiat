@@ -469,7 +469,7 @@ Section AlignedEncodeM.
     4: apply H5.
     4: apply H4.
     3: apply H0.
-    unfold sequence_Format, sequence_Encode, Bind2 in *.
+    unfold sequence_Format, sequence_Encode, compose, Bind2 in *.
     apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
     symmetry in H7.
     apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
@@ -518,7 +518,7 @@ Lemma CorrectAlignedEncoderThenCAssoc
          encode.
 Proof.
   intros; eapply refine_CorrectAlignedEncoder; eauto.
-  unfold sequence_Format; intros.
+  unfold sequence_Format, compose; intros.
   unfold Bind2.
   repeat setoid_rewrite Monad.refineEquiv_bind_bind.
   setoid_rewrite Monad.refineEquiv_bind_unit; simpl; f_equiv; intro.
@@ -557,7 +557,7 @@ Lemma CorrectAlignedEncoderThenCAssoc'
          encode.
 Proof.
   intros; eapply refine_CorrectAlignedEncoder; eauto.
-  unfold sequence_Format; intros.
+  unfold sequence_Format, compose; intros.
   unfold Bind2.
   repeat setoid_rewrite Monad.refineEquiv_bind_bind.
   setoid_rewrite Monad.refineEquiv_bind_unit; simpl; f_equiv; intro.
@@ -586,6 +586,45 @@ Definition SetCurrentByte (* Sets a single byte at the current index and increme
            {n : nat}
   : @AlignedEncodeM cache char n :=
   fun v idx s ce => if (idx <? n) then Some (set_nth' v idx s, Datatypes.S idx, addE ce 8) else None.
+
+Definition Projection_AlignedEncodeM
+           {S' S'' : Type}
+           {cache : Cache}
+           (encode : forall sz, AlignedEncodeM (S := S'') sz)
+           (f : S' -> S'')
+           (n : nat)
+  : AlignedEncodeM (S := S') n :=
+  fun v idx s' env =>
+    encode n v idx (f s') env.
+
+Lemma CorrectAlignedEncoderProjection
+      {S S' : Type}
+      {cache : Cache}
+      (format_S : FormatM S' ByteString)
+      (f : S -> S')
+      (encode : forall sz, AlignedEncodeM sz)
+  : CorrectAlignedEncoder format_S encode
+    -> CorrectAlignedEncoder
+         (Projection_Format format_S f)
+         (Projection_AlignedEncodeM encode f).
+Proof.
+  intros H; destruct H as [? [? [? ?] ] ].
+  eexists (Basics.compose x f); intuition.
+  - intros; intros ? ?.
+    eapply H in H3.
+    unfold Projection_Format, Compose_Format; apply unfold_computes; eexists; split; eauto.
+    apply H2.
+  - eapply H0.
+    unfold Basics.compose in H2; eauto.
+  - unfold EncodeMEquivAlignedEncodeM, Basics.compose; intuition.
+    + eapply H1; eauto.
+    + edestruct H1 as [? [? [? ?] ] ].
+      eapply H5; eassumption.
+    + edestruct H1 as [? [? [? ?] ] ].
+      eapply H6; eassumption.
+    + edestruct H1 as [? [? [? ?] ] ].
+      eapply H6; eassumption.
+Qed.
 
 Definition SetByteAt (* Sets the bytes at the specified index and sets the current index
                         to the following position. *)

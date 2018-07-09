@@ -26,6 +26,49 @@ Section Word.
   Definition format_word (w : word sz) (ce : CacheFormat) : Comp (T * CacheFormat) :=
     ret (encode_word' sz w mempty, addE ce sz).
 
+  (* Fixpoint format_word' {s : nat} (w : word s) := *)
+  (*   match w with *)
+  (*   | WO => fun env => ret (mempty, (addE env 0)) *)
+  (*   | WS b s' w' => fun env => *)
+  (*                     (Bind (format_word' w' env) (fun benv' => *)
+  (*                                                    ret (enqueue_opt b (fst benv'), addE (snd benv') 1))) *)
+  (*     end. *)
+
+  (* Check (WS true (WS false WO)). *)
+  (* Unset Printing Notations. *)
+  (* Compute  (natToWord 2 2). *)
+
+
+(* End Word. *)
+
+(* Section Word'. *)
+(*   Context {T : Type}. *)
+(*   Context {cache : Cache}. *)
+(*   Context {cacheAddNat : CacheAdd cache nat}. *)
+(*   Context {monoid : Monoid T}. *)
+(*   Context {monoidUnit : QueueMonoidOpt monoid bool}. *)
+
+(*   Variable addE_addE_plus : *)
+(*     forall (cd : CacheFormat) (n m : nat), addE (addE cd n) m = addE cd (n + m). *)
+
+(*   Lemma format_word_equiv {sz} : forall (w : word sz) env, *)
+(*       refineEquiv (format_word' w env) *)
+(*                   (format_word w env). *)
+(*   Proof. *)
+(*     unfold refineEquiv; split; induction w; simpl; *)
+(*       try reflexivity. *)
+(*     - unfold format_word; simpl. *)
+(*       rewrite IHw. *)
+(*       unfold format_word; rewrite Monad.refineEquiv_bind_unit; simpl. *)
+(*       rewrite addE_addE_plus; rewrite plus_comm; reflexivity. *)
+(*     - unfold format_word; simpl. *)
+(*       rewrite <- IHw. *)
+(*       unfold format_word; rewrite Monad.refineEquiv_bind_unit; simpl. *)
+(*       rewrite addE_addE_plus; rewrite plus_comm; reflexivity. *)
+(*   Qed. *)
+(* *)
+
+
   Fixpoint SW_word {sz} (b : bool) (w : word sz) : word (S sz) :=
     match w with
     | WO => WS b WO
@@ -251,14 +294,9 @@ Section Word.
     omega.
   Qed.
 
-  Definition format_unused_word' (sz : nat) b
-             (_ : unit) (ctx : CacheFormat) :=
-    (w <- { w : word sz | True};
-       ret (encode_word' sz w b, addE ctx sz))%comp.
-
-  Definition format_unused_word
-             (sz : nat) :=
-    format_unused_word' sz mempty tt.
+  Definition format_unused_word {S}
+    : FormatM S T :=
+    Compose_Format format_word (fun _ => {w : word sz | True})%comp.
 
   Fixpoint monoid_get_word {T}
            {monoid : Monoid T}
@@ -304,45 +342,162 @@ Section Word.
   Definition decode_unused_word' (s : nat) (b : T) : option (unit * T) :=
     Ifopt monoid_dequeue_word s b as b' Then Some (tt, snd b') Else None.
 
-  Definition decode_unused_word (sz' : nat)
-             (b : T) (cd : CacheDecode) : option (unit * T * CacheDecode) :=
-    Ifopt decode_unused_word' sz' b as decoded Then Some (decoded, addD cd sz') Else None.
-
-  Theorem unused_word_decode_correct sz'
-          {P : CacheDecode -> Prop}
-          (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    :
-      CorrectDecoder monoid (fun _ => True)
-                              (fun _ _ => True)
-                              (format_unused_word' sz' mempty) (decode_unused_word sz') P.
-  Proof.
-    unfold CorrectDecoder, format_unused_word', decode_unused_word; split.
-    - intros env env' xenv w w' ext env_OK Eeq _ _ Penc.
-      computes_to_inv; injections.
-      unfold decode_unused_word'.
-      rewrite monoid_dequeue_encode_word'; simpl.
-      destruct w.
-      eexists; split; eauto using add_correct.
-    - intros.
-      destruct (decode_unused_word' sz' bin)
-        as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
-      injections.
-      unfold decode_unused_word', monoid_dequeue_word in Heqo.
-      simpl in Heqo.
-      split; auto.
-      destruct (decode_word' sz' bin)  as [ [? ?] | ] eqn: ? ; simpl in *;
-        try discriminate.
-      injections.
-      apply decode_encode_word'_Some in Heqo0.
-      eexists; eexists; repeat split.
-      repeat computes_to_econstructor; eauto.
-      apply Heqo0.
-      apply add_correct; eauto.
-  Qed.
+  Definition decode_unused_word
+    : DecodeM (unit * T) T :=
+    Compose_Decode decode_word (fun wt => (tt, snd wt)).
 
 End Word.
 
-Arguments format_unused_word {_ _ _ _ _} sz ctx _.
+Lemma EquivFormat_LaxTerminal {S T}
+        {monoid' : Monoid T}
+        {cache' : Cache}
+  : forall format : FormatM S T,
+    EquivFormat (Projection_Format format fst ++ LaxTerminal_Format) (DoneLax format) .
+Proof.
+  unfold EquivFormat, DoneLax, Projection_Format, Compose_Format, LaxTerminal_Format,
+  sequence_Format, ComposeOpt.compose, Bind2;
+    split; unfold refine; intros.
+  - rewrite unfold_computes in H; destruct_ex; split_and; subst.
+    destruct v; destruct s; simpl in *; subst.
+    repeat computes_to_econstructor; eauto.
+    rewrite unfold_computes; eexists; split; eauto.
+    rewrite unfold_computes; eauto.
+    simpl; computes_to_econstructor.
+  - computes_to_inv; subst.
+    rewrite unfold_computes in H; rewrite unfold_computes.
+    destruct_ex; destruct v0; eexists; simpl in *; intuition eauto.
+    subst; eauto.
+Qed.
+
+Add Parametric Morphism
+    S T
+    (cache : Cache)
+    (decode : DecodeM S T)
+  : (fun format =>
+       @CorrectDecoder_simpl S T cache format decode)
+    with signature (EquivFormat ==> impl)
+      as format_decode_correct_refineEquiv.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder_simpl;
+    intuition eauto; intros.
+  - eapply H1; eauto; apply H; eauto.
+  - destruct (H2 _ _ _ _ _ H0 H3) as [ ? [? ?] ];
+      intuition.
+    repeat eexists; intuition eauto; apply H; eauto.
+Qed.
+
+Theorem unused_word_decode_correct
+        {sz : nat}
+        {T}
+        {monoid : Monoid T}
+        {cache : Cache}
+        {cacheAddNat : CacheAdd cache nat}
+        {monoidUnit : QueueMonoidOpt monoid bool}
+        {P : CacheDecode -> Prop}
+        (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
+  :
+    CorrectDecoder monoid (fun _ => True)
+                   (fun _ _ => True)
+                   (format_unused_word (sz := sz)) (decode_unused_word (sz := sz)) P.
+Proof.
+  unfold CorrectDecoder, format_unused_word, decode_unused_word,
+  Compose_Format, Compose_Decode; split.
+  - intros env env' xenv w w' ext env_OK Eeq _ _ Penc.
+    computes_to_inv; injections.
+    generalize dependent sz.
+    intros; rewrite unfold_computes in Penc; destruct_ex; split_and.
+    eapply Word_decode_correct in H0; eauto.
+    destruct_ex; split_and; eexists; intuition eauto.
+    rewrite H0; destruct w; reflexivity.
+  - intros.
+    destruct (decode_word bin env')
+      as [ [ [? ?] ?] | ] eqn: ?; simpl in *; try discriminate.
+    injections.
+    eapply Word_decode_correct in Heqo; eauto.
+    intuition; destruct_ex; split_and.
+    eexists _, _; repeat split; eauto.
+    apply unfold_computes; eexists; split; eauto.
+Qed.
+
+Lemma compose_unused_correct
+      {sz : nat}
+      {S T}
+      {cache : Cache}
+      {cacheAddNat : CacheAdd cache nat}
+      {P : CacheDecode -> Prop}
+      {P_inv2 : (CacheDecode -> Prop) -> Prop}
+      (P_inv_pf : cache_inv_Property P (fun P => P_inv2 P))
+      (monoid : Monoid T)
+      {monoidUnit : QueueMonoidOpt monoid bool}
+      (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
+      (predicate : S -> Prop)
+      (predicate_rest' : S -> T -> Prop)
+      (format2 : S -> CacheFormat -> Comp (T * CacheFormat))
+      (*predicate_rest_impl :
+         forall a' b
+                a ce ce' ce'' b' b'',
+           computes_to (format1 a' ce) (b', ce')
+           -> project a = a'
+           -> predicate a
+           -> computes_to (format2 a ce') (b'', ce'')
+           -> predicate_rest' a b
+           -> predicate_rest a' (mappend b'' b)*)
+      (decode2 : T -> CacheDecode -> option (S * T * CacheDecode))
+      (decode2_pf :
+          cache_inv_Property P P_inv2 ->
+          CorrectDecoder monoid
+                         predicate
+                         predicate_rest'
+                         format2
+                         decode2 P)
+  : CorrectDecoder
+      monoid
+      (fun a => predicate a)
+      predicate_rest'
+      (fun (data : S) (ctx : CacheFormat) =>
+         ComposeOpt.compose _ (format_unused_word (sz := sz) data) (format2 data) ctx
+      )%comp
+      (fun (bin : T) (env : CacheDecode) =>
+         `(proj, rest, env') <- decode_unused_word (sz := sz) bin env;
+           decode2 rest env') P.
+Proof.
+  unfold cache_inv_Property in *; split.
+  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
+    unfold ComposeOpt.compose, Bind2 in com_pf; computes_to_inv; destruct v;
+      destruct v0.
+    injections.
+    eapply (unused_word_decode_correct (P := P)) in com_pf; eauto.
+    destruct_ex; split_and.
+    specialize (decode2_pf P_inv_pf).
+    eapply decode2_pf in com_pf'.
+    destruct_ex; split_and.
+    eexists; eauto.
+    rewrite <- mappend_assoc, H0; simpl.
+    split; eauto.
+    eauto.
+    eauto.
+    eauto.
+    eauto.
+  }
+  { intros.
+    destruct (decode_unused_word bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
+      simpl in *; try discriminate.
+    eapply (unused_word_decode_correct (P := P)) in Heqo; eauto.
+    split_and; destruct_ex; split_and.
+    specialize (decode2_pf P_inv_pf).
+    eapply decode2_pf in H1; eauto.
+    split_and; destruct_ex; split_and; subst.
+    intuition; eexists _, _; repeat split.
+    unfold ComposeOpt.compose; repeat computes_to_econstructor; eauto.
+    simpl; rewrite mappend_assoc; reflexivity.
+    eassumption.
+    eassumption.
+  } 
+  Grab Existential Variables.
+  constructor.
+Qed.
+
+Arguments format_unused_word sz {_ _ _ _ _ _}.
 
 Lemma monoid_get_encode_word' {T}
       {monoid : Monoid T}

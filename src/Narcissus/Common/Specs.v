@@ -664,6 +664,19 @@ Proof.
   erewrite a_opt_eq_None; simpl; eauto.
 Qed.
 
+Definition EquivFormat {S T} {cache : Cache}
+           (format1 format2 : FormatM S T) :=
+  forall s env, refineEquiv (format1 s env) (format2 s env).
+
+Lemma EquivFormat_sym {S T} {cache : Cache} :
+  forall (FormatSpec FormatSpec'  : FormatM S T),
+    EquivFormat FormatSpec FormatSpec'
+    -> EquivFormat FormatSpec' FormatSpec.
+Proof.
+  unfold EquivFormat, refineEquiv; intuition eauto;
+    eapply H.
+Qed.
+
 Add Parametric Morphism
     A B
     (cache : Cache)
@@ -675,10 +688,10 @@ Add Parametric Morphism
   : (fun format =>
        @CorrectDecoder A B cache monoid predicate
                                 rest_predicate format decode decode_inv)
-    with signature (pointwise_relation _ (pointwise_relation _ refineEquiv) ==> impl)
+    with signature (EquivFormat ==> impl)
       as format_decode_correct_refineEquiv.
 Proof.
-  unfold impl, pointwise_relation, CorrectDecoder;
+  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder;
     intuition eauto; intros.
   - eapply H1; eauto; apply H; eauto.
   - eapply H2; eauto.
