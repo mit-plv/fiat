@@ -42,11 +42,14 @@ Ltac align_decoders_step :=
     | eapply @AlignedDecodeListM; intros; eauto
     | eapply @AlignedDecodeCharM; intros; eauto
     | eapply (fun H H' => @AlignedDecodeNCharM _ _ H H' 4); eauto; simpl; intros
+    | eapply (AlignedDecodeNCharM _ _  (m := 2)); eauto; simpl; intros
+    | eapply (AlignedDecodeNUnusedCharM _ _ (m := 2)); eauto; simpl; intros
     | eapply @AlignedDecode_shift_if_Sumb
     | eapply @AlignedDecode_shift_if_bool
     | eapply @Return_DecodeMEquivAlignedDecodeM
     | eapply @AlignedDecode_Sumb
     | eapply @AlignedDecode_ifb
+    | eapply @AlignedDecodeBindOption; intros; eauto
     | intros; higher_order_reflexivity
     |   eapply @AlignedDecode_CollapseWord';
         eauto using decode_word_eq_decode_unused_word,
@@ -180,6 +183,20 @@ Proof.
   intros; eapply length_ByteString_map; eauto using length_ByteString_bool.
 Qed.
 
+Lemma length_ByteString_map_option {S S'}
+  : forall (sz : nat) (f : S -> option S')
+           (format_Some : FormatM S' _)
+           (format_None : FormatM () _)
+           (s : S) (b : ByteString) (ctx ctx' : CacheFormat),
+    (forall s', format_Some s' ctx ∋ (b, ctx') -> length_ByteString b = sz)
+    -> (format_None () ctx ∋ (b, ctx') -> length_ByteString b = sz)
+    -> Projection_Format (Option.format_option format_Some format_None) f s ctx ∋ (b, ctx') -> length_ByteString b = sz.
+Proof.
+  unfold Projection_Format, Compose_Format; intros.
+  rewrite unfold_computes in H1; destruct_ex; intuition; subst.
+  destruct (f s); simpl in *; eauto.
+Qed.
+
 Corollary length_ByteString_map_enum {S'}
   : forall (len sz : nat)
            (codes : Vector.t (word sz) (S len))
@@ -190,19 +207,24 @@ Proof.
   eauto using length_ByteString_word.
 Qed.
 
+Ltac calculate_length_ByteString' :=
+  repeat first [ apply_in_hyp @length_ByteString_map_word
+               | apply_in_hyp @length_ByteString_map_bool
+               | apply_in_hyp @length_ByteString_word
+               | apply_in_hyp @length_ByteString_unused_word
+               | apply_in_hyp @length_ByteString_bool
+               | eapply_in_hyp @length_ByteString_map_option;
+                 [ | clear; intros | .. | clear; intros ]
+               | apply_in_hyp @length_ByteString_map_nat
+               | apply_in_hyp @length_ByteString_map_enum
+               | eapply_in_hyp @length_ByteString_compose;
+                 [ | clear; intros | .. | clear; intros ]
+               | eassumption].
+
 Ltac associate_for_ByteAlignment :=
   eapply @Guarded_CorrectAlignedEncoderThenCAssoc;
   [clear; intros ce bs ce' Comp ? ;
-   repeat first [ apply_in_hyp @length_ByteString_map_word
-                | apply_in_hyp @length_ByteString_map_bool
-                | apply_in_hyp @length_ByteString_word
-                | apply_in_hyp @length_ByteString_unused_word
-                | apply_in_hyp @length_ByteString_bool
-                | apply_in_hyp @length_ByteString_map_nat
-                | apply_in_hyp @length_ByteString_map_enum
-                | eapply_in_hyp @length_ByteString_compose;
-                  [ | clear; intros | .. | clear; intros ]
-                | eassumption]; omega
+   calculate_length_ByteString'; omega
   | ].
 
 (*Lemma CorrectAlignedEncoderForFormatOption {S}
@@ -263,6 +285,41 @@ Proof.
   rewrite unfold_computes in H; destruct_ex; intuition.
   apply unfold_computes; eexists; split; eauto; subst.
   eapply refine_format_bool; eauto.
+Qed.
+
+Lemma refine_format_option sz {S}
+      (Some_format : FormatM S _)
+      (None_format : FormatM () _)
+      (f : S -> word sz)
+      (f' : word sz)
+      (refine_Some : forall (s : S) (env : CacheFormat), refine (Some_format s env) ((format_word ◦ f) s env))
+      (refine_None : forall (env : CacheFormat), refine (None_format () env) ((format_word ◦ (fun _ => f')) () env))
+  : forall (s : option S) ce,
+    refine (Option.format_option Some_format None_format s ce)
+           ((format_word ◦ (fun s => Ifopt s as s' Then f s' Else f')) s ce).
+Proof.
+  intros; destruct s; simpl; eauto.
+  eapply refine_Some.
+Qed.
+
+Lemma refine_format_option_map sz {S S'}
+      (g : S' -> option S)
+      (Some_format : FormatM S _)
+      (None_format : FormatM () _)
+      (f : S -> word sz)
+      (f' : word sz)
+      (refine_Some : forall (s : S) (env : CacheFormat), refine (Some_format s env) ((format_word ◦ f) s env))
+      (refine_None : forall (env : CacheFormat), refine (None_format () env) ((format_word ◦ (fun _ => f')) () env))
+  : forall s ce,
+    refine (FMapFormat.Projection_Format (Option.format_option Some_format None_format) g s ce)
+           (FMapFormat.Projection_Format format_word
+                                         ((fun s => Ifopt (g s) as s' Then f s' Else f')) s ce).
+Proof.
+  intros; unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format; intros ? ?.
+  rewrite unfold_computes in H; destruct_ex; intuition.
+  apply unfold_computes; eexists; split; eauto; subst.
+  eapply refine_format_option; eauto.
+  apply EquivFormat_Projection_Format in H0; eauto.
 Qed.
 
 Lemma refine_format_nat_map {S}
@@ -336,14 +393,18 @@ Qed.
     clear H
   end.
 
-Ltac collapse_unaligned_words :=
-  intros; eapply refine_CorrectAlignedEncoder;
-  [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
-   unfold format_nat; eauto using refine_format_bool, refine_format_unused_word_map,
-                      refine_format_bool_map, refine_format_unused_word,
-                      refine_format_nat_map;
-   reflexivity
-  | ].
+  Ltac collapse_unaligned_words :=
+    intros; eapply refine_CorrectAlignedEncoder;
+    [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
+     unfold format_nat;
+     repeat first [eapply refine_format_option_map; intros
+                  | eapply refine_format_bool_map
+                  | eauto using refine_format_bool, refine_format_unused_word_map,
+                    refine_format_bool_map, refine_format_unused_word,
+                    refine_format_option_map,
+                    refine_format_nat_map];
+     reflexivity
+    | ].
 
 Ltac start_synthesizing_encoder :=
   lazymatch goal with
@@ -353,6 +414,13 @@ Ltac start_synthesizing_encoder :=
   (* Memoize any string constants *)
   (*pose_string_hyps; *)
   eexists; simpl; intros.
+
+Ltac decompose_aligned_encoder_step :=
+  first [
+      eapply @CorrectAlignedEncoderForIPChecksumThenC
+    | associate_for_ByteAlignment
+    | apply @CorrectAlignedEncoderForThenC
+    | apply @CorrectAlignedEncoderForDoneC].
 
 Ltac decompose_aligned_encoder :=
   first [
@@ -371,6 +439,7 @@ Ltac align_encoder_step :=
     | eapply (CorrectAlignedEncoderForFormatNEnum _ _ 2)
     | eapply (CorrectAlignedEncoderForFormatNEnum _ _ 3)
     | eapply CorrectAlignedEncoderForFormatUnusedWord
+    | eapply CorrectAlignedEncoderForFormatOption
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto

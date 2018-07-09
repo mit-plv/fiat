@@ -68,10 +68,7 @@ Section TCPPacketDecoder.
           ++ format_bool ◦ NS
           ++ format_bool ◦ CWR
           ++ format_bool ◦ ECE
-          ++ format_bool ◦ (Basics.compose (fun x => match x with
-                                                     | Some _ => true
-                                                     | _ => false
-                                                     end) UrgentPointer)
+          ++ format_bool ◦ (Basics.compose (fun urg_opt => Ifopt urg_opt as urg Then true Else false) UrgentPointer)
           ++ format_bool ◦ ACK
           ++ format_bool ◦ PSH
           ++ format_bool ◦ RST
@@ -101,12 +98,6 @@ Section TCPPacketDecoder.
   Proof.
     start_synthesizing_encoder.
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC.
-    Ltac decompose_aligned_encoder :=
-      first [
-          eapply @CorrectAlignedEncoderForIPChecksumThenC
-        | associate_for_ByteAlignment
-        | apply @CorrectAlignedEncoderForThenC
-        | apply @CorrectAlignedEncoderForDoneC].
     (decompose_aligned_encoder; eauto).
     (decompose_aligned_encoder; eauto).
     (decompose_aligned_encoder; eauto).
@@ -129,31 +120,48 @@ Section TCPPacketDecoder.
     repeat align_encoder_step.
     repeat align_encoder_step.
     repeat align_encoder_step.
+    (decompose_aligned_encoder; eauto).
+    (decompose_aligned_encoder; eauto).
     repeat align_encoder_step.
     repeat align_encoder_step.
-  Admitted.
+    repeat align_encoder_step.
+    intros; calculate_length_ByteString'.
+  Defined.
 
   (* Step Two: Extract the encoder function, and have it start encoding
      at the start of the provided ByteString [v]. *)
-  Definition UDP_encoder_impl r {sz} v :=
+  Definition TCP_encoder_impl r {sz} v :=
     Eval simpl in (projT1 TCP_encoder sz v 0 r tt).
 
 (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
+Lemma TCP_Packet_Len_OK
+  : forall tcp,
+    TCP_Packet_OK tcp ->
+    (lt (5 + (| Options tcp |)) (pow2 4)).
+Proof.
+  unfold TCP_Packet_OK; simpl; intros.
+  intuition; intros.
+  unfold pow2, mult; simpl.
+  omega.
+Qed.
+
 Opaque pow2.
 Arguments andb : simpl never.
 
-Arguments GetCurrentBytes : simpl never.
+Hint Resolve TCP_Packet_Len_OK : data_inv_hints.
+
+  Arguments GetCurrentBytes : simpl never.
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
-Definition UDP_Packet_Header_decoder
+Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
 Proof.
   (* We have to use an extra lemma at the start, because of the 'exotic'
      IP Checksum. *)
   eapply CorrectAlignedDecoderForUDPChecksumThenC.
-  repeat calculate_length_ByteString.
-  (* Once that's done, the normal automation works just fine :) *)
+  intros; calculate_length_ByteString'; rewrite H; higher_order_reflexivity.
+    (* Once that's done, the normal automation works just fine :) *)
   start_synthesizing_decoder.
   match goal with
   | |- CorrectDecoder ?monoid _ _ _ _ _ => normalize_compose monoid
@@ -176,7 +184,6 @@ Proof.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
-  simpl. admit.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
@@ -223,48 +230,40 @@ Proof.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
-  eapply unused_word_decode_correct.
-  simpl; instantiate (1 := true); simpl; admit.
-  simpl.
+  decode_step ltac:(idtac).
+  decode_step ltac:(idtac).
+  simpl; instantiate (1 := proj7); simpl.
+  intro; destruct (UrgentPointer data); simpl; intuition;
+    subst; simpl; congruence.
   destruct a'; simpl; decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
-  simpl. instantiate (1:= 0); admit.
+  simpl; instantiate (1 := proj3 - 5); intuition.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
-  simpl. instantiate (1:= 0); admit.
+  simpl in *; unfold TCP_Packet_OK in *; intuition.
+  instantiate (1 := wordToNat (Core.append_word (Vector.hd tcpLength) (Vector.hd (Vector.tl tcpLength)))
+                    - (20 + 4 * (proj3 - 5))); omega.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)
   cbv beta; optimize_decoder_impl.
-  cbv beta.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  (* Need decoder for options. *)
-
-
+  cbv beta; repeat align_decoders_step.
+  Grab Existential Variables.
+  eauto.
+  eauto.
+  eauto.
+  eauto.
+  shelve.
+  synthesize_cache_invariant.
+  synthesize_cache_invariant.
 Defined.
 
-  Lemma TCP_Packet_Header_Len_OK
+(*Lemma TCP_Packet_Header_Len_OK
     : forall (tcp : TCP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
       (      format_word (tcp!"SourcePort")
           ++ format_word (tcp!"DestPort")
@@ -311,80 +310,11 @@ Proof.
     |- context [ @length ?A ?l] => remember (@length A l)
   end.
   omega.
-Qed.
+Qed. *)
 
-Definition TCP_Packet_decoder'
-  : CorrectDecoderFor TCP_Packet_OK format_TCP_Packet_Spec.
-Proof.
-  start_synthesizing_decoder.
-  normalize_compose monoid.
-  apply_IPChecksum_dep TCP_Packet_Header_Len_OK.
-
-  - unfold TCP_Packet_OK; intros ? H'; repeat split.
-    simpl; destruct H'.
-    unfold pow2; simpl in *.
-    unfold GetAttribute, GetAttributeRaw in H0; simpl in H0.
-    revert H0; clear; unfold StringId13; intros; omega.
-
-  - decode_step idtac.
-    decode_step idtac.
-    decode_step idtac.
-    decode_step idtac.
-
-    simpl in *. intros; split_and; decompose_pair_hyp.
-    instantiate (1 := fst (snd (snd (snd (snd (snd (snd (snd (snd proj))))))))).
-
-    first [ rewrite <- H12
-          | rewrite <- H13 ].
-    match goal with
-      |- context [decides (negb match ?b with _ => _ end) (?b' = None) ] =>
-      assert (b = b') as H' by reflexivity; rewrite H'; destruct b';
-        simpl; intuition eauto
-    end.
-    discriminate.
-    destruct a'; intros; exact I.
-
-    decode_step idtac.
-    decode_step idtac.
-    decode_step idtac.
-
-    simpl in *. intros; split_and. decompose_pair_hyp.
-    simpl; intros; instantiate (1 := fst (snd (snd (snd (snd proj)))) - 5).
-    intuition; subst; simpl; auto with arith.
-    first [ rewrite <- H12
-          | rewrite <- H11]; simpl in *; auto with arith.
-
-    decode_step idtac.
-    decode_step idtac.
-    decode_step idtac.
-    decode_step idtac.
-
-    simpl in *; intros.
-    do 4 destruct H3.
-    split; eauto.
-    instantiate (1 := (wordToNat tcpLength) - 20 - (4 * (fst (snd (snd (snd (snd proj)))) - 5))).
-    first [ rewrite <- H6
-          | rewrite <- H5].
-    rewrite H7.
-    unfold snd, fst.
-    unfold GetAttribute, GetAttributeRaw in *; simpl in *.
-    repeat match goal with
-             |- context [ @length ?A (prim_fst ?l)] => remember (@length A (prim_fst l))
-           end.
-    assert (n = n1) by (subst; reflexivity).
-    rewrite H8; clear; omega.
-
-    decode_step idtac.
-    decode_step idtac.
-
-  - synthesize_cache_invariant.
-  - optimize_decoder_impl.
-
-    Time Defined.
-
-  Definition TCP_Packet_decoder_impl :=
-    Eval simpl in (fst (proj1_sig TCP_Packet_decoder')).
+Definition TCP_decoder_impl {sz} v :=
+  Eval simpl in (projT1 TCP_Packet_Header_decoder sz v 0 ()).
 
 End TCPPacketDecoder.
 
-Print TCP_Packet_decoder_impl.
+Print TCP_decoder_impl.

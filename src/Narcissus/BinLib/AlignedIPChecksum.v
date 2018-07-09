@@ -126,6 +126,8 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       (encode_B : forall sz, AlignedEncodeM sz)
       (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
       (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+      (idxOK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
+          format_B s env ∋ (b, env') -> length_ByteString b = idx)
   : CorrectAlignedEncoder
       (format_B ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_A)
       (fun sz => encode_B sz >>

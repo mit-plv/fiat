@@ -61,12 +61,6 @@ Section UDP_Decoder.
   Proof.
     start_synthesizing_encoder.
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC.
-    Ltac decompose_aligned_encoder :=
-      first [
-          eapply @CorrectAlignedEncoderForIPChecksumThenC
-        | associate_for_ByteAlignment
-        | apply @CorrectAlignedEncoderForThenC
-        | apply @CorrectAlignedEncoderForDoneC].
     (decompose_aligned_encoder; eauto).
     (decompose_aligned_encoder; eauto).
     repeat align_encoder_step.
@@ -76,6 +70,7 @@ Section UDP_Decoder.
     repeat align_encoder_step.
     repeat align_encoder_step.
     repeat align_encoder_step.
+    intros; calculate_length_ByteString'.
   Defined.
 
   (* Step Two: Extract the encoder function, and have it start encoding
@@ -141,11 +136,14 @@ Lemma UDP_Packet_Header_Len_bound
     UDP_Packet_OK data ->
     lt (8 + (| Payload data |)) (pow2 16).
 Proof.
-Admitted.
+  unfold UDP_Packet_OK; intros.
+  omega.
+Qed.
 
 Opaque pow2.
 
 Hint Resolve UDP_Packet_Header_Len_bound : data_inv_hints.
+
 Arguments GetCurrentBytes : simpl never.
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition UDP_Packet_Header_decoder

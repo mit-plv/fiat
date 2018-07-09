@@ -511,10 +511,9 @@ Ltac decode_step cleanup_tac :=
   | H : cache_inv_Property _ _
     |- context [CorrectDecoder _ _ _ format_word _ _] =>
     intros; revert H; eapply Word_decode_correct
-  | |- context [CorrectDecoder _ _ _ (format_unused_word _ _) _ _] =>
-    let H := eval simpl in unused_word_decode_correct in
+  | |- context [ CorrectDecoder _ _ _ (format_unused_word ?sz) _ _ ] =>
+    let H := eval simpl in (@unused_word_decode_correct sz) in
         apply H
-
   | |- context [CorrectDecoder _ _ _ (format_Vector _) _ _] =>
     intros; eapply Vector_decode_correct
 

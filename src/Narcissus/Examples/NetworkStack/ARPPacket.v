@@ -99,12 +99,6 @@ Arguments Vector.nth : simpl never.
     CorrectAlignedEncoderFor ARPPacket_Format.
   Proof.
     start_synthesizing_encoder.
-    Ltac decompose_aligned_encoder :=
-      first [
-          eapply @CorrectAlignedEncoderForIPChecksumThenC
-        | associate_for_ByteAlignment
-        | apply @CorrectAlignedEncoderForThenC
-        | apply @CorrectAlignedEncoderForDoneC].
     (decompose_aligned_encoder; eauto).
     (decompose_aligned_encoder; eauto).
     (decompose_aligned_encoder; eauto).

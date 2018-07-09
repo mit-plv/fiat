@@ -304,6 +304,39 @@ Section AlignedDecoders.
     destruct_ex; intuition; subst; eauto.
   Qed.
 
+  Definition aligned_option_encode {S}
+             (encode_Some : forall sz : nat, @AlignedEncodeM _ S sz)
+             (encode_None : forall sz : nat, @AlignedEncodeM _ () sz)
+             (sz : nat)
+    : @AlignedEncodeM _ (option S) sz :=
+    fun v idx s_opt => Ifopt s_opt as s Then encode_Some _ v idx s
+                                         Else encode_None _ v idx ().
+
+    Lemma CorrectAlignedEncoderForFormatOption {S}
+        (Some_format : FormatM S _)
+        (None_format : FormatM () _)
+        (encode_Some : forall sz : nat, @AlignedEncodeM _ S sz)
+        (encode_None : forall sz : nat, @AlignedEncodeM _ () sz)
+        (encode_Some_OK : CorrectAlignedEncoder Some_format encode_Some)
+        (encode_None_OK : CorrectAlignedEncoder None_format encode_None)
+    : CorrectAlignedEncoder
+        (Option.format_option Some_format None_format)
+        (aligned_option_encode encode_Some encode_None).
+  Proof.
+    exists (Option.option_encode (projT1 encode_Some_OK) (projT1 encode_None_OK));
+      simpl; intuition.
+    - destruct s; simpl in *.
+      eapply (proj1 (projT2 encode_Some_OK) s); eauto.
+      eapply (proj1 (projT2 encode_None_OK)); eauto.
+    - destruct s; simpl in *.
+      eapply (proj1 (proj2 (projT2 encode_Some_OK))); eauto.
+      eapply (proj1 (proj2 (projT2 encode_None_OK))); eauto.
+    - intros ? ?.
+      destruct s.
+      eapply (proj2 (proj2 (projT2 encode_Some_OK)) _ s); eauto.
+      eapply (proj2 (proj2 (projT2 encode_None_OK)) _ ()); eauto.
+  Qed.
+
   Lemma optimize_under_if_opt {A ResultT}
     : forall (a_opt : option A) (t t' : A -> ResultT) (e e' : ResultT),
       (forall a, t a = t' a) -> e = e' ->
@@ -1703,6 +1736,45 @@ Section AlignedDecoders.
     eapply Bind_DecodeMEquivAlignedDecodeM; eauto using AlignedDecodeUnused2CharM.
     intro; destruct a; eauto.
   Qed.
+
+  Definition aligned_option_decode {S}
+             (decode_Some : forall {numBytes}, AlignedDecodeM S numBytes)
+             (decode_None : forall {numBytes}, AlignedDecodeM () numBytes)
+             (b' : bool)
+    : forall {numBytes}, AlignedDecodeM (option S) numBytes :=
+    (fun sz v idx (env : CacheDecode) =>
+       If b' Then
+          match decode_Some v idx env with
+          | Some (a, b, c) => Some ((Some a, b), c)
+          | None => None
+          end
+          Else
+          match decode_None v idx env with
+          | Some (a, b, c) => Some ((None, b), c)
+          | None => None
+          end).
+
+  Lemma AlignedDecodeBindOption {S S' : Type}
+        (decode_Some : DecodeM (S * _) ByteString)
+        (decode_None : DecodeM (() * _) ByteString)
+        (aligned_decode_Some : forall numBytes, AlignedDecodeM S numBytes)
+        (aligned_decode_None : forall numBytes, AlignedDecodeM () numBytes)
+        (t : option S -> DecodeM (S' * _) ByteString)
+        (t' : option S -> forall {numBytes}, AlignedDecodeM S' numBytes)
+        b'
+    : (DecodeMEquivAlignedDecodeM decode_Some aligned_decode_Some)
+      -> (DecodeMEquivAlignedDecodeM decode_None aligned_decode_None)
+      -> (forall s_opt, DecodeMEquivAlignedDecodeM (t s_opt) (@t' s_opt))
+      -> DecodeMEquivAlignedDecodeM
+           (fun v cd => `(a, b0, cd') <- Option.option_decode decode_Some decode_None b' v cd ;
+                          t a b0 cd')
+           (fun numBytes => a <- aligned_option_decode aligned_decode_Some aligned_decode_None b';
+                              t' a)%AlignedDecodeM.
+  Proof.
+    intros.
+    destruct b'; simpl; eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
+    unfold aligned_option_decode; simpl.
+  Admitted.
 
 End AlignedDecoders.
 
