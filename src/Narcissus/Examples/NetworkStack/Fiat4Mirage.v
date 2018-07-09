@@ -216,6 +216,10 @@ End IPv4.
 
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
 
+(* Work around the fact that Decimal declares a type "int" *)
+Extract Inductive nat => "OcamlNativeInt.t" [ "0" "Pervasives.succ" ]
+ "(fun fO fS n -> if n=0 then fO () else fS (n-1))".
+
 Extract Inductive prod => "(*)"  [ "(,)" ].
 Extract Inlined Constant NPeano.ltb => "(<)".
 Extract Inlined Constant NPeano.leb => "(<=)".
