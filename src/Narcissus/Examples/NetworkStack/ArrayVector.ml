@@ -8,6 +8,14 @@ type 'a storage_t =
     data: 'a array;
     latest_version: int ref }
 
+let of_array (arr: 'a array) : 'a storage_t =
+  { version = 0;
+    data = arr;
+    latest_version = ref 0 }
+
+let to_array (arr: 'a storage_t) : 'a array =
+  arr.data
+
 let destruct_idx _ _ _ =
   failwith "Not implemented: ArrayVector.destruct_idx"
 
@@ -67,4 +75,4 @@ let cons ((hd, _, tl): ('a * 'b * 'a storage_t)) : 'a storage_t =
 let empty () : 'a storage_t =
   { version = 0;
     latest_version = ref 0;
-    data = Array.init 0 (fun x -> failwith "never called") }
+    data = Array.init 0 (fun _ -> failwith "never called") }

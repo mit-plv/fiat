@@ -295,6 +295,9 @@ Extract Inductive Fin.t =>
   ["ArrayVector.zero" "ArrayVector.succ"]
   "ArrayVector.destruct".
 
+Extract Inlined Constant Fin.L => "(fun _ n p -> p)".
+Extract Inlined Constant Fin.R => "(fun _ n p -> n + p)".
+
 Extract Inductive Vector.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
@@ -311,9 +314,21 @@ Extract Inlined Constant set_nth' => "ArrayVector.set_nth".
 Extract Inlined Constant word_indexed => "ArrayVector.index".
 Extract Inlined Constant InternetChecksum.Vector_fold_left_pair => "ArrayVector.fold_left_pair".
 
-Print InternetChecksum.Vector_checksum.
+Definition mirage_pkt : Vector.t (word 8) _ :=
+  Eval compute in Vector.map (@natToWord 8)
+                             [69; 184; 0; 76; 191; 124; 64; 0; 52; 17; 223; 101; 144; 92; 9; 22; 10; 137; 3; 12; 0; 123; 0; 123; 0; 56; 244; 251; 36; 1; 3; 238; 0; 0; 0; 0; 0; 0; 0; 67; 71; 80; 83; 0; 220; 3; 208; 4; 83; 118; 115; 149; 220; 3; 208; 6; 203; 210; 79; 251; 220; 3; 208; 6; 205; 87; 67; 160; 220; 3; 208; 6; 205; 182; 46; 81].
 
-Extraction IPv4_encoder_impl.
+Require Import NArith.
+
+Compute
+  match IPv4_decoder_impl bin_pkt with
+  | Some (p, _, _) =>
+    match IPv4_encoder_impl p (AlignedByteString.initialize_Aligned_ByteString 20) with
+    | Some (bytes, _, _) => Some (Vector.map (@wordToNat 8) bytes)
+    | None => None
+    end
+  | None => None
+  end.
 
 Definition fiat_ipv4_decode_bench (_: unit) :=
   fiat_ipv4_decode bin_pkt.
@@ -354,6 +369,8 @@ Extraction "Fiat4Mirage"
            fiat_ipv4_decode_bench
            fiat_ipv4_encode_test
            fiat_ipv4_encode_reference
+           fiat_ipv4_enum_to_protocol
+           fiat_ipv4_protocol_to_enum
 
            (* fiat_ipv4_destruct_packet *)
            (* fiat_tcp_decode *)
