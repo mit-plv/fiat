@@ -28,6 +28,9 @@ Ltac align_decoders_step :=
     | eapply @AlignedDecodeBindCharM; intros; eauto
     | eapply @AlignedDecodeBind4CharM; intros; eauto
     | eapply @AlignedDecodeBindEnumM; intros; eauto
+    | let H' := fresh in
+      pose proof (fun C D E => @AlignedDecodeBindEnumM _ _ C D E 2) as H';
+      simpl in H'; eapply H'; eauto; intros
     | eapply @AlignedDecodeBindUnused2CharM; simpl; eauto;
       eapply DecodeMEquivAlignedDecodeM_trans;
       [ | intros; reflexivity
@@ -365,6 +368,8 @@ Ltac align_encoder_step :=
     | apply CorrectAlignedEncoderForFormatNat
     | apply CorrectAlignedEncoderForFormatEnum
     | eapply CorrectAlignedEncoderProjection
+    | eapply (CorrectAlignedEncoderForFormatNEnum _ _ 2)
+    | eapply (CorrectAlignedEncoderForFormatNEnum _ _ 3)
     | eapply CorrectAlignedEncoderForFormatUnusedWord
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto

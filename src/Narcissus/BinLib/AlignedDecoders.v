@@ -271,6 +271,23 @@ Section AlignedDecoders.
     eapply FMapFormat.EquivFormat_Projection_Format; eauto.
   Qed.
 
+  Lemma CorrectAlignedEncoderForFormatNEnum
+        m
+        {len}
+        (codes : t (word (m * 8)) (S len))
+    : CorrectAlignedEncoder
+        (format_enum codes (monoidUnit := ByteString_QueueMonoidOpt))
+        (fun sz v idx n => SetCurrentBytes (sz := m) v idx (Vector.nth codes n)).
+  Proof.
+    eapply refine_CorrectAlignedEncoder.
+    2: eapply CorrectAlignedEncoderForFormatMChar_f.
+    unfold format_enum; intros.
+    intros ? ?.
+    unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
+    rewrite unfold_computes in H.
+    destruct_ex; intuition; subst; eauto.
+  Qed.
+
   Lemma CorrectAlignedEncoderForFormatEnum
         {len}
         (codes : t (word 8) (S len))
@@ -1617,7 +1634,6 @@ Section AlignedDecoders.
     destruct (decode_word bs cd) as [ [ [? ?] ?] | ]; simpl; reflexivity.
   Qed.
 
-
   Definition Aligned_decode_enum
              {len : nat}
              {cache : Cache}
@@ -1626,7 +1642,7 @@ Section AlignedDecoders.
     (fun n => (w <- GetCurrentByte ;
                  Ifopt word_indexed w tb as idx Then ReturnAlignedDecodeM idx Else ThrowAlignedDecodeM (n := n))%AlignedDecodeM).
 
-  Lemma AlignedDecodeBindEnumM {A}
+  Lemma AlignedDecodeBindEnum {A}
         {len}
     : forall (t : Fin.t (S len) -> DecodeM (A * _) ByteString)
              (t' : Fin.t (S len) -> forall numBytes : nat, AlignedDecodeM A numBytes)
@@ -1637,6 +1653,30 @@ Section AlignedDecoders.
                                                      decode_enum tb v cd;
                                                       t a b0 cd')
         (fun numBytes : nat => (b <- Aligned_decode_enum tb numBytes;
+                                  t' b numBytes)%AlignedDecodeM).
+  Proof.
+  Admitted.
+
+  Definition Aligned_decode_enumN
+             sz
+             {len : nat}
+             {cache : Cache}
+             {cacheAddNat : CacheAdd cache nat}
+             (tb : t (word (sz * 8)) (S len)) :=
+    (fun n => (w <- GetCurrentBytes sz ;
+                 Ifopt word_indexed w tb as idx Then ReturnAlignedDecodeM idx Else ThrowAlignedDecodeM (n := n))%AlignedDecodeM).
+
+  Lemma AlignedDecodeBindEnumM sz {A}
+        {len}
+    : forall (t : Fin.t (S len) -> DecodeM (A * _) ByteString)
+             (t' : Fin.t (S len) -> forall numBytes : nat, AlignedDecodeM A numBytes)
+             (tb : Vector.t (word (sz * 8))%nat (S len)),
+      (forall b2 : Fin.t (S len), DecodeMEquivAlignedDecodeM (t b2) (t' b2)) ->
+      DecodeMEquivAlignedDecodeM
+        (fun (v : ByteString) (cd : CacheDecode) => `(a, b0, cd') <-
+                                                     decode_enum tb v cd;
+                                                      t a b0 cd')
+        (fun numBytes : nat => (b <- Aligned_decode_enumN sz tb numBytes;
                                   t' b numBytes)%AlignedDecodeM).
   Proof.
   Admitted.
