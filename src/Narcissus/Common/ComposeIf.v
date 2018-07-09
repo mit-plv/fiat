@@ -2,20 +2,18 @@ Require Import
         Fiat.Computation
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.Notations
-        Fiat.Narcissus.Common.Compose.
+        Fiat.Narcissus.Common.Compose
+        Fiat.Narcissus.BaseFormats.
 
-Definition composeIf E B
-           (monoid : Monoid B)
-           (iComp : Comp bool)
-           (formatT : E -> Comp (B * E))
-           (formatE : E -> Comp (B * E))
-           (e : E)
-  := b <- iComp;
-       If b Then formatT e
-          Else formatE e.
+Definition composeIf {S T}
+           {cache : Cache}
+           {monoid : Monoid T}
+           (formatT : FormatM S T)
+           (formatE : FormatM S T)
+  := Union_Format (Vector.cons _ formatT _ (Vector.cons _ formatE _ (Vector.nil _))).
 
 Notation "'Either' t 'Or' e " :=
-  (composeIf _ _ _ { _ : bool | True} t e) : format_scope.
+  (composeIf t e) : format_scope.
 
 Lemma composeIf_format_correct
       {A B}
@@ -53,11 +51,7 @@ Lemma composeIf_format_correct
       monoid
       (fun a => predicate a)
       predicate_rest
-      (fun (data : A) =>
-         composeIf _ _ _ {b : bool | True }
-                   (formatT data)
-                   (formatE data)
-      )%comp
+      (composeIf formatT formatE)
       (fun (b : B) (env : CacheDecode) =>
          If ICompb b Then
             decodeT b env
@@ -67,11 +61,13 @@ Lemma composeIf_format_correct
 Proof.
   unfold cache_inv_Property in *; split.
   { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
-    unfold composeIf, Bind2 in com_pf; computes_to_inv; destruct v;
-      simpl in com_pf'; computes_to_inv.
+    unfold composeIf, Union_Format, Bind2 in com_pf.
+      rewrite unfold_computes in com_pf; destruct_ex.
+      revert H; pattern x; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl.
+      constructor; intros; [ | constructor; eauto].
     - erewrite ICompb_OKT; eauto.
       simpl; eapply decodeT_pf; intuition eauto.
-    - erewrite ICompb_OKE; eauto.
+    - intros; erewrite ICompb_OKE; eauto.
       simpl; eapply decodeE_pf; intuition eauto.
   }
   { intros.
@@ -79,11 +75,12 @@ Proof.
     - eapply decodeT_pf in H1; intuition eauto.
       destruct_ex; intuition; eexists; eexists;
         unfold composeIf; intuition eauto.
-      refine pick val true; eauto.
+      unfold Union_Format; apply unfold_computes; eexists (Fin.F1); simpl; eauto.
     - eapply decodeE_pf in H1; intuition eauto.
       destruct_ex; intuition; eexists; eexists;
         unfold composeIf; intuition eauto.
-      refine pick val false; eauto. }
+      unfold Union_Format; apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
+  }
 Qed.
 
 Definition composeIf' E B
@@ -242,4 +239,37 @@ Proof.
       eassumption.
       eassumption.
   }
+Qed.
+
+Lemma EquivFormat_ComposeIf {S T}
+      {cache : Cache}
+      {monoid : Monoid T}
+  : forall (format1 format1' format2 format2' : FormatM S T),
+    EquivFormat format1 format1'
+    -> EquivFormat format2 format2'
+    -> EquivFormat (composeIf format1 format2)
+                   (composeIf format1' format2').
+Proof.
+  unfold composeIf, Union_Format; split; intros; intros ? ? ;
+    rewrite unfold_computes in H1; destruct_ex; intros;
+      rewrite unfold_computes; exists x;
+        revert H1; pattern x; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl;
+          repeat (apply IterateBoundedIndex.Build_prim_and; intros); eauto; simpl.
+  apply H; apply H1.
+  apply H0; apply H1.
+  apply H; apply H1.
+  apply H0; apply H1.
+Qed.
+
+Lemma refineEquiv_ComposeIf {S T}
+      {cache : Cache}
+      {monoid : Monoid T}
+  : forall (format1 format1' format2 format2' : FormatM S T),
+    (forall s env, refineEquiv (format1 s env) (format1' s env))
+    -> (forall s env, refineEquiv (format2 s env) (format2' s env))
+    -> (forall s env,
+           refineEquiv (composeIf format1 format2 s env)
+                       (composeIf format1' format2' s env)).
+Proof.
+  intros; eapply EquivFormat_ComposeIf; eauto.
 Qed.

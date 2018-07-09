@@ -26,6 +26,7 @@ Ltac align_decoders_step :=
       eapply @AlignedDecodeNatM; intros
     | eapply @AlignedDecodeBind2CharM; intros; eauto
     | eapply @AlignedDecodeBindCharM; intros; eauto
+    | eapply @AlignedDecodeBind3CharM; intros; eauto
     | eapply @AlignedDecodeBind4CharM; intros; eauto
     | eapply @AlignedDecodeBindEnum; intros; eauto
     | let H' := fresh in
@@ -432,6 +433,7 @@ Ltac decompose_aligned_encoder :=
 Ltac align_encoder_step :=
   first
     [ apply CorrectAlignedEncoderForFormatList
+    | apply CorrectAlignedEncoderForFormatVector
     | apply CorrectAlignedEncoderForFormatChar; eauto
     | apply CorrectAlignedEncoderForFormatNat
     | apply CorrectAlignedEncoderForFormatEnum

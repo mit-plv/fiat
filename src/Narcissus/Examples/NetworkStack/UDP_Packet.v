@@ -81,15 +81,6 @@ Section UDP_Decoder.
 (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
-Definition UDP_Packet_formatd_measure (udp_b : ByteString)
-  : nat :=
-  match (`(u, b') <- decode_unused_word' 16 udp_b;
-         `(u, b') <- decode_unused_word' 16 b';
-           decode_word' 16 b') with
-  | Some n => 8 * wordToNat (fst n)
-  | None => 0
-  end.
-
 (*Lemma UDP_Packet_Header_Len_OK
   : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
     (format_word (a.(SourcePort))

@@ -748,17 +748,19 @@ Proof.
   erewrite H0, H1; eauto; omega.
 Qed.
 
-Lemma length_ByteString_composeIf :
-  forall format1 format2 b (ctx ctx' : CacheFormat) n P,
-    computes_to (composeIf _ _ _ P format1 format2 ctx) (b, ctx')
-    -> (forall ctx b ctx', computes_to (format1 ctx) (b, ctx')
+Lemma length_ByteString_composeIf {S} :
+  forall format1 format2 b s (ctx ctx' : CacheFormat) n,
+    computes_to (composeIf format1 format2 s ctx) (b, ctx')
+    -> (forall (s : S) ctx b ctx', computes_to (format1 s ctx) (b, ctx')
                            -> length_ByteString b = n)
-    -> (forall ctx b ctx', computes_to (format2 ctx) (b, ctx')
+    -> (forall (s : S) ctx b ctx', computes_to (format2 s ctx) (b, ctx')
                            -> length_ByteString b = n)
     -> length_ByteString b = n.
 Proof.
-  unfold composeIf, Bind2; intros; computes_to_inv; injections.
-  destruct v; simpl in *; eauto.
+  unfold composeIf, Union_Format, Bind2; intros; computes_to_inv; injections.
+  rewrite unfold_computes in H; destruct_ex.
+  revert H H0 H1; pattern x; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl.
+  repeat apply IterateBoundedIndex.Build_prim_and; eauto.
 Qed.
 
 Transparent pow2.

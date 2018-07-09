@@ -271,6 +271,39 @@ Section AlignedDecoders.
     eapply FMapFormat.EquivFormat_Projection_Format; eauto.
   Qed.
 
+  Fixpoint AlignedEncodeVector' {sz} {S}
+           (S_format_align : forall numBytes, AlignedEncodeM (S := S) numBytes)
+           (numBytes : nat)
+           v
+           idx
+           (Ss : Vector.t S sz)
+           env :=
+    match Ss with
+    | Vector.nil => if NPeano.ltb idx (1 + numBytes) then @ReturnAlignedEncodeM _ (Vector.t S 0) _ v idx (Vector.nil _) env else None
+    | Vector.cons s _ Ss' => Ifopt (S_format_align numBytes v idx s env)
+        as a'
+             Then
+             AlignedEncodeVector' S_format_align numBytes (fst (fst a'))
+             (snd (fst a'))
+             Ss' (snd a')
+             Else None
+    end.
+
+  Definition AlignedEncodeVector {sz} {S}
+             (S_format_align : forall numBytes, AlignedEncodeM (S := S) numBytes)
+    : forall numBytes, AlignedEncodeM (S := Vector.t S sz) numBytes :=
+    AlignedEncodeVector' S_format_align.
+
+
+  Lemma CorrectAlignedEncoderForFormatVector {sz}
+        {S}
+    : forall (format_S : FormatM S ByteString)
+        (encode_S : forall numBytes : nat, AlignedEncodeM numBytes),
+      CorrectAlignedEncoder format_S encode_S ->
+      CorrectAlignedEncoder (Vector.format_Vector format_S)
+                            (AlignedEncodeVector encode_S (sz := sz)).
+  Admitted.
+
   Lemma CorrectAlignedEncoderForFormatNEnum
         m
         {len}
@@ -1582,6 +1615,25 @@ Section AlignedDecoders.
     rewrite CollapseWord; eauto.
   Qed.
 
+  Lemma AlignedDecodeBind3CharM:
+    forall (cache : Cache) (cacheAddNat : CacheAdd cache nat),
+      (forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m)) ->
+      forall (C : Type) (t : word 24 -> DecodeM (C * _) ByteString)
+             (t' : word 24 -> forall numBytes : nat, AlignedDecodeM C numBytes),
+        (forall b : word 24, DecodeMEquivAlignedDecodeM (t b) (t' b)) ->
+        DecodeMEquivAlignedDecodeM
+          (fun (v : ByteString) (cd : CacheDecode) => `(a, b0, cd') <-
+                                                       decode_word v cd;
+                                                        t a b0 cd')
+          (fun numBytes : nat =>
+             (b1 <- GetCurrentByte;
+                b2 <- GetCurrentByte;
+                b3 <- GetCurrentByte;
+                w <- return (Core.append_word b3 (Core.append_word b2 b1));
+                              t' w numBytes)%AlignedDecodeM).
+  Proof.
+  Admitted.
+
   Lemma AlignedDecodeBind4CharM:
     forall (cache : Cache) (cacheAddNat : CacheAdd cache nat),
       (forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m)) ->
@@ -1601,6 +1653,41 @@ Section AlignedDecoders.
                               t' w numBytes)%AlignedDecodeM).
   Proof.
   Admitted.
+
+    Lemma AlignedDecode_ifb_dep {A : Type}
+        (decode_T decode_E : DecodeM (A * ByteString) ByteString)
+        (cond : ByteString -> bool)
+        (cond' : forall sz, Vector.t (word 8) sz -> nat -> bool)
+        (aligned_decoder_T aligned_decoder_E : forall numBytes : nat, AlignedDecodeM A numBytes)
+        (cond'OK : forall sz (v : Vector.t _ sz), cond (build_aligned_ByteString v) = cond' _ v 0)
+        (cond'OK2 : forall sz v idx, cond' (S sz) v (S idx) = cond' _ (Vector.tl v) idx )
+    : DecodeMEquivAlignedDecodeM decode_T aligned_decoder_T
+      -> DecodeMEquivAlignedDecodeM decode_E aligned_decoder_E
+      -> DecodeMEquivAlignedDecodeM
+           (fun bs cd => if cond bs
+                         then decode_T bs cd
+                         else decode_E bs cd)
+           (fun sz v idx => if cond' sz v idx
+                            then aligned_decoder_T sz v idx
+                            else aligned_decoder_E sz v idx).
+  Proof.
+    split.
+    intros.
+    rewrite cond'OK2.
+    destruct (cond' numBytes_hd (Vector.tl v)) eqn: ? ;
+      try eapply H; try eapply H0; try reflexivity.
+    split; intros.
+    destruct (cond b).
+    eapply H; eauto.
+    eapply H0; eauto.
+    rewrite cond'OK.
+    simpl; destruct (cond' n v); simpl; split; intros.
+    eapply H; eauto.
+    eapply H; eauto.
+    eapply H0; eauto.
+    eapply H0; eauto.
+  Qed.
+
 
   Lemma AlignedDecode_CollapseWord' {A B}
     : forall (ResultT : Type) (sz sz' : nat)

@@ -7,6 +7,7 @@ Require Import
         Coq.Logic.Eqdep_dec
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
+        Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.BinLib.AlignedByteString.
@@ -624,6 +625,38 @@ Proof.
       eapply H6; eassumption.
     + edestruct H1 as [? [? [? ?] ] ].
       eapply H6; eassumption.
+Qed.
+
+Lemma CorrectAlignedEncoderEither_T
+      {S : Type}
+      {cache : Cache}
+      (format_T format_E : FormatM S ByteString)
+      (encode : forall sz, AlignedEncodeM sz)
+  : CorrectAlignedEncoder format_T encode
+    -> CorrectAlignedEncoder
+         (composeIf format_T format_E)
+         encode.
+Proof.
+  intros.
+  intros; eapply refine_CorrectAlignedEncoder; eauto.
+  unfold composeIf, Union_Format; intros; intros ? ?.
+  apply unfold_computes; eexists Fin.F1; simpl; eauto.
+Qed.
+
+Lemma CorrectAlignedEncoderEither_E
+      {S : Type}
+      {cache : Cache}
+      (format_T format_E : FormatM S ByteString)
+      (encode : forall sz, AlignedEncodeM sz)
+  : CorrectAlignedEncoder format_E encode
+    -> CorrectAlignedEncoder
+         (composeIf format_T format_E)
+         encode.
+Proof.
+  intros.
+  intros; eapply refine_CorrectAlignedEncoder; eauto.
+  unfold composeIf, Union_Format; intros; intros ? ?.
+  apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
 Qed.
 
 Definition SetByteAt (* Sets the bytes at the specified index and sets the current index

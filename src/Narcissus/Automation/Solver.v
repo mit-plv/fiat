@@ -670,22 +670,24 @@ Proof.
     rewrite mempty_right; destruct v; eauto.
 Qed.
 
-Ltac normalize_compose BitStringT :=
+  Ltac normalize_compose BitStringT :=
   (* Normalize formats by performing algebraic simplification. *)
   intros; eapply Specs.format_decode_correct_refineEquiv;
   unfold SequenceFormat.sequence_Format, Basics.compose;
   [intros ? ?; symmetry;
      repeat (first [ etransitivity; [apply refineEquiv_compose_compose with (monoid := BitStringT)| ]
-               | etransitivity; [apply refineEquiv_compose_Done with (monoid := BitStringT) | ]
-               | etransitivity; [apply refineEquiv_If_Then_Else_ThenC with (monoid := BitStringT) | ]
-               | apply refineEquiv_If_Then_Else_Proper
-               | match goal with
-                   |- refineEquiv _ (_ ?env) =>
-                   eapply refineEquiv_under_compose_map with (monoid := BitStringT)
-                                                             (ctx := env)
-                 end
-               | apply refineEquiv_under_compose with (monoid := BitStringT)
-               | eapply EquivFormat_Projection_Format_DoneC]; intros);
+                   | etransitivity; [apply refineEquiv_compose_Done with (monoid := BitStringT) | ]
+                   | eapply refineEquiv_ComposeIf; intros
+                   | etransitivity; [apply refineEquiv_If_Then_Else_ThenC with (monoid := BitStringT) | ]
+                   | apply refineEquiv_If_Then_Else_Proper
+                   | intros; match goal with
+                       |- refineEquiv _ (_ ?env) =>
+                       eapply refineEquiv_under_compose_map with (monoid := BitStringT)
+                                                                 (ctx := env);
+                       intros
+                     end
+                   | apply refineEquiv_under_compose with (monoid := BitStringT)
+                   | eapply EquivFormat_Projection_Format_DoneC]; intros);
      intros; higher_order_reflexivity
   | pose_string_ids ].
 
