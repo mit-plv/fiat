@@ -52,9 +52,9 @@ Definition MakeDecoder {A B} sz
   end.
 
 Definition MakeEncoder {A B} sz
-           (impl: A -> forall {sz}, Vector.t char sz -> option (Vector.t char sz * nat * B))
+           (impl: forall {sz}, Vector.t char sz -> A -> option (Vector.t char sz * nat * B))
            (pkt: A) (out: Vector.t char sz) : option (Vector.t char sz) :=
-  match impl pkt out with
+  match impl out pkt with
   | Some (out, _, _) => Some out
   | None => None
   end.
@@ -327,7 +327,7 @@ Require Import NArith.
 Compute
   match IPv4_decoder_impl bin_pkt with
   | Some (p, _, _) =>
-    match IPv4_encoder_impl p (AlignedByteString.initialize_Aligned_ByteString 20) with
+    match IPv4_encoder_impl (AlignedByteString.initialize_Aligned_ByteString 20) p with
     | Some (bytes, _, _) => Some (Vector.map (@wordToNat 8) bytes)
     | None => None
     end
