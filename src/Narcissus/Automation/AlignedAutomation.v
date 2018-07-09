@@ -27,7 +27,7 @@ Ltac align_decoders_step :=
     | eapply @AlignedDecodeBind2CharM; intros; eauto
     | eapply @AlignedDecodeBindCharM; intros; eauto
     | eapply @AlignedDecodeBind4CharM; intros; eauto
-    | eapply @AlignedDecodeBindEnumM; intros; eauto
+    | eapply @AlignedDecodeBindEnum; intros; eauto
     | let H' := fresh in
       pose proof (fun C D E => @AlignedDecodeBindEnumM _ _ C D E 2) as H';
       simpl in H'; eapply H'; eauto; intros

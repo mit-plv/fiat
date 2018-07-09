@@ -186,6 +186,9 @@ Definition IPv4_decoder_impl {sz} v :=
 Definition bin_pkt : Vector.t (word 8) _ :=
   Eval compute in Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;243;159;192;168;222;10;192;168;222;1;0;0;0;0].
 
+Definition bin_pkt' : Vector.t (word 8) _ :=
+  Eval compute in Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;0;0;192;168;222;10;192;168;222;1;0;0;0;0].
+
 (* An source version of a packet. *)
 Definition pkt :=
   {| TotalLength := WO~0~1~1~1~0~1~0~0~0~0~0~0~0~0~0~0;
@@ -218,6 +221,15 @@ Eval compute in
     Ifopt (IPv4_encoder_impl (initialize_Aligned_ByteString 100) pkt)
   as bs Then IPv4_decoder_impl (fst (fst bs))
         Else None.
+(* This is working now. *)
+Compute
+   match IPv4_decoder_impl bin_pkt with
+   | Some (p, _, _) => Some ((wordToN p.(SourceAddress)), wordToN p.(DestAddress))
+   | None => None
+   end.
+
+Eval compute in onesComplement (Vector.to_list bin_pkt').
+
 (* and it does! *)
 
 (* This should fail because the total length field is too short, *)
