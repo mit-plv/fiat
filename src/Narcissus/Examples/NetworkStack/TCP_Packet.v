@@ -142,6 +142,7 @@ Section TCPPacketDecoder.
    for the decoder automation. *)
 
 Opaque pow2.
+Arguments andb : simpl never.
 
 Arguments GetCurrentBytes : simpl never.
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
@@ -239,7 +240,6 @@ Proof.
   decode_step ltac:(idtac).
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)
-  Arguments andb : simpl never.
   cbv beta; optimize_decoder_impl.
   cbv beta.
   align_decoders_step.

@@ -50,9 +50,8 @@ Definition calculate_IPChecksum {S} {sz}
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
      (let checksum := InternetChecksum.Vector_checksum v in
-      (fun v idx s => SetByteAt (n := sz) 10 v 0 (split1 8 8 checksum) ) >>
-      (fun v idx s => SetByteAt (n := sz) 11 v 0 (split2 8 8 checksum))) v)%AlignedEncodeM.
-
+      (fun v idx s => SetByteAt (n := sz) 10 v 0 (wnot (split2 8 8 checksum)) ) >>
+      (fun v idx s => SetByteAt (n := sz) 11 v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
   Lemma CorrectAlignedEncoderForIPChecksumThenC
         {S}
@@ -107,12 +106,13 @@ Definition calculate_PseudoChecksum {S} {sz}
            (destAddr : Vector.t (word 8) 4)
            (udpLength : Vector.t (word 8) 2)
            (protoCode : word 8)
+           (idx : nat)
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
      (let checksum := InternetChecksum.Vector_checksum (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
                                                           (append v (append srcAddr (append destAddr udpLength))))) in
-      (fun v idx s => SetByteAt (n := sz) 10 v 0 (split1 8 8 checksum) ) >>
-      (fun v idx s => SetByteAt (n := sz) 11 v 0 (split2 8 8 checksum))) v)%AlignedEncodeM.
+      (fun v idx s => SetByteAt (n := sz) idx v 0 (wnot (split2 8 8 checksum)) ) >>
+      (fun v idx s => SetByteAt (n := sz) (1 + idx) v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
@@ -120,6 +120,7 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       (destAddr : Vector.t (word 8) 4)
       (udpLength : Vector.t (word 8) 2)
       (protoCode : word 8)
+      (idx : nat)
       (format_A format_B : FormatM S ByteString)
       (encode_A : forall sz, AlignedEncodeM sz)
       (encode_B : forall sz, AlignedEncodeM sz)
@@ -131,7 +132,7 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
                           (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
                           (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
                           encode_A sz >>
-                          calculate_PseudoChecksum srcAddr destAddr udpLength protoCode)% AlignedEncodeM.
+                          calculate_PseudoChecksum srcAddr destAddr udpLength protoCode idx)% AlignedEncodeM.
 Proof.
 Admitted.
 
