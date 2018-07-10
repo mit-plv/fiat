@@ -27,6 +27,9 @@ let throw_if_stale (fn: string) (arr: 'a storage_t) =
     failwith (Printf.sprintf "ArrayVector: Array version mismatch in '%s': %d != %d."
                 fn arr.version !(arr.latest_version))
 
+let length (arr: 'a storage_t) =
+  Array.length arr.data
+
 let hd (_: int) (arr: 'a storage_t) : 'a =
   throw_if_stale "hd" arr;
   Array.unsafe_get arr.data 0

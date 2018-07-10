@@ -36,8 +36,9 @@ let wones sz =
 let wmask sz w =
   Int64.logand (wones sz) w
 
+external unsafe_char_of_int : int -> char = "%identity"
 let to_char w =
-  char_of_int (Int64.to_int w)
+  unsafe_char_of_int (Int64.to_int w)
 
 let of_char w =
   Int64.of_int (int_of_char w)

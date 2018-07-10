@@ -199,8 +199,8 @@ Extract Inlined Constant NPeano.ltb => "(<)".
 Extract Inlined Constant NPeano.leb => "(<=)".
 
 (** * Inline a few functions *)
-Extraction Inline fst snd.
 Extraction Inline If_Opt_Then_Else.
+Extraction Inline fst snd Basics.compose.
 Extraction Inline BindAlignedDecodeM ReturnAlignedDecodeM ThrowAlignedDecodeM.
 Extraction Inline AppendAlignedEncodeM ReturnAlignedEncodeM ThrowAlignedEncodeM.
 (* Extraction Inline decode_nat decode_word decode_word'. *)
@@ -271,7 +271,7 @@ Extract Constant InternetChecksum.OneC_plus => "failwith ""Calling OneC_plus""".
 Extract Inductive Fin.t =>
 "ArrayVector.idx_t"
   ["ArrayVector.zero" "ArrayVector.succ"]
-  "ArrayVector.destruct".
+  "ArrayVector.destruct_idx".
 
 Extract Inlined Constant Fin.L => "(fun _ n p -> p)".
 Extract Inlined Constant Fin.R => "(fun _ n p -> n + p)".
@@ -279,7 +279,7 @@ Extract Inlined Constant Fin.R => "(fun _ n p -> n + p)".
 Extract Inductive Vector.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
-  "ArrayVector.destruct_idx".
+  "ArrayVector.destruct_storage".
 Extract Inductive VectorDef.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
@@ -345,6 +345,13 @@ Definition fiat_ipv4_encode_reference := Eval compute in fiat_ipv4_encode_test.
 
 (* Extraction "debug" test.  *)
 
+(* Definition pkt : Vector.t (word 8) _ := *)
+(*   Eval compute in Vector.map (@natToWord 8) [51; 51; 255; 0; 0; 69; 2; 80; 0; 0; 0; 1; 134; 221; 96; 0; 0; 0; 0; 32; 58; 255; 252; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 35; 255; 2; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 255; 0; 0; 69; 135; 0; 126; 159; 0; 0; 0; 0; 252; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 69; 1; 1; 2; 80; 0; 0; 0; 1]. *)
+
+(* Definition test := fiat_ethernet_decode pkt 86. *)
+
+(* Extraction "debug" test. *)
+
 Extraction "Fiat4Mirage"
            (* word_split_hd_test *)
            (* word_split_tl_test *)
@@ -355,10 +362,10 @@ Extraction "Fiat4Mirage"
            (* combine_test *)
            (* append_word_test *)
 
-           (* fiat_ipv4_decode_bench *)
+           fiat_ipv4_decode_bench
            (* fiat_ipv4_decode_test *)
            (* fiat_ipv4_decode_reference *)
-           (* fiat_ipv4_decode_bench *)
+           fiat_ipv4_encode_bench
            (* fiat_ipv4_encode_test *)
 
            fiat_ethernet_type_of_enum
