@@ -84,140 +84,110 @@ Definition MakeEncoder {A B} sz
 (*   Qed. *)
 (* End FormatWord. *)
 
-(* Section Ethernet. *)
-(*   Require Import EthernetHeader. *)
+Require Import Fiat.Narcissus.Examples.NetworkStack.EthernetHeader.
 
-(*   Inductive fiat_ethernet_type := ARP | IP | RARP. *)
+Section Ethernet.
+  Inductive fiat_ethernet_type := ARP | IP | RARP.
 
-(*   Definition fiat_ethernet_decode packet_length := MakeDecoder (fst (frame_decoder packet_length)). *)
+  Definition fiat_ethernet_type_of_enum (enum: EnumType ["ARP"; "IP"; "RARP"]) : fiat_ethernet_type :=
+    InjectEnum [ARP; IP; RARP] enum.
 
-(*   Definition List_of_vector {A n} (v: Vector.t A n) : list A := *)
-(*     Vector.fold_right List.cons v nil. *)
+  Definition fiat_ethernet_type_to_enum (type: fiat_ethernet_type) : EnumType ["ARP"; "IP"; "RARP"] :=
+    match type with
+    | ARP => ```"ARP"
+    | IP => ```"IP"
+    | RARP => ```"RARP"
+    end.
 
-(*   Definition fiat_ethernet_destruct_packet {A} *)
-(*              (f: forall (Destination : list char) *)
-(*                    (Source : list char) *)
-(*                    (type : fiat_ethernet_type), *)
-(*                  A) *)
-(*              (packet: EthernetHeader) := *)
-(*     f  (List_of_vector packet!"Destination") *)
-(*        (List_of_vector packet!"Source") *)
-(*        (InjectEnum [ARP; IP; RARP] packet!"Type"). *)
-(* End Ethernet. *)
+  Definition fiat_ethernet_encode {sz} :=
+    MakeEncoder sz (fun sz v pkt => @EthernetHeader_encoder_impl pkt sz v).
+  Definition fiat_ethernet_decode {sz} v packet_length :=
+    MakeDecoder sz (@Ethernet_decoder_impl packet_length) v.
+End Ethernet.
 
-(* Section ARPv4. *)
-(*   Require Import ARPPacket. *)
+Require Import Fiat.Narcissus.Examples.NetworkStack.ARPPacket.
 
-(*   Inductive fiat_arpv4_hardtype := Ethernet | IEEE802 | Chaos. *)
-(*   Inductive fiat_arpv4_prottype := IPv4 | IPv6. *)
-(*   Inductive fiat_arpv4_operation := Request | Reply | RARPRequest | RARPReply. *)
+Section ARPv4.
+  Inductive fiat_arpv4_hardtype := Ethernet | IEEE802 | Chaos.
+  Definition fiat_arpv4_hardtype_of_enum (enum: EnumType ["Ethernet"; "IEEE802"; "Chaos"]) :=
+    InjectEnum [Ethernet; IEEE802; Chaos] enum.
+  Definition fiat_arpv4_hardtype_to_enum (hardtype: fiat_arpv4_hardtype)
+    : EnumType ["Ethernet"; "IEEE802"; "Chaos"] :=
+    match hardtype with
+    | Ethernet => ```"Ethernet"
+    | IEEE802 => ```"IEEE802"
+    | Chaos => ```"Chaos"
+    end.
 
-(*   Definition fiat_arpv4_decode := MakeDecoder (fst ARP_Packet_decoder). *)
+  Inductive fiat_arpv4_prottype := IPv4 | IPv6.
+  Definition fiat_arpv4_prottype_of_enum (enum: EnumType ["IPv4"; "IPv6"]) :=
+    InjectEnum [IPv4; IPv6] enum.
+  Definition fiat_arpv4_prottype_to_enum (prottype: fiat_arpv4_prottype)
+    : EnumType ["IPv4"; "IPv6"] :=
+    match prottype with
+    | IPv4 => ```"IPv4"
+    | IPv6 => ```"IPv6"
+    end.
 
-(*   Definition fiat_arpv4_destruct_packet {A} *)
-(*              (f: forall (HardType : fiat_arpv4_hardtype) *)
-(*                    (ProtType : fiat_arpv4_prottype) *)
-(*                    (Operation : fiat_arpv4_operation) *)
-(*                    (SenderHardAddress : list char) *)
-(*                    (SenderProtAddress : list char) *)
-(*                    (TargetHardAddress : list char) *)
-(*                    (TargetProtAddress : list char), *)
-(*                  A) *)
-(*              (packet: ARPPacket) : A := *)
-(*     f (InjectEnum [Ethernet; IEEE802; Chaos] packet!"HardType") *)
-(*       (InjectEnum [IPv4; IPv6] packet!"ProtType") *)
-(*       (InjectEnum [Request; Reply; RARPRequest; RARPReply] packet!"Operation") *)
-(*       packet!"SenderHardAddress" *)
-(*       packet!"SenderProtAddress" *)
-(*       packet!"TargetHardAddress" *)
-(*       packet!"TargetProtAddress". *)
-(* End ARPv4. *)
+  Inductive fiat_arpv4_operation := Request | Reply | RARPRequest | RARPReply.
+  Definition fiat_arpv4_operation_of_enum (enum: EnumType ["Request"; "Reply"; "RARPRequest"; "RARPReply"]) :=
+    InjectEnum [Request; Reply; RARPRequest; RARPReply] enum.
+  Definition fiat_arpv4_operation_to_enum (operation: fiat_arpv4_operation)
+    : EnumType ["Request"; "Reply"; "RARPRequest"; "RARPReply"] :=
+    match operation with
+    | Request => ```"Request"
+    | Reply => ```"Reply"
+    | RARPRequest => ```"RARPRequest"
+    | RARPReply => ```"RARPReply"
+    end.
+
+  Definition fiat_arpv4_decode {sz} :=
+    MakeDecoder sz (@ARP_decoder_impl).
+  Definition fiat_arpv4_encode {sz} :=
+    MakeEncoder sz (@ARP_encoder_impl).
+End ARPv4.
+
+Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
 
 Section IPv4.
-  Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
-
-  Definition fiat_ipv4_decode {sz} := MakeDecoder sz (@IPv4_decoder_impl).
-
   Inductive fiat_ipv4_protocol :=
   | ICMP | TCP | UDP.
-
-  Definition fiat_ipv4_protocol_to_enum (proto: fiat_ipv4_protocol) : EnumType ["ICMP"; "TCP"; "UDP"] :=
+  Definition fiat_ipv4_protocol_of_enum (proto: EnumType ["ICMP"; "TCP"; "UDP"]) : fiat_ipv4_protocol :=
+    InjectEnum [ICMP; TCP; UDP] proto.
+  Definition fiat_ipv4_protocol_to_enum (proto: fiat_ipv4_protocol)
+    : EnumType ["ICMP"; "TCP"; "UDP"] :=
     match proto with
     | ICMP => ```"ICMP"
     | TCP => ```"TCP"
     | UDP => ```"UDP"
     end.
 
-  Definition fiat_ipv4_enum_to_protocol (proto: EnumType ["ICMP"; "TCP"; "UDP"]) : fiat_ipv4_protocol :=
-    InjectEnum [ICMP; TCP; UDP] proto.
-
-  Definition fiat_ipv4_encode {sz} := MakeEncoder sz (@IPv4_encoder_impl).
+  Definition fiat_ipv4_decode {sz} :=
+    MakeDecoder sz (@IPv4_decoder_impl).
+  Definition fiat_ipv4_encode {sz} :=
+    MakeEncoder sz (@IPv4_encoder_impl).
 End IPv4.
 
-(* Section TCP. *)
-(*   Require Import TCP_Packet. *)
+Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
+Section TCP.
+  Definition fiat_tcp_encode {sz} srcAddress dstAddress tcpLength :=
+    MakeEncoder sz (fun sz v pkt => @TCP_encoder_impl srcAddress dstAddress tcpLength pkt sz v).
+  Definition fiat_tcp_decode {sz} (srcAddress dstAddress: Vector.t (word 8) 4) tcpLength :=
+    MakeDecoder sz (@TCP_decoder_impl tcpLength).
+End TCP.
 
-(*   Definition fiat_tcp_decode srcAddress dstAddress tcpLength := *)
-(*     MakeDecoder (TCP_Packet_decoder_impl srcAddress dstAddress tcpLength). *)
-
-(*   Definition fiat_tcp_destruct_packet {A} *)
-(*              (f: forall (SourcePort : word 16) *)
-(*                    (DestPort : word 16) *)
-(*                    (SeqNumber : word 32) *)
-(*                    (AckNumber : word 32) *)
-(*                    (NS : bool) (* ECN-nonce concealment protection flag *) *)
-(*                    (CWR : bool) (* Congestion Window Reduced (CWR) flag *) *)
-(*                    (ECE : bool) (* ECN-Echo flag *) *)
-(*                    (ACK : bool) (* Acknowledgment field is significant flag *) *)
-(*                    (PSH : bool) (* Push function flag *) *)
-(*                    (RST : bool) (* Reset the connection flag *) *)
-(*                    (SYN : bool) (* Synchronize sequence numbers flag *) *)
-(*                    (FIN : bool) (* N srcAddress dstAddress udpLength o more data from sender flag*) *)
-(*                    (WindowSize : word 16) *)
-(*                    (UrgentPointer : option (word 16)) *)
-(*                    (Options : list (word 32)) *)
-(*                    (Payload : list char), *)
-(*                  A) *)
-(*              (packet: TCP_Packet) : A := *)
-(*     f packet!"SourcePort" *)
-(*       packet!"DestPort" *)
-(*       packet!"SeqNumber" *)
-(*       packet!"AckNumber" *)
-(*       packet!"NS" *)
-(*       packet!"CWR" *)
-(*       packet!"ECE" *)
-(*       packet!"ACK" *)
-(*       packet!"PSH" *)
-(*       packet!"RST" *)
-(*       packet!"SYN" *)
-(*       packet!"FIN" *)
-(*       packet!"WindowSize" *)
-(*       packet!"UrgentPointer" *)
-(*       packet!"Options" *)
-(*       packet!"Payload". *)
-(* End TCP. *)
-
-(* Section UDP. *)
-(*   Require Import UDP_Packet. *)
-
-(*   Definition fiat_udp_decode srcAddress dstAddress udpLength := *)
-(*     MakeDecoder (UDP_Packet_decoder_impl srcAddress dstAddress udpLength). *)
-
-(*   Definition fiat_udp_destruct_packet {A} *)
-(*              (f: forall (SourcePort : word 16) *)
-(*                    (DestPort : word 16) *)
-(*                    (Payload : list char), *)
-(*                  A) *)
-(*              (packet: UDP_Packet) : A := *)
-(*     f packet!"SourcePort" *)
-(*       packet!"DestPort" *)
-(*       packet!"Payload". *)
-(* End UDP. *)
+Require Import UDP_Packet.
+Section UDP.
+  Definition fiat_udp_encode {sz} v srcAddress dstAddress udpLength :=
+    MakeEncoder sz (fun sz v pkt => @UDP_encoder_impl srcAddress dstAddress udpLength pkt sz v) v.
+  Definition fiat_udp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) (udpLength: t (word 8) 2) :=
+    MakeDecoder sz (@UDP_decoder_impl) v.
+End UDP.
 
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
 
 (* Work around the fact that Decimal declares a type "int" *)
-Extract Inductive nat => "OcamlNativeInt.t" [ "0" "Pervasives.succ" ]
+Extract Inductive nat => "OCamlNativeInt.t" [ "0" "Pervasives.succ" ]
  "(fun fO fS n -> if n=0 then fO () else fS (n-1))".
 
 Extract Inductive prod => "(*)"  [ "(,)" ].
@@ -350,36 +320,45 @@ Definition fiat_ipv4_encode_reference := Eval compute in fiat_ipv4_encode_test.
 (*   let bs'' := set_nth' bs 10 (wone _) in *)
 (*   (bs', bs''). *)
 
+Print Assumptions EthernetHeader_decoder.
+
 Extraction "Fiat4Mirage"
-           (* fiat_ethernet_decode *)
-           (* fiat_ethernet_destruct_packet *)
-           (* fiat_arpv4_decode *)
-           (* fiat_arpv4_destruct_packet *)
+           (* word_split_hd_test *)
+           (* word_split_tl_test *)
+           (* split1_test *)
+           (* split2_test *)
+           (* alignword_split1'_test *)
+           (* alignword_split2'_test *)
+           (* combine_test *)
+           (* append_word_test *)
 
-           word_split_hd_test
-           word_split_tl_test
-           split1_test
-           split2_test
-           alignword_split1'_test
-           alignword_split2'_test
-           combine_test
-           append_word_test
+           (* fiat_ipv4_decode_bench *)
+           (* fiat_ipv4_decode_test *)
+           (* fiat_ipv4_decode_reference *)
+           (* fiat_ipv4_decode_bench *)
+           (* fiat_ipv4_encode_test *)
 
-           fiat_ipv4_decode
-           fiat_ipv4_decode_bench
-           fiat_ipv4_decode_test
-           fiat_ipv4_decode_reference
-           fiat_ipv4_encode
-           fiat_ipv4_decode_bench
-           fiat_ipv4_encode_test
-           fiat_ipv4_encode_reference
-           fiat_ipv4_enum_to_protocol
+           fiat_ethernet_type_of_enum
+           fiat_ethernet_type_to_enum
+           fiat_ethernet_encode
+           fiat_ethernet_decode
+           fiat_arpv4_hardtype_of_enum
+           fiat_arpv4_hardtype_to_enum
+           fiat_arpv4_prottype_of_enum
+           fiat_arpv4_prottype_to_enum
+           fiat_arpv4_operation_of_enum
+           fiat_arpv4_operation_to_enum
+           fiat_arpv4_decode
+           fiat_arpv4_encode
+           fiat_ipv4_protocol_of_enum
            fiat_ipv4_protocol_to_enum
-
-           (* fiat_ipv4_destruct_packet *)
-           (* fiat_tcp_decode *)
-           (* fiat_tcp_destruct_packet *)
-           (* fiat_udp_decode *)
-           (* fiat_udp_destruct_packet *)
-           (* encode_word'_recurse_on_size *)
+           fiat_ipv4_decode
+           fiat_ipv4_encode
+           fiat_tcp_encode
+           fiat_tcp_decode
+           fiat_udp_encode
+           fiat_udp_decode
 .
+
+UDP_Packet
+  
