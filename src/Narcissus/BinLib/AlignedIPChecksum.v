@@ -85,7 +85,7 @@ Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
          (format_A ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists x.
+  eexists (fun sz v => if IPChecksum_Valid_dec 160 (build_aligned_ByteString v) then x sz v  else x sz v).
   admit.
 Defined.
 
@@ -136,7 +136,8 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
                           encode_A sz >>
                           calculate_PseudoChecksum srcAddr destAddr udpLength protoCode idx)% AlignedEncodeM.
 Proof.
-Admitted.
+  admit.
+Defined.
 
 Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
       (srcAddr : Vector.t (word 8) 4)
@@ -157,6 +158,10 @@ Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
          (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists x.
+  eexists (fun sz v => if IPChecksum_Valid_dec (96 + sz * 8)
+                                               (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
+                                                                                       (append v (append srcAddr (append destAddr udpLength))))))
+
+                       then x sz v  else x sz v).
   admit.
 Defined.
