@@ -87,15 +87,16 @@ Definition MakeEncoder {A B} sz
 Require Import Fiat.Narcissus.Examples.NetworkStack.EthernetHeader.
 
 Section Ethernet.
-  Inductive fiat_ethernet_type := ARP | IP | RARP.
+  Inductive fiat_ethernet_type := ARP | IP | IPV6 | RARP.
 
-  Definition fiat_ethernet_type_of_enum (enum: EnumType ["ARP"; "IP"; "RARP"]) : fiat_ethernet_type :=
-    InjectEnum [ARP; IP; RARP] enum.
+  Definition fiat_ethernet_type_of_enum (enum: EnumType ["ARP"; "IP"; "IPV6"; "RARP"]) : fiat_ethernet_type :=
+    InjectEnum [ARP; IP; IPV6; RARP] enum.
 
-  Definition fiat_ethernet_type_to_enum (type: fiat_ethernet_type) : EnumType ["ARP"; "IP"; "RARP"] :=
+  Definition fiat_ethernet_type_to_enum (type: fiat_ethernet_type) : EnumType ["ARP"; "IP"; "IPV6"; "RARP"] :=
     match type with
     | ARP => ```"ARP"
     | IP => ```"IP"
+    | IPV6 => ```"IPV6"
     | RARP => ```"RARP"
     end.
 

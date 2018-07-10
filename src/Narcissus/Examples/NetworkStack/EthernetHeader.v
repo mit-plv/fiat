@@ -37,11 +37,12 @@ Section EthernetPacketDecoder.
   Record EthernetHeader :=
     {Destination : Vector.t (word 8) 6;
      Source : Vector.t (word 8) 6;
-     EthType : EnumType ["ARP"; "IP"; "RARP"]}.
+     EthType : EnumType ["ARP"; "IP"; "IPV6"; "RARP"]}.
 
-  Definition EtherTypeCodes : Vector.t (word 16) 3 :=
+  Definition EtherTypeCodes : Vector.t (word 16) 4 :=
     [WO~0~0~0~0~1~0~0~0~0~0~0~0~0~1~1~0;
      WO~0~0~0~0~1~0~0~0~0~0~0~0~0~0~0~0;
+     WO~1~0~0~0~0~1~1~0~1~1~0~1~1~1~0~1;
      WO~0~0~0~0~1~0~0~0~0~0~1~1~0~1~0~1
     ].
 
