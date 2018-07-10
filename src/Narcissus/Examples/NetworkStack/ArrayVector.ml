@@ -27,6 +27,14 @@ let throw_if_stale (fn: string) (arr: 'a storage_t) =
     failwith (Printf.sprintf "ArrayVector: Array version mismatch in '%s': %d != %d."
                 fn arr.version !(arr.latest_version))
 
+let hd (_: int) (arr: 'a storage_t) : 'a =
+  throw_if_stale "hd" arr;
+  Array.unsafe_get arr.data 0
+
+let tl (_: int) (arr: 'a storage_t) : 'a storage_t =
+  throw_if_stale "tl" arr;
+  of_array (Array.init (Array.length arr.data - 1) (fun i -> arr.data.(i + 1)))
+
 let index (_: int) (_: int) (x: 'a) (arr: 'a storage_t) : idx_t option =
   throw_if_stale "index" arr;
   let rec loop x arr i =
@@ -66,13 +74,14 @@ let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ (arr: 'a storage_t) (init: 'b) (p
       loop f arr acc pad len (offset  + 2)
   in loop f arr init pad (Array.length arr.data) 0
 
+let append _ _ (arr1: 'a storage_t) (arr2: 'a storage_t) : 'a storage_t =
+  throw_if_stale "append" arr1;
+  throw_if_stale "append" arr2;
+  of_array (Array.append arr1.data arr2.data)
+
 let cons ((hd, _, tl): ('a * 'b * 'a storage_t)) : 'a storage_t =
   throw_if_stale "cons" tl;
-  { version = 0;
-    latest_version = ref 0;
-    data = Array.append (Array.make 1 hd) tl.data }
+  of_array (Array.append (Array.make 1 hd) tl.data)
 
 let empty () : 'a storage_t =
-  { version = 0;
-    latest_version = ref 0;
-    data = Array.init 0 (fun _ -> failwith "never called") }
+  of_array (Array.init 0 (fun _ -> failwith "never called"))

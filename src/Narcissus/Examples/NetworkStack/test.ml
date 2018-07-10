@@ -8,7 +8,7 @@ Printexc.record_backtrace true;;
 #load "ArrayVector.cmo";;
 #load "Int64Word.cmo";;
 #load "OcamlNativeInt.cmo";;
-#use "Fiat4Mirage.ml";;
+#use "debug.ml";;
 
 (* open Core.Std;;
  * open Core_bench.Std;;

@@ -168,19 +168,22 @@ Section IPv4.
     MakeEncoder sz (@IPv4_encoder_impl).
 End IPv4.
 
+Definition splitLength (len: word 16) : Vector.t char 2 :=
+  [split1 8 8 len; split2 8 8 len].
+
 Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
 Section TCP.
-  Definition fiat_tcp_encode {sz} srcAddress dstAddress tcpLength :=
-    MakeEncoder sz (fun sz v pkt => @TCP_encoder_impl srcAddress dstAddress tcpLength pkt sz v).
-  Definition fiat_tcp_decode {sz} (srcAddress dstAddress: Vector.t (word 8) 4) tcpLength :=
-    MakeDecoder sz (@TCP_decoder_impl tcpLength).
+  Definition fiat_tcp_encode {sz} v srcAddress dstAddress tcpLength :=
+    MakeEncoder sz (fun sz v pkt => @TCP_encoder_impl srcAddress dstAddress (splitLength tcpLength) pkt sz v) v.
+  Definition fiat_tcp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) tcpLength :=
+    MakeDecoder sz (@TCP_decoder_impl (splitLength tcpLength)) v.
 End TCP.
 
 Require Import UDP_Packet.
 Section UDP.
   Definition fiat_udp_encode {sz} v srcAddress dstAddress udpLength :=
-    MakeEncoder sz (fun sz v pkt => @UDP_encoder_impl srcAddress dstAddress udpLength pkt sz v) v.
-  Definition fiat_udp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) (udpLength: t (word 8) 2) :=
+    MakeEncoder sz (fun sz v pkt => @UDP_encoder_impl srcAddress dstAddress (splitLength udpLength) pkt sz v) v.
+  Definition fiat_udp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) (udpLength: word 16) :=
     MakeDecoder sz (@UDP_decoder_impl) v.
 End UDP.
 
@@ -281,6 +284,12 @@ Extract Inductive VectorDef.t =>
   ["ArrayVector.empty ()" "ArrayVector.cons"]
   "ArrayVector.destruct_storage".
 
+Extract Inlined Constant Vector.hd => "ArrayVector.hd".
+Extract Inlined Constant VectorDef.hd => "ArrayVector.hd".
+Extract Inlined Constant Vector.tl => "ArrayVector.tl".
+Extract Inlined Constant VectorDef.tl => "ArrayVector.tl".
+Extract Inlined Constant Vector.append => "ArrayVector.append".
+Extract Inlined Constant VectorDef.append => "ArrayVector.append".
 Extract Inlined Constant Vector.nth => "ArrayVector.nth".
 Extract Inlined Constant VectorDef.nth => "ArrayVector.nth".
 Extract Inlined Constant nth_opt => "ArrayVector.nth_opt".
@@ -320,7 +329,20 @@ Definition fiat_ipv4_encode_reference := Eval compute in fiat_ipv4_encode_test.
 (*   let bs'' := set_nth' bs 10 (wone _) in *)
 (*   (bs', bs''). *)
 
-Print Assumptions EthernetHeader_decoder.
+(* Definition src : Vector.t (word 8) _ := *)
+(*   Eval compute in Vector.map (@natToWord 8) [10; 1; 168; 0]. *)
+
+(* Definition dst : Vector.t (word 8) _ := *)
+(*   Eval compute in Vector.map (@natToWord 8) [10; 1; 168; 0]. *)
+
+(* Definition pkt : Vector.t (word 8) _ := *)
+(*   Eval compute in Vector.map (@natToWord 8) [65; 155; 0; 7; 27; 205; 13; 135; 0; 0; 0; 0; 112; 2; 22; 208; 125; 0; 0; 0; 2; 4; 5; 180; 3; 3; 2; 0]. *)
+
+(* Definition len : word 16 := natToWord 16 28. *)
+
+(* Compute (fiat_tcp_decode pkt src dst len). *)
+
+(* Extraction "debug" test.  *)
 
 Extraction "Fiat4Mirage"
            (* word_split_hd_test *)
@@ -359,6 +381,3 @@ Extraction "Fiat4Mirage"
            fiat_udp_encode
            fiat_udp_decode
 .
-
-UDP_Packet
-  
