@@ -271,29 +271,31 @@ Section AlignedDecoders.
     eapply FMapFormat.EquivFormat_Projection_Format; eauto.
   Qed.
 
-  Fixpoint AlignedEncodeVector' {sz} {S}
+
+
+  Fixpoint AlignedEncodeVector' n n' {sz} {S}
            (S_format_align : forall numBytes, AlignedEncodeM (S := S) numBytes)
            (numBytes : nat)
            v
            idx
            (Ss : Vector.t S sz)
            env :=
-    match Ss with
-    | Vector.nil => if NPeano.ltb idx (1 + numBytes) then @ReturnAlignedEncodeM _ (Vector.t S 0) _ v idx (Vector.nil _) env else None
-    | Vector.cons s _ Ss' => Ifopt (S_format_align numBytes v idx s env)
+    match n with
+    | 0 => if NPeano.ltb idx (1 + numBytes) then @ReturnAlignedEncodeM _ (Vector.t S 0) _ v idx (Vector.nil _) env else None
+    | S n'' =>  Ifopt (nth_opt Ss n') as s Then (Ifopt (S_format_align numBytes v idx s env)
         as a'
              Then
-             AlignedEncodeVector' S_format_align numBytes (fst (fst a'))
+             AlignedEncodeVector' n'' (1 + n') S_format_align numBytes (fst (fst a'))
              (snd (fst a'))
-             Ss' (snd a')
-             Else None
+             Ss (snd a')
+             Else None)
+                                             Else None
     end.
 
   Definition AlignedEncodeVector {sz} {S}
              (S_format_align : forall numBytes, AlignedEncodeM (S := S) numBytes)
     : forall numBytes, AlignedEncodeM (S := Vector.t S sz) numBytes :=
-    AlignedEncodeVector' S_format_align.
-
+    AlignedEncodeVector' sz 0 S_format_align .
 
   Lemma CorrectAlignedEncoderForFormatVector {sz}
         {S}
