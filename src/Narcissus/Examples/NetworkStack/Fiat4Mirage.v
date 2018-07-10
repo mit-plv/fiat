@@ -108,11 +108,11 @@ End Ethernet.
 
 Require Import Fiat.Narcissus.Examples.NetworkStack.ARPPacket.
 
-Section ARPv4.
-  Inductive fiat_arpv4_hardtype := Ethernet | IEEE802 | Chaos.
-  Definition fiat_arpv4_hardtype_of_enum (enum: EnumType ["Ethernet"; "IEEE802"; "Chaos"]) :=
+Section ARP.
+  Inductive fiat_arp_hardtype := Ethernet | IEEE802 | Chaos.
+  Definition fiat_arp_hardtype_of_enum (enum: EnumType ["Ethernet"; "IEEE802"; "Chaos"]) :=
     InjectEnum [Ethernet; IEEE802; Chaos] enum.
-  Definition fiat_arpv4_hardtype_to_enum (hardtype: fiat_arpv4_hardtype)
+  Definition fiat_arp_hardtype_to_enum (hardtype: fiat_arp_hardtype)
     : EnumType ["Ethernet"; "IEEE802"; "Chaos"] :=
     match hardtype with
     | Ethernet => ```"Ethernet"
@@ -120,20 +120,20 @@ Section ARPv4.
     | Chaos => ```"Chaos"
     end.
 
-  Inductive fiat_arpv4_prottype := IPv4 | IPv6.
-  Definition fiat_arpv4_prottype_of_enum (enum: EnumType ["IPv4"; "IPv6"]) :=
+  Inductive fiat_arp_prottype := IPv4 | IPv6.
+  Definition fiat_arp_prottype_of_enum (enum: EnumType ["IPv4"; "IPv6"]) :=
     InjectEnum [IPv4; IPv6] enum.
-  Definition fiat_arpv4_prottype_to_enum (prottype: fiat_arpv4_prottype)
+  Definition fiat_arp_prottype_to_enum (prottype: fiat_arp_prottype)
     : EnumType ["IPv4"; "IPv6"] :=
     match prottype with
     | IPv4 => ```"IPv4"
     | IPv6 => ```"IPv6"
     end.
 
-  Inductive fiat_arpv4_operation := Request | Reply | RARPRequest | RARPReply.
-  Definition fiat_arpv4_operation_of_enum (enum: EnumType ["Request"; "Reply"; "RARPRequest"; "RARPReply"]) :=
+  Inductive fiat_arp_operation := Request | Reply | RARPRequest | RARPReply.
+  Definition fiat_arp_operation_of_enum (enum: EnumType ["Request"; "Reply"; "RARPRequest"; "RARPReply"]) :=
     InjectEnum [Request; Reply; RARPRequest; RARPReply] enum.
-  Definition fiat_arpv4_operation_to_enum (operation: fiat_arpv4_operation)
+  Definition fiat_arp_operation_to_enum (operation: fiat_arp_operation)
     : EnumType ["Request"; "Reply"; "RARPRequest"; "RARPReply"] :=
     match operation with
     | Request => ```"Request"
@@ -142,11 +142,11 @@ Section ARPv4.
     | RARPReply => ```"RARPReply"
     end.
 
-  Definition fiat_arpv4_decode {sz} :=
+  Definition fiat_arp_decode {sz} :=
     MakeDecoder sz (@ARP_decoder_impl).
-  Definition fiat_arpv4_encode {sz} :=
+  Definition fiat_arp_encode {sz} :=
     MakeEncoder sz (@ARP_encoder_impl).
-End ARPv4.
+End ARP.
 
 Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
 
@@ -365,14 +365,14 @@ Extraction "Fiat4Mirage"
            fiat_ethernet_type_to_enum
            fiat_ethernet_encode
            fiat_ethernet_decode
-           fiat_arpv4_hardtype_of_enum
-           fiat_arpv4_hardtype_to_enum
-           fiat_arpv4_prottype_of_enum
-           fiat_arpv4_prottype_to_enum
-           fiat_arpv4_operation_of_enum
-           fiat_arpv4_operation_to_enum
-           fiat_arpv4_decode
-           fiat_arpv4_encode
+           fiat_arp_hardtype_of_enum
+           fiat_arp_hardtype_to_enum
+           fiat_arp_prottype_of_enum
+           fiat_arp_prottype_to_enum
+           fiat_arp_operation_of_enum
+           fiat_arp_operation_to_enum
+           fiat_arp_decode
+           fiat_arp_encode
            fiat_ipv4_protocol_of_enum
            fiat_ipv4_protocol_to_enum
            fiat_ipv4_decode
