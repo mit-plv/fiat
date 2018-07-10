@@ -177,7 +177,7 @@ Section TCP.
   Definition fiat_tcp_encode {sz} v srcAddress dstAddress tcpLength :=
     MakeEncoder sz (fun sz v pkt => @TCP_encoder_impl srcAddress dstAddress (splitLength tcpLength) pkt sz v) v.
   Definition fiat_tcp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) tcpLength :=
-    MakeDecoder sz (@TCP_decoder_impl (splitLength tcpLength)) v.
+    MakeDecoder sz (@TCP_decoder_impl srcAddress dstAddress (splitLength tcpLength)) v.
 End TCP.
 
 Require Import UDP_Packet.
@@ -185,7 +185,7 @@ Section UDP.
   Definition fiat_udp_encode {sz} v srcAddress dstAddress udpLength :=
     MakeEncoder sz (fun sz v pkt => @UDP_encoder_impl srcAddress dstAddress (splitLength udpLength) pkt sz v) v.
   Definition fiat_udp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) (udpLength: word 16) :=
-    MakeDecoder sz (@UDP_decoder_impl) v.
+    MakeDecoder sz (@UDP_decoder_impl srcAddress dstAddress (splitLength udpLength)) v.
 End UDP.
 
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
