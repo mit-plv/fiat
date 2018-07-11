@@ -641,6 +641,7 @@ Fixpoint Vector_checksum {sz} (bytes :Vector.t (word 8) sz) : W16 :=
   | Vector.cons _ x _ (Vector.cons _ y _ t) => add_bytes_into_checksum x y (Vector_checksum t)
   end.
 
+
 Lemma Vector_checksum_eq_checksum'
   : forall (sz' sz : nat)
            (sz_lt : le sz sz')
@@ -861,7 +862,7 @@ Proof.
                rewrite wordToN_combine in Heqn;
                pose proof (wordToN_bound w');
                simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
-           end. 
+           end.
   (* 8.4 script *)
      (* destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with

@@ -186,3 +186,29 @@ Definition UDP_decoder_impl {sz} v :=
 End UDP_Decoder.
 
 Print UDP_decoder_impl.
+
+(*Definition udp_packet :=
+ {| SourcePort := natToWord 16 1; DestPort := natToWord 16 2;
+    Payload := List.map (natToWord 8) [7; 8; 7; 8] |}.
+
+Definition w0 := wzero 8.
+Definition len := natToWord 16 (8 + List.length udp_packet.(Payload)).
+Definition localhost := Vector.map (natToWord 8) [127; 0; 0; 1].
+Definition bs := AlignedByteString.initialize_Aligned_ByteString 12.
+Compute (UDP_encoder_impl localhost localhost [split1 8 8 len; split2 8 8 len] udp_packet bs). *)
+
+(*    = Some
+        (WO~0~0~0~0~0~0~0~0
+         :: WO~0~0~0~0~0~0~0~1
+            :: WO~0~0~0~0~0~0~0~0
+               :: WO~0~0~0~0~0~0~1~0
+                  :: WO~0~0~0~0~0~0~0~0
+                     :: WO~0~0~0~0~1~1~0~0
+                        :: WO~0~0~0~0~0~0~0~0
+                           :: WO~0~0~0~0~0~0~0~0
+                              :: WO~0~0~0~0~0~1~1~1
+                                 :: WO~0~0~0~0~1~0~0~0
+                                    :: WO~0~0~0~0~0~1~1~1
+                                       :: WO~0~0~0~0~1~0~0~0
+                                          :: WO~1~1~1~0~1~1~1~0 :: WO~0~0~0~0~0~0~0~0 :: [WO~1~1~0~0~0~1~0~1], 15,
+        ()) *)

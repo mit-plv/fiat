@@ -43,6 +43,17 @@ Definition IPChecksum (b b' : ByteString) : ByteString :=
           (encode_word (wnot (onesComplement
                                 (ByteString2ListOfChar (bin_measure (mappend b b')) (BoundedByteStringToByteString(mappend b b')))))).
 
+Fixpoint Vector_checksum_bound n {sz} (bytes :Vector.t (word 8) sz) : InternetChecksum.W16 :=
+  match n, bytes with
+  | 0, _ => wzero _
+  | S 0, Vector.nil => InternetChecksum.add_bytes_into_checksum (wzero _) (wzero _) (wzero _)
+  | S 0, Vector.cons x _ _ => InternetChecksum.add_bytes_into_checksum x (wzero _) (wzero _)
+  | S (S n'), Vector.cons x _ Vector.nil => InternetChecksum.add_bytes_into_checksum x (wzero _) (Vector_checksum_bound n' (Vector.nil _))
+  | S (S n'), Vector.nil => InternetChecksum.add_bytes_into_checksum (wzero _) (wzero _)
+                                                                     (Vector_checksum_bound n' (Vector.nil _))
+  | S (S n'), Vector.cons x _ (Vector.cons y _ t) => InternetChecksum.add_bytes_into_checksum x y (Vector_checksum_bound n' t)
+  end.
+
 Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
   : {IPChecksum_Valid' n b} + {~IPChecksum_Valid' n b} := weq _ _.
 
@@ -85,7 +96,7 @@ Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
          (format_A ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v => if IPChecksum_Valid_dec 160 (build_aligned_ByteString v) then x sz v  else ThrowAlignedDecodeM v).
+  eexists (fun sz v => if weq (Vector_checksum_bound 20 v) (wones 16) then x sz v  else ThrowAlignedDecodeM v).
   admit.
 Defined.
 
@@ -158,10 +169,10 @@ Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
          (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v => if IPChecksum_Valid_dec (96 + sz * 8)
-                                               (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
-                                                                                       (append v (append srcAddr (append destAddr udpLength))))))
-
+  eexists (fun sz v => if weq (Vector_checksum_bound (96 + sz * 8)
+                                                     (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
+                                                                      (append v (append srcAddr (append destAddr udpLength)))))) (wones 16)
+                                                     
                        then x sz v  else ThrowAlignedDecodeM v).
   admit.
 Defined.
