@@ -719,11 +719,13 @@ Proof.
   - etransitivity; eauto.
 Qed.
 
-Fixpoint Vector_fold_left_pair {A B} (f: A -> A -> B -> B) {sz: nat} (v: Vector.t A sz) (acc: B) (pad: A) : B :=
-  match v with
-  | Vector.nil _ => acc
-  | Vector.cons _ x _ (Vector.nil _) => f x pad acc
-  | Vector.cons _ x _ (Vector.cons _ y _ tl) => Vector_fold_left_pair f tl (f x y acc) pad
+Fixpoint Vector_fold_left_pair {A B} (f: A -> A -> B -> B) {sz: nat} n (v: Vector.t A sz) (acc: B) (pad: A) : B :=
+  match n, v with
+  | 0%nat, _ => acc
+  | _, Vector.nil _ => acc
+  | 1%nat, Vector.cons _ x _ _ => f x pad acc
+  | _, Vector.cons _ x _ (Vector.nil _) => f x pad acc
+  | S (S n'), Vector.cons _ x _ (Vector.cons _ y _ tl) => Vector_fold_left_pair f n' tl (f x y acc) pad
   end.
 
 Definition checksum'' byte_pairs acc : W16 :=
@@ -738,11 +740,11 @@ Proof.
 Qed.
 
 Definition Vector_checksum' {sz} (bytes : Vector.t (word 8) sz) : W16 :=
-  Vector_fold_left_pair add_bytes_into_checksum bytes (wzero _) (wzero _).
+  Vector_fold_left_pair add_bytes_into_checksum sz bytes (wzero _) (wzero _).
 
 Lemma Vector_checksum'_checksum'' :
   forall {sz} (bytes: Vector.t (word 8) sz) acc,
-    Vector_fold_left_pair add_bytes_into_checksum bytes acc (wzero _) =
+    Vector_fold_left_pair add_bytes_into_checksum sz bytes acc (wzero _) =
     checksum'' (make_pairs (Vector.to_list bytes) (wzero _)) acc.
 Proof.
   fix IH 2.
