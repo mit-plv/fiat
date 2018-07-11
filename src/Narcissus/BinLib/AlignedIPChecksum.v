@@ -106,13 +106,13 @@ Definition calculate_PseudoChecksum {S} {sz}
            (destAddr : Vector.t (word 8) 4)
            (udpLength : Vector.t (word 8) 2)
            (protoCode : word 8)
-           (idx : nat)
+           (idx' : nat)
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
      (let checksum := InternetChecksum.Vector_checksum (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
                                                           (append v (append srcAddr (append destAddr udpLength))))) in
-      (fun v idx s => SetByteAt (n := sz) idx v 0 (wnot (split2 8 8 checksum)) ) >>
-      (fun v idx s => SetByteAt (n := sz) (1 + idx) v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
+      (fun v idx s => SetByteAt (n := sz) idx' v 0 (wnot (split2 8 8 checksum)) ) >>
+      (fun v idx s => SetByteAt (n := sz) (1 + idx') v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
@@ -134,7 +134,7 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
                           (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
                           (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
                           encode_A sz >>
-                          calculate_PseudoChecksum srcAddr destAddr udpLength protoCode idx)% AlignedEncodeM.
+                          calculate_PseudoChecksum srcAddr destAddr udpLength protoCode (NPeano.div idx 8))% AlignedEncodeM.
 Proof.
   admit.
 Defined.
