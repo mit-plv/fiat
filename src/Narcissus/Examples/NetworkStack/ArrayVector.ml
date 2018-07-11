@@ -82,9 +82,13 @@ let append _ _ (arr1: 'a storage_t) (arr2: 'a storage_t) : 'a storage_t =
   throw_if_stale "append" arr2;
   of_array (Array.append arr1.data arr2.data)
 
+let to_list _ (arr: 'a storage_t) =
+  throw_if_stale "to_list" arr;
+  Array.to_list arr.data
+
 let cons ((hd, _, tl): ('a * 'b * 'a storage_t)) : 'a storage_t =
   throw_if_stale "cons" tl;
   of_array (Array.append (Array.make 1 hd) tl.data)
 
 let empty () : 'a storage_t =
-  of_array (Array.init 0 (fun _ -> failwith "never called"))
+  of_array [| |]

@@ -289,6 +289,8 @@ Extract Inlined Constant Vector.hd => "ArrayVector.hd".
 Extract Inlined Constant VectorDef.hd => "ArrayVector.hd".
 Extract Inlined Constant Vector.tl => "ArrayVector.tl".
 Extract Inlined Constant VectorDef.tl => "ArrayVector.tl".
+Extract Inlined Constant Vector.to_list => "ArrayVector.to_list".
+Extract Inlined Constant VectorDef.to_list => "ArrayVector.to_list".
 Extract Inlined Constant Vector.append => "ArrayVector.append".
 Extract Inlined Constant VectorDef.append => "ArrayVector.append".
 Extract Inlined Constant Vector.nth => "ArrayVector.nth".
@@ -316,13 +318,14 @@ Compute
 
 Definition fiat_ipv4_decode_bench (_: unit) :=
   fiat_ipv4_decode bin_pkt.
-Definition fiat_ipv4_decode_test := fiat_ipv4_decode_bench ().
-Definition fiat_ipv4_decode_reference := Eval compute in fiat_ipv4_decode_test.
-
 Definition fiat_ipv4_encode_bench (_: unit) :=
-  fiat_ipv4_encode pkt (AlignedByteString.initialize_Aligned_ByteString 20).
-Definition fiat_ipv4_encode_test := fiat_ipv4_encode_bench ().
-Definition fiat_ipv4_encode_reference := Eval compute in fiat_ipv4_encode_test.
+  fiat_ipv4_encode IPv4Header.pkt (AlignedByteString.initialize_Aligned_ByteString 20).
+
+(* Definition fiat_ipv4_decode_test := fiat_ipv4_decode_bench (). *)
+(* Definition fiat_ipv4_decode_reference := Eval compute in fiat_ipv4_decode_test. *)
+
+(* Definition fiat_ipv4_encode_test := fiat_ipv4_encode_bench (). *)
+(* Definition fiat_ipv4_encode_reference := Eval compute in fiat_ipv4_encode_test. *)
 
 (* Definition should_fail := *)
 (*   let bs := (AlignedByteString.initialize_Aligned_ByteString 20) in *)
