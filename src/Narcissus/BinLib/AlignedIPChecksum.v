@@ -85,7 +85,7 @@ Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
          (format_A ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v => if IPChecksum_Valid_dec 160 (build_aligned_ByteString v) then x sz v  else x sz v).
+  eexists (fun sz v => if IPChecksum_Valid_dec 160 (build_aligned_ByteString v) then x sz v  else ThrowAlignedDecodeM v).
   admit.
 Defined.
 
@@ -162,6 +162,6 @@ Proof.
                                                (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
                                                                                        (append v (append srcAddr (append destAddr udpLength))))))
 
-                       then x sz v  else x sz v).
+                       then x sz v  else ThrowAlignedDecodeM v).
   admit.
 Defined.
