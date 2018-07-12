@@ -59,31 +59,6 @@ Definition MakeEncoder {A B} sz
   | None => None
   end.
 
-(* Section FormatWord. *)
-(*   Context {B : Type}. *)
-(*   Context {cache : Cache}. *)
-(*   Context {cacheAddNat : CacheAdd cache nat}. *)
-(*   Context {monoid : Monoid B}. *)
-(*   Context {monoidUnit : QueueMonoidOpt monoid bool}. *)
-
-(*   (* Extracting words as Int64 prevents us from recursing on them directly *) *)
-
-(*   Fixpoint encode_word'_recurse_on_size (sz : nat) (w : word sz) (b' : B) {struct sz} : B. *)
-(*   Proof. *)
-(*     destruct sz. *)
-(*     - apply b'. *)
-(*     - apply (enqueue_opt (whd w) (encode_word'_recurse_on_size sz (wtl w) b')). *)
-(*   Defined. *)
-
-(*   Lemma format'_on_size_correct : *)
-(*     forall sz w b', encode_word' sz w b' = encode_word'_recurse_on_size sz w b'. *)
-(*   Proof. *)
-(*     induction sz; dependent destruction w; intros; simpl. *)
-(*     - reflexivity. *)
-(*     - rewrite IHsz; reflexivity. *)
-(*   Qed. *)
-(* End FormatWord. *)
-
 Require Import Fiat.Narcissus.Examples.NetworkStack.EthernetHeader.
 
 Section Ethernet.
@@ -169,23 +144,20 @@ Section IPv4.
     MakeEncoder sz (@IPv4_encoder_impl).
 End IPv4.
 
-Definition splitLength (len: word 16) : Vector.t char 2 :=
-  [split1 8 8 len; split2 8 8 len].
-
 Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
 Section TCP.
   Definition fiat_tcp_encode {sz} v srcAddress dstAddress tcpLength :=
-    MakeEncoder sz (fun sz v pkt => @TCP_encoder_impl srcAddress dstAddress (splitLength tcpLength) pkt sz v) v.
+    MakeEncoder sz (fun sz v pkt => @TCP_encoder_impl srcAddress dstAddress tcpLength pkt sz v) v.
   Definition fiat_tcp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) tcpLength :=
-    MakeDecoder sz (@TCP_decoder_impl srcAddress dstAddress (splitLength tcpLength)) v.
+    MakeDecoder sz (@TCP_decoder_impl srcAddress dstAddress tcpLength) v.
 End TCP.
 
 Require Import UDP_Packet.
 Section UDP.
   Definition fiat_udp_encode {sz} v srcAddress dstAddress udpLength :=
-    MakeEncoder sz (fun sz v pkt => @UDP_encoder_impl srcAddress dstAddress (splitLength udpLength) pkt sz v) v.
+    MakeEncoder sz (fun sz v pkt => @UDP_encoder_impl srcAddress dstAddress udpLength pkt sz v) v.
   Definition fiat_udp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) (udpLength: word 16) :=
-    MakeDecoder sz (@UDP_decoder_impl srcAddress dstAddress (splitLength udpLength)) v.
+    MakeDecoder sz (@UDP_decoder_impl srcAddress dstAddress udpLength) v.
 End UDP.
 
 Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
@@ -215,6 +187,7 @@ Extract Inductive Word.word =>
 
 Extract Inlined Constant whd => "Int64Word.whd".
 Extract Inlined Constant wtl => "Int64Word.wtl".
+Extract Inlined Constant zext => "Int64Word.zext".
 Extract Inlined Constant wplus => "Int64Word.wplus".
 Extract Inlined Constant wmult => "Int64Word.wmult".
 Extract Inlined Constant wminus => "Int64Word.wminus".
@@ -251,20 +224,8 @@ Definition split2_test := wordToNat (split2 3 2 (natToWord 5 30)).
 Definition combine_test := wordToNat (combine (natToWord 5 30) (natToWord 7 14)).
 Definition append_word_test := wordToNat (append_word (@natToWord 8 5) (@natToWord 12 126)).
 
-(** * Don't recurse on int64 *)
-Extract Constant encode_word' => "encode_word'_recurse_on_size".
-
 (** * Special case of internet checksum *)
-Extract Constant InternetChecksum.add_bytes_into_checksum =>
-"(fun b_hi b_lo checksum ->
-    let oneC_plus w w' =
-      let sum = Int64.add w w' in
-      let mask = Int64.of_int 65535 in
-      (Int64.add (Int64.logand sum mask)
-                 (Int64.shift_right_logical sum 16))
-    in oneC_plus (Int64.logor (Int64.shift_left b_hi 8) b_lo) checksum)".
-
-Extract Constant InternetChecksum.OneC_plus => "failwith ""Calling OneC_plus""".
+Extract Constant InternetChecksum.OneC_plus => "Int64Word.onec_plus".
 
 (** Efficient bytestrings *)
 
@@ -392,3 +353,54 @@ Extraction "Fiat4Mirage"
            fiat_udp_encode
            fiat_udp_decode
 .
+
+Definition payload := Vector.to_list (Vector.map (natToWord 8) [0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0]).
+
+Definition out := Vector.map (natToWord 8) [0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0].
+
+Compute (fiat_udp_encode
+           {| SourcePort := natToWord _ 1;
+              DestPort := natToWord _ 2;
+              Payload := payload |}
+           (Vector.map (natToWord 8) [127; 0; 0; 1])
+           (Vector.map (natToWord 8) [127; 0; 0; 1])
+           (natToWord 16 108)
+           out).
+
+(* Definition http_request_tcp_decode_input := *)
+(*   Vector.map (natToWord 8) [151; 156; 0; 80; 35; 228; 55; 62; 203; 6; 21; 82; 128; 24; 0; 229; 174; 223; 0; 0; 1; 1; 8; 10; 43; 241; 57; 249; 5; 65; 240; 70; 71; 69; 84; 32; 47; 32; 72; 84; 84; 80; 47; 49; 46; 49; 13; 10; 72; 111; 115; 116; 58; 32; 101; 120; 97; 109; 112; 108; 101; 46; 99; 111; 109; 13; 10; 85; 115; 101; 114; 45; 65; 103; 101; 110; 116; 58; 32; 99; 117; 114; 108; 47; 55; 46; 52; 55; 46; 48; 13; 10; 65; 99; 99; 101; 112; 116; 58; 32; 42; 47; 42; 13; 10; 13; 10]. *)
+
+(* Definition srcAddr := (Vector.map (natToWord 8) [192; 168; 1; 109]). *)
+(* Definition destAddr := (Vector.map (natToWord 8) [93; 184; 216; 34]). *)
+
+(* Compute (@TCP_decoder_impl srcAddr destAddr (natToWord 16 107) _ http_request_tcp_decode_input). *)
+
+(* Definition simple_udp : Vector.t (word 8) _ := *)
+(*   Eval compute in Vector.map (@natToWord 8) [134; 62; 0; 53; 0; 8; 245; 171]. *)
+
+(* Definition srcAddr := Vector.map (@natToWord 8) [192;168;1;109]. *)
+(* Definition destAddr := Vector.map (@natToWord 8) [192;168;1;1]. *)
+(* Definition udpLength := natToWord 16 8. *)
+
+(* Compute (@UDP_decoder_impl srcAddr destAddr (natToWord 16 8) _ simple_udp). *)
+
+(* Compute (AlignedIPChecksum.Vector_checksum_bound' *)
+(*            (12 + sz) *)
+(*            (srcAddr ++ destAddr ++ wzero 8 :: natToWord 8 17 :: split2 8 8 udpLength :: split1 8 8 udpLength :: v)%vector) *)
+
+(* (*  *)
+(*    Issues:  *)
+(*    - length is in wrong order, so computation fails *)
+(*  *) *)
+
+(* Compute (Vector.map (@wordToNat 8) (srcAddr ++ destAddr ++ [wzero 8; natToWord 8 17] ++ udpLength ++ simple_udp)%vector). *)
+
+(* Locate "_ ++ _". *)
+(* Compute (AlignedIPChecksum.Vector_checksum_bound' *)
+(*            (12 + 8) *)
+(*            (srcAddr ++ dstAddr ++ [wzero 8; protoCode] ++ udpLength ++ v)%vector). *)
+
+Set Printing Depth 1000.
+Print TCP_decoder_impl.
+Print GetCurrentByte.
+Print AlignedList.ListAlignedDecodeM.
