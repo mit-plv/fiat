@@ -55,7 +55,7 @@ Section TCPPacketDecoder.
   (* These values are provided by the IP header for checksum calculation.*)
   Variable srcAddr : Vector.t (word 8) 4.
   Variable destAddr : Vector.t (word 8) 4.
-  Variable tcpLength : Vector.t (word 8) 2.
+  Variable tcpLength : word 16.
 
   Definition TCP_Packet_Format
     : FormatM TCP_Packet ByteString  :=
@@ -82,7 +82,7 @@ Section TCPPacketDecoder.
 
   Definition TCP_Packet_OK (tcp : TCP_Packet) :=
     lt (|tcp.(Options)|) 11
-    /\ wordToNat (Core.append_word (Vector.nth tcpLength Fin.F1) (Vector.nth tcpLength (Fin.FS Fin.F1)))
+    /\ wordToNat tcpLength
        = 20 (* length of packet header *)
          + (4 * |tcp.(Options)|) (* length of option field *)
          + (|tcp.(Payload)|).
@@ -90,7 +90,7 @@ Section TCPPacketDecoder.
   Local Arguments NPeano.modulo : simpl never.
 
   Definition TCP_Length :=
-    (fun _ : ByteString => wordToNat (Core.append_word (Vector.nth tcpLength Fin.F1) (Vector.nth tcpLength (Fin.FS Fin.F1))) * 8).
+    (fun _ : ByteString => wordToNat tcpLength * 8).
 
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition TCP_encoder :
@@ -245,7 +245,7 @@ Proof.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   simpl in *; unfold TCP_Packet_OK in *; intuition.
-  instantiate (1 := wordToNat (Core.append_word (Vector.nth tcpLength Fin.F1) (Vector.nth tcpLength (Fin.FS Fin.F1)))
+  instantiate (1 := wordToNat tcpLength
                     - (20 + 4 * (proj3 - 5))); omega.
   unfold Vector.nth; simpl.
   decode_step ltac:(idtac).

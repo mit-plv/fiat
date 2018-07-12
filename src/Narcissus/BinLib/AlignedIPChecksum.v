@@ -82,7 +82,7 @@ Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
 Definition calculate_IPChecksum {S} {sz}
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
-     (let checksum := InternetChecksum.Vector_checksum' v in
+     (let checksum := Vector_checksum_bound' 20 v in
       (fun v idx s => SetByteAt (n := sz) 10 v 0 (wnot (split2 8 8 checksum)) ) >>
       (fun v idx s => SetByteAt (n := sz) 11 v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
@@ -122,28 +122,139 @@ Proof.
   admit.
 Defined.
 
-Definition Pseudo_Checksum_Valid
+Definition splitLength (len: word 16) : Vector.t (word 8) 2 :=
+  Vector.cons _ (split2 8 8 len) _ (Vector.cons _ (split1 8 8 len) _ (Vector.nil _)).
+
+Definition Pseudo_Checksum_Valid (* FIXME payload should be after src, dest *)
            (srcAddr : Vector.t (word 8) 4)
            (destAddr : Vector.t (word 8) 4)
-           (udpLength : Vector.t (word 8) 2)
+           (udpLength : word 16)
            (protoCode : word 8)
            (n : nat)
            (b : ByteString)
   := onesComplement (wzero 8 :: protoCode ::
                                       (ByteString2ListOfChar (96 + n) (BoundedByteStringToByteString b))
-                                      ++ to_list srcAddr ++ to_list destAddr ++ to_list udpLength)%list
+                                      ++ to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength))%list
      = wones 16.
+
+Import VectorNotations.
+
+Definition pseudoHeader_checksum
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
+           (udpLength : word 16)
+           (protoCode : word 8)
+           {sz} (packet: Vector.t (word 8) sz) :=
+  InternetChecksum.Vector_checksum'
+    (srcAddr ++ destAddr ++ [wzero 8; protoCode] ++ (splitLength udpLength) ++ packet).
+
+Infix "^1+" := (InternetChecksum.OneC_plus) (at level 50, left associativity).
+
+Import InternetChecksum.
+
+Definition pseudoHeader_checksum'
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
+           (udpLength : word 16)
+           (protoCode : word 8)
+           {sz} (packet: Vector.t (word 8) sz) :=
+  Vector_checksum' srcAddr ^1+
+  Vector_checksum' destAddr ^1+
+  zext protoCode 8 ^1+
+  udpLength ^1+
+  Vector_checksum' packet.
+
+Lemma OneC_plus_wzero_l :
+  forall w, OneC_plus (wzero 16) w = w.
+Proof. reflexivity. Qed.
+
+Lemma OneC_plus_wzero_r :
+  forall w, OneC_plus w (wzero 16) = w.
+Proof.
+  intros; rewrite OneC_plus_comm; reflexivity.
+Qed.
+
+Lemma Vector_checksum'_acc_oneC_plus :
+  forall {sz} (packet: Vector.t (word 8) sz) acc n,
+    Vector_fold_left_pair add_bytes_into_checksum n packet acc (wzero 8) =
+    OneC_plus
+      (Vector_fold_left_pair add_bytes_into_checksum n packet (wzero 16) (wzero 8))
+      acc.
+Proof.
+  fix IH 2.
+  destruct packet as [ | hd sz [ | hd' sz' tl ] ]; intros; simpl.
+  - destruct n as [ | [ | ] ]; reflexivity.
+  - destruct n as [ | [ | ] ]; simpl; unfold add_bytes_into_checksum;
+      try rewrite OneC_plus_wzero_l, OneC_plus_comm; reflexivity.
+  - destruct n as [ | [ | ] ]; simpl; unfold add_bytes_into_checksum;
+      try rewrite OneC_plus_wzero_l, OneC_plus_comm; try reflexivity.
+    rewrite (IH _ tl (hd' +^+ hd ^1+ acc)).
+    rewrite (IH _ tl (hd' +^+ hd)).
+    rewrite OneC_plus_assoc.
+    reflexivity.
+Qed.
+
+Lemma Vector_destruct_S :
+  forall {A sz} (v: Vector.t A (S sz)),
+  exists hd tl, v = hd :: tl.
+Proof.
+  repeat eexists.
+  apply VectorSpec.eta.
+Defined.
+
+Lemma Vector_destruct_O :
+  forall {A} (v: Vector.t A 0),
+    v = [].
+Proof.
+  intro; apply VectorDef.case0; reflexivity.
+Qed.
+
+Ltac explode_vector :=
+  lazymatch goal with
+  | [ v: Vector.t ?A (S ?n) |- _ ] =>
+    let hd := fresh "hd" in
+    let tl := fresh "tl" in
+    rewrite (Vector.eta v) in *;
+    set (Vector.hd v: A) as hd; clearbody hd;
+    set (Vector.tl v: Vector.t A n) as tl; clearbody tl;
+    clear v
+  | [ v: Vector.t _ 0 |- _ ] =>
+    rewrite (Vector_destruct_O v) in *; clear v
+  end.
+
+Lemma pseudoHeader_checksum'_ok :
+  forall (srcAddr : Vector.t (word 8) 4)
+    (destAddr : Vector.t (word 8) 4)
+    (udpLength : word 16)
+    (protoCode : word 8)
+    {sz} (packet: Vector.t (word 8) sz),
+    pseudoHeader_checksum srcAddr destAddr udpLength protoCode packet =
+    pseudoHeader_checksum' srcAddr destAddr udpLength protoCode packet.
+Proof.
+  unfold pseudoHeader_checksum, pseudoHeader_checksum'.
+  intros.
+  repeat explode_vector.
+  Opaque split1.
+  Opaque split2.
+  simpl in *.
+  unfold Vector_checksum', add_bytes_into_checksum, Vector_fold_left_pair.
+  fold @Vector_fold_left_pair; rewrite Vector_checksum'_acc_oneC_plus.
+  rewrite combine_split.
+  rewrite !OneC_plus_wzero_l, OneC_plus_comm.
+  repeat (f_equal; [ ]).
+  rewrite <- !OneC_plus_assoc.
+  reflexivity.
+Qed.
 
 Definition calculate_PseudoChecksum {S} {sz}
            (srcAddr : Vector.t (word 8) 4)
            (destAddr : Vector.t (word 8) 4)
-           (udpLength : Vector.t (word 8) 2)
+           (udpLength : word 16)
            (protoCode : word 8)
            (idx' : nat)
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
-     (let checksum := InternetChecksum.Vector_checksum' (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
-                                                          (append v (append srcAddr (append destAddr udpLength))))) in
+     (let checksum := pseudoHeader_checksum' srcAddr destAddr udpLength protoCode v in
       (fun v idx s => SetByteAt (n := sz) idx' v 0 (wnot (split2 8 8 checksum)) ) >>
       (fun v idx s => SetByteAt (n := sz) (1 + idx') v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
@@ -151,7 +262,7 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
       (srcAddr : Vector.t (word 8) 4)
       (destAddr : Vector.t (word 8) 4)
-      (udpLength : Vector.t (word 8) 2)
+      (udpLength : word 16)
       (protoCode : word 8)
       (idx : nat)
       (format_A format_B : FormatM S ByteString)
@@ -172,10 +283,12 @@ Proof.
   admit.
 Defined.
 
+Import VectorNotations.
+
 Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
       (srcAddr : Vector.t (word 8) 4)
       (destAddr : Vector.t (word 8) 4)
-      (udpLength : Vector.t (word 8) 2)
+      (udpLength : word 16)
       protoCode
       predicate
       (format_A format_B : FormatM A ByteString)
@@ -191,10 +304,9 @@ Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
          (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v => if weq (Vector_checksum_bound' (96 + sz * 8)
-                                                     (Vector.cons _ (wzero 8) _ (Vector.cons _ protoCode _
-                                                                      (append v (append srcAddr (append destAddr udpLength)))))) (wones 16)
-                                                     
-                       then x sz v  else ThrowAlignedDecodeM v).
+  eexists (fun sz v =>
+             if weq (pseudoHeader_checksum' srcAddr destAddr udpLength protoCode v) (wones 16)
+             then x sz v
+             else ThrowAlignedDecodeM v).
   admit.
 Defined.
