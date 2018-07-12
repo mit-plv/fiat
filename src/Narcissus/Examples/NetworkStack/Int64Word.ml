@@ -61,6 +61,9 @@ let whd _ w =
 let wtl _ w =
   Int64.shift_right_logical w 1
 
+let zext _ w _ =
+  w
+
 let wplus _ w w' =
   Int64.add w w'
 
@@ -132,3 +135,9 @@ let combine sz w _sz' w' =
 
 let append sz _sz' w w' =
   Int64.logor (Int64.shift_left w' sz) w
+
+let onec_plus _ w w' =
+  let sum = Int64.add w w' in
+  let mask = Int64.of_int 65535 in
+  (Int64.add (Int64.logand sum mask)
+     (Int64.shift_right_logical sum 16))

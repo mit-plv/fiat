@@ -64,7 +64,7 @@ let set_nth _ (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
     latest_version = arr.latest_version;
     data = arr.data }
 
-let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ (arr: 'a storage_t) (init: 'b) (pad: 'a) =
+let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ n (arr: 'a storage_t) (init: 'b) (pad: 'a) =
   let rec loop f arr acc pad len offset =
     if offset >= len then
       acc
@@ -75,7 +75,7 @@ let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ (arr: 'a storage_t) (init: 'b) (p
                   (Array.unsafe_get arr.data (offset + 1))
                   acc in
       loop f arr acc pad len (offset  + 2)
-  in loop f arr init pad (Array.length arr.data) 0
+  in loop f arr init pad (min n (Array.length arr.data)) 0
 
 let append _ _ (arr1: 'a storage_t) (arr2: 'a storage_t) : 'a storage_t =
   throw_if_stale "append" arr1;
