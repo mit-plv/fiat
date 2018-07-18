@@ -598,7 +598,7 @@ Section AlignEncodeWord.
       decode_word' (n + m) v =
       (`(w, v') <- decode_word' n v;
          `(w', v'') <- decode_word' m v';
-         Some (eq_rect _ _ (Core.append_word w' w) _ (plus_comm _ _), v'')).
+         Some (eq_rect _ _ (Core.append_word w' w) _ (plus_comm_transparent _ _), v'')).
   Proof.
     induction n.
     - simpl; intros.
@@ -667,7 +667,7 @@ Section AlignEncodeWord.
       intros; unfold mult; simpl; rewrite decode_word_plus'; simpl; fold mult.
       instantiate (1 := fun b cd => `(w, v', cd') <- decode_word (sz := 8) b cd;
                                     `(w', v'', cd') <- decode_word (sz := m * 8) v' cd';
-                                    Some (eq_rect (m * 8 + 8) word (Core.append_word w' w) (8 + m * 8) (plus_comm (m * 8) 8), v'', cd')).
+                                    Some (eq_rect (m * 8 + 8) word (Core.append_word w' w) (8 + m * 8) (plus_comm_transparent (m * 8) 8), v'', cd')).
       simpl.
       unfold decode_word.
       destruct (decode_word' 8 b) as [ [? ?] | ]; simpl; eauto.

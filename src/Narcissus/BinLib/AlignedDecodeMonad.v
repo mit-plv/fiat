@@ -147,6 +147,18 @@ Section AlignedDecodeM.
                             (fun _ => ReturnAlignedDecodeM ()))
     end.
 
+  Definition plus_comm_transparent :
+    forall x y, x + y = y + x.
+  Proof.
+    induction x; simpl.
+    - induction y; simpl; congruence.
+    - intros.
+      rewrite IHx.
+      induction y.
+      + reflexivity.
+      + simpl; rewrite IHy; reflexivity.
+  Defined.
+
   Fixpoint GetCurrentBytes (* Gets the current byte and increments the current index. *)
            {n : nat}
            (m : nat)
@@ -158,7 +170,7 @@ Section AlignedDecodeM.
                 (fun w => BindAlignedDecodeM
                             (GetCurrentBytes m')
                             (fun w' =>  ReturnAlignedDecodeM (
-                                             eq_rect _ _ (Core.append_word w' w) _ (plus_comm (m' * 8) 8))))
+                                             eq_rect _ _ (Core.append_word w' w) _ (plus_comm_transparent (m' * 8) 8))))
     end.
 
   (* Equivalence Criteria:
