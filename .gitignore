@@ -105,3 +105,7 @@ web
 /src/QueryStructure/QuerySpecs/ConstraintCheckUnfoldings.v
 /src/QueryStructure/QuerySpecs/InsertQSRefinements.v
 /src/QueryStructure/Refinements/AdditionalListLemmas.v
+/src/Narcissus/Examples/NetworkStack/Fiat4Mirage.ml
+/.coqdeps.d
+/CoqMakefile.conf
+.lia.cache
