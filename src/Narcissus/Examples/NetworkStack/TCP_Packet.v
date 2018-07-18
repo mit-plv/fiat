@@ -319,3 +319,25 @@ Definition TCP_decoder_impl {sz} v :=
 End TCPPacketDecoder.
 
 Print TCP_decoder_impl.
+
+Definition tcp_decode_input :=
+  Vector.map
+    (natToWord 8)
+    [144; 42; 0; 80; 19; 125; 120; 241; 243; 111; 68; 47; 128; 24;
+     0; 229; 29; 216; 0; 0; 1; 1; 8; 10; 228; 110; 2; 137;
+     80; 206; 41; 110; 71; 69; 84; 32; 47; 32; 72; 84; 84; 80;
+     47; 49; 46; 49; 13; 10; 72; 111; 115; 116; 58; 32; 110; 121;
+     116; 105; 109; 101; 115; 46; 99; 111; 109; 13; 10; 85; 115; 101;
+     114; 45; 65; 103; 101; 110; 116; 58; 32; 99; 117; 114; 108; 47;
+     55; 46; 52; 55; 46; 48; 13; 10; 65; 99; 99; 101; 112; 116;
+     58; 32; 42; 47; 42; 13; 10; 13; 10].
+
+Definition srcAddr := (Vector.map (natToWord 8) [192; 168; 1; 109]).
+Definition destAddr := (Vector.map (natToWord 8) [151; 101; 129; 164]).
+Definition Vector_length {A n} (v: Vector.t A n) := n.
+
+Compute
+    match (@TCP_decoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input)) _ tcp_decode_input) with
+    | Some (p, _, _) => Some (List.fold_right (fun c s => String (Ascii.ascii_of_N (wordToN c)) s) EmptyString p.(Payload))
+    | None => None
+    end.
