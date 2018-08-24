@@ -5,6 +5,7 @@ Require Export Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.Notations.
 
+Export Coq.NArith.BinNatDef.
 Export Coq.Strings.Ascii.
 Export Coq.Strings.String.
 Export Fiat.Parsers.ContextFreeGrammar.Core.

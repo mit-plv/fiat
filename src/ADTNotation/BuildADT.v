@@ -9,6 +9,7 @@ Require Import Coq.Sets.Ensembles
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.ADTNotation.BuildADTSig.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 (* Notations for ADTs. *)
 
@@ -486,5 +487,5 @@ Section NotationExample.
                 ((usedKey r k /\ snd r' = false) \/
                  (~ usedKey r k /\ snd r' = true))}
      }%ADTParsing) : ADT _.
- 
+
 End NotationExample.
