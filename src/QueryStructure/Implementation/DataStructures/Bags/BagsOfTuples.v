@@ -115,8 +115,8 @@ Proof.
   destruct index; simpl in *.
   destruct (ProperlyTyped0) as [ [ [ | ] | ]| ];
     rewrite e in attr.
-  exact (if (N_eq_dec attr k) then true else false).
-  exact (if (Z_eq_dec attr k) then true else false).
+  exact (if (N.eq_dec attr k) then true else false).
+  exact (if (Z.eq_dec attr k) then true else false).
   exact (if (eq_nat_dec attr k) then true else false).
   exact (if (string_dec attr k) then true else false).
 Defined.
