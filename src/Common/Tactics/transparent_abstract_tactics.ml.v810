@@ -5,7 +5,6 @@ module TRANSPARENT_ABSTRACT =
     open Names
     open Nameops
     open Ltac_plugin
-    open Tacinterp
     open Proof_global
 
     (* Lift a constr to an ltac value. *)

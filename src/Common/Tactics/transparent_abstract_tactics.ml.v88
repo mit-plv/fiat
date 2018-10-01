@@ -5,8 +5,24 @@ module TRANSPARENT_ABSTRACT =
     open Names
     open Nameops
     open Ltac_plugin
-    open Tacinterp
     open Proof_global
+
+    (* [tac] : string representing identifier *)
+    (* [args] : tactic arguments *)
+    (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+    let ltac_lcall tac args =
+      Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag (Misctypes.ArgVar(CAst.make @@ Names.Id.of_string tac),args)))
+
+    (* [ltac_apply] : Run a tactic with arguments... *)
+    let ltac_apply (f: Tacinterp.Value.t) (arg:Tacinterp.Value.t) =
+      let open Geninterp in
+      let ist = Tacinterp.default_ist () in
+      let id = Id.of_string "X" in
+      let idf = Id.of_string "F" in
+      let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
+      let arg = Tacexpr.Reference (Misctypes.ArgVar (CAst.make id)) in
+      Tacinterp.eval_tactic_ist ist
+        (ltac_lcall "F" [arg])
 
     (* Lift a constr to an ltac value. *)
     let to_ltac_val c = Tacinterp.Value.of_constr c
@@ -21,7 +37,7 @@ module TRANSPARENT_ABSTRACT =
           ~goal_type:(Some termType) id
 	  gk
           (Eauto.e_give_exact term)
-          (fun lem args -> Tacinterp.Value.apply tacK [to_ltac_val (EConstr.applist (lem, args))])
+          (fun lem args -> ltac_apply tacK (to_ltac_val (EConstr.applist (lem, args))))
       end
 
     (* Default identifier *)
