@@ -26,7 +26,7 @@ Definition char := word 8.
 Definition char_get_bit
            (i : nat)
            (c : word i)
-  := Nmod2 (Ndiv (wordToN c) (Npow2 i)).
+  := Nmod2 (N.div (wordToN c) (Npow2 i)).
 
 Definition char_set_bit (* Assumes the ith bit of c is unset. *)
            (b : bool)
@@ -51,7 +51,7 @@ Record ByteString :=
 
 Local Ltac destruct_matches :=
   repeat match goal with
-         | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+         | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
          end.
 
 Definition ByteString_push

@@ -404,7 +404,7 @@ Section DnsPacket.
 
   Local Opaque wordToNat.
   Local Opaque natToWord.
-
+v
   Lemma boundPeekSome :
     forall env n m m',
       peekD env = Some m

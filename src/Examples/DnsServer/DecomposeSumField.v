@@ -7,8 +7,7 @@ Require Import
 Require Import
         Fiat.Common.SumType
         Fiat.Computation.ListComputations
-        Fiat.QueryStructure.Automation.AutoDB
-        Fiat.Examples.DnsServer.Packet.
+        Fiat.QueryStructure.Automation.AutoDB.
 
 Require Import
         Bedrock.Word
@@ -54,17 +53,18 @@ Section DecomposeEnumField.
         (GetNRelSchemaHeading (Vector.append old_schemas new_schemas)
                               (Fin.L m Ridx)).
     refine (match old_schemas in Vector.t _ n return
-                  forall (Ridx : Fin.t n),
-                    @RawTuple (GetNRelSchemaHeading old_schemas Ridx)
+                  forall (Ridx' : Fin.t n),
+                    @RawTuple (GetNRelSchemaHeading old_schemas Ridx')
                     -> @RawTuple
                          (GetNRelSchemaHeading (Vector.append old_schemas new_schemas)
-                                               (Fin.L m Ridx)) with
-            | Vector.nil => fun Ridx tup => Fin.case0 (fun _ => _) Ridx
-            | Vector.cons _ _ _ => fun Ridx tup => _
+                                               (Fin.L m Ridx')) with
+            | Vector.nil => fun Ridx' tup' => Fin.case0 (fun _ => _) Ridx'
+            | Vector.cons _ _ _ => fun Ridx' tup' => _
             end Ridx tup).
-    revert t tup0; pattern n0, Ridx0; apply Fin.caseS; simpl.
-    - intros; exact tup0.
-    - intros; exact (LiftTuple_AddRawQueryStructureSchema _ _ _ _ _ tup0).
+    clear tup.
+    revert t tup'; pattern n0, Ridx'; apply Fin.caseS; simpl.
+    - intros; exact tup'.
+    - intros; exact (LiftTuple_AddRawQueryStructureSchema _ _ _ _ _ tup').
   Defined.
 
   Definition AddRawQueryStructureSchema_AbsR
