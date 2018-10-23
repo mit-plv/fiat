@@ -53,7 +53,7 @@ Section Ascii.
         assert (N.lt (N_of_ascii c) 256).
         clear H. induction c; repeat (match goal with
                                       | B : bool |- _ => destruct B
-                                      end); simpl; unfold Nlt; eauto.
+                                      end); simpl; unfold N.lt; eauto.
         change (256%nat) with (N.to_nat 256).
         apply Nomega.Nlt_out. eauto.
         omega. change (pow2 8) with 256. omega.

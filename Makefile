@@ -47,11 +47,11 @@ STRICT_COQDEP ?= 1
 
 ML_COMPATIBILITY_FILES = src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.ml4 src/Common/Tactics/transparent_abstract_plugin.ml4 src/Common/Tactics/transparent_abstract_tactics.ml
 
--include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
+include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
--include etc/coq-scripts/Makefile.coq.common
+include etc/coq-scripts/Makefile.coq.common
 
--include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
+include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
 
 ifeq ($(filter printdeps printreversedeps,$(MAKECMDGOALS)),)
 -include etc/coq-scripts/Makefile.vo_closure
@@ -269,6 +269,21 @@ EXPECTED_EXT:=.v87
 ML_DESCRIPTION := "Coq v8.7"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 else
+ifneq (,$(filter 8.8%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v88
+ML_DESCRIPTION := "Coq v8.8"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+else
+ifneq (,$(filter 8.9%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v89
+ML_DESCRIPTION := "Coq v8.9"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+else
+ifneq (,$(filter 8.10%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v810
+ML_DESCRIPTION := "Coq v8.10"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+else
 ifneq (,$(filter trunk,$(COQ_VERSION)))
 EXPECTED_EXT:=.trunk
 ML_DESCRIPTION := "Coq trunk"
@@ -286,6 +301,9 @@ else
 EXPECTED_EXT:=.master
 ML_DESCRIPTION := "Coq master"
 OTHERFLAGS += -w "-notation-overridden"
+endif
+endif
+endif
 endif
 endif
 endif

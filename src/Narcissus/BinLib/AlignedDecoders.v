@@ -16,6 +16,7 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedString
+        Fiat.Narcissus.BinLib.AlignedMonads
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
@@ -204,6 +205,42 @@ Section AlignedDecoders.
     unfold decode_nat, DecodeBindOpt2; intros.
     unfold BindOpt at 1.
     rewrite AlignedDecode2Char.
+    reflexivity.
+  Qed.
+
+  Local Open Scope AlignedDecodeM_scope.
+
+  Lemma AlignedDecodeNatM {C : Set}
+        (t : nat -> DecodeM C ByteString)
+        (t' : nat -> forall {numBytes}, AlignedDecodeM C numBytes)
+    : (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
+      -> DecodeMEquivAlignedDecodeM
+           (fun v cd => `(a, b0, cd') <- decode_nat (monoidUnit := ByteString_QueueMonoidOpt) 8 v cd;
+                          t a b0 cd')
+           (fun numBytes => b <- GetCurrentByte;
+                            n <- return (wordToNat b);
+                            t' n).
+  Proof.
+    replace
+      (fun (v : ByteString) (cd : CacheDecode) => `(a, b0, cd') <-
+                                                   decode_nat 8 v cd;
+                                                  t a b0 cd') with
+        (fun (v : ByteString) (cd : CacheDecode) =>
+           `(w, b, cd') <- decode_word (sz := 8) v cd;
+           t (wordToNat w) b cd'); intros.
+    eapply AlignedDecodeBindCharM; intros.
+    replace (fun numBytes : nat => n <- return (wordToNat b);
+                                               t' n numBytes) with
+        (fun numBytes : nat => t'  (wordToNat b) numBytes).
+    eapply H.
+    unfold BindAlignedDecodeM, ReturnAlignedDecodeM; simpl.
+    repeat (apply functional_extensionality_dep; intros); reflexivity.
+    repeat (apply functional_extensionality_dep; intros).
+    unfold decode_nat, DecodeBindOpt2; intros.
+    rewrite BindOpt_assoc; f_equal.
+    repeat (apply functional_extensionality_dep; intros).
+    unfold BindOpt.
+    destruct x1; destruct p; simpl.
     reflexivity.
   Qed.
 
@@ -755,93 +792,6 @@ Section AlignedDecoders.
          end.
   Proof.
     intros; destruct b; eauto; rewrite <- H; simpl; eauto.
-  Qed.
-
-  Lemma SW_word_append :
-    forall b sz (w : word sz) sz' (w' : word sz'),
-      SW_word b (Core.append_word w w')
-      = eq_rect _ word (Core.append_word w (SW_word b w')) _ (sym_eq (plus_n_Sm _ _)).
-  Proof.
-    induction w; simpl; intros.
-    - apply Eqdep_dec.eq_rect_eq_dec; auto with arith.
-    - erewrite <- !WS_eq_rect_eq.
-      rewrite IHw; reflexivity.
-  Qed.
-
-  Lemma decode_word_plus':
-    forall (n m : nat) (v : ByteString),
-      decode_word' (n + m) v =
-      (`(w, v') <- decode_word' n v;
-         `(w', v'') <- decode_word' m v';
-         Some (eq_rect _ _ (Core.append_word w' w) _ (plus_comm _ _), v'')).
-  Proof.
-    induction n.
-    - simpl; intros.
-      destruct (decode_word' m v) as [ [? ?] | ]; simpl; repeat f_equal.
-      revert w; clear.
-      induction w; simpl; eauto.
-      rewrite IHw at 1.
-      rewrite Core.succ_eq_rect; f_equal.
-      apply Eqdep_dec.UIP_dec; auto with arith.
-    - simpl; intros.
-      simpl; rewrite !DecodeBindOpt_assoc;
-        destruct (ByteString_dequeue v) as [ [? ?] | ]; try reflexivity.
-      simpl; rewrite !DecodeBindOpt_assoc.
-      rewrite IHn.
-      simpl; rewrite !DecodeBindOpt_assoc.
-      destruct (decode_word' n b0)  as [ [? ?] | ]; try reflexivity.
-      simpl; rewrite !DecodeBindOpt_assoc.
-      destruct (decode_word' m b1)  as [ [? ?] | ]; try reflexivity.
-      simpl; f_equal; f_equal; clear.
-      revert b n w; induction w0; simpl; intros.
-      + apply SW_word_eq_rect_eq.
-      + erewrite !SW_word_eq_rect_eq; simpl.
-        erewrite <- !WS_eq_rect_eq.
-        f_equal.
-        rewrite SW_word_append.
-        rewrite <- Equality.transport_pp.
-        f_equal.
-        Grab Existential Variables.
-        omega.
-        omega.
-  Qed.
-
-  Lemma decode_word_aligned_ByteString_overflow
-        {sz'}
-    : forall (b : t (word 8) sz')
-             {sz : nat}
-             (cd : CacheDecode),
-      lt sz' sz
-      -> decode_word (sz := 8 * sz) (build_aligned_ByteString b) cd = None.
-  Proof.
-    induction b; intros.
-    - unfold build_aligned_ByteString; simpl.
-      inversion H; subst; reflexivity.
-    - destruct sz; try omega.
-      apply lt_S_n in H.
-      pose proof (IHb _ cd H).
-      unfold decode_word, WordOpt.decode_word.
-      rewrite <- mult_n_Sm, plus_comm.
-      rewrite decode_word_plus'.
-      rewrite (@aligned_decode_char_eq' _ 0).
-      simpl.
-      unfold build_aligned_ByteString, decode_word in *.
-      simpl in H0.
-      first [destruct (decode_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
-                             {|
-                               padding := 0;
-                               front := WO;
-                               paddingOK := build_aligned_ByteString_subproof (*n b *);
-                               numBytes := n;
-                               byteString := b |}) as [ [? ?] | ]
-            | destruct (decode_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
-                             {|
-                               padding := 0;
-                               front := WO;
-                               paddingOK := build_aligned_ByteString_subproof n b;
-                               numBytes := n;
-                               byteString := b |}) as [ [? ?] | ]]
-      ; simpl in *; try congruence.
   Qed.
 
   Lemma build_aligned_ByteString_eq_split'
@@ -1499,15 +1449,16 @@ Section AlignedDecoders.
         * intros.
           assert (n + S (m + sz) = S (n + m + sz)) by omega.
           assert (n + S (m + sz) = n + S m + sz) by omega.
-  Admitted.
-  (* Again, 8.4 compatibility problems. *)
-  (*erewrite eq_rect_Vector_tl with (H' := H).
+          (* Again, 8.4 compatibility problems. *)
           erewrite eq_rect_Vector_tl with (H' := H0).
+          erewrite eq_rect_Vector_tl with (H' := H).
           pose proof (IHn _ _ (Vector.tl v) H0 H).
           destruct ((Vector_split (n + m) sz (Vector.tl (eq_rect (n + S (m + sz)) (t A) (Vector.tl v) (S (n + m + sz)) H)))) eqn: ?.
           simpl in *; fold plus in *; rewrite Heqp, H1; simpl.
           destruct (Vector_split (n + S m) sz (eq_rect (n + S (m + sz)) (Vector.t A) (Vector.tl v) (n + S m + sz) H0)) eqn: ?.
+          replace (plus_assoc n (S m) sz) with H0; simpl.
           reflexivity.
+          eapply Eqdep_dec.eq_proofs_unicity; intros; omega.
       + clear.
         revert H v.
         assert (forall q (v : t A (n + (S q))) H,
@@ -1525,7 +1476,7 @@ Section AlignedDecoders.
           destruct (Vector_split n (S q) (Vector.tl v)); reflexivity.
         }
         intros; rewrite H; reflexivity.
-  Qed. *)
+  Qed.
 
   Lemma zeta_to_fst {A B C}
     : forall (ab : A * B) (k : A -> B -> C),

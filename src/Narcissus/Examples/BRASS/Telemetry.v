@@ -309,15 +309,15 @@ Eval compute in "0".
 (*  Npos (xO (xO (xO (xO (xI xH))))) *)
 (* Npos (xI (xO (xO (xO (xI xH))))) *)
 (*  Npos (xI (xO (xO (xI (xI xH))))) *)
-060 && 071
+(* 060 && 071*)
 
-Fixpoint stringIsNumber (s : string) : bool :=
+(*Fixpoint stringIsNumber (s : string) : bool :=
   match s with
   | EmptyString => True
   | String a s' =>
   end.
 
-Lemma  N_to_string (string_to_N proj) = proj)
+Lemma  N_to_string (string_to_N proj) = proj) *)
 
 Definition Coordinate_format
            (coords : Coordinate) :=
@@ -548,7 +548,7 @@ Definition inputString :=
   ("0542999 -42.4539680 76.4585433"
      ++ String.String newline String.EmptyString))%string.
 
-Example foo :
+(*Example foo :
   aligned_Coordinate_decoder_impl _ inputString =
   aligned_Coordinate_decoder_impl _ inputString.
 unfold aligned_Coordinate_decoder_impl.
@@ -566,7 +566,7 @@ compute in Heqs.
 find_if_inside.
 simpl.
 simpl.
-compute.
+compute. *)
 
 End Coordinate_Decoder.
 

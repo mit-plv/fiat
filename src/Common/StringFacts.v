@@ -1,4 +1,5 @@
 Require Import Coq.omega.Omega.
+Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Common.List.Operations.

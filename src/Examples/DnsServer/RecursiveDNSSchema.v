@@ -1,4 +1,4 @@
-Require Import
+qRequire Import
         Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
@@ -8,7 +8,8 @@ Require Import
         Fiat.Common.SumType
         Fiat.Computation.ListComputations
         Fiat.QueryStructure.Automation.AutoDB
-        Fiat.Examples.DnsServer.Packet.
+        Fiat.Narcissus.Formats.DomainNameOpt
+        Fiat.Narcissus.Examples.DNS.DNSPacket.
 
 Require Import
         Bedrock.Word
@@ -106,7 +107,10 @@ Definition SLISTHeading :=
 (* The cache holds either answers (resource records returned by a *)
 (* query) or failures (negative responses). *)
 Definition CacheType :=
-  BoundedString ["Answer"; "Failure"].
+  EnumType.EnumType ["Answer"; "Failure"].
+
+Definition ANSWER : CacheType := EnumType.BoundedIndex_inj_EnumType ``"Answer".
+Definition FAILURE : CacheType := EnumType.BoundedIndex_inj_EnumType ``"Failure".
 
 (* Stores an SOA (Start of Authority) record for cached failures, *)
 (* according to RFC 2308. The SOA's TTL is used as the length of *)
@@ -128,10 +132,10 @@ Definition Failure2CachedValue (vrr : FailureRecord)
 
 (* Only cache specific resource records in response to a query. *)
 Definition CachedQueryTypes :=
-  BoundedString (OurRRecordTypes ++ ExtraRRecordTypes).
+  EnumType.EnumType (OurRRecordTypes).
 
 Definition CachedQueryTypes_inj (rr : CachedQueryTypes) : QType :=
-  EnumType.BoundedIndex_inj_EnumType (BoundedIndex_injR rr).
+  Fin.L _ rr.
 
 Coercion CachedQueryTypes_inj : CachedQueryTypes >-> QType.
 Coercion rRecord2CachedValue : resourceRecord >-> CachedValue.

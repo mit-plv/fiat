@@ -317,9 +317,11 @@ Definition ID : Type := word 16.
 
   Definition packet := @Tuple packetHeading.
 
-  Definition buildempty (is_authority : bool)
+  Definition buildempty
+             (is_authority : bool)
              (rcode : BoundedIndex ResponseCodes)
-             (p : packet) :=
+             (p : packet)
+    : packet :=
     p ○ [ "AA" ::= is_authority; (* Update Authority field *)
           "QR" ::= true; (* Set response flag to true *)
           "RCODE" ::= ibound (indexb rcode);
@@ -328,19 +330,31 @@ Definition ID : Type := word 16.
           "additional" ::= nil ].
 
   (* add a resource record to a packet's answers *)
-  Definition add_answer (p : packet) (t : resourceRecord) :=
+  Definition add_answer
+             (p : packet)
+             (t : resourceRecord)
+    : packet :=
     p ○ [o !! "answers" / t :: o].
 
   (* add a resource record authority to a packet's authorities
    (ns = name server). *)
-  Definition add_ns (p : packet) (t : resourceRecord) :=
+  Definition add_ns
+             (p : packet)
+             (t : resourceRecord)
+    : packet :=
     p ○ [o !! "authority" / t :: o].
 
   (* combine with above? *)
-  Definition add_additional (p : packet) (t : resourceRecord) :=
+  Definition add_additional
+             (p : packet)
+             (t : resourceRecord)
+    : packet :=
     p ○ [o !! "additional" / t :: o].
 
-  Definition updateRecords (p : packet) answers' authority' additional' :=
+  Definition updateRecords
+             (p : packet)
+             answers' authority' additional'
+    : packet :=
     p ○ ["answers" ::= answers';
            "authority" ::= authority';
            "additional" ::= additional'].
