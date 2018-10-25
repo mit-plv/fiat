@@ -86,10 +86,11 @@ Extract Inlined Constant NPeano.leb => "(<=)".
 Require Import
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.BinLib.AlignedEncodeMonad.
-Extraction Inline AlignedDecoders.LetIn_If_Opt_Then_Else.
 Extraction Inline fst snd Basics.compose.
+Extraction Inline AlignedEncodeMonad.Projection_AlignedEncodeM.
 Extraction Inline BindAlignedDecodeM ReturnAlignedDecodeM ThrowAlignedDecodeM.
 Extraction Inline AppendAlignedEncodeM ReturnAlignedEncodeM ThrowAlignedEncodeM.
+Extraction Inline Common.If_Opt_Then_Else AlignedDecoders.LetIn_If_Opt_Then_Else.
 
 (** * Extract words as int64
       (Only works for words with length < 64) *)

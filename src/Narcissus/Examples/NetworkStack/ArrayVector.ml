@@ -52,15 +52,16 @@ let nth _ (arr: 'a storage_t) (idx: idx_t) : 'a =
 
 let nth_opt _ (arr: 'a storage_t) (idx: idx_t) : 'a option =
   throw_if_stale "nth_opt" arr;
-  if 0 <= idx && idx < Array.length arr.data then
+  if idx < Array.length arr.data then
     Some (Array.unsafe_get arr.data idx)
   else None
 
 let set_nth _ (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
-  throw_if_stale "set_nth'" arr;
-  incr arr.latest_version;
+  throw_if_stale "set_nth" arr;
+  let version = Pervasives.succ !(arr.latest_version) in
+  arr.latest_version := version;
   Array.unsafe_set arr.data idx x;
-  { version = !(arr.latest_version);
+  { version = version;
     latest_version = arr.latest_version;
     data = arr.data }
 
