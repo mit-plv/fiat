@@ -145,7 +145,7 @@ Definition pseudoHeader_checksum
            (udpLength : word 16)
            (protoCode : word 8)
            {sz} (packet: Vector.t (word 8) sz) :=
-  InternetChecksum.Vector_checksum'
+  Vector_checksum_bound' (12 + wordToNat udpLength)
     (srcAddr ++ destAddr ++ [wzero 8; protoCode] ++ (splitLength udpLength) ++ packet).
 
 Infix "^1+" := (InternetChecksum.OneC_plus) (at level 50, left associativity).
@@ -162,7 +162,7 @@ Definition pseudoHeader_checksum'
   Vector_checksum' destAddr ^1+
   zext protoCode 8 ^1+
   udpLength ^1+
-  Vector_checksum' packet.
+  Vector_checksum_bound' (wordToNat udpLength) packet.
 
 Lemma OneC_plus_wzero_l :
   forall w, OneC_plus (wzero 16) w = w.
@@ -237,8 +237,9 @@ Proof.
   Opaque split1.
   Opaque split2.
   simpl in *.
-  unfold Vector_checksum', add_bytes_into_checksum, Vector_fold_left_pair.
-  fold @Vector_fold_left_pair; rewrite Vector_checksum'_acc_oneC_plus.
+  unfold Vector_checksum', Vector_checksum_bound', add_bytes_into_checksum, Vector_fold_left_pair.
+    fold @Vector_fold_left_pair.
+  rewrite Vector_checksum'_acc_oneC_plus.
   rewrite combine_split.
   rewrite !OneC_plus_wzero_l, OneC_plus_comm.
   repeat (f_equal; [ ]).
@@ -253,10 +254,10 @@ Definition calculate_PseudoChecksum {S} {sz}
            (protoCode : word 8)
            (idx' : nat)
   : AlignedEncodeM (S := S) sz :=
-  (fun v =>
+  (fun v idx s =>
      (let checksum := pseudoHeader_checksum' srcAddr destAddr udpLength protoCode v in
       (fun v idx s => SetByteAt (n := sz) idx' v 0 (wnot (split2 8 8 checksum)) ) >>
-      (fun v idx s => SetByteAt (n := sz) (1 + idx') v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
+      (fun v idx s => SetByteAt (n := sz) (1 + idx') v 0 (wnot (split1 8 8 checksum)))) v idx s)%AlignedEncodeM.
 
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
