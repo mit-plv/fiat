@@ -343,6 +343,9 @@ src/Narcissus/Examples/ICMP_Packet.v
 src/Narcissus/Examples/IntExample.v
 src/Narcissus/Examples/Toy.v
 src/Narcissus/Examples/Toy2.v
+src/Narcissus/Examples/TutorialFinal.v
+src/Narcissus/Examples/TutorialPrelude.v
+src/Narcissus/Examples/TutorialStarter.v
 src/Narcissus/Examples/BRASS/Telemetry.v
 src/Narcissus/Examples/DNS/DNSPacket.v
 src/Narcissus/Examples/DNS/DnsOpt.v
@@ -356,6 +359,7 @@ src/Narcissus/Examples/NetworkStack/EthernetFrame.v
 src/Narcissus/Examples/NetworkStack/EthernetHeader.v
 src/Narcissus/Examples/NetworkStack/Fiat4Mirage.v
 src/Narcissus/Examples/NetworkStack/IPv4Header.v
+src/Narcissus/Examples/NetworkStack/Microbenchmarks.v
 src/Narcissus/Examples/NetworkStack/TCP_Packet.v
 src/Narcissus/Examples/NetworkStack/TestInfrastructure.v
 src/Narcissus/Examples/NetworkStack/UDP_Packet.v
