@@ -17,7 +17,7 @@ module TRANSPARENT_ABSTRACT =
       Proofview.Goal.enter begin
        fun gl ->
         let termType = Tacmach.New.pf_get_type_of gl term in
-        Tactics.cache_term_by_tactic_then ~opaque:false
+        Abstract.cache_term_by_tactic_then ~opaque:false
           ~goal_type:(Some termType) id
 	  gk
           (Eauto.e_give_exact term)
@@ -27,7 +27,7 @@ module TRANSPARENT_ABSTRACT =
     (* Default identifier *)
     let anon_id = Id.of_string "anonymous"
 
-    let tclTRABSTRACT name_op tac = Tactics.tclABSTRACT ~opaque:false name_op tac
+    let tclTRABSTRACT name_op tac = Abstract.tclABSTRACT ~opaque:false name_op tac
 
     let tclABSTRACTTERM name_op term tacK =
       (* What's the right default goal kind?*)
