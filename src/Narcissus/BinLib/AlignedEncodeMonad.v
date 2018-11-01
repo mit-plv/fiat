@@ -103,12 +103,12 @@ Section AlignedEncodeM.
     : AlignedEncodeM n:=
     fun _ _ _ _ => None.
 
-  Fixpoint set_nth'
+  Fixpoint set_nth' {A}
            {n : nat}
-           (v : Vector.t char n)
+           (v : Vector.t A n)
            (m : nat)
-           (a : char)
-    : Vector.t char n :=
+           (a : A)
+    : Vector.t A n :=
     match m, v with
     | 0,  Vector.cons _ _ v' => Vector.cons _ a _ v'
     | Datatypes.S m', Vector.cons a' _ v' => Vector.cons _ a' _ (set_nth' v' m' a)
