@@ -63,17 +63,18 @@ Ltac synthesize_aligned_encoder ::=
 
 Ltac synthesize_aligned_decoder ::=
   start_synthesizing_decoder;
-    repeat (cbv beta;
+    repeat (cbv beta; intros;
             unshelve
               match goal with
               | [ |- CorrectDecoder ?monoid _ _ _ _ _ ] =>
                 (normalize_compose monoid) || (repeat decode_step idtac)
               | [ |- cache_inv_Property _ _ ] =>
                 synthesize_cache_invariant
-              | [  |- _ = ?f _ _ ] =>
+              | [ |- _ = ?f _ _ ] =>
                 is_evar f; unfold decode_nat; optimize_decoder_impl
               | [ |- DecodeMEquivAlignedDecodeM _ ?f ] =>
                 is_evar f; align_decoders
+              | [ |- _ = _ ] => reflexivity
               end).
 
 Ltac shelve_inv ::=
