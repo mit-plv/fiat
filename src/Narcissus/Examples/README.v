@@ -206,8 +206,15 @@ Module Sensor5.
   Let encode := encoder_impl encoder_decoder.
 
   (* Notation "x |> y" := (Projection_AlignedEncodeM y x _) (right associativity, at level 2). *)
-  Goal Some (encoder_impl encoder_decoder) = None.
-    unfold "|>".
+  Goal Some (projT1 (enc encoder_decoder)) = None.
+    simpl.
+    unfold Projection_AlignedEncodeM.
+
+    Transparent mult.
+    Arguments mult: simpl nomatch.
+
+    Transparent plus.
+    Arguments plus: simpl nomatch.
 
     Definition Projection_AlignedEncodeM'
                {S' S'' : Type}
@@ -220,18 +227,18 @@ Module Sensor5.
         encode v idx (f s') env.
 
     Lemma cleanup_aligned_encoder_init {cache S2}:
-      forall (sz : nat) (r : S2) (v : t Core.char sz) ch idx,
+      forall (sz : nat) (v : t Core.char sz) idx (r : S2) ch,
       forall (f: @AlignedEncodeM cache _ sz)
         (g: @AlignedEncodeM cache S2 sz)
-        (h: forall sz, S2 -> Vector.t Core.char sz -> _)
+        (h: forall sz, @AlignedEncodeM cache _ sz)
         (h': @AlignedEncodeM cache S2 sz),
-        h' v idx r ch = h sz r v ->
+        (let hsz := h sz in h' = h sz) ->
         (AppendAlignedEncodeM f g) v idx r ch = h' v idx r ch ->
-        (AppendAlignedEncodeM f g) v idx r ch = h sz r v.
+        (AppendAlignedEncodeM f g) v idx r ch = h sz v idx r ch.
     Proof. intros; congruence. Qed.
 
     Lemma cleanup_aligned_encoder_bind {cache S2}:
-      forall (sz : nat) (r : S2) (v : t Core.char sz) ch idx,
+      forall (sz : nat) (v : t Core.char sz) idx (r : S2) ch,
       forall (f f' g g': @AlignedEncodeM cache S2 sz),
         (forall v idx r ch, g v idx r ch = g' v idx r ch) ->
         (forall v idx r ch, f v idx r ch = f' v idx r ch) ->
@@ -239,12 +246,38 @@ Module Sensor5.
         (AppendAlignedEncodeM f' g') v idx r ch.
     Proof. compute; intros * Hg Hf. rewrite Hf; destruct (f' _ _ _ _); congruence. Qed.
 
+      Lemma cleanup_aligned_encoder_bind_projection {cache S1 S2 sz}:
+        forall (f f' g g': @AlignedEncodeM cache S2 sz)
+          (h: @AlignedEncodeM cache S1 sz) proj,
+          (forall v idx r ch, f v idx r ch = f' v idx r ch) ->
+          (forall v idx r ch, g v idx r ch = g' v idx r ch) ->
+          (let cleaned_up := (AppendAlignedEncodeM f' g') in
+           forall v idx r1 ch, cleaned_up v idx (proj r1) ch = h v idx r1 ch) ->
+          forall (v : t Core.char sz) idx (r1: S1) r2 ch,
+            r2 = proj r1 -> (AppendAlignedEncodeM f g) v idx r2 ch = h v idx r1 ch.
+      Proof.
+        intros f f' g g' h proj Hf Hg Hh v idx r1 r2 ch eq.
+        specialize (Hh v idx r1 ch); compute in *.
+        rewrite eq, Hf in *; destruct (f' _ _ _ _); congruence.
+      Qed.
+
     Lemma cleanup_aligned_encoder_assoc {cache S1}:
       forall (sz : nat) (r : S1) (v : t Core.char sz) ch idx,
       forall (f1 f2 g: @AlignedEncodeM cache S1 sz)
         x,
         (AppendAlignedEncodeM f1 (AppendAlignedEncodeM f2 g)) v idx r ch = x ->
         (AppendAlignedEncodeM (AppendAlignedEncodeM f1 f2) g) v idx r ch = x.
+    Proof. compute; intros; destruct (f1 _ _ _ _); [ destruct (f2 _ _ _ _) | ]; congruence. Qed.
+
+    Lemma cleanup_aligned_encoder_distribute {cache S1 S2}:
+      forall (sz : nat) (r : S1) (v : t Core.char sz) ch idx,
+      forall (f1 f2: @AlignedEncodeM cache S2 sz)
+        (g: @AlignedEncodeM cache S1 sz)
+        x proj,
+        (AppendAlignedEncodeM
+           (fun v idx r => f1 v idx (proj r))
+           (AppendAlignedEncodeM (fun v idx r => f2 v idx (proj r)) g)) v idx r ch = x ->
+        (AppendAlignedEncodeM (fun v idx r => (AppendAlignedEncodeM f1 f2) v idx (proj r)) g) v idx r ch = x.
     Proof. compute; intros; destruct (f1 _ _ _ _); [ destruct (f2 _ _ _ _) | ]; congruence. Qed.
 
     Ltac cleanup_single_encoder :=
@@ -262,281 +295,150 @@ Module Sensor5.
               (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2) g3)
       end.
 
-    Ltac derive_clean_encoder :=
-      intros;
-      eapply cleanup_aligned_encoder_init; [ reflexivity | ];
-      repeat (intros; simple eapply cleanup_aligned_encoder_bind);
-      cleanup_single_encoder;
-      reflexivity.
+    Ltac derive_clean_encoder__reflexivity :=
+      match goal with
+      | [ |- ?x = ?proj ?y ] =>
+        is_evar proj;
+        let ty := type of y in
+        match (eval pattern y in x) with ?fx _ => unify fx (@const _ ty x) end;
+        simple apply (eq_refl ((const x) y))
+      | _ => reflexivity
+      end.
 
-    Notation "x |> y" := (Projection_AlignedEncodeM' y x) (right associativity, at level 2).
+    Lemma AlignedEncodeList_morphism {cache: Cache} {A: Type}:
+      forall (encA encA': forall sz, AlignedEncodeM sz) sz,
+        (forall v idx r ch, encA sz v idx r ch = encA' sz v idx r ch) ->
+        (forall r v idx ch,
+            @AlignedEncodeList cache A encA sz v idx r ch =
+            @AlignedEncodeList cache A encA' sz v idx r ch).
+    Proof.
+      intros * Heq; induction r; simpl; intros.
+      - reflexivity.
+      - rewrite Heq; destruct (encA' _ _ _ _ _); simpl; congruence.
+    Qed.
+
+    Ltac cleanup_encoder_break_bind :=
+      repeat (intros;
+              (simple eapply cleanup_aligned_encoder_assoc ||
+               simple eapply cleanup_aligned_encoder_distribute ||
+               simple eapply cleanup_aligned_encoder_bind ||
+               eapply AlignedEncodeList_morphism ||
+               (simple eapply cleanup_aligned_encoder_bind_projection;
+                [ .. | intro | derive_clean_encoder__reflexivity ]))).
 
     Ltac exact_computed t :=
       let t' := (eval compute in t) in exact t'.
 
-    Ltac cleanup_encoder enc :=
-      let nm := fresh in
-      pose enc as nm;
-      simpl in nm;
-      repeat change (fun x => ?h x) with h in nm;
-      repeat change (wzero ?sz) with (ltac:(let w0 := (eval compute in (wzero sz)) in exact w0)) in nm;
-      repeat ((change (@split1' (S ?sz1) ?sz2 (WS ?b ?w)) with
-                   (ltac:(exact_computed (@split1' (S sz1) sz2 (WS b w)))) in nm) ||
-              (change (@split2' (S ?sz1) ?sz2 (WS ?b ?w)) with
-                   (ltac:(exact_computed (@split2' (S sz1) sz2 (WS b w)))) in nm)).
-
-    match goal with
-    | [  |- Some ?f = None ] => pose f
-    end.
-
-    (* unfold split1', split2' in nm; simpl in nm; *)
-    (* fold @split1' in nm; fold @split2' in nm. *)
-
-    (* unfold SetCurrentBytes; simpl. *)
-
-    unfold SetCurrentBytes.
-    match goal with
-    | [  |- Some ?f = None ] =>
-      let g := constr:(
-                ltac:(eexists; derive_clean_encoder)
-                : { g : (forall sz : nat, sensor_msg -> t Core.char sz -> option (t Core.char sz * nat * @CacheFormat _))
-                        & forall (sz : nat) (r : sensor_msg) (v : t Core.char sz), f sz r v = g sz r v }) in
-      cleanup_encoder (projT1 g)
-    end.
-
-    Print const.
-    assert (forall sz r v, Some (H sz r v) = None).
-
-    Goal True.
-      pose (fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-       ((fun (v0 : t Core.char sz) (idx : nat) (s' : sensor_msg) (env : CacheFormat) =>
-         SetCurrentByte v0 idx (stationID s') env)>>
-        (fun (v0 : t Core.char sz) (idx : nat) (_ : sensor_msg) => SetCurrentByte v0 idx (wzero 8))>>
-        (fun (v0 : t Core.char sz) (idx : nat) (_ : sensor_msg) (env : CacheFormat) =>
-         SetCurrentBytes (sz := 2) v0 idx WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0 env)>>
-        (fun (v0 : t Core.char sz) (idx : nat) (s' : sensor_msg) (env : CacheFormat) =>
-         SetCurrentByte v0 idx (natToWord 8 (| measurements s' |)) env)>>
-        (fun (v0 : t Core.char sz) (idx : nat) (s' : sensor_msg) (env : CacheFormat) =>
-         AlignedEncodeList (fun n : nat => SetCurrentBytes (sz := 2)) sz v0 idx (measurements s') env))%AlignedEncodeM v 0 r
-         tt) as f.
-
-      assert { g : (forall sz : nat, sensor_msg -> t Core.char sz -> option (t Core.char sz * nat * @CacheFormat test_cache))
-                   & forall (sz : nat) (r : sensor_msg) (v : t Core.char sz), f sz r v = g sz r v }.
-
-      eexists.
-      intros;
-      eapply cleanup_aligned_encoder_init; [ reflexivity | ].
-      unfold SetCurrentBytes.
-      repeat (intros; simple eapply cleanup_aligned_encoder_bind).
-      Focus 3.
-      intros. eapply cleanup_aligned_encoder_assoc.
-    Lemma cleanup_aligned_encoder_assoc {cache S1}:
-      forall (sz : nat) (r : S1) (v : t Core.char sz) ch idx,
-      forall (f1 f2 g: @AlignedEncodeM cache S1 sz)
-        x,
-        (AppendAlignedEncodeM f1 (AppendAlignedEncodeM f2 g)) v idx r ch = x ->
-        (AppendAlignedEncodeM (AppendAlignedEncodeM f1 f2) g) v idx r ch = x.
-    Proof. compute; intros; destruct (f1 _ _ _ _); [ destruct (f2 _ _ _ _) | ]; congruence. Qed.
-
-      
-              try cleanup_single_encoder.
-
-Fo
-      
-      (simple eapply cleanup_aligned_encoder_bind); intros.
-      (* Lemma cleanup_aligned_encoder_assoc {cache S1}: *)
-      (*   forall (sz : nat) (r : S1) (v : t Core.char sz) ch idx, *)
-      (*   forall (f1 f2 g: @AlignedEncodeM cache S1 sz) *)
-      (*     x, *)
-      (*     (AppendAlignedEncodeM f1 (AppendAlignedEncodeM f2 g)) v idx r ch = x -> *)
-      (*     (AppendAlignedEncodeM (AppendAlignedEncodeM f1 f2) g) v idx r ch = x. *)
-      (* Proof. compute; intros; destruct (f1 _ _ _ _); [ destruct (f2 _ _ _ _) | ]; congruence. Qed. *)
-      (eapply cleanup_aligned_encoder_bind); intros.
-      Focus 2.
-
-      replace ( WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0) with r2.
-      (simple eapply cleanup_aligned_encoder_bind); intros.
-      (eapply cleanup_aligned_encoder_assoc); intros.
-      cleanup_single_encoder.
-
-      Focus 6.
-      repeat change (wzero ?sz) with (ltac:(exact_computed (wzero sz))).
-      Unfocus. Focus 5.
-      (change (@split1' (S ?sz1) ?sz2 (WS ?b ?w)) with
-           (ltac:(exact_computed (@split1' (S sz1) sz2 (WS b w))))).
+    Ltac cleanup_encoder_postprocess :=
+      simpl;
+      repeat change (fun x => ?h x) with h;
+      repeat change (wzero ?sz) with (ltac:(let w0 := (eval compute in (wzero sz)) in exact w0));
       repeat ((change (@split1' (S ?sz1) ?sz2 (WS ?b ?w)) with
                    (ltac:(exact_computed (@split1' (S sz1) sz2 (WS b w))))) ||
               (change (@split2' (S ?sz1) ?sz2 (WS ?b ?w)) with
                    (ltac:(exact_computed (@split2' (S sz1) sz2 (WS b w)))))).
-      repeat change (fun (_: ?B) => ?cst) with (ltac:(let A := (type of cst) in exact (@const A B cst))) in nm.
 
-      
-
-      eexists; intros.
-      eapply cleanup_aligned_encoder_init; [ reflexivity | ].
-
-      apply cleanup_aligned_encoder_bind; intros.
-          (Projection_AlignedEncodeM' (sz := sz) f g).
-      change (fun (v : t Core.char ?sz) (idx : nat) (s' : sensor_msg) =>
-                ?f v idx (?g s') env) with
-          (Projection_AlignedEncodeM' (sz := sz) f g).
-      
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_projection;
-                       eapply cleanup_aligned_encoder_bind ]).
-
-      (intros; first [ eapply cleanup_aligned_encoder_assoc
-                     |
-                     eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc;
-                       [ | eapply cleanup_aligned_encoder_projection] |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc;
-                       [ | eapply cleanup_aligned_encoder_projection] |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc;
-                       [ | eapply cleanup_aligned_encoder_projection] |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc;
-                       [ | eapply cleanup_aligned_encoder_projection] |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc;
-                       [ | eapply cleanup_aligned_encoder_projection] |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc;
-                       [ | eapply cleanup_aligned_encoder_projection] |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_projection |
-                       eapply cleanup_aligned_encoder_bind ]).
-      Focus 2.
-            (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_projection |
-                       eapply cleanup_aligned_encoder_bind ]).
-
-      unfold SetCurrentBytes.
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_bind ]).
-      (intros; first [ eapply cleanup_aligned_encoder_assoc |
-                       eapply cleanup_aligned_encoder_bind ]).
-      derive_clean_encoder.
-        intros;
-        [ reflexivity | ].
-      unfold SetCurrentBytes.
-      cleanup_encoder enc
+    Ltac derive_clean_encoder :=
       intros;
-        first [eapply cleanup_aligned_encoder_bind |
-               eapply cleanup_aligned_encoder_bind_const ].
-      Show Proof.
-      intros.
+      unfold SetCurrentBytes;
+      eapply cleanup_aligned_encoder_init; [
+        match goal with
+        | [ |- _ ?v ?idx ?r ?ch = _ ] => refine (eq_trans (y := (_: AlignedEncodeM _) v idx r ch) _ _)
+        end;
+        [ cleanup_encoder_break_bind;
+          cleanup_single_encoder;
+          reflexivity
+        | cleanup_encoder_postprocess;
+          reflexivity ]
+      | reflexivity ].
 
-      repeat change (fun (v : Vector.t Core.char _) (idx : nat) (_ : ?tmsg) (env : @CacheFormat ?cache) =>
-                       ?f v idx ?x env)
-        with (fun (v : Vector.t Core.char _) (idx : nat) (s : tmsg) (env : @CacheFormat cache) =>
-                f v idx ((fun _ => x) s) env).
+    Notation "y ∘ x" := (Projection_AlignedEncodeM' y x) (left associativity, at level 40).
 
-      eapply cleanup_aligned_encoder_bind.
-      unfold SetCurrentBytes.
-      intros.
+    Fail match goal with
+    | [  |- Some ?f = None ] =>
+      let g := constr:(
+                ltac:(eexists; derive_clean_encoder)
+                : { g : (forall sz : nat, @AlignedEncodeM _ _ sz)
+                        & forall (sz : nat) (v : Vector.t Core.char sz) (r: sensor_msg) idx ch, f sz v idx r ch = g sz v idx r ch }) in
+      let gg := (eval simpl in (projT1 g)) in
+      pose gg
+    end.
 
-      eapply cleanup_aligned_encoder_assoc.
-      eapply cleanup_aligned_encoder_bind.
-      intros.
-      eapply cleanup_aligned_encoder_assoc.
-      eapply cleanup_aligned_encoder_bind.
-      intros.
-      eapply cleanup_aligned_encoder_bind.
-      intros.
-      eapply cleanup_aligned_encoder_bind.
-
-      
-      Show Proof.
-      (* FIXME remove bind_const *)
-      
-
-      
-      simpl.
-        Show Proof.
-
-
-        
-        reflexivity.
-
-      Show Proof.
-
-    reflexivity.
-    
-    stationID -> SetCurrentByte;
-    (const w0) -> SetCurrentByte;
-    (const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0) -> SetCurrentBytes;
-    measurements . length . natToWord 8 -> setCurrentByte;
-    measurements . AlignedEncodeList SetCurrentBytes
-
-    
-    stationID |> (@SetCurrentByte test_cache test_cache_add_nat)
-
-    
-    unfold "|>".
-
-    Definition cmp {A S sz cache} {cacheAdd: CacheAdd cache nat} (writer: AlignedEncodeM (S := S) sz) (f: A -> _) :=
-      (fun (v0 : t Core.char sz) (idx : nat) (a: _) (env : CacheFormat) =>
-       writer v0 idx (f a) env).
-
-    Set Printing Implicit.
-    Locate ">>".
-    (* Unset Printing Notations. *)
     match goal with
     | [  |- Some ?f = None ] =>
-      assert { g : (forall sz : nat, sensor_msg -> t Core.char sz -> option (t Core.char sz * nat * @CacheFormat test_cache))
-                   & forall (sz : nat) (r : sensor_msg) (v : t Core.char sz), f sz r v = g sz r v }
+      assert { g : (forall sz : nat, @AlignedEncodeM _ _ sz)
+                        & forall (sz : nat) (v : Vector.t Core.char sz) (r: sensor_msg) idx ch, f sz v idx r ch = g sz v idx r ch }
     end.
     eexists.
-    intros.
-    Open Scope AlignedEncodeM.
 
-    Lemma 
-    
-    simpl.
-      let g :  :=
-          ltac:(unshelve econstructor) in
+      intros;
+      unfold SetCurrentBytes;
+      eapply cleanup_aligned_encoder_init; [ reflexivity | ];
+      match goal with
+      | [ |- _ ?v ?idx ?r ?ch = _ ] => refine (eq_trans (y := (_: AlignedEncodeM _) v idx r ch) _ _)
+      end;
+      [ cleanup_encoder_break_bind
+      | cleanup_encoder_postprocess ].
+
+      intros; eapply cleanup_aligned_encoder_init.
+      2: cleanup_encoder_break_bind.
+      all: try (cleanup_single_encoder; reflexivity).
+      reflexivity.
+      Focus 2.
+      cleanup_encoder_break_bind.
       
-      change f with
-          (fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-             ltac:(let body := (eval cbv beta in (f sz r v)) in
-                   match body with
-                   | context[@AppendAlignedEncodeM test_cache sensor_msg _ ?y _] =>
-                     let body := (change y with
-                         (fun (v0 : t Core.char sz) (idx : nat) (s' : sensor_msg) (env : @CacheFormat test_cache) =>
-                            ltac:(let ybody := (eval cbv beta in (y v0 idx s' env)) in
-                                  match body with
-                                  | ?f v0 idx (@?g s') env =>
-                                    exact (idtac (fun x => f v0 idx x env) (g s'))
-                                  end)) in body) in
-                     exact body
-                   end))
-    end.
-    match goal with
-    | [  |- context [(fun (v0 : t Core.char _) (idx : nat) (s' : sensor_msg) (env : CacheFormat) =>
-                       @?f v0 idx s' env)] ] => idtac
-                                                 (* pose wrt; pose f *)
-                                                 (* let C' := context C[cmp (wrt sz c) f] in *)
-                                                 (* change C' *)
-    end.
-    Notation "[[[ xyz ===> f ]]]" :=
-      ().
+      clear.
+
+    derive_clean_encoder.
+          intros;
+      eapply cleanup_aligned_encoder_init; [ reflexivity | ];
+      repeat (intros;
+              (simple eapply cleanup_aligned_encoder_assoc ||
+               simple eapply cleanup_aligned_encoder_distribute ||
+               simple eapply cleanup_aligned_encoder_bind ||
+               (simple eapply cleanup_aligned_encoder_bind_projection;
+                [ .. | intro | derive_clean_encoder__reflexivity ])));
+      cleanup_single_encoder
+      eapply cleanup_aligned_encoder_init; [ reflexivity | ].
+    repeat (intros; (simple eapply cleanup_aligned_encoder_assoc ||
+                     simple eapply cleanup_aligned_encoder_distribute ||
+                     simple eapply cleanup_aligned_encoder_bind ||
+                     simple eapply cleanup_aligned_encoder_bind_projection)).
+    (intros; (simple eapply cleanup_aligned_encoder_bind)).
+    (intros; (simple eapply cleanup_aligned_encoder_bind)).
+    (intros; (simple eapply cleanup_aligned_encoder_bind)).
+    (intros; (simple eapply cleanup_aligned_encoder_bind)).
+      (* cleanup_single_encoder. *)
+
+    Focus 3.
+    intros.
+
+    Lemma cleanup_aligned_encoder_bind' {cache S2}:
+      forall (sz : nat) (v : t Core.char sz) idx (r : S2) ch,
+      forall (f f' g g': @AlignedEncodeM cache S2 sz) x,
+        (forall v idx r ch, g v idx r ch = g' v idx r ch) ->
+        (forall v idx r ch, f v idx r ch = f' v idx r ch) ->
+        (AppendAlignedEncodeM f' g') v idx r ch = x ->
+        (AppendAlignedEncodeM f g) v idx r ch = x.
+    Proof. compute; intros * Hg Hf. rewrite Hf; destruct (f' _ _ _ _); congruence. Qed.
+    unfold AppendAlignedEncodeM at 1.
+    simple eapply cleanup_aligned_encoder_bind'.
+    intros; simple eapply cleanup_aligned_encoder_bind'.
+    eapply (cleanup_aligned_encoder_assoc sz r2 v2 ch1 idx1).
+
+
+
+
+
+
+
+
+
+
+
+
+
     
-  Locate "|>".
-  Print 
   Let decode := decoder_impl encoder_decoder.
 End Sensor5.
 
