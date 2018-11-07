@@ -254,55 +254,49 @@ NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
 ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around the fact that reinstalling 8.4 doesn't remove the 8.5 files, like universes.cmo
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
+ML4_OR_MLG := ml4
 else
 ifneq (,$(filter 8.5%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
+ML4_OR_MLG := ml4
 else
 ifneq (,$(filter 8.6%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v86
 ML_DESCRIPTION := "Coq v8.6"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
 else
 ifneq (,$(filter 8.7%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v87
 ML_DESCRIPTION := "Coq v8.7"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
 else
 ifneq (,$(filter 8.8%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v88
 ML_DESCRIPTION := "Coq v8.8"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
 else
 ifneq (,$(filter 8.9%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v89
 ML_DESCRIPTION := "Coq v8.9"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
 else
 ifneq (,$(filter 8.10%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v810
 ML_DESCRIPTION := "Coq v8.10"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-else
-ifneq (,$(filter trunk,$(COQ_VERSION)))
-EXPECTED_EXT:=.trunk
-ML_DESCRIPTION := "Coq trunk"
-OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-else
-ifneq (,$(filter master,$(COQ_VERSION)))
-EXPECTED_EXT:=.master
-ML_DESCRIPTION := "Coq master"
-OTHERFLAGS += -w "-notation-overridden"
+ML4_OR_MLG := mlg
 else
 ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
+ML4_OR_MLG := ml4
 else
-EXPECTED_EXT:=.master
-ML_DESCRIPTION := "Coq master"
-OTHERFLAGS += -w "-notation-overridden"
-endif
-endif
+$(error Unrecognized Coq version $(COQ_VERSION))
 endif
 endif
 endif
@@ -314,8 +308,8 @@ endif
 
 # see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_tactics.ml,$(EXPECTED_EXT)))
-$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_plugin.ml4,$(EXPECTED_EXT)))
-$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugin.ml4,$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_plugin.$(ML4_OR_MLG),$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugin.$(ML4_OR_MLG),$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_tactics.ml,$(EXPECTED_EXT)))
 
 endif
