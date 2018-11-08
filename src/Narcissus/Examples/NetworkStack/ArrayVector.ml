@@ -56,14 +56,17 @@ let nth_opt _ (arr: 'a storage_t) (idx: idx_t) : 'a option =
     Some (Array.unsafe_get arr.data idx)
   else None
 
-let set_nth _ (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
-  throw_if_stale "set_nth" arr;
+let incr_version arr =
   let version = Pervasives.succ !(arr.latest_version) in
   arr.latest_version := version;
-  Array.unsafe_set arr.data idx x;
   { version = version;
     latest_version = arr.latest_version;
     data = arr.data }
+
+let set_nth _ (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
+  throw_if_stale "set_nth" arr;
+  Array.unsafe_set arr.data idx x;
+  incr_version arr
 
 let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ n (arr: 'a storage_t) (init: 'b) (pad: 'a) =
   (* Printf.printf "Looping up to (min %d %d)\n%!" n (Array.length arr.data); *)
@@ -78,6 +81,30 @@ let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ n (arr: 'a storage_t) (init: 'b) 
                   acc in
       loop f arr acc pad len (offset + 2)
   in loop f arr init pad (min n (Array.length arr.data)) 0
+
+let list_of_range _ (from: int) (len: int) (arr: 'a storage_t) =
+  throw_if_stale "list_of_range" arr;
+  let rec loop from idx data acc =
+    if idx < from then
+      acc
+    else
+      loop from (idx - 1) data (Array.unsafe_get data idx :: acc)
+  in loop from (min (from + len) (length arr) - 1) arr.data []
+
+let rec blit_list_unsafe start list data =
+  match list with
+  | [] -> data
+  | h :: t ->
+     Array.unsafe_set data start h;
+     blit_list_unsafe (start + 1) t data
+
+let blit_list _ start list arr =
+  throw_if_stale "list_of_range" arr;
+  let len = List.length list in
+  if (start + len) <= length arr then
+    let data' = blit_list_unsafe start list arr.data in
+    Some (incr_version { arr with data = data' }, len)
+  else None
 
 let append _ _ (arr1: 'a storage_t) (arr2: 'a storage_t) : 'a storage_t =
   throw_if_stale "append" arr1;

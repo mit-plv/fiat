@@ -99,6 +99,7 @@ def plotbench(grouped):
 
     # pyplot.yticks([-n for n in range(len(ylabels))], ylabels)
     ax.set_ylim((-len(ylabels), 0))
+    ax.set_xlim((0, 25))
     ax.set_yticks([-n for n in range(len(ylabels))])
     ax.set_yticklabels(ylabels)
     ax.set_xlabel("Single-packet processing time (µs)")

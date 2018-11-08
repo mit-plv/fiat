@@ -79,8 +79,13 @@ Extract Inductive nat => "OCamlNativeInt.t" [ "0" "Pervasives.succ" ]
  "(fun fO fS n -> if n=0 then fO () else fS (n-1))".
 
 Extract Inductive prod => "(*)"  [ "(,)" ].
+
 Extract Inlined Constant NPeano.ltb => "(<)".
 Extract Inlined Constant NPeano.leb => "(<=)".
+(* ExtrOCamlNatInt uses Pervasives.max, which is slow *)
+Extract Constant Nat.sub =>
+  "fun (x: OCamlNativeInt.t) (y: OCamlNativeInt.t) ->
+if x <= y then 0 else (x - y)".
 
 (** * Inline a few functions *)
 Require Import
@@ -171,10 +176,14 @@ Extract Inlined Constant Vector.append => "ArrayVector.append".
 Extract Inlined Constant VectorDef.append => "ArrayVector.append".
 Extract Inlined Constant Vector.nth => "ArrayVector.nth".
 Extract Inlined Constant VectorDef.nth => "ArrayVector.nth".
+Extract Inlined Constant Vector.replace => "ArrayVector.set_nth".
+Extract Inlined Constant VectorDef.replace => "ArrayVector.set_nth".
 Extract Inlined Constant nth_opt => "ArrayVector.nth_opt".
 Extract Inlined Constant set_nth' => "ArrayVector.set_nth".
 Extract Inlined Constant EnumOpt.word_indexed => "ArrayVector.index".
 Extract Inlined Constant InternetChecksum.Vector_fold_left_pair => "ArrayVector.fold_left_pair".
+Extract Inlined Constant AlignedList.list_of_vector_range => "ArrayVector.list_of_range".
+Extract Inlined Constant AlignedList.vector_blit_list => "ArrayVector.blit_list".
 
 Compute
   match IPv4Header.IPv4_decoder_impl IPv4Header.bin_pkt with
