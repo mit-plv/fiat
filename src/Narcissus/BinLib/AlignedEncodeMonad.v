@@ -506,6 +506,32 @@ Proof.
   rewrite H; eauto.
 Qed.
 
+Lemma EncodeMEquivAlignedEncodeM_morphism
+      {S : Type}
+      {cache : Cache}
+  : forall x (encode encode': forall sz : nat, AlignedEncodeM sz),
+    (forall sz v idx w c, encode' sz v idx w c = encode sz v idx w c) ->
+    EncodeMEquivAlignedEncodeM (S := S) x encode ->
+    EncodeMEquivAlignedEncodeM (S := S) x encode'.
+Proof.
+  unfold EncodeMEquivAlignedEncodeM; intros * Heq Hequiv.
+  setoid_rewrite <- Heq in Hequiv.
+  assumption.
+Qed.
+
+Lemma CorrectAlignedEncoder_morphism
+      {S : Type}
+      {cache : Cache}
+  : forall format (encode encode': forall sz : nat, AlignedEncodeM sz),
+    (forall sz v idx w c, encode' sz v idx w c = encode sz v idx w c) ->
+    CorrectAlignedEncoder (S := S) format encode ->
+    CorrectAlignedEncoder (S := S) format encode'.
+Proof.
+  unfold CorrectAlignedEncoder; intros.
+  destruct X as [? [? ?] ]; eexists; intuition eauto.
+  eauto using EncodeMEquivAlignedEncodeM_morphism.
+Qed.
+
 Lemma CorrectAlignedEncoderThenCAssoc
       {S : Type}
       {cache : Cache}
