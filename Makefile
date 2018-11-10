@@ -45,9 +45,72 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 
 STRICT_COQDEP ?= 1
 
-ML_COMPATIBILITY_FILES = src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.ml4 src/Common/Tactics/transparent_abstract_plugin.ml4 src/Common/Tactics/transparent_abstract_tactics.ml
+UPDATE_COQPROJECT = yes # always update _CoqProject, since we sometimes switch between ml4 and mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT = | sed s'/\.@ML4_OR_MLG@/.$(ML4_OR_MLG)/g'
 
 include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
+
+ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around the fact that reinstalling 8.4 doesn't remove the 8.5 files, like universes.cmo
+EXPECTED_EXT:=.v84
+ML_DESCRIPTION := "Coq v8.4"
+ML4_OR_MLG := ml4
+else
+ifneq (,$(filter 8.5%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v85
+ML_DESCRIPTION := "Coq v8.5"
+ML4_OR_MLG := ml4
+else
+ifneq (,$(filter 8.6%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v86
+ML_DESCRIPTION := "Coq v8.6"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
+else
+ifneq (,$(filter 8.7%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v87
+ML_DESCRIPTION := "Coq v8.7"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
+else
+ifneq (,$(filter 8.8%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v88
+ML_DESCRIPTION := "Coq v8.8"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
+else
+ifneq (,$(filter 8.9%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v89
+ML_DESCRIPTION := "Coq v8.9"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := ml4
+else
+ifneq (,$(filter 8.10%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v810
+ML_DESCRIPTION := "Coq v8.10"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := mlg
+else
+# >= 8.5 if it exists
+NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
+
+ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
+EXPECTED_EXT:=.v84
+ML_DESCRIPTION := "Coq v8.4"
+ML4_OR_MLG := ml4
+else
+$(error Unrecognized Coq version $(COQ_VERSION))
+endif
+endif
+endif
+endif
+endif
+endif
+endif
+endif
+
+ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml
+
+ML_COMPATIBILITY_FILES := $(subst @ML4_OR_MLG@,$(ML4_OR_MLG),$(ML_COMPATIBILITY_FILES_PATTERN))
 
 include etc/coq-scripts/Makefile.coq.common
 
@@ -245,73 +308,14 @@ install-fiat install-fiat-core install-querystructures install-parsers install-p
 	$(HIDE)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
+	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.{ml4,mlg}" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES_PATTERN)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
 
 ifeq ($(IS_FAST),0)
-# >= 8.5 if it exists
-NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
-
-ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around the fact that reinstalling 8.4 doesn't remove the 8.5 files, like universes.cmo
-EXPECTED_EXT:=.v84
-ML_DESCRIPTION := "Coq v8.4"
-ML4_OR_MLG := ml4
-else
-ifneq (,$(filter 8.5%,$(COQ_VERSION)))
-EXPECTED_EXT:=.v85
-ML_DESCRIPTION := "Coq v8.5"
-ML4_OR_MLG := ml4
-else
-ifneq (,$(filter 8.6%,$(COQ_VERSION)))
-EXPECTED_EXT:=.v86
-ML_DESCRIPTION := "Coq v8.6"
-OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-ML4_OR_MLG := ml4
-else
-ifneq (,$(filter 8.7%,$(COQ_VERSION)))
-EXPECTED_EXT:=.v87
-ML_DESCRIPTION := "Coq v8.7"
-OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-ML4_OR_MLG := ml4
-else
-ifneq (,$(filter 8.8%,$(COQ_VERSION)))
-EXPECTED_EXT:=.v88
-ML_DESCRIPTION := "Coq v8.8"
-OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-ML4_OR_MLG := ml4
-else
-ifneq (,$(filter 8.9%,$(COQ_VERSION)))
-EXPECTED_EXT:=.v89
-ML_DESCRIPTION := "Coq v8.9"
-OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-ML4_OR_MLG := ml4
-else
-ifneq (,$(filter 8.10%,$(COQ_VERSION)))
-EXPECTED_EXT:=.v810
-ML_DESCRIPTION := "Coq v8.10"
-OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-ML4_OR_MLG := mlg
-else
-ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
-EXPECTED_EXT:=.v84
-ML_DESCRIPTION := "Coq v8.4"
-ML4_OR_MLG := ml4
-else
-$(error Unrecognized Coq version $(COQ_VERSION))
-endif
-endif
-endif
-endif
-endif
-endif
-endif
-endif
-
 # see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_tactics.ml,$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_plugin.$(ML4_OR_MLG),$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugin.$(ML4_OR_MLG),$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_tactics.ml,$(EXPECTED_EXT)))
-
 endif
 
 

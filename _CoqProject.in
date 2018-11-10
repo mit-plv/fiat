@@ -648,9 +648,9 @@ src/QueryStructure/Specification/SearchTerms/InRange.v
 src/QueryStructure/Specification/SearchTerms/ListInclusion.v
 src/QueryStructure/Specification/SearchTerms/ListPrefix.v
 src/Common/Coq__8_4__8_5__Compat.v
-src/Common/Tactics/hint_db_extra_plugin.ml4
+src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@
 src/Common/Tactics/hint_db_extra_plugin.mllib
 src/Common/Tactics/hint_db_extra_tactics.ml
-src/Common/Tactics/transparent_abstract_plugin.ml4
+src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@
 src/Common/Tactics/transparent_abstract_plugin.mllib
 src/Common/Tactics/transparent_abstract_tactics.ml
