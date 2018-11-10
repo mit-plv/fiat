@@ -98,7 +98,9 @@ EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 ML4_OR_MLG := ml4
 else
+ifdef COQ_VERSION # if not, we're just going to remake the relevant Makefile to include anyway, so we shouldn't error
 $(error Unrecognized Coq version $(COQ_VERSION))
+endif
 endif
 endif
 endif
