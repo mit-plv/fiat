@@ -13,7 +13,9 @@ Require Export
         Fiat.Narcissus.BinLib
         Fiat.Narcissus.Formats
         Fiat.Narcissus.Stores.EmptyStore
-        Fiat.Narcissus.BaseFormats.
+        Fiat.Narcissus.BaseFormats
+        Fiat.Common.EnumType
+        Fiat.Narcissus.Formats.EnumOpt.
 
 Open Scope nat_scope.
 Open Scope type_scope.
@@ -91,9 +93,6 @@ Notation "'format_const' x" := (format_word ◦ (fun _ => x)) (at level 50).
 
 Open Scope AlignedDecodeM.
 Open Scope AlignedEncodeM.
-
-Require Import Fiat.Common.EnumType
-        Fiat.Narcissus.Formats.EnumOpt.
 
 Notation "'fail'" := ThrowAlignedDecodeM.
 
