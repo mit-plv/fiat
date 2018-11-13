@@ -13,23 +13,22 @@ Module Sensor0.
     { stationID: word 8;
       measurement: word 16 }.
 
-  Definition format :=
+  Let format :=
        format_word ◦ stationID
     ++ format_word ◦ measurement.
 
-  Definition invariant (msg: sensor_msg) :=
+  Let invariant (msg: sensor_msg) :=
     True.
 
-  Definition encoder_decoder :
-    EncoderDecoderPair format invariant.
+  Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair. Defined.
 
-  Let encode := encoder_impl encoder_decoder.
+  Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
      (stationID ▹ SetCurrentByte ≫
       measurement ▹ (low_bits 8 ▹ SetCurrentByte ≫
                      shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
-  Let decode := decoder_impl encoder_decoder.
+  Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
      (b <- GetCurrentByte;
       b0 <- GetCurrentByte;
@@ -47,26 +46,25 @@ Module Sensor1.
     { stationID: word 8;
       measurement: word 16 }.
 
-  Definition format :=
+  Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_word ◦ measurement.
 
-  Definition invariant (msg: sensor_msg) :=
+  Let invariant (msg: sensor_msg) :=
     True.
 
-  Definition encoder_decoder :
-    EncoderDecoderPair format invariant.
+  Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair. Defined.
 
-  Let encode := encoder_impl encoder_decoder.
+  Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
     (stationID ▹ SetCurrentByte ≫
      const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
      measurement ▹ (low_bits 8 ▹ SetCurrentByte ≫
                     shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
 
-  Let decode := decoder_impl encoder_decoder.
+  Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
      (b <- GetCurrentByte;
       _ <- SkipCurrentByte;
@@ -83,49 +81,47 @@ End Sensor1.
 Module Sensor2.
   Let kind :=
     EnumType ["TEMPERATURE"; "HUMIDITY"].
+
   Record sensor_msg :=
     { stationID: word 6;
       measurement: (kind * word 14) }.
 
-  Definition format :=
+  Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_enum [WO~0~0; WO~0~1] ◦ fst ◦ measurement
-    ++ format_word ◦ snd ◦ measurement
     ++ format_word ◦ snd ◦ measurement.
 
-  Definition invariant (msg: sensor_msg) :=
+  Let invariant (msg: sensor_msg) :=
     True.
 
-  Definition encoder_decoder :
-    EncoderDecoderPair format invariant.
+  Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair. Abort.
 
-  Fail Let encode := encoder_impl encoder_decoder.
-  Fail Let decode := decoder_impl encoder_decoder.
+  Fail Let encode := encoder_impl enc_dec.
+  Fail Let decode := decoder_impl enc_dec.
 End Sensor2.
 
 (** The use of `format_const` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
 
-(** Our last example gives us an occasion to illustrate data dependencies and input restrictions.  To do so, we replace our single data point with a list of measurements (for conciseness, we remove tags and use 16-bit words).  We start as before, but we quickly run into an issue : **)
+(** We use the next iteration to illustrate data dependencies and input restrictions.  To do so, we replace our single data point with a list of measurements (for conciseness, we remove tags and use 16-bit words).  We start as before, but we quickly run into an issue : **)
 
 Module Sensor3.
   Record sensor_msg :=
     { stationID: word 8;
       measurements: list (word 16) }.
 
-  Definition format :=
+  Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_list format_word ◦ measurements.
 
-  Definition invariant (msg: sensor_msg) :=
+  Let invariant (msg: sensor_msg) :=
     True.
 
-  Definition encoder_decoder :
-    EncoderDecoderPair format invariant.
+  Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair. all:simpl. Abort.
 End Sensor3.
 
@@ -147,18 +143,17 @@ Module Sensor4.
     { stationID: word 8;
       measurements: list (word 16) }.
 
-  Definition format :=
+  Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_nat 16 ◦ length ◦ measurements
     ++ format_list format_word ◦ measurements.
 
-  Definition invariant (msg: sensor_msg) :=
+  Let invariant (msg: sensor_msg) :=
     True.
 
-  Definition encoder_decoder :
-    EncoderDecoderPair format invariant.
+  Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair. all:simpl. Abort.
 End Sensor4.
 
@@ -178,22 +173,21 @@ Module Sensor5.
     { stationID: word 8;
       measurements: list (word 16) }.
 
-  Definition format :=
+  Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_nat 8 ◦ length ◦ measurements
     ++ format_list format_word ◦ measurements.
 
-  Definition invariant :=
+  Let invariant :=
     fun (msg: sensor_msg) =>
       length (msg.(measurements)) < pow2 8.
 
-  Definition encoder_decoder :
-    EncoderDecoderPair format invariant.
+  Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair. Defined.
 
-  Let encode := encoder_impl encoder_decoder.
+  Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
      (stationID ▹ SetCurrentByte ≫
       const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
@@ -203,7 +197,7 @@ Module Sensor5.
       measurements ▹ AlignedEncodeList (fun n => low_bits 8 ▹ SetCurrentByte ≫
                                                  shift_right 8 ▹ SetCurrentByte) sz) v 0 r tt *)
 
-  Let decode := decoder_impl encoder_decoder.
+  Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
      (b <- GetCurrentByte;
       _ <- SkipCurrentByte;
