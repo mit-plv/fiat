@@ -20,11 +20,11 @@ Section AlignedEncodeM.
 
   Definition AlignedEncodeM
              (n : nat) :=
-    Vector.t char n (* Vector of bytes that is being written to *)
+    ByteBuffer.t n (* Vector of bytes that is being written to *)
     -> nat          (* The current index *)
     -> S
     -> CacheFormat  (* The current environment *)
-    -> option (Vector.t char n * nat * CacheFormat) (* Error monad + value + updated index + updated cache *).
+    -> option (ByteBuffer.t n * nat * CacheFormat) (* Error monad + value + updated index + updated cache *).
 
   Definition AppendAlignedEncodeM
              {n : nat}
@@ -103,12 +103,12 @@ Section AlignedEncodeM.
     : AlignedEncodeM n:=
     fun _ _ _ _ => None.
 
-  Fixpoint set_nth' {A}
+  Fixpoint set_nth'
            {n : nat}
-           (v : Vector.t A n)
+           (v : ByteBuffer.t n)
            (m : nat)
-           (a : A)
-    : Vector.t A n :=
+           (a : char)
+    : ByteBuffer.t n :=
     match m, v with
     | 0,  Vector.cons _ _ v' => Vector.cons _ a _ v'
     | Datatypes.S m', Vector.cons a' _ v' => Vector.cons _ a' _ (set_nth' v' m' a)
@@ -395,6 +395,7 @@ Section AlignedEncodeM.
           * simpl; eapply H0; rewrite <- Heqo0; f_equal.
           * generalize v' H3 H4; clear; intros.
             revert v v' H4; rewrite H3; intros; simpl; f_equal.
+            unfold ByteBuffer.t in *.
             rewrite <- H4; f_equal.
             rewrite <- !Vector_split_append; reflexivity.
           * erewrite (proj1 (proj2 (proj2 H))); eauto.

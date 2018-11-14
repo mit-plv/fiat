@@ -520,7 +520,7 @@ Section AlignEncodeWord.
     eapply ByteString_f_equal; simpl.
     instantiate (1 := eq_refl _).
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    erewrite eq_rect_Vector_cons; repeat f_equal.
+    unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; repeat f_equal.
     instantiate (1 := eq_refl _); reflexivity.
     Grab Existential Variables.
     reflexivity.
@@ -530,7 +530,7 @@ Section AlignEncodeWord.
 
   Lemma AlignedDecodeChar {C}
         {numBytes}
-    : forall (v : Vector.t (word 8) (S numBytes))
+    : forall (v : ByteBuffer.t (S numBytes))
              (t : (word 8 * ByteString * CacheDecode) -> C)
              (e : C)
              cd,
@@ -558,8 +558,8 @@ Section AlignEncodeWord.
       unfold decode_word, WordOpt.decode_word.
     split; [ | split ]; intros.
     - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
-      unfold GetCurrentByte; simpl.
-      destruct (nth_opt t n); simpl; eauto.
+      unfold GetCurrentByte, nth_opt; simpl.
+      destruct (Vector_nth_opt t n); simpl; eauto.
     - destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
       eapply decode_word'_lt in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
       unfold lt_B in Heqo; simpl in Heqo.
@@ -810,8 +810,8 @@ Section AlignEncodeWord.
       unfold WordOpt.decode_word, Compose_Decode.
     split; [ | split ]; intros.
     - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
-      unfold SkipCurrentByte; simpl.
-      destruct (nth_opt t n); simpl; eauto.
+      unfold SkipCurrentByte, nth_opt; simpl.
+      destruct (Vector_nth_opt t n); simpl; eauto.
     - unfold decode_unused_word, Compose_Decode, decode_word in H.
       destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
       injections.
@@ -924,7 +924,7 @@ Section AlignEncodeWord.
 
   Lemma AlignedDecode2Char {C}
         {numBytes}
-    : forall (v : Vector.t (word 8) (S (S numBytes)))
+    : forall (v : ByteBuffer.t (S (S numBytes)))
              (t : (word 16 * ByteString * CacheDecode) -> C)
              (e : C)
              cd,

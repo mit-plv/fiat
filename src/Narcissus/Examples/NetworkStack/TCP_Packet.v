@@ -48,14 +48,27 @@ Section TCPPacketDecoder.
      WindowSize : word 16;
      UrgentPointer : option (word 16);
      Options : list (word 32);
-     Payload : list (word 8)}.
+     Payload : { n & ByteBuffer.t n }}.
 
   (* These values are provided by the IP header for checksum calculation.*)
 
   (* These values are provided by the IP header for checksum calculation.*)
-  Variable srcAddr : Vector.t (word 8) 4.
-  Variable destAddr : Vector.t (word 8) 4.
+  Variable srcAddr : ByteBuffer.t 4.
+  Variable destAddr : ByteBuffer.t 4.
   Variable tcpLength : word 16.
+
+  Section ByteBuffer.
+    Context {sz : nat}.
+
+    Context {T : Type}.
+    Context {cache : Cache}.
+    Context {cacheAddNat : CacheAdd cache nat}.
+    Context {monoid : Monoid T}.
+    Context {monoidUnit : QueueMonoidOpt monoid bool}.
+
+    Definition format_bytebuffer (b : { n & ByteBuffer.t n }) (ce : CacheFormat) : Comp (T * CacheFormat) :=
+      format_list format_word (ByteBuffer.to_list (projT2 b)) ce.
+  End ByteBuffer.
 
   Definition TCP_Packet_Format
     : FormatM TCP_Packet ByteString  :=
@@ -78,14 +91,14 @@ Section TCPPacketDecoder.
           ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr tcpLength (natToWord 8 6)) OfSize 16
           ThenCarryOn (Option.format_option format_word (@format_unused_word 16 _ _ _ _ _ _) ◦ UrgentPointer
                                             ++ format_list format_word ◦ Options
-                                            ++ format_list format_word ◦ Payload).
+                                            ++ format_bytebuffer ◦ Payload).
 
   Definition TCP_Packet_OK (tcp : TCP_Packet) :=
     lt (|tcp.(Options)|) 11
     /\ wordToNat tcpLength
        = 20 (* length of packet header *)
          + (4 * |tcp.(Options)|) (* length of option field *)
-         + (|tcp.(Payload)|).
+         + (projT1 tcp.(Payload)).
 
   Local Arguments NPeano.modulo : simpl never.
 
@@ -122,6 +135,10 @@ Section TCPPacketDecoder.
     repeat align_encoder_step.
     (decompose_aligned_encoder; eauto).
     (decompose_aligned_encoder; eauto).
+    align_encoder_step.
+    unfold format_bytebuffer.
+    
+    apply CorrectAlignedEncoderForFormatCharList.
     repeat align_encoder_step.
     repeat align_encoder_step.
     repeat align_encoder_step.
@@ -253,7 +270,36 @@ Proof.
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)
   cbv beta; optimize_decoder_impl.
-  cbv beta; repeat align_decoders_step.
+  cbv beta.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
+
+  eapply @AlignedDecodeCharListM; intros; eauto.
+  (* align_decoders_step. *)
+  (* align_decoders_step. *)
+  align_decoders_step.
+  align_decoders_step.
+  align_decoders_step.
   Grab Existential Variables.
   eauto.
   eauto.
@@ -336,8 +382,15 @@ Definition srcAddr := (Vector.map (natToWord 8) [192; 168; 1; 109]).
 Definition destAddr := (Vector.map (natToWord 8) [151; 101; 129; 164]).
 Definition Vector_length {A n} (v: Vector.t A n) := n.
 
-Compute
+Definition out :=
+Eval compute in
     match (@TCP_decoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input)) _ tcp_decode_input) with
-    | Some (p, _, _) => Some (List.fold_right (fun c s => String (Ascii.ascii_of_N (wordToN c)) s) EmptyString p.(Payload))
-    | None => None
+    | Some (p, _, _) =>
+      (Some (List.fold_right (fun c s => String (Ascii.ascii_of_N (wordToN c)) s) EmptyString p.(Payload)),
+       match (@TCP_encoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input))
+                                p _ (Vector.const (natToWord 8 0) (Vector_length tcp_decode_input))) with
+       | Some (v, _, _) => Some (Vector.map (@wordToNat 8) v)
+       | None => None
+       end)
+    | None => (None, None)
     end.

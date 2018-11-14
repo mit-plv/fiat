@@ -17,16 +17,13 @@ let of_cstruct (buf: Cstruct.t) : storage_t =
 let to_cstruct (arr: storage_t) : Cstruct.t =
   arr.data
 
-let destruct_idx _ _ _ =
-  failwith "Not implemented: ArrayVector.destruct_idx"
-
-let destruct_storage _ _ _ =
-  failwith "Not implemented: ArrayVector.destruct_storage"
-
 let throw_if_stale (fn: string) (arr: storage_t) =
   if arr.version <> !(arr.latest_version) then
-    failwith (Printf.sprintf "ArrayVector: Array version mismatch in '%s': %d != %d."
+    failwith (Printf.sprintf "CstructBytestring: Array version mismatch in '%s': %d != %d."
                 fn arr.version !(arr.latest_version))
+
+let create n =
+  of_cstruct (Cstruct.create n)
 
 let length (arr: storage_t) =
   Cstruct.len arr.data
@@ -137,6 +134,24 @@ let to_list _ (arr: storage_t) : data_t list =
     ls := unsafe_getdata arr.data idx :: !ls
   done;
   !ls
+
+let of_array (v: data_t array) : storage_t =
+  let arr = Cstruct.create (Array.length v) in
+  for idx = 0 to Array.length v - 1 do
+    unsafe_setdata arr idx (Array.unsafe_get v idx)
+  done;
+  of_cstruct arr
+
+let of_vector _ (v: data_t ArrayVector.storage_t) : storage_t =
+  of_array (ArrayVector.to_array v)
+
+let to_vector _ (arr: storage_t) : data_t ArrayVector.storage_t =
+  throw_if_stale "to_vector" arr;
+  let v = Array.make (length arr) 0L in
+  for idx = 0 to length arr - 1 do
+    Array.unsafe_set v idx (unsafe_getdata arr.data idx)
+  done;
+  ArrayVector.of_array v
 
 let cons ((hd, _, tl): ('a * 'b * storage_t)) : storage_t =
   throw_if_stale "cons" tl;

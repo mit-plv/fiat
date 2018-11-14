@@ -282,7 +282,7 @@ Section AlignedDecoders.
            env :=
     match n with
     | 0 => if NPeano.ltb idx (1 + numBytes) then @ReturnAlignedEncodeM _ (Vector.t S 0) _ v idx (Vector.nil _) env else None
-    | S n'' =>  Ifopt (nth_opt Ss n') as s Then (Ifopt (S_format_align numBytes v idx s env)
+    | S n'' =>  Ifopt (Vector_nth_opt Ss n') as s Then (Ifopt (S_format_align numBytes v idx s env)
         as a'
              Then
              AlignedEncodeVector' n'' (1 + n') S_format_align numBytes (fst (fst a'))
@@ -480,7 +480,7 @@ Section AlignedDecoders.
       apply Decode_w_Measure_le_eq' in Heqo.
       simpl in Heqo.
       destruct (Decode_w_Measure_le dec_a
-                                    (build_aligned_ByteString (eq_rect (m + (n - m)) (t (word 8)) (Guarded_Vector_split m n b) n H0)) cd decode_a_le) as [ [ [? [? ?] ] ?] | ] eqn: ?.
+                                    _ cd decode_a_le) as [ [ [? [? ?] ] ?] | ] eqn: ?.
       apply Decode_w_Measure_le_eq' in Heqo0.
       simpl in *.
       rewrite <- build_aligned_ByteString_eq_split in Heqo0 by eauto.
@@ -558,7 +558,7 @@ Section AlignedDecoders.
   Defined.
 
   Fixpoint BytesToString {sz}
-           (b : Vector.t (word 8) sz)
+           (b : ByteBuffer.t sz)
     : string :=
     match b with
     | Vector.nil => EmptyString
@@ -567,8 +567,8 @@ Section AlignedDecoders.
 
   Fixpoint StringToBytes
            (s : string)
-    : Vector.t (word 8) (String.length s) :=
-    match s return Vector.t (word 8) (String.length s) with
+    : ByteBuffer.t (String.length s) :=
+    match s return ByteBuffer.t (String.length s) with
     | EmptyString => Vector.nil _
     | String a s' => Vector.cons _ (NToWord 8 (Ascii.N_of_ascii a)) _ (StringToBytes s')
     end.
@@ -605,7 +605,7 @@ Section AlignedDecoders.
         apply Decode_w_Measure_lt_eq' in Heqo.
         simpl in Heqo.
         destruct (Decode_w_Measure_lt (dec_a m)
-                                      (build_aligned_ByteString (eq_rect _ (t (word 8)) (Guarded_Vector_split m n b) n H0)) cd decode_a_le) as [ [ [? [? ?] ] ?] | ] eqn: ?.
+                                      _ cd decode_a_le) as [ [ [? [? ?] ] ?] | ] eqn: ?.
         apply Decode_w_Measure_lt_eq' in Heqo0.
         unfold proj1_sig in Heqo0.
         rewrite <- build_aligned_ByteString_eq_split in Heqo0.
@@ -678,7 +678,7 @@ Section AlignedDecoders.
         apply Decode_w_Measure_lt_eq' in Heqo.
         simpl in Heqo.
         destruct (Decode_w_Measure_lt (dec_a n)
-                                      (build_aligned_ByteString (eq_rect _ (t (word 8)) (Guarded_Vector_split n n b) n H0)) cd decode_a_le) as [ [ [? [? ?] ] ?] | ] eqn: ?.
+                                      _ cd decode_a_le) as [ [ [? [? ?] ] ?] | ] eqn: ?.
         apply Decode_w_Measure_lt_eq' in Heqo0.
         unfold proj1_sig in Heqo0.
         rewrite <- build_aligned_ByteString_eq_split in Heqo0.
@@ -913,7 +913,7 @@ Section AlignedDecoders.
     omega.
     unfold Guarded_Vector_split; fold Guarded_Vector_split;
       simpl.
-    erewrite eq_rect_Vector_cons; eauto.
+    unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; eauto.
     f_equal.
     apply IHn.
     Grab Existential Variables.
@@ -1091,13 +1091,13 @@ Section AlignedDecoders.
 
   Fixpoint align_decode_list {A}
            (A_decode_align : forall n,
-               Vector.t (word 8) n
+               ByteBuffer.t n
                -> CacheDecode
                -> option (A * {n : _ & Vector.t _ n}
                           * CacheDecode))
            (n : nat)
            {sz}
-           (v : Vector.t (word 8) sz)
+           (v : ByteBuffer.t sz)
            (cd : CacheDecode)
     : option (list A *  {n : _ & Vector.t _ n} * CacheDecode) :=
     match n with
@@ -1114,7 +1114,7 @@ Section AlignedDecoders.
            -> CacheDecode
            -> option (A * ByteString * CacheDecode))
         (A_decode_align : forall n,
-            Vector.t (word 8) n
+            ByteBuffer.t n
             -> CacheDecode
             -> option (A * {n : _ & Vector.t _ n}
                        * CacheDecode))
@@ -1127,7 +1127,7 @@ Section AlignedDecoders.
                                               None)
     : forall (n : nat)
              {sz}
-             (v : Vector.t (word 8) sz)
+             (v : ByteBuffer.t sz)
              (cd : CacheDecode),
       decode_list A_decode n (build_aligned_ByteString v) cd =
       Ifopt align_decode_list A_decode_align n v cd as a Then
@@ -1181,7 +1181,7 @@ Section AlignedDecoders.
 
   Lemma AlignedDecodeUnusedChar {C}
         {numBytes}
-    : forall (v : Vector.t (word 8) (S numBytes))
+    : forall (v : ByteBuffer.t (S numBytes))
              (t : (() * ByteString * CacheDecode) -> C)
              (e : C)
              cd,
@@ -1204,7 +1204,7 @@ Section AlignedDecoders.
 
   Lemma AlignedDecodeUnusedChars {C}
         {numBytes numBytes'}
-    : forall (v : Vector.t (word 8) (numBytes' + numBytes))
+    : forall (v : ByteBuffer.t (numBytes' + numBytes))
              (k : _ -> option C)
              cd,
       BindOpt (decode_unused_word
@@ -1224,14 +1224,14 @@ Section AlignedDecoders.
       simpl BindOpt.
       pose proof (IHnumBytes' (Vector.tl v) k (addD cd 8)).
       unfold Core.char.
-      destruct (decode_word' (8 * numBytes') (build_aligned_ByteString (Vector.tl v))) as [ [? ?] | ] eqn: ?; simpl in *;
+      destruct (decode_word' (8 * numBytes') _) as [ [? ?] | ] eqn: ?; simpl in *;
         try discriminate.
       rewrite addD_addD_plus in H; simpl in H; rewrite H.
       fold plus.
-      destruct ((Vector_split numBytes' numBytes (Vector.tl v))) eqn: ?; simpl.
+      destruct ((Vector_split numBytes' numBytes _)) eqn: ?; simpl.
       reflexivity.
       rewrite addD_addD_plus in H; simpl in H; rewrite H.
-      fold plus; destruct ((Vector_split numBytes' numBytes (Vector.tl v))); simpl.
+      fold plus; destruct ((Vector_split numBytes' numBytes _)); simpl.
       reflexivity.
   Qed.
 
@@ -1287,12 +1287,12 @@ Section AlignedDecoders.
              (decoders :
                 ilist (B := fun T =>
                               forall n,
-                                Vector.t (word 8) n
+                                ByteBuffer.t n
                                 -> CacheDecode
-                                -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode)) types)
+                                -> option (T * {n : _ & ByteBuffer.t n} * CacheDecode)) types)
              (idx : Fin.t m)
              {n : nat}
-             (v : Vector.t (word 8) n)
+             (v : ByteBuffer.t n)
              (cd : CacheDecode)
     := `(a, b', cd') <- ith (decoders) idx n v cd;
          Some (inj_SumType types idx a, b', cd').
@@ -1303,9 +1303,9 @@ Section AlignedDecoders.
         (align_decoders :
            ilist (B := fun T =>
                          forall n,
-                           Vector.t (word 8) n
+                           ByteBuffer.t n
                            -> CacheDecode
-                           -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode)) types)
+                           -> option (T * {n : _ & ByteBuffer.t n} * CacheDecode)) types)
 
         (decoders : ilist (B := fun T => ByteString -> CacheDecode -> option (T * ByteString * CacheDecode)) types)
         (decoders_OK : forall n v cd idx',
@@ -1317,7 +1317,7 @@ Section AlignedDecoders.
     : forall
       (idx : Fin.t m)
       {n : nat}
-      (v : Vector.t (word 8) n)
+      (v : ByteBuffer.t n)
       (cd : CacheDecode),
       decode_SumType types decoders idx (build_aligned_ByteString v) cd
       =
@@ -1340,9 +1340,9 @@ Section AlignedDecoders.
             (align_decoders :
                ilist (B := fun T =>
                              forall n,
-                               Vector.t (word 8) n
+                               ByteBuffer.t n
                                -> CacheDecode
-                               -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode)) types)
+                               -> option (T * {n : _ & ByteBuffer.t n} * CacheDecode)) types)
 
             (decoders : ilist (B := fun T => ByteString -> CacheDecode -> option (T * ByteString * CacheDecode)) types)
             (decoders_OK : forall n v cd,
@@ -1355,7 +1355,7 @@ Section AlignedDecoders.
     : forall
       (idx : Fin.t m)
       {n : nat}
-      (v : Vector.t (word 8) n)
+      (v : ByteBuffer.t n)
       (cd : CacheDecode),
       decode_SumType types decoders idx (build_aligned_ByteString v) cd
       =
@@ -1502,7 +1502,7 @@ Section AlignedDecoders.
 
   Corollary AlignedDecodeNat {C}
             {numBytes}
-    : forall (v : Vector.t (word 8) (S numBytes))
+    : forall (v : ByteBuffer.t (S numBytes))
              (t : _ -> C)
              e
              cd,
@@ -1658,7 +1658,7 @@ Section AlignedDecoders.
     Lemma AlignedDecode_ifb_dep {A : Type}
         (decode_T decode_E : DecodeM (A * ByteString) ByteString)
         (cond : ByteString -> bool)
-        (cond' : forall sz, Vector.t (word 8) sz -> nat -> bool)
+        (cond' : forall sz, ByteBuffer.t sz -> nat -> bool)
         (aligned_decoder_T aligned_decoder_E : forall numBytes : nat, AlignedDecodeM A numBytes)
         (cond'OK : forall sz (v : Vector.t _ sz), cond (build_aligned_ByteString v) = cond' _ v 0)
         (cond'OK2 : forall sz v idx, cond' (S sz) v (S idx) = cond' _ (Vector.tl v) idx )
@@ -1767,7 +1767,7 @@ Section AlignedDecoders.
         {len}
     : forall (t : Fin.t (S len) -> DecodeM (A * _) ByteString)
              (t' : Fin.t (S len) -> forall numBytes : nat, AlignedDecodeM A numBytes)
-             (tb : Vector.t (word 8) (S len)),
+             (tb : ByteBuffer.t (S len)),
       (forall b2 : Fin.t (S len), DecodeMEquivAlignedDecodeM (t b2) (t' b2)) ->
       DecodeMEquivAlignedDecodeM
         (fun (v : ByteString) (cd : CacheDecode) => `(a, b0, cd') <-

@@ -42,17 +42,19 @@ Definition InjectEnum {n A}
            (enum_member: Fin.t n) : A :=
   VectorDef.nth gallina_constructors enum_member.
 
+Require Import AlignedByteString.
+
 Definition WrapDecoder {A B} sz
-           (impl: forall {sz}, Vector.t (word 8) sz -> option (A * nat * B))
-           (bs: Vector.t (word 8) sz) : option A :=
+           (impl: forall {sz}, ByteBuffer.t sz -> option (A * nat * B))
+           (bs: ByteBuffer.t sz) : option A :=
   match impl bs with
   | Some (pkt, _, _) => Some pkt
   | None => None
   end.
 
 Definition WrapEncoder {A B} sz
-           (impl: forall {sz}, Vector.t (word 8) sz -> A -> option (Vector.t (word 8) sz * nat * B))
-           (pkt: A) (out: Vector.t (word 8) sz) : option (Vector.t (word 8) sz) :=
+           (impl: forall {sz}, ByteBuffer.t sz -> A -> option (ByteBuffer.t sz * nat * B))
+           (pkt: A) (out: ByteBuffer.t sz) : option (ByteBuffer.t sz) :=
   match impl out pkt with
   | Some (out, _, _) => Some out
   | None => None
@@ -68,7 +70,7 @@ Definition must {A} (x: option A) (pr: IsSome x) : A :=
   end pr.
 
 Definition MakeBuffer sz := AlignedByteString.initialize_Aligned_ByteString sz.
-Definition FreshBuffer {sz} (len: nat) (v: Vector.t (word 8) sz) := AlignedByteString.initialize_Aligned_ByteString len.
+Definition FreshBuffer {sz} (len: nat) (v: ByteBuffer.t sz) := AlignedByteString.initialize_Aligned_ByteString len.
 
 Definition fiat_ethernet_encode {sz} :=
   WrapEncoder sz (fun sz v pkt => @EthernetHeader_encoder_impl pkt sz v).

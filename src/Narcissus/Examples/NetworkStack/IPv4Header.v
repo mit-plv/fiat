@@ -183,13 +183,17 @@ Arguments GetCurrentBytes : simpl never.
 Definition IPv4_decoder_impl {sz} v :=
   Eval simpl in (projT1 IPv4_Packet_Header_decoder sz v 0 ()).
 
-(* Some example uses of the encoder and decoder functions. *)
-(* A binary version of a packet, sourced directly from the web. *)
-Definition bin_pkt : Vector.t (word 8) _ :=
-  Eval compute in Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;243;159;192;168;222;10;192;168;222;1;0;0;0;0].
+Section BP.
+  Local Opaque ByteBuffer.of_vector.
 
-Definition bin_pkt' : Vector.t (word 8) _ :=
-  Eval compute in Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;0;0;192;168;222;10;192;168;222;1;0;0;0;0].
+  (* Some example uses of the encoder and decoder functions. *)
+  (* A binary version of a packet, sourced directly from the web. *)
+  Definition bin_pkt : ByteBuffer.t _ :=
+    Eval compute in ByteBuffer.of_vector (Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;243;159;192;168;222;10;192;168;222;1;0;0;0;0]).
+
+  Definition bin_pkt' : ByteBuffer.t _ :=
+    Eval compute in ByteBuffer.of_vector (Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;0;0;192;168;222;10;192;168;222;1;0;0;0;0]).
+End BP.
 
 (* An source version of a packet, different from binary packet above. *)
 Definition pkt :=

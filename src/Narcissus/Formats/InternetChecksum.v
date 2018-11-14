@@ -634,18 +634,19 @@ Fixpoint checksum bytes : W16 :=
   | x :: y :: t => add_bytes_into_checksum x y (checksum t)
   end.
 
-Fixpoint Vector_checksum {sz} (bytes :Vector.t (word 8) sz) : W16 :=
-  match bytes with
-  | Vector.nil _ => wzero _
-  | Vector.cons _ x _ (Vector.nil _) => add_bytes_into_checksum x (wzero _) (wzero _)
-  | Vector.cons _ x _ (Vector.cons _ y _ t) => add_bytes_into_checksum x y (Vector_checksum t)
-  end.
+Require Import AlignedByteString.
 
+Fixpoint Vector_checksum {sz} (bytes: ByteBuffer.t sz) : W16 :=
+  match bytes with
+  | @Vector.nil _ => wzero _
+  | @Vector.cons _ x _ (@Vector.nil _) => add_bytes_into_checksum x (wzero _) (wzero _)
+  | @Vector.cons _ x _ (@Vector.cons _ y _ t) => add_bytes_into_checksum x y (Vector_checksum t)
+  end.
 
 Lemma Vector_checksum_eq_checksum'
   : forall (sz' sz : nat)
            (sz_lt : le sz sz')
-           (bytes : Vector.t (word 8) sz),
+           (bytes : ByteBuffer.t sz),
     Vector_checksum bytes = checksum (VectorDef.to_list bytes).
 Proof.
   induction sz'; simpl; eauto.
@@ -659,7 +660,7 @@ Proof.
 Qed.
 
 Corollary Vector_checksum_eq_checksum {sz}
-  : forall (bytes : Vector.t (word 8) sz),
+  : forall (bytes : ByteBuffer.t sz),
     Vector_checksum bytes = checksum (VectorDef.to_list bytes).
 Proof.
   intros; eapply Vector_checksum_eq_checksum'; eauto.
@@ -719,13 +720,13 @@ Proof.
   - etransitivity; eauto.
 Qed.
 
-Fixpoint Vector_fold_left_pair {A B} (f: A -> A -> B -> B) {sz: nat} n (v: Vector.t A sz) (acc: B) (pad: A) : B :=
+Fixpoint ByteBuffer_fold_left_pair {B} (f: Core.char -> Core.char -> B -> B) {sz: nat} n (v: ByteBuffer.t sz) (acc: B) (pad: Core.char) : B :=
   match n, v with
   | 0%nat, _ => acc
-  | _, Vector.nil _ => acc
-  | 1%nat, Vector.cons _ x _ _ => f x pad acc
-  | _, Vector.cons _ x _ (Vector.nil _) => f x pad acc
-  | S (S n'), Vector.cons _ x _ (Vector.cons _ y _ tl) => Vector_fold_left_pair f n' tl (f x y acc) pad
+  | _, @Vector.nil _ => acc
+  | 1%nat, @Vector.cons _ x _ _ => f x pad acc
+  | _, @Vector.cons _ x _ (@Vector.nil _) => f x pad acc
+  | S (S n'), @Vector.cons _ x _ (@Vector.cons _ y _ tl) => ByteBuffer_fold_left_pair f n' tl (f x y acc) pad
   end.
 
 Definition checksum'' byte_pairs acc : W16 :=
@@ -739,12 +740,12 @@ Proof.
   reflexivity.
 Qed.
 
-Definition Vector_checksum' {sz} (bytes : Vector.t (word 8) sz) : W16 :=
-  Vector_fold_left_pair add_bytes_into_checksum sz bytes (wzero _) (wzero _).
+Definition ByteBuffer_checksum' {sz} (bytes : ByteBuffer.t sz) : W16 :=
+  ByteBuffer_fold_left_pair add_bytes_into_checksum sz bytes (wzero _) (wzero _).
 
-Lemma Vector_checksum'_checksum'' :
-  forall {sz} (bytes: Vector.t (word 8) sz) acc,
-    Vector_fold_left_pair add_bytes_into_checksum sz bytes acc (wzero _) =
+Lemma ByteBuffer_checksum'_checksum'' :
+  forall {sz} (bytes: ByteBuffer.t sz) acc,
+    ByteBuffer_fold_left_pair add_bytes_into_checksum sz bytes acc (wzero _) =
     checksum'' (make_pairs (Vector.to_list bytes) (wzero _)) acc.
 Proof.
   fix IH 2.
@@ -754,13 +755,13 @@ Proof.
   - rewrite IH. reflexivity.
 Qed.
 
-Lemma Vector_checksum_Vector_checksum' :
-  forall {sz} (bytes: Vector.t (word 8) sz),
-    Vector_checksum bytes = Vector_checksum' bytes.
+Lemma Vector_checksum_ByteBuffer_checksum' :
+  forall {sz} (bytes: ByteBuffer.t sz),
+    Vector_checksum bytes = ByteBuffer_checksum' bytes.
 Proof.
   intros.
   rewrite Vector_checksum_eq_checksum, checksum_checksum'.
-  unfold Vector_checksum'; rewrite Vector_checksum'_checksum''.
+  unfold ByteBuffer_checksum'; rewrite ByteBuffer_checksum'_checksum''.
   apply checksum'_checksum''.
 Qed.
 
