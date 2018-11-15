@@ -103,25 +103,6 @@ Definition calculate_IPChecksum {S} {sz}
   Proof.
   Admitted.
 
-Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
-      predicate
-      (format_A format_B : FormatM A ByteString)
-      (len_format_A : A -> nat)
-      (len_format_A_OK : forall a' b ctx ctx',
-          computes_to (format_A a' ctx) (b, ctx')
-          -> length_ByteString b = len_format_A a')
-  : CorrectAlignedDecoderFor
-      predicate
-      (format_A ++ format_unused_word 16 ++ format_B)%format
-    -> CorrectAlignedDecoderFor
-         predicate
-         (format_A ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_B).
-Proof.
-  intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v => if weq (Vector_checksum_bound' 20 v) (wones 16) then x sz v  else ThrowAlignedDecodeM v).
-  admit.
-Defined.
-
 Definition splitLength (len: word 16) : Vector.t (word 8) 2 :=
   Vector.cons _ (split2 8 8 len) _ (Vector.cons _ (split1 8 8 len) _ (Vector.nil _)).
 

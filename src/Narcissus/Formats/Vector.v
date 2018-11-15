@@ -90,7 +90,7 @@ Section Vector.
       /\ Vector_predicate_rest _ As' b
     end.
 
-  Theorem Vector_decode_correct
+  Theorem Vector_decode_correct'
     :
     forall sz,
       CorrectDecoder
@@ -133,6 +133,63 @@ Section Vector.
         destruct (decode_Vector sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
         eapply (proj2 A_decode_pf) in Heqo; eauto;
+          destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst;
+            eapply IHsz in Heqo0; eauto; destruct Heqo0 as [? [? ?] ];
+              destruct_ex; intuition; subst.
+        simpl.
+        eexists; eexists; intuition eauto.
+        computes_to_econstructor; eauto.
+        computes_to_econstructor; eauto.
+        rewrite mappend_assoc; reflexivity.
+        inversion H5; subst; eauto.
+        apply inj_pair2_eq_dec in H13; subst; eauto using eq_nat_dec.
+    }
+  Qed.
+
+  Corollary Vector_decode_correct
+            (A_decode_pf'  : CorrectDecoder monoid A_predicate
+                                            (fun _ _ => True)
+                                            format_A A_decode A_cache_inv)
+    : forall sz,
+      CorrectDecoder
+        monoid
+        (fun ls => forall x, Vector.In x ls -> A_predicate x)
+        (fun _ _ => True)
+        format_Vector (decode_Vector sz) A_cache_inv.
+  Proof.
+    split.
+    {
+      intros env env' xenv l l' ext env_OK Eeq Ppred Ppred_rest Penc.
+      generalize dependent env. generalize dependent env'.
+      generalize dependent xenv.
+      generalize dependent l'. induction l.
+      { intros.
+        simpl in *; intuition; computes_to_inv;
+          injections; simpl; rewrite mempty_left; eauto.
+      }
+      { intros; simpl in *.
+        assert (A_predicate h) by (eapply Ppred; econstructor).
+        unfold Bind2 in Penc; computes_to_inv; subst.
+        destruct v; destruct v0; simpl in *.
+        injections.
+        destruct (fun H' => proj1 A_decode_pf' _ _ _ _ _ (mappend b0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
+        intuition; destruct_ex.
+        setoid_rewrite <- mappend_assoc; setoid_rewrite H0;
+          simpl.
+        destruct (IHl (fun x H => Ppred x (Vector.In_cons_tl _ _ _ H)) b0 xenv x xenv_OK c); intuition eauto.
+        setoid_rewrite H3; simpl.
+        eexists; intuition.
+      }
+    }
+    { induction sz; simpl; intros.
+      - injections; simpl; repeat eexists; intuition eauto.
+        symmetry; apply mempty_left.
+        inversion H1.
+      - destruct (A_decode bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+          simpl in *; try discriminate.
+        destruct (decode_Vector sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
+          simpl in *; try discriminate; injections.
+        eapply (proj2 A_decode_pf') in Heqo; eauto;
           destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst;
             eapply IHsz in Heqo0; eauto; destruct Heqo0 as [? [? ?] ];
               destruct_ex; intuition; subst.

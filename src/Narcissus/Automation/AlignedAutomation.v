@@ -416,30 +416,33 @@ Ltac start_synthesizing_encoder :=
   (*pose_string_hyps; *)
   eexists; simpl; intros.
 
-Ltac decompose_aligned_encoder_step :=
-  first [
-      eapply @CorrectAlignedEncoderForIPChecksumThenC
-    | associate_for_ByteAlignment
-    | apply @CorrectAlignedEncoderForThenC
-    | apply @CorrectAlignedEncoderForDoneC].
-
-Ltac decompose_aligned_encoder :=
-  first [
-           eapply @CorrectAlignedEncoderForIPChecksumThenC
-         | first [ associate_for_ByteAlignment
-                 | apply @CorrectAlignedEncoderForThenC]
-         | apply @CorrectAlignedEncoderForDoneC].
-
 Ltac align_encoder_step :=
   first
-    [ apply CorrectAlignedEncoderForFormatList
-    | apply CorrectAlignedEncoderForFormatVector
+    [ match goal with
+        |- CorrectAlignedEncoder (_ ++ _ ++ _)%format _ => associate_for_ByteAlignment
+      end
+    | match goal with
+        |- CorrectAlignedEncoder (_ ++ _)%format  _ => apply @CorrectAlignedEncoderForThenC
+      end
+    | match goal with
+        |- CorrectAlignedEncoder (Either _ Or _)%format _ =>
+        eapply CorrectAlignedEncoderEither_E
+      end
+    | apply CorrectAlignedEncoderForFormatList
+    | apply CorrectAlignedEncoderForFormatVector;
+      [ solve [ eauto ]
+      | solve [ eauto ]
+      | ]
     | apply CorrectAlignedEncoderForFormatChar; eauto
     | apply CorrectAlignedEncoderForFormatNat
     | apply CorrectAlignedEncoderForFormatEnum
     | eapply CorrectAlignedEncoderProjection
-    | eapply (CorrectAlignedEncoderForFormatNEnum _ _ 2)
-    | eapply (CorrectAlignedEncoderForFormatNEnum _ _ 3)
+    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2);
+      [ solve [ eauto ]
+      | solve [ eauto ] ]
+    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 3);
+      [ solve [ eauto ]
+      | solve [ eauto ] ]
     | eapply CorrectAlignedEncoderForFormatUnusedWord
     | eapply CorrectAlignedEncoderForFormatOption
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
@@ -448,10 +451,6 @@ Ltac align_encoder_step :=
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto
     | collapse_unaligned_words].
 
-Ltac align_encoder :=
-  repeat align_encoder_step.
-
 Ltac synthesize_aligned_encoder :=
   start_synthesizing_encoder;
-  decompose_aligned_encoder; eauto;
   repeat align_encoder_step.

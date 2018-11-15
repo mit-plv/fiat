@@ -1,4 +1,6 @@
 Require Export
+        Fiat.Narcissus.Formats.Empty
+        Fiat.Narcissus.Formats.Sequence
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.NatOpt

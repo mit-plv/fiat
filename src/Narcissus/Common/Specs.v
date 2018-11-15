@@ -688,7 +688,7 @@ Add Parametric Morphism
   : (fun format =>
        @CorrectDecoder A B cache monoid predicate
                                 rest_predicate format decode decode_inv)
-    with signature (EquivFormat ==> impl)
+    with signature (EquivFormat --> impl)
       as format_decode_correct_refineEquiv.
 Proof.
   unfold EquivFormat, impl, pointwise_relation, CorrectDecoder;

@@ -967,7 +967,90 @@ Qed.
 Proof.
 Defined. *)
 
+(* A (hopefully) more convenient IP_Checksum lemma *)
 Lemma compose_IPChecksum_format_correct
+  : forall (A : Type)
+           (B := ByteString)
+           (trans : Monoid B := monoid)
+           (trans_opt : QueueMonoidOpt trans bool :=
+              ByteString_QueueMonoidOpt)
+           (calculate_checksum := IPChecksum)
+           (checksum_Valid := IPChecksum_Valid)
+           (checksum_Valid_dec := IPChecksum_Valid_dec)
+           (P : CacheDecode -> Prop)
+           (P_inv : (CacheDecode -> Prop) -> Prop)
+           (decodeChecksum := decode_IPChecksum),
+    cache_inv_Property P P_inv ->
+    forall (predicate : A -> Prop)
+           (predicate_rest : A -> B -> Prop)
+           (format1 : A -> CacheFormat -> Comp (B * CacheFormat))
+           (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
+           (formatd_A_measure : B -> nat)
+           (len_format1 : A -> nat)
+           (len_format2 : A -> nat),
+      (forall a' b ctx ctx',
+          computes_to (format1 a' ctx) (b, ctx')
+          -> length_ByteString b = len_format1 a')
+      -> (forall a b ctx ctx',
+             computes_to (format2 a ctx) (b, ctx')
+             -> length_ByteString b = len_format2 a)
+      -> (forall a, NPeano.modulo (len_format1 a) 8 = 0)
+      -> (forall a, NPeano.modulo (len_format2 a) 8 = 0)
+      -> (forall (a : A) (ctx ctx' ctx'' : CacheFormat) c (b b'' ext : B),
+             format1 a ctx ↝ (b, ctx') ->
+             format2 a ctx' ↝ (b'', ctx'') ->
+             predicate a ->
+             len_format1 a + len_format2 a + 16 = formatd_A_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext)) ->
+      forall decodeA : B -> CacheDecode -> option (A * B * CacheDecode),
+        (cache_inv_Property P P_inv ->
+         CorrectDecoder monoid predicate predicate_rest (format1 ++ format_unused_word 16 ++ format2)%format decodeA P) ->
+        CorrectDecoder monoid predicate predicate_rest
+                       (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
+                       (fun (bin : B) (env : CacheDecode) =>
+                          if checksum_Valid_dec (formatd_A_measure bin) bin
+                          then
+                            decodeA bin env
+                          else None) P.
+Proof.
+  intros.
+  eapply composeChecksum_format_correct; eauto.
+  - intros; rewrite !mappend_measure.
+    simpl; rewrite (H0 _ _ _ _ H6).
+    simpl; rewrite (H1 _ _ _ _ H7).
+    erewrite <- H4; eauto; try omega.
+    unfold format_checksum.
+    rewrite length_encode_word'.
+    simpl; omega.
+  - unfold IPChecksum_Valid in *; intros; simpl.
+    rewrite ByteString2ListOfChar_Over.
+    * rewrite ByteString2ListOfChar_Over in H9.
+      eauto.
+      simpl.
+      apply H0 in H7.
+      pose proof (H2 data).
+      rewrite <- H7 in H10.
+      rewrite !ByteString_enqueue_ByteString_padding_eq.
+      rewrite padding_eq_mod_8, H10.
+      pose proof (H3 data).
+      unfold format_checksum.
+      rewrite encode_word'_padding.
+      rewrite <- (H1 _ _ _ _ H8) in H11.
+      rewrite padding_eq_mod_8, H11.
+      reflexivity.
+    * rewrite !ByteString_enqueue_ByteString_padding_eq.
+      apply H0 in H7.
+      pose proof (H2 data).
+      rewrite <- H7 in H10.
+      rewrite padding_eq_mod_8, H10.
+      pose proof (H3 data).
+      unfold format_checksum.
+      rewrite encode_word'_padding.
+      rewrite <- (H1 _ _ _ _ H8) in H11.
+      rewrite padding_eq_mod_8, H11.
+      reflexivity.
+Qed.
+
+(*Lemma compose_IPChecksum_format_correct
   : forall (A : Type)
            (B := ByteString)
            (trans : Monoid B := monoid)
@@ -1559,7 +1642,7 @@ Proof.
     computes_to_econstructor; eauto.
     instantiate (1 := x0); rewrite <- H6''';
       computes_to_econstructor.
-Qed.
+Qed. *)
 
 Ltac calculate_length_ByteString :=
   intros;
@@ -1652,8 +1735,6 @@ Proof.
   rewrite NPeano.Nat.mod_mul; eauto.
 Qed.
 
-
-
 Ltac solve_mod_8 :=
   intros; cbv beta; simpl mempty;
   repeat first [
@@ -1679,7 +1760,6 @@ Lemma refineEquiv_ThenC_no_dep {B Env}
            (H : forall a' env, format' a' env = (fun a' => format1 ThenC (format2' a')) a' env)
            (a : A)
            (env : Env),
-
     refineEquiv ((format1 ThenC (format2 a)) env)
                 (format' (f a) env).
 Proof.
@@ -1759,7 +1839,7 @@ Ltac resolve_Checksum :=
     eapply (@refineEquiv_DoneC T T' a)
   end.
 
-Ltac apply_IPChecksum Len_OK :=
+(*Ltac apply_IPChecksum Len_OK :=
   match goal with
     H : cache_inv_Property _ _
     |- context[
@@ -1814,4 +1894,4 @@ Ltac apply_IPChecksum_dep Len_OK :=
     | instantiate (1 := fun _ _ => True);
       simpl; intros; exact I
     |  ]
-  end.
+  end. *)
