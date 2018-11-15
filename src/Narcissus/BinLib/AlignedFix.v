@@ -29,8 +29,8 @@ Section AlignedFix.
       (body : FixComp.funType [A; CacheFormat] (ByteString * CacheFormat)
               -> FixComp.funType [A; CacheFormat] (ByteString * CacheFormat))
       (body' : forall r : A,
-          (forall r' : A, lt_A r' r -> FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat)) ->
-          FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat))
+          (forall r' : A, lt_A r' r -> FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & ByteBuffer.t n} * CacheFormat)) ->
+          FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & ByteBuffer.t n} * CacheFormat))
 
       (refine_body_OK : forall (r : A)
                                (x : A -> CacheFormat  ->
@@ -38,7 +38,7 @@ Section AlignedFix.
                                (y : forall r' : A,
                                    lt_A r' r ->
                                    CacheFormat ->
-                                   {n : _ & Vector.t (word 8) n} * CacheFormat),
+                                   {n : _ & ByteBuffer.t n} * CacheFormat),
           (forall (a' : A) (wf_r : lt_A a' r) (ce : CacheFormat),
               refine (x a' ce)
                      (ret (let (v, ce') := y a' wf_r ce in
@@ -97,15 +97,15 @@ Section AlignedFix.
       (body' : forall r : { a : _ & A_OK a},
           (forall r' : { a : _ & A_OK a},
               lt_A r' r
-              -> FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat)) ->
-          FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & Vector.t (word 8) n} * CacheFormat))
+              -> FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & ByteBuffer.t n} * CacheFormat)) ->
+          FixComp.LeastFixedPointFun.cfunType [CacheFormat] ({n : _ & ByteBuffer.t n} * CacheFormat))
       (refine_body_OK : forall (r : { a : _ & A_OK a})
                                (x : A -> CacheFormat ->
                                     Comp (ByteString * CacheFormat))
                                (y : forall r' : { a : _ & A_OK a},
                                    lt_A r' r ->
                                    CacheFormat ->
-                                   {n : _ & Vector.t (word 8) n} * CacheFormat),
+                                   {n : _ & ByteBuffer.t n} * CacheFormat),
           (forall (a' : { a : _ & A_OK a}) (wf_r : lt_A a' r) (ce : CacheFormat),
               refine (x (projT1 a') ce)
                      (ret (let (v, ce') := y a' wf_r ce in

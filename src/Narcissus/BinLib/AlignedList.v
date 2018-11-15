@@ -37,13 +37,13 @@ Section AlignedList.
 
   Fixpoint align_decode_list {A}
            (A_decode_align : forall n,
-               Vector.t (word 8) n
+               ByteBuffer.t n
                -> CacheDecode
                -> option (A * {n : _ & Vector.t _ n}
                           * CacheDecode))
            (n : nat)
            {sz}
-           (v : Vector.t (word 8) sz)
+           (v : ByteBuffer.t sz)
            (cd : CacheDecode)
     : option (list A *  {n : _ & Vector.t _ n} * CacheDecode) :=
     match n with
@@ -60,7 +60,7 @@ Section AlignedList.
            -> CacheDecode
            -> option (A * ByteString * CacheDecode))
         (A_decode_align : forall n,
-            Vector.t (word 8) n
+            ByteBuffer.t n
             -> CacheDecode
             -> option (A * {n : _ & Vector.t _ n}
                        * CacheDecode))
@@ -73,7 +73,7 @@ Section AlignedList.
                                               None)
     : forall (n : nat)
              {sz}
-             (v : Vector.t (word 8) sz)
+             (v : ByteBuffer.t sz)
              (cd : CacheDecode),
       decode_list A_decode n (build_aligned_ByteString v) cd =
       Ifopt align_decode_list A_decode_align n v cd as a Then
@@ -95,10 +95,10 @@ Section AlignedList.
            (A_format_align :
               A
               ->  CacheFormat
-              -> {n : _ & Vector.t (word 8) n} * CacheFormat)
+              -> {n : _ & ByteBuffer.t n} * CacheFormat)
            (As : list A)
            (ce : CacheFormat)
-    : {n : _ & Vector.t (word 8) n} * CacheFormat :=
+    : {n : _ & ByteBuffer.t n} * CacheFormat :=
     match As with
     | nil => (existT _ _ (Vector.nil _), ce)
     | a :: As' =>
@@ -114,7 +114,7 @@ Section AlignedList.
         (A_format_align :
            A
            ->  CacheFormat
-           -> {n : _ & Vector.t (word 8) n} * CacheFormat)
+           -> {n : _ & ByteBuffer.t n} * CacheFormat)
         (A_format_OK :
            forall a ce,
              A_OK a
@@ -236,6 +236,60 @@ Section AlignedList.
     eapply H0.
   Qed.
 
+  (* Fixpoint list_of_vector_range {A} {sz: nat} n (from: Fin.t (n + sz)) (to: Fin.t sz) (v: Vector.t A (n + sz)) (acc: list A) : list A := *)
+  (*   let to' := (eq_rect (sz + n) _ (Fin.L n to) (n + sz) (plus_comm _ _)) in *)
+  (*   let acc' := List.cons (Vector.nth v to') acc in *)
+  (*   if Fin.eq_dec from to' then acc' *)
+  (*   else *)
+  (*     match to in Fin.t sz return forall (from: Fin.t (n + sz)) (v: Vector.t A (n + sz)), list A with *)
+  (*     | Fin.FS sz pred => *)
+  (*       fun from v => @list_of_vector_range A sz (n + 1) *)
+  (*                                        (eq_rect (n + S sz) _ from (n + 1 + sz) ltac:(omega)) *)
+  (*                                        pred *)
+  (*                                        (eq_rect (n + S sz) _ v (n + 1 + sz) ltac:(omega)) *)
+  (*                                        acc' *)
+  (*     | Fin.F1 _ => *)
+  (*       fun _ _ => acc' *)
+  (*     end from v. *)
+
+  (* fun (v: ByteBuffer.t m) idx env => *)
+  (*   match len with *)
+  (*   | 0 => Some ((List.nil, idx), env) *)
+  (*   | S len' => *)
+  (*     match Fin.of_nat idx m with *)
+  (*     | inleft fidx => *)
+  (*       let last_idx := idx + len' in *)
+  (*       match Fin.of_nat last_idx m with *)
+  (*       | inleft flast_idx => Some ((list_of_vector_range 0 fidx flast_idx v [], last_idx), addD env (8 * len)) *)
+  (*       | inright _ => None *)
+  (*       end *)
+  (*     | inright _ => None *)
+  (*     end *)
+  (*   end. *)
+
+  Definition list_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : list Core.char :=
+    List.firstn len (List.skipn from (Vector.to_list v)).
+
+  Definition CharListAlignedDecodeM {cache : Cache} {cacheAddNat: CacheAdd cache nat} {m : nat} (len: nat) : @AlignedDecodeM cache (list Core.char) m :=
+    fun (v: ByteBuffer.t m) idx env =>
+      let lastidx := idx + len in
+      if NPeano.leb lastidx m then
+        Some ((list_of_bytebuffer_range idx len v, lastidx, addD env (8 * len)))
+      else
+        None.
+
+  Lemma AlignedDecodeCharListM {C : Type}
+        (n : nat)
+    : forall (t : list Core.char -> DecodeM (C * _) ByteString)
+        (t' : list Core.char -> forall {numBytes}, AlignedDecodeM C numBytes),
+      (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
+      -> DecodeMEquivAlignedDecodeM
+          (fun v cd => `(l, bs, cd') <- decode_list decode_word n v cd;
+                      t l bs cd')
+          (fun numBytes => l <- CharListAlignedDecodeM n;
+                          t' l)%AlignedDecodeM%list.
+  Admitted.
+
   Lemma AlignedFormatListDoneC {A}
         (A_OK : A -> Prop)
         format_A
@@ -282,6 +336,32 @@ Section AlignedList.
                                                               As' (snd a')
                                                               Else None
     end.
+
+  Fixpoint buffer_blit_list' {sz} start (l: list Core.char) (v: ByteBuffer.t sz) :=
+    match l with
+    | List.nil => v
+    | List.cons h t => buffer_blit_list' (S start) t (set_nth' v start h)
+    end.
+
+  Definition buffer_blit_list {sz} start (l: list Core.char) (v: ByteBuffer.t sz) :=
+    let len := List.length l in
+    if NPeano.leb (start + len) sz then
+      Some (buffer_blit_list' start l v, len)
+    else None.
+
+  Definition AlignedEncodeCharList
+    : forall sz, AlignedEncodeM (S := list Core.char) sz :=
+    fun sz (v: ByteBuffer.t sz) idx chars env =>
+      match buffer_blit_list idx chars v with
+      | Some (v', len) =>
+        Some ((v', idx + len), addE env (8 * len))
+      | None => None
+      end.
+
+  Lemma CorrectAlignedEncoderForFormatCharList :
+    CorrectAlignedEncoder (format_list (format_word (sz := 8)))
+                          AlignedEncodeCharList.
+  Admitted.
 
   Definition AlignedEncodeList {A}
              (A_format_align : forall sz, AlignedEncodeM (S := A) sz)

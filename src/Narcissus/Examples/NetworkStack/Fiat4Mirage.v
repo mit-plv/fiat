@@ -79,8 +79,13 @@ Extract Inductive nat => "OCamlNativeInt.t" [ "0" "Pervasives.succ" ]
  "(fun fO fS n -> if n=0 then fO () else fS (n-1))".
 
 Extract Inductive prod => "(*)"  [ "(,)" ].
+
 Extract Inlined Constant NPeano.ltb => "(<)".
 Extract Inlined Constant NPeano.leb => "(<=)".
+(* ExtrOCamlNatInt uses Pervasives.max, which is slow *)
+Extract Constant Nat.sub =>
+  "fun (x: OCamlNativeInt.t) (y: OCamlNativeInt.t) ->
+if x <= y then 0 else (x - y)".
 
 (** * Inline a few functions *)
 Require Import
@@ -160,6 +165,7 @@ Extract Inductive VectorDef.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
   "ArrayVector.destruct_storage".
+Extract Constant AlignedByteString.ByteBuffer.t => "CstructBytestring.storage_t".
 
 Extract Inlined Constant Vector.hd => "ArrayVector.hd".
 Extract Inlined Constant VectorDef.hd => "ArrayVector.hd".
@@ -171,11 +177,38 @@ Extract Inlined Constant Vector.append => "ArrayVector.append".
 Extract Inlined Constant VectorDef.append => "ArrayVector.append".
 Extract Inlined Constant Vector.nth => "ArrayVector.nth".
 Extract Inlined Constant VectorDef.nth => "ArrayVector.nth".
+Extract Inlined Constant Vector.replace => "ArrayVector.set_nth".
+Extract Inlined Constant VectorDef.replace => "ArrayVector.set_nth".
+Extract Inlined Constant Vector_nth_opt => "ArrayVector.nth_opt".
+Extract Inlined Constant EnumOpt.word_indexed => "ArrayVector.index".
 Extract Inlined Constant nth_opt => "ArrayVector.nth_opt".
 Extract Inlined Constant set_nth' => "ArrayVector.set_nth".
-Extract Inlined Constant EnumOpt.word_indexed => "ArrayVector.index".
-Extract Inlined Constant InternetChecksum.Vector_fold_left_pair => "ArrayVector.fold_left_pair".
+Extract Inlined Constant InternetChecksum.ByteBuffer_fold_left_pair => "ArrayVector.fold_left_pair".
+Extract Inlined Constant AlignedList.list_of_bytebuffer_range => "ArrayVector.list_of_range".
+(* Extract Inlined Constant AlignedList.vector_blit_list => "ArrayVector.blit_list". *)
 
+(* FIXME clean up ml file to remove unneeded stuff *)
+(*
+Import AlignedByteString.
+Extract Inlined Constant ByteBuffer.t => "CstructBytestring.storage_t".
+Extract Inlined Constant ByteBuffer.nil => "CstructBytestring.nil".
+Extract Inlined Constant ByteBuffer.cons => "CstructBytestring.cons".
+Extract Inlined Constant ByteBuffer.hd => "CstructBytestring.hd".
+Extract Inlined Constant ByteBuffer.tl => "CstructBytestring.tl".
+Extract Inlined Constant ByteBuffer.to_list => "CstructBytestring.to_list".
+Extract Inlined Constant ByteBuffer.of_vector => "CstructBytestring.of_vector".
+Extract Inlined Constant ByteBuffer.to_vector => "CstructBytestring.to_vector".
+Extract Inlined Constant ByteBuffer.append => "CstructBytestring.append".
+(* Extract Inlined Constant ByteBuffer.nth => "CstructBytestring.nth". *)
+(* Extract Inlined Constant ByteBuffer.replace => "CstructBytestring.set_nth". *)
+Extract Inlined Constant nth_opt => "CstructBytestring.nth_opt".
+Extract Inlined Constant set_nth' => "CstructBytestring.set_nth".
+Extract Inlined Constant initialize_Aligned_ByteString => "CstructBytestring.create".
+(* Extract Inlined Constant EnumOpt.word_indexed => "CstructBytestring.index". *)
+(* Extract Inlined Constant AlignedList.vector_blit_list => "CstructBytestring.blit_list". *)
+Extract Inlined Constant InternetChecksum.ByteBuffer_fold_left_pair => "CstructBytestring.fold_left_pair".
+Extract Inlined Constant AlignedList.list_of_bytebuffer_range => "CstructBytestring.list_of_range".
+*)
 Compute
   match IPv4Header.IPv4_decoder_impl IPv4Header.bin_pkt with
   | Some (p, _, _) =>

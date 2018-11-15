@@ -1,5 +1,4 @@
-Require Import TutorialPrelude.
-
+Require Import Fiat.Narcissus.Examples.TutorialPrelude.
 (******************************************************************************)
 (*** A brief Narcissus tutorial ***)
 
@@ -44,14 +43,16 @@ Definition encoder_with_proofs :
   CorrectAlignedEncoderFor format.
 Proof. synthesize_aligned_encoder. Defined.
 
-Definition encode {sz} pkt buf := (encoder_impl encoder_with_proofs) sz pkt buf.
+Definition encode {sz} pkt buf :=
+  (encoder_impl encoder_with_proofs) sz pkt buf.
 
 (** …and the decoder **)
 Definition decoder_with_proofs :
   CorrectAlignedDecoderFor (fun _ => True) format.
 Proof. synthesize_aligned_decoder. Defined.
 
-Definition decode {sz} v := (decoder_impl decoder_with_proofs) sz v.
+Definition decode {sz} v :=
+  (decoder_impl decoder_with_proofs) sz v.
 
 (** All done! **)
 Example packet :=

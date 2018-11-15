@@ -17,7 +17,7 @@ Section AlignedDecodeM.
   Definition AlignedDecodeM
              (A : Type)
              (n : nat):=
-    Vector.t char n (* Vector of bytes that is being decoded *)
+    ByteBuffer.t n (* Vector of bytes that is being decoded *)
     -> nat          (* The current vector index *)
     -> CacheDecode  (* The current environment *)
     -> option (A * nat * CacheDecode) (* Error monad + value + updated index + updated cache *).
@@ -105,7 +105,7 @@ Section AlignedDecodeM.
     : AlignedDecodeM A n:=
     fun _ _ _ => None.
 
-  Fixpoint nth_opt
+  Fixpoint Vector_nth_opt
            {A : Type}
            {n : nat}
            (v : Vector.t A n)
@@ -113,9 +113,15 @@ Section AlignedDecodeM.
     : option A :=
     match m, v with
     | 0,  Vector.cons a _ _ => Some a
-    | S m', Vector.cons _ _ v' => nth_opt v' m'
+    | S m', Vector.cons _ _ v' => Vector_nth_opt v' m'
     | _, _ => None
     end.
+
+  Definition nth_opt
+           {n : nat}
+           (v : ByteBuffer.t n)
+           (m : nat)
+    : option char := Vector_nth_opt v m.
 
   Definition GetCurrentByte (* Gets the current byte and increments the current index. *)
              {n : nat}
@@ -192,7 +198,7 @@ Section AlignedDecodeM.
            Ifopt (f' (Vector.tl v) n cd) as a Then Some (fst (fst a), S (snd (fst a)), snd a) Else None)
        /\ (forall b cd c b' cd', f b cd = Some (c, b', cd')
                                  -> length_ByteString b >= length_ByteString b')%nat
-       /\ (forall n (v : Vector.t (word 8) n) cd,
+       /\ (forall n (v : ByteBuffer.t n) cd,
               (f (build_aligned_ByteString v) cd = None <->
                f' v 0 cd = None)
               /\
@@ -202,7 +208,7 @@ Section AlignedDecodeM.
                   /\ exists v' : Vector.t _ (n - (numBytes bs')),
                       (build_aligned_ByteString v) = ByteString_enqueue_ByteString (build_aligned_ByteString v') bs'
           ))
-  (*       /\ (forall n (v : Vector.t (word 8) n) cd c n' cd', *)
+  (*       /\ (forall n (v : ByteBuffer.t n) cd c n' cd', *)
   (* f' v 0 cd = Some (c, n', cd') -> *)
   (* exists m', *)
   (*   {H : n = n' + m' & *)
@@ -308,7 +314,7 @@ Section AlignedDecodeM.
             @t' (S numBytes_hd) v0 (S n0) cd0 =
             (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
                                                                Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
-    : forall {n m} (v : Vector.t (word 8) (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
+    : forall {n m} (v : ByteBuffer.t (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
       t' v2 0 cd = None ->
       build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2)  ->
       t' v m cd = None.
@@ -329,7 +335,7 @@ Section AlignedDecodeM.
             @t' (S numBytes_hd) v0 (S n0) cd0 =
             (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
                                                                Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
-    : forall {n m} (v : Vector.t (word 8) (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
+    : forall {n m} (v : ByteBuffer.t (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
       t' v m cd = None ->
       build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2) ->
       t' v2 0 cd = None.
@@ -353,7 +359,7 @@ Section AlignedDecodeM.
             @t' (S numBytes_hd) v0 (S n0) cd0 =
             (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
                                                                Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
-    : forall {n m} (v : Vector.t (word 8) (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd c k cd',
+    : forall {n m} (v : ByteBuffer.t (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd c k cd',
       t' v2 0 cd = Some (c, k, cd')
       -> build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2)
       -> t' v m cd = Some (c, m + k, cd').
@@ -408,7 +414,7 @@ Section AlignedDecodeM.
        rewrite H7; auto.
       }
       pose proof (fun v => proper_consumer_t_None (m := n - numBytes b) (t' a) H6 v x _ _ H2).
-      assert (forall v0 : Vector.t (word 8) n,
+      assert (forall v0 : ByteBuffer.t n,
                  build_aligned_ByteString v0 = build_aligned_ByteString (Vector.append x x0) ->
                  t' a n v0 (n - numBytes b) c = None).
       { revert H10; clear; intro.

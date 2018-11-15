@@ -1,4 +1,5 @@
-Require Import TutorialPrelude.
+
+Require Import Fiat.Narcissus.Examples.TutorialPrelude.
 (******************************************************************************)
 (*** A brief Narcissus tutorial ***)
 
@@ -57,7 +58,7 @@ Definition decode {sz} v := (decoder_impl decoder_with_proofs) sz v.
 (** All done! **)
 Example packet :=
   {| stationID := WO~1~1~1~1~1~0~1~0~1~1~0~0~1~1~1~0;
-     reading := [WO~0~1~0~0~0~1~1~0; WO~0~1~0~0~0~1~1~0]%list |}.
+     reading := [WO~0~1~0~0~0~1~1~0; WO~1~0~1~1~0~0~1~0]%list |}.
 
 Definition buffer := initialize_Aligned_ByteString 8.
 

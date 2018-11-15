@@ -33,8 +33,8 @@ Section UDP_Decoder.
   Open Scope format_scope.
 
   (* These values are provided by the IP header for checksum calculation.*)
-  Variable srcAddr : Vector.t (word 8) 4.
-  Variable destAddr : Vector.t (word 8) 4.
+  Variable srcAddr : ByteBuffer.t 4.
+  Variable destAddr : ByteBuffer.t 4.
   Variable udpLength : word 16.
 
   Record UDP_Packet :=

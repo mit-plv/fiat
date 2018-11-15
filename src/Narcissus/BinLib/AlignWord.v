@@ -520,7 +520,7 @@ Section AlignEncodeWord.
     eapply ByteString_f_equal; simpl.
     instantiate (1 := eq_refl _).
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    erewrite eq_rect_Vector_cons; repeat f_equal.
+    unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; repeat f_equal.
     instantiate (1 := eq_refl _); reflexivity.
     Grab Existential Variables.
     reflexivity.
@@ -530,7 +530,7 @@ Section AlignEncodeWord.
 
   Lemma AlignedDecodeChar {C}
         {numBytes}
-    : forall (v : Vector.t (word 8) (S numBytes))
+    : forall (v : ByteBuffer.t (S numBytes))
              (t : (word 8 * ByteString * CacheDecode) -> C)
              (e : C)
              cd,
@@ -558,8 +558,8 @@ Section AlignEncodeWord.
       unfold decode_word, WordOpt.decode_word.
     split; [ | split ]; intros.
     - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
-      unfold GetCurrentByte; simpl.
-      destruct (nth_opt t n); simpl; eauto.
+      unfold GetCurrentByte, nth_opt; simpl.
+      destruct (Vector_nth_opt t n); simpl; eauto.
     - destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
       eapply decode_word'_lt in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
       unfold lt_B in Heqo; simpl in Heqo.
@@ -810,8 +810,8 @@ Section AlignEncodeWord.
       unfold WordOpt.decode_word, Compose_Decode.
     split; [ | split ]; intros.
     - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
-      unfold SkipCurrentByte; simpl.
-      destruct (nth_opt t n); simpl; eauto.
+      unfold SkipCurrentByte, nth_opt; simpl.
+      destruct (Vector_nth_opt t n); simpl; eauto.
     - unfold decode_unused_word, Compose_Decode, decode_word in H.
       destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
       injections.
@@ -924,7 +924,7 @@ Section AlignEncodeWord.
 
   Lemma AlignedDecode2Char {C}
         {numBytes}
-    : forall (v : Vector.t (word 8) (S (S numBytes)))
+    : forall (v : ByteBuffer.t (S (S numBytes)))
              (t : (word 16 * ByteString * CacheDecode) -> C)
              (e : C)
              cd,
@@ -1377,17 +1377,58 @@ Section AlignEncodeWord.
     eapply CorrectAlignedEncoderForProjection_Format; eauto.
   Qed.
 
-  Fixpoint SetCurrentBytes (* Sets the bytes at the current index and increments the current index. *)
+  Fixpoint SetCurrentBytes' (* Sets the bytes at the current index and increments the current index. *)
            {n sz : nat}
     : @AlignedEncodeM _ (word (sz * 8)) n :=
     match sz return @AlignedEncodeM _ (word (sz * 8)) _ with
     | 0 => AlignedEncode_Nil n
     | S sz' => AppendAlignedEncodeM (fun v idx w => SetCurrentByte v idx (split1' 8 (sz' * 8) w))
-                                    (fun v idx w => SetCurrentBytes v idx (split2' 8 (sz' * 8) w))
+                                    (fun v idx w => SetCurrentBytes' v idx (split2' 8 (sz' * 8) w))
+    end.
+
+  Fixpoint SetCurrentBytes (* This version produces better code. *)
+           {n sz : nat} {struct sz}
+    : @AlignedEncodeM _ (word (sz * 8)) n :=
+    match sz as n0 return (AlignedEncodeM n) with
+    | 0 => AlignedEncode_Nil n
+    | S sz0 =>
+      fun v idx w =>
+        match sz0 return word (S sz0 * 8) -> _ with
+        | 0 => fun (w' : word 8) => SetCurrentByte v idx w'
+        | S sz1 => fun _  => (* ignored to get proper recursive call *)
+                    AppendAlignedEncodeM
+                      (fun (v : t Core.char n) (idx : nat) (w : word (S sz0 * 8)) =>
+                         SetCurrentByte v idx (split1' 8 (sz0 * 8) w))
+                      (fun (v : t Core.char n) (idx : nat) (w : word (S sz0 * 8)) =>
+                         SetCurrentBytes v idx (split2' 8 (sz0 * 8) w))
+                      v idx w
+        end w
     end.
 
   Local Arguments split1' : simpl never.
   Local Arguments split2' : simpl never.
+
+  Lemma split1'_8_0 :
+    forall w, (split1' 8 0 w) = w.
+  Proof. intros; compute in (type of w); shatter_word w; reflexivity. Qed.
+
+  Lemma SetCurrentBytes_SetCurrentBytes' :
+    forall n sz v idx w c,
+      @SetCurrentBytes n sz v idx w c =
+      @SetCurrentBytes' n sz v idx w c.
+  Proof.
+    induction sz; simpl; intros.
+    - reflexivity.
+    - destruct sz;
+        unfold AppendAlignedEncodeM, SetCurrentByte;
+        destruct (_ <? _) eqn:?; unfold If_Opt_Then_Else.
+      + unfold SetCurrentBytes', AlignedEncode_Nil, ReturnAlignedEncodeM; simpl.
+        destruct (S _ <? S _) eqn:?; rewrite ?Nat.ltb_lt, ?Nat.ltb_ge, ?split1'_8_0 in *;
+          (reflexivity || omega).
+      + reflexivity.
+      + rewrite IHsz; reflexivity.
+      + reflexivity.
+  Qed.
 
   Corollary CorrectAlignedEncoderForFormatNChar
             (addE_addE_plus :
@@ -1399,12 +1440,15 @@ Section AlignEncodeWord.
         (format_word (monoidUnit := ByteString_QueueMonoidOpt))
         (fun n => @SetCurrentBytes n sz).
   Proof.
+    apply CorrectAlignedEncoder_morphism with (encode := (fun n => @SetCurrentBytes' n sz)).
+    auto using SetCurrentBytes_SetCurrentBytes'.
+    unfold CorrectAlignedEncoder.
     induction sz; simpl; intros.
     - eapply refine_CorrectAlignedEncoder; intros.
       shatter_word s; unfold format_word; simpl.
       unfold format_word; rewrite addE_0; higher_order_reflexivity.
       + eapply CorrectAlignedEncoderForDoneC.
-    - eapply (CorrectAlignedEncoderForFormatNChar' addE_addE_plus (fun sz' => @SetCurrentBytes sz' sz));
+    - eapply (CorrectAlignedEncoderForFormatNChar' addE_addE_plus (fun sz' => @SetCurrentBytes' sz' sz));
         eauto.
   Qed.
 
@@ -1419,6 +1463,9 @@ Section AlignEncodeWord.
         (Projection_Format format_word proj)
         (fun sz v idx s => SetCurrentBytes v idx (proj s)).
   Proof.
+    apply CorrectAlignedEncoder_morphism
+      with (encode := (fun (sz : nat) (v : t Core.char sz) (idx : nat) (s : S) => SetCurrentBytes' v idx (proj s))).
+    eauto using SetCurrentBytes_SetCurrentBytes'.
   Admitted.
 
 End AlignEncodeWord.
