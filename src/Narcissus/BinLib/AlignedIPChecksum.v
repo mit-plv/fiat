@@ -43,46 +43,13 @@ Definition IPChecksum (b b' : ByteString) : ByteString :=
           (encode_word (wnot (onesComplement
                                 (ByteString2ListOfChar (bin_measure (mappend b b')) (BoundedByteStringToByteString(mappend b b')))))).
 
-Fixpoint Vector_checksum_bound n {sz} (bytes :ByteBuffer.t sz) acc : InternetChecksum.W16 :=
-  match n, bytes with
-  | 0, _ => acc
-  | _, Vector.nil => acc
-  | S 0, Vector.cons x _ _ => InternetChecksum.add_bytes_into_checksum x (wzero _) acc
-  | _, Vector.cons x _ Vector.nil => InternetChecksum.add_bytes_into_checksum x (wzero _) acc
-  | S (S n'), Vector.cons x _ (Vector.cons y _ t) =>
-    (Vector_checksum_bound n' t (InternetChecksum.add_bytes_into_checksum x y acc))
-  end.
-
-Definition ByteBuffer_checksum_bound' n {sz} (bytes : ByteBuffer.t sz) : InternetChecksum.W16 :=
-  InternetChecksum.ByteBuffer_fold_left_pair InternetChecksum.add_bytes_into_checksum n bytes (wzero _) (wzero _).
-
-Lemma ByteBuffer_checksum_bound'_ok' :
-  forall n {sz} (bytes :ByteBuffer.t sz) acc,
-    Vector_checksum_bound n bytes acc =
-    InternetChecksum.ByteBuffer_fold_left_pair InternetChecksum.add_bytes_into_checksum n bytes acc (wzero _).
-Proof.
-  fix IH 3.
-  destruct bytes as [ | hd sz [ | hd' sz' tl ] ]; intros; simpl.
-  - destruct n as [ | [ | ] ]; reflexivity.
-  - destruct n as [ | [ | ] ]; reflexivity.
-  - destruct n as [ | [ | ] ]; simpl; try reflexivity.
-    rewrite IH; reflexivity.
-Qed.
-
-Lemma ByteBuffer_checksum_bound'_ok :
-  forall n {sz} (bytes :ByteBuffer.t sz),
-    Vector_checksum_bound n bytes (wzero _) = ByteBuffer_checksum_bound' n bytes.
-Proof.
-  intros; apply ByteBuffer_checksum_bound'_ok'.
-Qed.
-
 Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
   : {IPChecksum_Valid' n b} + {~IPChecksum_Valid' n b} := weq _ _.
 
 Definition calculate_IPChecksum {S} {sz}
   : AlignedEncodeM (S := S) sz :=
   (fun v =>
-     (let checksum := ByteBuffer_checksum_bound' 20 v in
+     (let checksum := InternetChecksum.ByteBuffer_checksum_bound 20 v in
       (fun v idx s => SetByteAt (n := sz) 10 v 0 (wnot (split2 8 8 checksum)) ) >>
       (fun v idx s => SetByteAt (n := sz) 11 v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
@@ -118,7 +85,7 @@ Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
          (format_A ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v => if weq (ByteBuffer_checksum_bound' 20 v) (wones 16) then x sz v  else ThrowAlignedDecodeM v).
+  eexists (fun sz v => if weq (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then x sz v  else ThrowAlignedDecodeM v).
   admit.
 Defined.
 
@@ -145,7 +112,7 @@ Definition pseudoHeader_checksum
            (udpLength : word 16)
            (protoCode : word 8)
            {sz} (packet: ByteBuffer.t sz) :=
-  ByteBuffer_checksum_bound' (12 + wordToNat udpLength)
+  InternetChecksum.ByteBuffer_checksum_bound (12 + wordToNat udpLength)
     (srcAddr ++ destAddr ++ [wzero 8; protoCode] ++ (splitLength udpLength) ++ packet).
 
 Infix "^1+" := (InternetChecksum.OneC_plus) (at level 50, left associativity).
@@ -158,11 +125,11 @@ Definition pseudoHeader_checksum'
            (udpLength : word 16)
            (protoCode : word 8)
            {sz} (packet: ByteBuffer.t sz) :=
-  ByteBuffer_checksum' srcAddr ^1+
-  ByteBuffer_checksum' destAddr ^1+
+  ByteBuffer_checksum srcAddr ^1+
+  ByteBuffer_checksum destAddr ^1+
   zext protoCode 8 ^1+
   udpLength ^1+
-  ByteBuffer_checksum_bound' (wordToNat udpLength) packet.
+  InternetChecksum.ByteBuffer_checksum_bound (wordToNat udpLength) packet.
 
 Lemma OneC_plus_wzero_l :
   forall w, OneC_plus (wzero 16) w = w.
@@ -174,19 +141,20 @@ Proof.
   intros; rewrite OneC_plus_comm; reflexivity.
 Qed.
 
-Lemma Vector_checksum'_acc_oneC_plus :
+Lemma Buffer_fold_left16_acc_oneC_plus :
   forall {sz} (packet: ByteBuffer.t sz) acc n,
-    ByteBuffer_fold_left_pair add_bytes_into_checksum n packet acc (wzero 8) =
+    ByteBuffer_fold_left16 add_w16_into_checksum n packet acc =
     OneC_plus
-      (ByteBuffer_fold_left_pair add_bytes_into_checksum n packet (wzero 16) (wzero 8))
+      (ByteBuffer_fold_left16 add_w16_into_checksum n packet (wzero 16))
       acc.
 Proof.
   fix IH 2.
+  unfold ByteBuffer_fold_left16 in *.
   destruct packet as [ | hd sz [ | hd' sz' tl ] ]; intros; simpl.
   - destruct n as [ | [ | ] ]; reflexivity.
-  - destruct n as [ | [ | ] ]; simpl; unfold add_bytes_into_checksum;
+  - destruct n as [ | [ | ] ]; simpl; unfold add_bytes_into_checksum, add_w16_into_checksum;
       try rewrite OneC_plus_wzero_l, OneC_plus_comm; reflexivity.
-  - destruct n as [ | [ | ] ]; simpl; unfold add_bytes_into_checksum;
+  - destruct n as [ | [ | ] ]; simpl; unfold add_bytes_into_checksum, add_w16_into_checksum;
       try rewrite OneC_plus_wzero_l, OneC_plus_comm; try reflexivity.
     rewrite (IH _ tl (hd' +^+ hd ^1+ acc)).
     rewrite (IH _ tl (hd' +^+ hd)).
@@ -237,11 +205,12 @@ Proof.
   Opaque split1.
   Opaque split2.
   simpl in *.
-  unfold ByteBuffer_checksum', ByteBuffer_checksum_bound', add_bytes_into_checksum, ByteBuffer_fold_left_pair.
+  unfold ByteBuffer_checksum, InternetChecksum.ByteBuffer_checksum_bound, add_w16_into_checksum,
+  add_bytes_into_checksum, ByteBuffer_fold_left16, ByteBuffer_fold_left_pair.
     fold @ByteBuffer_fold_left_pair.
-  rewrite Vector_checksum'_acc_oneC_plus.
+  setoid_rewrite Buffer_fold_left16_acc_oneC_plus.
   rewrite combine_split.
-  rewrite !OneC_plus_wzero_l, OneC_plus_comm.
+  rewrite !OneC_plus_wzero_r, !OneC_plus_wzero_l, OneC_plus_comm.
   repeat (f_equal; [ ]).
   rewrite <- !OneC_plus_assoc.
   reflexivity.

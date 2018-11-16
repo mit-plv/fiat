@@ -57,19 +57,6 @@ Section TCPPacketDecoder.
   Variable destAddr : ByteBuffer.t 4.
   Variable tcpLength : word 16.
 
-  Section ByteBuffer.
-    Context {sz : nat}.
-
-    Context {T : Type}.
-    Context {cache : Cache}.
-    Context {cacheAddNat : CacheAdd cache nat}.
-    Context {monoid : Monoid T}.
-    Context {monoidUnit : QueueMonoidOpt monoid bool}.
-
-    Definition format_bytebuffer (b : { n & ByteBuffer.t n }) (ce : CacheFormat) : Comp (T * CacheFormat) :=
-      format_list format_word (ByteBuffer.to_list (projT2 b)) ce.
-  End ByteBuffer.
-
   Definition TCP_Packet_Format
     : FormatM TCP_Packet ByteString  :=
          (format_word ◦ SourcePort
@@ -137,8 +124,7 @@ Section TCPPacketDecoder.
     (decompose_aligned_encoder; eauto).
     align_encoder_step.
     unfold format_bytebuffer.
-    
-    apply CorrectAlignedEncoderForFormatCharList.
+    apply CorrectAlignedEncoderForFormatByteBuffer.
     repeat align_encoder_step.
     repeat align_encoder_step.
     repeat align_encoder_step.
@@ -169,7 +155,7 @@ Arguments andb : simpl never.
 
 Hint Resolve TCP_Packet_Len_OK : data_inv_hints.
 
-  Arguments GetCurrentBytes : simpl never.
+Arguments GetCurrentBytes : simpl never.
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
@@ -259,13 +245,12 @@ Proof.
   simpl; instantiate (1 := proj3 - 5); intuition.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
+  intros; apply ByteBuffer_decode_correct
+            with (n := wordToNat tcpLength - (20 + 4 * (proj3 - 5))).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
+  intros; unfold ByteBuffer_predicate_rest; eauto using Vector_predicate_rest_True.
   simpl in *; unfold TCP_Packet_OK in *; intuition.
-  instantiate (1 := wordToNat tcpLength
-                    - (20 + 4 * (proj3 - 5))); omega.
-  unfold Vector.nth; simpl.
-  decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)
@@ -293,8 +278,7 @@ Proof.
   align_decoders_step.
   align_decoders_step.
   align_decoders_step.
-
-  eapply @AlignedDecodeCharListM; intros; eauto.
+  eapply @AlignedDecodeByteBufferM; intros; eauto.
   (* align_decoders_step. *)
   (* align_decoders_step. *)
   align_decoders_step.
@@ -386,7 +370,7 @@ Definition out :=
 Eval compute in
     match (@TCP_decoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input)) _ tcp_decode_input) with
     | Some (p, _, _) =>
-      (Some (List.fold_right (fun c s => String (Ascii.ascii_of_N (wordToN c)) s) EmptyString p.(Payload)),
+      (Some (Vector.fold_right (fun c s => String (Ascii.ascii_of_N (wordToN c)) s) (projT2 p.(Payload)) EmptyString),
        match (@TCP_encoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input))
                                 p _ (Vector.const (natToWord 8 0) (Vector_length tcp_decode_input))) with
        | Some (v, _, _) => Some (Vector.map (@wordToNat 8) v)

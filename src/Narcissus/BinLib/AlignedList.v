@@ -267,27 +267,71 @@ Section AlignedList.
   (*     end *)
   (*   end. *)
 
-  Definition list_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : list Core.char :=
-    List.firstn len (List.skipn from (Vector.to_list v)).
+  Require Import Fiat.Narcissus.Formats.Vector.
+  
+Section ByteBuffer.
+  (* Context {A : Type}. *)
+  Context {T : Type}.
+  Context {monoid : Monoid T}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Definition CharListAlignedDecodeM {cache : Cache} {cacheAddNat: CacheAdd cache nat} {m : nat} (len: nat) : @AlignedDecodeM cache (list Core.char) m :=
+  Variable A_predicate : Core.char -> Prop.
+  Variable A_predicate_rest : Core.char -> T -> Prop.
+  Variable A_cache_inv : CacheDecode -> Prop.
+  Variable A_decode_pf
+    : CorrectDecoder monoid A_predicate
+                              A_predicate_rest
+                              format_word decode_word A_cache_inv.
+
+  Definition format_bytebuffer (b : { n & ByteBuffer.t n }) (ce : CacheFormat) : Comp (T * CacheFormat) :=
+    format_Vector format_word (projT2 b) ce.
+
+  Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n & ByteBuffer.t n } * T * CacheDecode) :=
+    match decode_Vector (decode_word (sz := 8)) s b cd with
+    | Some (v, t, cd) => Some (existT _ _ v, t, cd)
+    | None => None
+    end.
+
+  Definition ByteBuffer_predicate_rest
+           (v : { n & ByteBuffer.t n })
+           (b : T)
+    : Prop :=
+    Vector_predicate_rest A_predicate_rest format_word (projT1 v) (projT2 v) b.
+
+  Theorem ByteBuffer_decode_correct
+    :
+      forall n,
+        CorrectDecoder
+          monoid
+          (fun ls => forall x, Vector.In x (projT2 ls) -> A_predicate x)
+          ByteBuffer_predicate_rest
+          format_bytebuffer (decode_bytebuffer n) A_cache_inv.
+  Proof.
+  Admitted.
+End ByteBuffer.
+
+  Definition bytebuffer_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : { n & ByteBuffer.t n } :=
+    let l := List.firstn len (List.skipn from (Vector.to_list v)) in
+    existT _ _ (Vector.of_list l).
+
+  Definition ByteBufferAlignedDecodeM {m : nat} (len: nat) : @AlignedDecodeM cache {n & ByteBuffer.t n} m :=
     fun (v: ByteBuffer.t m) idx env =>
       let lastidx := idx + len in
       if NPeano.leb lastidx m then
-        Some ((list_of_bytebuffer_range idx len v, lastidx, addD env (8 * len)))
+        Some ((bytebuffer_of_bytebuffer_range idx len v, lastidx, addD env (8 * len)))
       else
         None.
 
-  Lemma AlignedDecodeCharListM {C : Type}
+  Lemma AlignedDecodeByteBufferM {C : Type}
         (n : nat)
-    : forall (t : list Core.char -> DecodeM (C * _) ByteString)
-        (t' : list Core.char -> forall {numBytes}, AlignedDecodeM C numBytes),
+    : forall (t : { n & ByteBuffer.t n } -> DecodeM (C * _) ByteString)
+        (t' : { n & ByteBuffer.t n } -> forall {numBytes}, AlignedDecodeM C numBytes),
       (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
       -> DecodeMEquivAlignedDecodeM
-          (fun v cd => `(l, bs, cd') <- decode_list decode_word n v cd;
-                      t l bs cd')
-          (fun numBytes => l <- CharListAlignedDecodeM n;
-                          t' l)%AlignedDecodeM%list.
+          (fun v cd => `(b, bs, cd') <- decode_bytebuffer n v cd;
+                      t b bs cd')
+          (fun numBytes => b <- ByteBufferAlignedDecodeM n;
+                          t' b)%AlignedDecodeM%list.
   Admitted.
 
   Lemma AlignedFormatListDoneC {A}
@@ -337,30 +381,31 @@ Section AlignedList.
                                                               Else None
     end.
 
-  Fixpoint buffer_blit_list' {sz} start (l: list Core.char) (v: ByteBuffer.t sz) :=
-    match l with
-    | List.nil => v
-    | List.cons h t => buffer_blit_list' (S start) t (set_nth' v start h)
+  Require Import Fiat.Narcissus.Formats.Vector.
+
+  Fixpoint buffer_blit_buffer' {sz1 sz2} start (src: ByteBuffer.t sz1) (dst: ByteBuffer.t sz2) :=
+    match src with
+    | Vector.nil => dst
+    | Vector.cons h _ t => buffer_blit_buffer' (S start) t (set_nth' dst start h)
     end.
 
-  Definition buffer_blit_list {sz} start (l: list Core.char) (v: ByteBuffer.t sz) :=
-    let len := List.length l in
-    if NPeano.leb (start + len) sz then
-      Some (buffer_blit_list' start l v, len)
+  Definition buffer_blit_buffer {sz1 sz2} start (src: ByteBuffer.t sz1) (dst: ByteBuffer.t sz2) :=
+    let idx' := start + sz1 in
+    if NPeano.leb idx' sz2 then
+      Some (buffer_blit_buffer' start src dst, idx')
     else None.
 
-  Definition AlignedEncodeCharList
-    : forall sz, AlignedEncodeM (S := list Core.char) sz :=
-    fun sz (v: ByteBuffer.t sz) idx chars env =>
-      match buffer_blit_list idx chars v with
-      | Some (v', len) =>
-        Some ((v', idx + len), addE env (8 * len))
+  Definition AlignedEncodeByteBuffer
+    : forall sz, AlignedEncodeM (S := { n & ByteBuffer.t n }) sz :=
+    fun sz2 (dst: ByteBuffer.t sz2) idx src env =>
+      let '(existT len src) := src in
+      match buffer_blit_buffer idx src dst with
+      | Some (v', idx') => Some (v', idx', addE env (8 * len))
       | None => None
       end.
 
-  Lemma CorrectAlignedEncoderForFormatCharList :
-    CorrectAlignedEncoder (format_list (format_word (sz := 8)))
-                          AlignedEncodeCharList.
+  Lemma CorrectAlignedEncoderForFormatByteBuffer :
+    CorrectAlignedEncoder format_bytebuffer AlignedEncodeByteBuffer.
   Admitted.
 
   Definition AlignedEncodeList {A}

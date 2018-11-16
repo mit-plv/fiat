@@ -623,9 +623,11 @@ Proof.
   - apply ZToOneC_zero.
 Qed.
 
-Definition add_bytes_into_checksum (b_hi b_lo: word 8) (checksum: W16) :=
-  let w16 := combine b_lo b_hi in
+Definition add_w16_into_checksum (w16: W16) (checksum: W16) :=
   checksum ^1+ w16.
+
+Definition add_bytes_into_checksum (hi lo: word 8) (checksum: W16) :=
+  add_w16_into_checksum (combine lo hi) checksum.
 
 Fixpoint checksum bytes : W16 :=
   match bytes with
@@ -702,7 +704,7 @@ Lemma add_bytes_into_checksum_swap:
     add_bytes_into_checksum b22 b21 (add_bytes_into_checksum b12 b11 chk) =
     add_bytes_into_checksum b12 b11 (add_bytes_into_checksum b22 b21 chk).
 Proof.
-  unfold add_bytes_into_checksum.
+  unfold add_bytes_into_checksum, add_w16_into_checksum.
   intros; rewrite <- !OneC_plus_assoc.
   rewrite (OneC_plus_comm (combine b11 b12)).
   reflexivity.
@@ -729,6 +731,9 @@ Fixpoint ByteBuffer_fold_left_pair {B} (f: Core.char -> Core.char -> B -> B) {sz
   | S (S n'), @Vector.cons _ x _ (@Vector.cons _ y _ tl) => ByteBuffer_fold_left_pair f n' tl (f x y acc) pad
   end.
 
+Definition ByteBuffer_fold_left16 {B} (f: word 16 -> B -> B) {sz: nat} n (v: ByteBuffer.t sz) acc :=
+  ByteBuffer_fold_left_pair (fun hi lo => f (combine lo hi)) n v acc (wzero _).
+
 Definition checksum'' byte_pairs acc : W16 :=
   fold_left (fun chk p => add_bytes_into_checksum (fst p) (snd p) chk) byte_pairs acc.
 
@@ -740,28 +745,61 @@ Proof.
   reflexivity.
 Qed.
 
-Definition ByteBuffer_checksum' {sz} (bytes : ByteBuffer.t sz) : W16 :=
-  ByteBuffer_fold_left_pair add_bytes_into_checksum sz bytes (wzero _) (wzero _).
+Fixpoint Vector_checksum_bound n {sz} (bytes :ByteBuffer.t sz) acc : W16 :=
+  match n, bytes with
+  | 0, _ => acc
+  | _, Vector.nil => acc
+  | S 0, Vector.cons x _ _ => add_bytes_into_checksum x (wzero _) acc
+  | _, Vector.cons x _ Vector.nil => add_bytes_into_checksum x (wzero _) acc
+  | S (S n'), Vector.cons x _ (Vector.cons y _ t) =>
+    (Vector_checksum_bound n' t (add_bytes_into_checksum x y acc))
+  end%nat.
 
-Lemma ByteBuffer_checksum'_checksum'' :
+Definition ByteBuffer_checksum_bound n {sz} (bytes : ByteBuffer.t sz) : W16 :=
+  ByteBuffer_fold_left16 add_w16_into_checksum n bytes (wzero _).
+
+Lemma ByteBuffer_checksum_bound_ok' :
+  forall n {sz} (bytes :ByteBuffer.t sz) acc,
+    Vector_checksum_bound n bytes acc =
+    ByteBuffer_fold_left16 add_w16_into_checksum n bytes acc.
+Proof.
+  fix IH 3.
+  destruct bytes as [ | hd sz [ | hd' sz' tl ] ]; intros; simpl.
+  - destruct n as [ | [ | ] ]; reflexivity.
+  - destruct n as [ | [ | ] ]; reflexivity.
+  - destruct n as [ | [ | ] ]; simpl; try reflexivity.
+    rewrite IH; reflexivity.
+Qed.
+
+Lemma ByteBuffer_checksum_bound_ok :
+  forall n {sz} (bytes :ByteBuffer.t sz),
+    Vector_checksum_bound n bytes (wzero _) = ByteBuffer_checksum_bound n bytes.
+Proof.
+  intros; apply ByteBuffer_checksum_bound_ok'.
+Qed.
+
+Definition ByteBuffer_checksum {sz} (bytes : ByteBuffer.t sz) : W16 :=
+  ByteBuffer_checksum_bound sz bytes.
+
+Lemma ByteBuffer_checksum_checksum'' :
   forall {sz} (bytes: ByteBuffer.t sz) acc,
-    ByteBuffer_fold_left_pair add_bytes_into_checksum sz bytes acc (wzero _) =
+    ByteBuffer_fold_left16 add_w16_into_checksum sz bytes acc =
     checksum'' (make_pairs (Vector.to_list bytes) (wzero _)) acc.
 Proof.
   fix IH 2.
   destruct bytes as [ | hd sz [ | hd' sz' tl ] ]; intros; simpl.
   - reflexivity.
   - reflexivity.
-  - rewrite IH. reflexivity.
+  - unfold ByteBuffer_fold_left16 in *; simpl in *. rewrite IH. reflexivity.
 Qed.
 
-Lemma Vector_checksum_ByteBuffer_checksum' :
+Lemma Vector_checksum_ByteBuffer_checksum :
   forall {sz} (bytes: ByteBuffer.t sz),
-    Vector_checksum bytes = ByteBuffer_checksum' bytes.
+    Vector_checksum bytes = ByteBuffer_checksum bytes.
 Proof.
   intros.
   rewrite Vector_checksum_eq_checksum, checksum_checksum'.
-  unfold ByteBuffer_checksum'; rewrite ByteBuffer_checksum'_checksum''.
+  unfold ByteBuffer_checksum, ByteBuffer_checksum_bound; rewrite ByteBuffer_checksum_checksum''.
   apply checksum'_checksum''.
 Qed.
 
@@ -1091,7 +1129,7 @@ Lemma add_bytes_into_checksum_inj_l:
     add_bytes_into_checksum y10 y11 chk ->
     y00 = y10 /\ y01 = y11.
 Proof.
-  unfold add_bytes_into_checksum; intros * nonz0 nonz1 H.
+  unfold add_bytes_into_checksum, add_w16_into_checksum; intros * nonz0 nonz1 H.
   apply (f_equal (fun x => (wnot chk) ^1+ x)) in H.
   rewrite !(OneC_plus_assoc (wnot chk)), !(OneC_plus_comm (wnot chk)), !OneC_plus_wnot in H.
   repeat lazymatch goal with
