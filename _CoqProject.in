@@ -345,9 +345,7 @@ src/Narcissus/Examples/IntExample.v
 src/Narcissus/Examples/README.v
 src/Narcissus/Examples/Toy.v
 src/Narcissus/Examples/Toy2.v
-src/Narcissus/Examples/TutorialFinal.v
 src/Narcissus/Examples/TutorialPrelude.v
-src/Narcissus/Examples/TutorialStarter.v
 src/Narcissus/Examples/BRASS/Telemetry.v
 src/Narcissus/Examples/DNS/DNSPacket.v
 src/Narcissus/Examples/DNS/DnsOpt.v
