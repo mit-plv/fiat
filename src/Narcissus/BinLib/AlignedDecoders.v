@@ -28,6 +28,7 @@ Require Import
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
+        Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.CacheStringConstant
@@ -1597,6 +1598,48 @@ Section AlignedDecoders.
     destruct (decode_B a b0 c) as [ [ [? ?] ?] | ]; simpl; eauto.
   Qed.
 
+  Lemma AlignedDecode_if_Sumb_dep {A : Type}
+        {P : ByteString -> Prop}
+        (decode_T decode_E : DecodeM (A * ByteString) ByteString)
+        (cond : forall bs, {P bs} + {~ P bs})
+        (cond' : forall sz, ByteBuffer.t sz -> nat -> bool)
+        (aligned_decoder_T aligned_decoder_E : forall numBytes : nat, AlignedDecodeM A numBytes)
+        (cond'OK : forall sz (v : Vector.t _ sz),
+            (if cond (build_aligned_ByteString v) then true else false) = cond' _ v 0)
+        (cond'OK2 : forall sz v idx, cond' (S sz) v (S idx) = cond' _ (Vector.tl v) idx )
+    : DecodeMEquivAlignedDecodeM decode_T aligned_decoder_T
+      -> DecodeMEquivAlignedDecodeM decode_E aligned_decoder_E
+      -> DecodeMEquivAlignedDecodeM
+           (fun bs cd => if cond bs
+                         then decode_T bs cd
+                         else decode_E bs cd)
+           (fun sz v idx => if cond' sz v idx
+                            then aligned_decoder_T sz v idx
+                            else aligned_decoder_E sz v idx).
+  Proof.
+    split.
+    intros.
+    rewrite cond'OK2.
+    destruct (cond' numBytes_hd (Vector.tl v)) eqn: ? ;
+      try eapply H; try eapply H0; try reflexivity.
+    split; intros.
+    destruct (cond b).
+    eapply H; eauto.
+    eapply H0; eauto.
+    specialize (cond'OK _ v).
+    simpl; destruct (cond' n v); simpl; split; intros.
+    find_if_inside; try discriminate.
+    eapply H; eauto.
+    eapply H; eauto.
+    find_if_inside; eauto.
+    discriminate.
+    find_if_inside; try discriminate.
+    eapply H0; eauto.
+    eapply H0; eauto.
+    find_if_inside; eauto.
+    discriminate.
+  Qed.
+
   Lemma AlignedDecode_CollapseWord
     : forall (ResultT : Type) (sz sz' : nat)
              aligned_decoder
@@ -1615,6 +1658,30 @@ Section AlignedDecoders.
       intros; simpl; try reflexivity.
     rewrite CollapseWord; eauto.
   Qed.
+
+  Lemma AlignedDecode_CollapseEnumWord
+    : forall (ResultT : Type) (sz sz' n : nat)
+             (tb : Vector.t _ (S n))
+             aligned_decoder
+             (k : _ -> word sz' -> _ -> CacheDecode -> option (ResultT * _ * CacheDecode)),
+      DecodeMEquivAlignedDecodeM
+        (fun bs cd => `(w, b', cd') <- decode_word bs cd;
+                        Ifopt (word_indexed (split2 sz' sz w) tb) as idx Then
+                                                          k idx
+                                                          (split1 sz' sz w) b' cd'
+                                                          Else None)
+        aligned_decoder
+      -> DecodeMEquivAlignedDecodeM
+           (fun bs cd => `(w, b', cd') <- decode_enum tb bs cd;
+                           `(w', b'0, cd'0) <- decode_word b' cd';
+                           k w w' b'0 cd'0)
+           aligned_decoder.
+  Proof.
+    intros; eapply DecodeMEquivAlignedDecodeM_trans; eauto;
+      intros; simpl; try reflexivity.
+    rewrite CollapseEnumWord; eauto.
+  Qed.
+
 
   Lemma AlignedDecodeBind3CharM:
     forall (cache : Cache) (cacheAddNat : CacheAdd cache nat),
@@ -1655,7 +1722,7 @@ Section AlignedDecoders.
   Proof.
   Admitted.
 
-    Lemma AlignedDecode_ifb_dep {A : Type}
+  Lemma AlignedDecode_ifb_dep {A : Type}
         (decode_T decode_E : DecodeM (A * ByteString) ByteString)
         (cond : ByteString -> bool)
         (cond' : forall sz, ByteBuffer.t sz -> nat -> bool)

@@ -5,6 +5,7 @@ Require Import
         Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats.WordOpt
+        Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.BinLib.AlignedEncodeMonad.
 
@@ -14,7 +15,6 @@ Require Import
         Bedrock.Word.
 
 Section AlignWord.
-  Context {len : nat}.
   Context {B : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
@@ -318,6 +318,23 @@ Section AlignWord.
       + rewrite (trans_plus_comm sz sz'); simpl; eauto.
     - rewrite (trans_plus_comm sz sz'); simpl; reflexivity.
   Qed.
+
+  Lemma CollapseEnumWord {ResultT}
+    : forall sz' sz n (b : B) (tb : Vector.t (word sz) (S n))
+             (cd : CacheDecode)
+             (k : _ -> _ -> _ -> _ -> option (ResultT * B * CacheDecode)),
+      (`(w, b', cd') <- decode_enum (sz:=sz) tb b cd;
+         `(w', b', cd') <- decode_word (sz:=sz') b' cd';
+         k w w' b' cd') =
+      (`(w , b', cd') <- decode_word (sz:=sz' + sz) b cd;
+         Ifopt (word_indexed (split2 sz' sz w) tb) as idx Then
+                                                          k idx
+                                                          (split1 sz' sz w) b' cd'
+                                                          Else None).
+  Proof.
+    intros.
+    unfold decode_enum.
+  Admitted.
 
   Variable addE_addE_plus :
     forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).

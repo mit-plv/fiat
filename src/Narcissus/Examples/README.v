@@ -83,24 +83,40 @@ Module Sensor2.
     EnumType ["TEMPERATURE"; "HUMIDITY"].
 
   Record sensor_msg :=
-    { stationID: word 6;
+    { stationID: word 8;
       measurement: (kind * word 14) }.
 
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_enum [WO~0~0; WO~0~1] ◦ fst ◦ measurement
-    ++ format_word ◦ snd ◦ measurement.
+    ++ format_enum [WO~0~0; WO~0~1] ◦ (Basics.compose fst measurement)
+    ++ format_word ◦ (Basics.compose snd measurement).
 
   Let invariant (msg: sensor_msg) :=
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. Abort.
+  Proof.
+    econstructor.
+    start_synthesizing_encoder.
+    align_encoder_step.
+    align_encoder_step.
+    align_encoder_step.
+    collapse_unaligned_words.
+    align_encoder_step.
+    align_encoder_step.
+    align_encoder_step.
+    align_encoder_step.
+    align_encoder_step.
+    align_encoder_step.
+    align_encoder_step.
+    align_encoder_step.
+    synthesize_aligned_decoder.
+  Defined.
 
-  Fail Let encode := encoder_impl enc_dec.
-  Fail Let decode := decoder_impl enc_dec.
+  Let encode := encoder_impl enc_dec.
+  Let decode := decoder_impl enc_dec.
 End Sensor2.
 
 (** The use of `format_const` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
@@ -177,7 +193,7 @@ Module Sensor5.
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 8 ◦ length ◦ measurements
+    ++ format_nat 8 ◦ (Basics.compose length measurements)
     ++ format_list format_word ◦ measurements.
 
   Let invariant :=

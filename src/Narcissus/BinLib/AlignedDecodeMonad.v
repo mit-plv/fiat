@@ -603,6 +603,25 @@ Section AlignedDecodeM.
     intros; destruct cond; simpl; eauto using AlignedDecode_Throw.
   Qed.
 
+  Lemma AlignedDecode_ifopt
+        {A A' : Type}
+        (decode_A : A' -> DecodeM (A * ByteString) ByteString)
+        (cond : option A')
+        (aligned_decoder : A' -> forall numBytes : nat, AlignedDecodeM A numBytes)
+    : (forall a', DecodeMEquivAlignedDecodeM
+                  (decode_A a')
+                  (aligned_decoder a'))
+      -> DecodeMEquivAlignedDecodeM
+           (fun bs cd => Ifopt cond as a'
+                         Then decode_A a' bs cd
+                         Else None)
+           (fun sz => Ifopt cond as a'
+                         Then aligned_decoder a' _
+                         Else ThrowAlignedDecodeM).
+  Proof.
+    intros; destruct cond; simpl; eauto using AlignedDecode_Throw.
+  Qed.
+
   Lemma AlignedDecode_Sumb {A : Type}
         (decode_A : DecodeM (A * ByteString) ByteString)
         (P : Prop)

@@ -44,31 +44,45 @@ Ltac align_decoders_step :=
     | eapply @AlignedDecodeListM; intros; eauto
     | eapply @AlignedDecodeCharM; intros; eauto
     | eapply (fun H H' => @AlignedDecodeNCharM _ _ H H' 4); eauto; simpl; intros
-    | eapply (AlignedDecodeNCharM _ _  (m := 2)); eauto; simpl; intros
+    | eapply (fun H H' => AlignedDecodeNCharM H H'  (m := 2)); eauto; simpl; intros
     | eapply (AlignedDecodeNUnusedCharM _ _ (m := 2)); eauto; simpl; intros
     | eapply @AlignedDecode_shift_if_Sumb
     | eapply @AlignedDecode_shift_if_bool
     | eapply @Return_DecodeMEquivAlignedDecodeM
     | eapply @AlignedDecode_Sumb
+    | eapply AlignedDecode_ifopt; intros
+    | let H := fresh in pose proof @AlignedDecode_if_Sumb_dep as H;
+                        eapply H; clear H;
+                        [ solve [eauto] | solve [eauto] | | ]
     | eapply @AlignedDecode_ifb
     | eapply @AlignedDecode_ifb_dep; [ solve [eauto] | solve [eauto] | | ]
     | eapply @AlignedDecodeBindOption; intros; eauto
+    | eapply @AlignedDecode_Throw
     | intros; higher_order_reflexivity
-    |   eapply @AlignedDecode_CollapseWord';
-        eauto using decode_word_eq_decode_unused_word,
-        decode_word_eq_decode_bool,
-        decode_word_eq_decode_nat,
-        decode_word_eq_decode_word
+    | eapply @AlignedDecode_CollapseEnumWord
+    | eapply @AlignedDecode_CollapseWord';
+      eauto using decode_word_eq_decode_unused_word,
+      decode_word_eq_decode_bool,
+      decode_word_eq_decode_nat,
+      decode_word_eq_decode_word
     ].
 
 Ltac align_decoders := repeat align_decoders_step.
 
 Ltac synthesize_aligned_decoder :=
-  start_synthesizing_decoder;
-  [ normalize_format; repeat apply_rules
-  | cbv beta; synthesize_cache_invariant
-  | cbv beta; unfold decode_nat, Sequence.sequence_Decode; optimize_decoder_impl
-  | ]; cbv beta; align_decoders.
+  first [ start_synthesizing_decoder;
+          [ NormalizeFormats.normalize_format; repeat apply_rules
+          |
+          |
+          | ];
+          [ cbv beta; synthesize_cache_invariant
+          | cbv beta; unfold decode_nat, Sequence.sequence_Decode; optimize_decoder_impl
+          | cbv beta; align_decoders]
+        | start_synthesizing_decoder;
+          [ NormalizeFormats.normalize_format; repeat apply_rules
+          |
+          |
+          | ] ].
 
 Lemma length_encode_word' sz :
   forall (w : word sz) (b : ByteString),
@@ -327,6 +341,20 @@ Proof.
   eauto.
 Qed.
 
+Lemma refine_format_enum_map {S}
+      {sz sz'}
+      (f : S -> Fin.t (1 + sz'))
+      (tb : Vector.t (word sz) _)
+  : forall s ce,
+    refine (FMapFormat.Projection_Format (format_enum tb) f s ce)
+           (FMapFormat.Projection_Format format_word (Basics.compose (Vector.nth tb) f) s ce).
+Proof.
+  intros; unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format, format_enum; intros ? ?.
+  rewrite unfold_computes in H; destruct_ex; intuition.
+  apply unfold_computes; eexists; split; eauto; subst.
+  eauto.
+Qed.
+
 Lemma refine_format_unused_word_map {S}
   : forall sz (s : S) ce,
     refine (format_unused_word sz s ce) (FMapFormat.Projection_Format format_word (fun s => wzero sz) s ce).
@@ -393,7 +421,7 @@ Qed.
                   | eapply refine_format_bool_map
                   | eauto using refine_format_bool, refine_format_unused_word_map,
                     refine_format_bool_map, refine_format_unused_word,
-                    refine_format_option_map,
+                    refine_format_option_map, refine_format_enum_map,
                     refine_format_nat_map];
      reflexivity
     | ].

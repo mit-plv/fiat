@@ -52,26 +52,6 @@ Definition must {T} : forall (x: option T),
   destruct x; auto.
 Defined.
 
-Ltac synthesize_aligned_encoder ::=
-  start_synthesizing_encoder;
-  repeat (progress (decompose_aligned_encoder; eauto) || align_encoder_step). (* !! *)
-
-Ltac synthesize_aligned_decoder ::=
-  start_synthesizing_decoder;
-    repeat (cbv beta; intros;
-            unshelve
-              match goal with
-              | [ |- CorrectDecoder ?monoid _ _ _ _ _ ] =>
-                (normalize_compose monoid) || (repeat decode_step idtac)
-              | [ |- cache_inv_Property _ _ ] =>
-                synthesize_cache_invariant
-              | [ |- _ = ?f _ _ ] =>
-                is_evar f; unfold decode_nat; optimize_decoder_impl
-              | [ |- DecodeMEquivAlignedDecodeM _ ?f ] =>
-                is_evar f; align_decoders
-              | [ |- _ = _ ] => reflexivity
-              end).
-
 Ltac shelve_inv ::=
   let H' := fresh in
   let data := fresh in
@@ -278,4 +258,3 @@ Notation encoder_impl x :=
 
 Notation decoder_impl x :=
   (simplify (decoder_impl' x.(dec))) (only parsing).
-

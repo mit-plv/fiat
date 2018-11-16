@@ -28,7 +28,7 @@ Require Import Bedrock.Word.
 
 Import Vectors.VectorDef.VectorNotations.
 Open Scope format_scope.
-(* Start Example Derivation. *)
+
 Section TCPPacketDecoder.
 
   Record TCP_Packet :=

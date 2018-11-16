@@ -156,3 +156,70 @@ Proof.
     eassumption.
   }
 Qed.
+
+Lemma format_unused_sequence_correct
+      {S S' T}
+      {cache : Cache}
+      {Q  : CacheDecode -> Prop}
+      {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
+      {S'_eq_dec : DecideableEnsembles.Query_eq S'}
+      (P_inv_pf : cache_inv_Property Q (fun P => P_inv1 P /\ P_inv2 P))
+      (monoid : Monoid T)
+      (P' : S' -> Prop)
+      (P : S -> Prop)
+      (format1 : FormatM S' T)
+      (format2 : FormatM S T)
+      (decode1 : DecodeM (S' * T) T)
+      (decode1_pf :
+         cache_inv_Property Q P_inv1
+         -> CorrectDecoder
+              monoid P'
+              (fun _ _ => True)
+              format1 decode1 Q)
+      (s'_OK : forall s', P' s')
+      (decode2 : DecodeM (S * T) T)
+      (decode2_pf :
+         cache_inv_Property Q P_inv2 ->
+         CorrectDecoder monoid P
+                        (fun _ _ => True)
+                        format2
+                        (decode2 ) Q)
+  : CorrectDecoder
+      monoid
+      (fun a => P a)
+      (fun _ _ => True)
+      (Compose_Format format1 (fun _ _ => True) ++ format2)
+      (sequence_Decode decode1
+                       (fun _ rest env' => decode2 rest env'))
+      Q.
+Proof.
+  unfold cache_inv_Property in *; split.
+  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
+    unfold sequence_Format, Projection_Format, Compose_Format, ComposeOpt.compose, Bind2 in com_pf; computes_to_inv; destruct v;
+      destruct v0.
+    apply (proj1 (unfold_computes _ _)) in com_pf;
+      simpl in com_pf; destruct com_pf as [? [com_pf ?] ]; subst.
+    destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend t0 ext) env_OK env_pm (s'_OK _) H' com_pf); intuition; simpl in *; injections; eauto.
+    unfold sequence_Decode.
+    setoid_rewrite <- mappend_assoc; rewrite H3.
+    destruct (fun H'' => proj1 H6 _ _ _ _ _ ext H5 H0 pred_pm H'' com_pf');
+      intuition; simpl in *; injections; eauto. }
+  { intros.
+    unfold sequence_Decode in *.
+    destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
+      simpl in *; try discriminate.
+    eapply (proj2 (decode1_pf (proj1 P_inv_pf))) in Heqo; eauto.
+    destruct Heqo as [? [? [? [? [? [? ?] ] ] ] ] ].
+    subst.
+    eapply (proj2 (decode2_pf (proj2 P_inv_pf))) in H2; eauto.
+    destruct H2 as [? ?]; destruct_ex; intuition; subst.
+    eexists; eexists; repeat split.
+    unfold sequence_Format, compose, Projection_Format, Compose_Format.
+    repeat computes_to_econstructor; eauto.
+    apply unfold_computes; eexists; eauto.
+    eauto.
+    simpl; rewrite mappend_assoc; reflexivity.
+    eassumption.
+    eassumption.
+  }
+Qed.

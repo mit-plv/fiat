@@ -42,16 +42,6 @@ Record IPv4_Packet :=
      SourceAddress : word 32;
      DestAddress : word 32;
      Options : list (word 32) }.
-(*@Tuple <"TotalLength" :: word 16,
-  "ID" :: word 16,
-  "DF" :: bool, (* Don't fragment flag *)
-  "MF" :: bool, (*  Multiple fragments flag *)
-  "FragmentOffset" :: word 13,
-  "TTL" :: word 8,
-  "Protocol" :: EnumType ["ICMP"; "TCP"; "UDP"],
-  "SourceAddress" :: word 32,
-  "DestAddress" :: word 32,
-  "Options" :: list (word 32)>.*)
 
 (* Protocol Numbers from [RFC5237]*)
 Definition ProtocolTypeCodes : Vector.t (word 8) 3 :=
@@ -122,8 +112,71 @@ Qed.
 Hint Resolve IPv4_Packet_Header_Len_eq : data_inv_hints.
 Hint Resolve IPv4_Packet_Header_Len_bound : data_inv_hints.
 
-Arguments andb : simpl never.
+Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
+  : nat :=
+  match (`(u, b') <- decode_unused_word' 4 ipv4_b;
+           decode_word' 4 b') with
+  | Some n => 32 * wordToNat (fst n)
+  | None => 0
+  end.
 
+Lemma IPv4_Packet_Header_Len_OK
+  : forall ip4 ctx ctx' ctx'' c b b'' ext,
+    (   format_word ◦ (fun _ => natToWord 4 4)
+     ++ (format_nat 4) ◦ IPv4_Packet_Header_Len
+     ++ format_unused_word 8 (* TOS Field! *)
+     ++ format_word ◦ TotalLength
+     ++ format_word ◦ ID
+     ++ format_unused_word 1 (* Unused flag! *)
+     ++ format_bool ◦ DF
+     ++ format_bool ◦ MF
+     ++ format_word ◦ FragmentOffset
+     ++ format_word ◦ TTL
+     ++ format_enum ProtocolTypeCodes ◦ Protocol)%format
+                                                 ip4 ctx ∋ (b, ctx') ->
+    (   format_word ◦ SourceAddress
+     ++ format_word ◦ DestAddress
+     ++ format_list format_word ◦ Options)%format ip4 ctx' ∋ (b'', ctx'') ->
+    IPv4_Packet_OK ip4 ->
+    (fun _ => 128) ip4 + (fun a => 16 + |ip4.(Options)| * 32) ip4 + 16
+    = IPv4_Packet_encoded_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext).
+Proof.
+  intros; simpl.
+  unfold IPv4_Packet_encoded_measure.
+  rewrite <- !ByteString_enqueue_ByteString_assoc.
+Admitted.
+
+Definition aligned_IPv4_Packet_encoded_measure
+           {sz}
+           (v : t Core.char sz)
+           (idx : nat)
+  : bool :=
+  if weq (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then true
+  else false.
+
+
+Lemma aligned_IPv4_Packet_encoded_measure_OK_1 {sz}
+  : forall (v : t Core.char sz),
+    (if
+    IPChecksum_Valid_dec (IPv4_Packet_encoded_measure (build_aligned_ByteString v)) (build_aligned_ByteString v)
+   then true
+   else false) =
+    aligned_IPv4_Packet_encoded_measure v 0.
+  Proof.
+Admitted.
+
+  Lemma aligned_IPv4_Packet_encoded_measure_OK_2 {sz}
+    : forall (v : ByteBuffer.t (S sz)) (idx : nat),
+      aligned_IPv4_Packet_encoded_measure v (S idx) =
+      aligned_IPv4_Packet_encoded_measure (Vector.tl v) idx.
+  Proof.
+  Admitted.
+
+  Arguments andb : simpl never.
+  
+  Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_1.
+  Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_2.
+  
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
@@ -138,30 +191,25 @@ Proof.
       eapply compose_IPChecksum_format_correct with (format1 := fmt1)
   end.
   apply H.
-  intros.
   repeat calculate_length_ByteString.
   repeat calculate_length_ByteString.
   solve_mod_8.
   solve_mod_8.
-  eapply Nat.mod_divides;
-  try omega.
-  eexists (4 * (| Options a |)).
-  omega.
-  simpl; intros.
-  instantiate (1 := fun _ => 0); simpl. admit.
+  pose proof (mult_32_mod_8 0 (| Options a|));
+    rewrite <- plus_n_O in H0; eauto.
+  apply IPv4_Packet_Header_Len_OK.
   intros.
   NormalizeFormats.normalize_format.
-  unfold format_unused_word.
   repeat apply_rules.
-  eapply format_sequence_correct.
-  cbv beta; synthesize_cache_invariant.
-  cbv beta; unfold decode_nat; optimize_decoder_impl.
-  cbv beta; align_decoders.
-  Grab Existential Variables.
-  shelve.
   synthesize_cache_invariant.
-  synthesize_cache_invariant.
-  synthesize_cache_invariant.
+  cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
+  let H := fresh in pose proof @AlignedDecode_if_Sumb_dep as H;
+                      eapply H; clear H.
+  intros; eauto.
+  eapply aligned_IPv4_Packet_encoded_measure_OK_1.
+  intros; eapply aligned_IPv4_Packet_encoded_measure_OK_2.
+  repeat align_decoders_step.
+  repeat align_decoders_step.
 Defined.
 
 (* Step Four: Extract the decoder function, and have /it/ start decoding

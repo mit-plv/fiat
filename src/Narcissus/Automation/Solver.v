@@ -165,7 +165,7 @@ Ltac build_fully_determined_type cleanup_tac :=
   (* byte string was a valid encoding of this object. *)
   (* Start by doing some simplification and *)
   (* destructing the formatd object  *)
-  unfold Domain, GetAttribute, GetAttributeRaw in *;
+  unfold Domain, GetAttribute, GetAttributeRaw, Basics.compose in *;
   simpl in *;
   let a' := fresh in
   intros a'; repeat destruct a' as [? a'];
@@ -511,7 +511,7 @@ Ltac Vector_of_evar n T k :=
 
     Ltac FinishDecoder :=
       solve [simpl; intros;
-             eapply CorrectDecoderinish;
+             eapply CorrectDecoderEmpty;
              [ build_fully_determined_type idtac
              | decide_data_invariant ] ].
 
@@ -536,6 +536,13 @@ Ltac apply_rules :=
         | solve [ solve_side_condition ]
         | intros ]
       ]
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ (_ ++ _) _ _ =>
+      eapply (format_unused_sequence_correct H) with (monoid := mnd);
+      clear H;
+      [ intros; solve [repeat apply_rules]
+      | solve [ solve_side_condition ]
+      | intros ]
   | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ (Either _ Or _)%format _ _ =>
     eapply (composeIf_format_correct H); clear H;
     [ intros
@@ -552,8 +559,9 @@ Ltac apply_rules :=
     intros; revert H; eapply Nat_decode_correct
   | |- context [CorrectDecoder _ _ _ (format_list _) _ _] => intros; apply FixList_decode_correct
 
-  | |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
-    eapply bool_decode_correct
+  | H : cache_inv_Property _ _
+    |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
+    intros; revert H; eapply bool_decode_correct
 
   | |- context [CorrectDecoder _ _ _ (Option.format_option _ _) _ _] =>
     intros; eapply Option.option_format_correct;
