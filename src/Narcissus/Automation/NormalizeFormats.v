@@ -151,6 +151,7 @@ Ltac normalize_step BitStringT :=
          | apply EquivFormat_If_Then_Else_Proper
          | eapply (@EquivFormat_UnderSequence _ _ BitStringT)
          | eapply EquivFormat_Projection_Format_Empty_Format]; intros).
+
 Ltac normalize_format :=
   (* Normalize formats by performing algebraic simplification. *)
   match goal with

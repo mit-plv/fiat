@@ -22,6 +22,7 @@ Require Import
         Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Automation.Solver
+        Fiat.Narcissus.Automation.NormalizeFormats
         Fiat.Narcissus.Automation.AlignedAutomation.
 
 Require Import Bedrock.Word.
@@ -93,36 +94,11 @@ Definition ARP_Packet_OK (arp : ARPPacket) :=
 
 Arguments Vector.nth : simpl never.
 
-
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition ARP_encoder :
     CorrectAlignedEncoderFor ARPPacket_Format.
   Proof.
-    start_synthesizing_encoder.
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    Grab Existential Variables.
-    eauto.
-    eauto.
-    eauto.
-    eauto.
-    eauto.
-    eauto.
+    synthesize_aligned_encoder.
   Defined.
 
   (* Step Two: Extract the encoder function, and have it start encoding
@@ -135,57 +111,8 @@ Arguments Vector.nth : simpl never.
 Definition ARP_Packet_Header_decoder
   : CorrectAlignedDecoderFor ARP_Packet_OK ARPPacket_Format.
 Proof.
-  (* We have to use an extra lemma at the start, because of the 'exotic'
-     IP Checksum. *)
-  start_synthesizing_decoder.
-  normalize_compose ByteStringQueueMonoid.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  unfold ARP_Packet_OK; intros; intuition; rewrite H8 in H4; eassumption.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  unfold ARP_Packet_OK; intros; intuition; rewrite H9 in H5; eassumption.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  unfold ARP_Packet_OK; intros; intuition; rewrite H15, H12; reflexivity.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  unfold ARP_Packet_OK; intros; intuition; rewrite H19, H13; reflexivity.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  cbv beta; synthesize_cache_invariant.
-  cbv beta; unfold decode_nat; optimize_decoder_impl.
-  cbv beta; align_decoders.
+  unfold ARP_Packet_OK.
+  synthesize_aligned_decoder.
 Defined.
 
 (* Step Four: Extract the decoder function, and have /it/ start decoding

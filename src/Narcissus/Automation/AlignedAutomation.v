@@ -7,7 +7,8 @@ Require Import
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Formats
         Fiat.Narcissus.BaseFormats
-        Fiat.Narcissus.Automation.Solver.
+        Fiat.Narcissus.Automation.Solver
+        Fiat.Narcissus.Automation.NormalizeFormats.
 
 Require Import Bedrock.Word.
 
@@ -63,10 +64,7 @@ Ltac align_decoders := repeat align_decoders_step.
 
 Ltac synthesize_aligned_decoder :=
   start_synthesizing_decoder;
-  [ match goal with
-      |- CorrectDecoder ?monoid _ _ _ _ _ => normalize_compose monoid
-    end;
-    repeat decode_step idtac
+  [ normalize_format; repeat apply_rules
   | cbv beta; synthesize_cache_invariant
   | cbv beta; unfold decode_nat; optimize_decoder_impl
   | ];
@@ -418,7 +416,8 @@ Ltac start_synthesizing_encoder :=
 
 Ltac align_encoder_step :=
   first
-    [ match goal with
+    [ collapse_unaligned_words
+      match goal with
         |- CorrectAlignedEncoder (_ ++ _ ++ _)%format _ => associate_for_ByteAlignment
       end
     | match goal with

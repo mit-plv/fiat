@@ -16,6 +16,9 @@ Require Import
         Fiat.Narcissus.Common.WordFacts
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
+        Fiat.Narcissus.Formats.Sequence
+        Fiat.Narcissus.BaseFormats
+        Fiat.Narcissus.Formats.Empty
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.Bool
@@ -26,7 +29,8 @@ Require Import
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.StringOpt
-        Fiat.Narcissus.Common.Sig.
+        Fiat.Narcissus.Common.Sig
+        Fiat.Narcissus.Automation.NormalizeFormats.
 
 Ltac apply_compose :=
   intros;
@@ -489,57 +493,81 @@ Ltac Vector_of_evar n T k :=
                          ltac:(fun a => k (@Vector.cons T a n' l)))
   end.
 
-Ltac decode_step cleanup_tac :=
+    Ltac solve_side_condition :=
+    (* Try to discharge a side condition of one of the base rules *)
+      match goal with
+      | |- NoDupVector _ => Discharge_NoDupVector
+      | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
+        intros; apply Vector_predicate_rest_True
+      | |- context[FixList_predicate_rest (fun _ _ => True) _ _ _] =>
+        intros; eapply FixedList_predicate_rest_True
+      | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
+        let a'' := fresh in
+        intro a''; intros; repeat instantiate (1 := fun _ _ => True);
+        repeat destruct a'' as [ ? | a''] ; auto
+      | _ => solve [solve_data_inv]
+      | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
+    end.
+
+    Ltac FinishDecoder :=
+      solve [simpl; intros;
+             eapply CorrectDecoderinish;
+             [ build_fully_determined_type idtac
+             | decide_data_invariant ] ].
+
+Ltac apply_rules :=
   (* Processes the goal by either: *)
+  (* Unfolding an identifier *)
   match goal with
-  | |- context [CorrectDecoder _ _ _ ?H _ _] =>
+  | |- CorrectDecoder _ _ _ ?H _ _ =>
     progress unfold H
-
-  (* D) Solving the goal once all the byte string has been parsed *)
-  | |- context [CorrectDecoder _ _ _
-                                        (fun _ _ => ret _) _ _] =>
-    solve [simpl; intros;
-           eapply CorrectDecoderinish;
-           [ build_fully_determined_type cleanup_tac
-           | decide_data_invariant ] ]
-
-  (*| |- context [format_unused_word] =>
-    unfold format_unused_word *)
-  (* A) decomposing one of the parser combinators, *)
-  | |- _ => apply_compose
-  (* B) applying one of the rules for a base type  *)
+  | |- context [CorrectDecoder _ _ _ empty_Format _ _] => FinishDecoder
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ (_ ◦ _ ++ _) _ _ =>
+    first [
+        eapply (format_const_sequence_correct H) with (monoid := mnd);
+        clear H;
+        [ intros; solve [repeat apply_rules]
+        | solve [ solve_side_condition ]
+        | intros ]
+      | eapply (format_sequence_correct H) with (monoid := mnd);
+        clear H;
+        [ intros; solve [repeat apply_rules]
+        | solve [ solve_side_condition ]
+        | intros ]
+      ]
+  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ (Either _ Or _)%format _ _ =>
+    eapply (composeIf_format_correct H); clear H;
+    [ intros
+    | intros
+    | solve [intros; intuition (eauto with bin_split_hints) ]
+    | solve [intros; intuition (eauto with bin_split_hints) ] ]
+  | |- context [CorrectDecoder ?mnd _ _ (format_Vector _) _ _] =>
+    intros; eapply (@Vector_decode_correct _ _ _ mnd)
   | H : cache_inv_Property _ _
     |- context [CorrectDecoder _ _ _ format_word _ _] =>
     intros; revert H; eapply Word_decode_correct
-  | |- context [ CorrectDecoder _ _ _ (format_unused_word ?sz) _ _ ] =>
-    let H := eval simpl in (@unused_word_decode_correct sz) in
-        apply H
-  | |- context [CorrectDecoder _ _ _ (format_Vector _) _ _] =>
-    intros; eapply Vector_decode_correct
-
-  | |- context [CorrectDecoder _ _ _ format_word _ _] =>
-    eapply Word_decode_correct
-  | |- context [CorrectDecoder _ _ _ (format_nat _) _ _] =>
-    eapply Nat_decode_correct
+  | H : cache_inv_Property _ _
+    |- context [CorrectDecoder _ _ _ (format_nat _) _ _] =>
+    intros; revert H; eapply Nat_decode_correct
   | |- context [CorrectDecoder _ _ _ (format_list _) _ _] => intros; apply FixList_decode_correct
-
-  | |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
-    apply bool_decode_correct
 
   | |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
     eapply bool_decode_correct
 
-  | |- context [CorrectDecoder _ _ _ (format_option _ _) _ _] =>
-    intros; eapply option_format_correct;
+  | |- context [CorrectDecoder _ _ _ (Option.format_option _ _) _ _] =>
+    intros; eapply Option.option_format_correct;
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]
 
-  | |- context [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
-    eapply (@Enum_decode_correct _ _ _ _ _ _ _ tb)
+| H : cache_inv_Property _ _
+  |- context [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
+  eapply (fun NoDup => @Enum_decode_correct _ _ _ _ _ _ _ tb NoDup _ H);
+    solve_side_condition
 
-  | |- context[CorrectDecoder _ _ _ format_string _ _ ] =>
-    eapply String_decode_correct
+  | |- context[CorrectDecoder _ _ _ StringOpt.format_string _ _ ] =>
+    eapply StringOpt.String_decode_correct
   | |- context [CorrectDecoder _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
     let cache_inv_H := fresh in
     intros cache_inv_H;
@@ -599,21 +627,8 @@ Ltac decode_step cleanup_tac :=
                                                                      (invariants_rest := invariants_rest')
                                                                      (cache_invariants :=  cache_invariants'))))))
       ];
-    [ simpl; repeat (apply Build_prim_and; intros); try exact I
+    [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros); try exact I
     | apply cache_inv_H ]
-  (* C) Discharging a side condition of one of the base rules *)
-  | |- NoDupVector _ => Discharge_NoDupVector
-  | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
-    intros; apply Vector_predicate_rest_True
-  | |- context[FixList_predicate_rest (fun _ _ => True) _ _ _] =>
-    intros; eapply FixedList_predicate_rest_True
-  | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
-    let a'' := fresh in
-    intro a''; intros; repeat instantiate (1 := fun _ _ => True);
-    repeat destruct a'' as [ ? | a''] ; auto
-  | _ => solve [solve_data_inv]
-  | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
-
   end.
 
 Ltac synthesize_cache_invariant :=
@@ -622,7 +637,7 @@ Ltac synthesize_cache_invariant :=
   solve [repeat (instantiate (1 := fun _ => True));
          unfold cache_inv_Property; intuition].
 
-Lemma refineEquiv_If_Then_Else_Proper
+(*Lemma refineEquiv_If_Then_Else_Proper
   : forall (A : Type) (c : bool),
     Proper (@refineEquiv A ==> @refineEquiv A ==> @refineEquiv A) (If_Then_Else c).
 Proof.
@@ -689,7 +704,7 @@ Qed.
                    | apply refineEquiv_under_compose with (monoid := BitStringT)
                    | eapply EquivFormat_Projection_Format_DoneC]; intros);
      intros; higher_order_reflexivity
-  | pose_string_ids ].
+  | pose_string_ids ]. *)
 
 Lemma optimize_under_if {A B}
   : forall (a a' : A) (f : {a = a'} + {a <> a'}) (t t' e e' : B),
@@ -814,11 +829,10 @@ Ltac optimize_decoder_impl :=
 Ltac synthesize_decoder :=
   (* Combines tactics into one-liner. *)
   start_synthesizing_decoder;
-  [ repeat (decode_step idtac)
+  [ repeat apply_rules
   | cbv beta; synthesize_cache_invariant
-  | cbv beta; optimize_decoder_impl].
-
-
+  | cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl].
+(*
 Ltac synthesize_decoder_ext
      monoid
      decode_step'
@@ -826,10 +840,10 @@ Ltac synthesize_decoder_ext
      synthesize_cache_invariant' :=
   (* Combines tactics into one-liner. *)
   start_synthesizing_decoder;
-  [ normalize_compose monoid;
+  [ normalize_format;
     repeat first [decode_step' idtac | decode_step determineHooks]
   | cbv beta; synthesize_cache_invariant' idtac
-  | cbv beta; optimize_decoder_impl ].
+  | cbv beta; optimize_decoder_impl ]. *)
 
 Global Instance : DecideableEnsembles.Query_eq () :=
   {| A_eq_dec a a' := match a, a' with (), () => left (eq_refl _) end |}.

@@ -96,7 +96,7 @@ Section FixList.
       /\ FixList_predicate_rest As' b
     end.
 
-  Theorem FixList_decode_correct
+  Theorem FixList_decode_correct'
     :
     forall sz ,
       CorrectDecoder
@@ -140,6 +140,63 @@ Section FixList.
         destruct (decode_list sz t c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
         eapply (proj2 A_decode_pf) in Heqo; eauto;
+          destruct Heqo; destruct_ex; intuition; subst;
+            eapply IHsz in Heqo0; eauto; destruct Heqo0;
+              destruct_ex; intuition; subst.
+        simpl.
+        eexists; eexists; intuition eauto.
+        computes_to_econstructor; eauto.
+        computes_to_econstructor; eauto.
+        rewrite mappend_assoc; reflexivity.
+        subst; eauto.
+    }
+  Qed.
+
+  Theorem FixList_decode_correct
+          (A_decode_pf' : CorrectDecoder monoid A_predicate (fun _ _ => True) format_A A_decode A_cache_inv)
+    :
+    forall sz ,
+      CorrectDecoder
+         monoid
+         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
+         (fun _ _ => True)
+        format_list (decode_list sz) A_cache_inv.
+  Proof.
+    split.
+    {
+      intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.
+      intuition; subst.
+      revert H0.
+      generalize dependent env. generalize dependent env'.
+      generalize dependent xenv.
+      generalize dependent l'. induction l.
+      { intros.
+        simpl in *; intuition; computes_to_inv;
+          injections; simpl.
+        rewrite mempty_left; eexists; eauto. }
+      { intros; simpl in *.
+        assert (A_predicate a) by eauto.
+        unfold Bind2 in Penc; computes_to_inv; subst.
+        destruct v; destruct v0; simpl in *.
+        injections.
+        destruct (fun H' => proj1 A_decode_pf' _ _ _ _ _ (mappend t0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
+        intuition; destruct_ex.
+
+        setoid_rewrite <- mappend_assoc; setoid_rewrite H1;
+          simpl.
+        destruct (IHl t0 xenv x xenv_OK c); intuition eauto.
+        setoid_rewrite H4; simpl.
+        eexists; intuition.
+      }
+    }
+    { induction sz; simpl; intros.
+      - injections; simpl; repeat eexists; intuition eauto.
+        symmetry; apply mempty_left.
+      - destruct (A_decode bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+          simpl in *; try discriminate.
+        destruct (decode_list sz t c) as [ [ [? ?] ?] | ] eqn: ? ;
+          simpl in *; try discriminate; injections.
+        eapply (proj2 A_decode_pf') in Heqo; eauto;
           destruct Heqo; destruct_ex; intuition; subst;
             eapply IHsz in Heqo0; eauto; destruct Heqo0;
               destruct_ex; intuition; subst.

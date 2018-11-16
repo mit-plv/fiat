@@ -647,8 +647,8 @@ Section AlignedDecodeM.
   Lemma Refine_CorrectAlignedDecoderFormat {A: Type}
     : forall (Invariant : A -> Prop) (FormatSpec FormatSpec'  : FormatM A ByteString),
       EquivFormat FormatSpec FormatSpec'
-      -> CorrectAlignedDecoderFor Invariant FormatSpec'
-      -> CorrectAlignedDecoderFor Invariant FormatSpec.
+      -> CorrectAlignedDecoderFor Invariant FormatSpec
+      -> CorrectAlignedDecoderFor Invariant FormatSpec'.
   Proof.
     unfold EquivFormat; intros.
     exists (projT1 X), (projT1 (projT2 X)).

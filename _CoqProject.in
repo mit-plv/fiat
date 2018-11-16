@@ -312,6 +312,7 @@ src/Narcissus/BinLib.v
 src/Narcissus/Formats.v
 src/Narcissus/Automation/AlignedAutomation.v
 src/Narcissus/Automation/CacheEncoders.v
+src/Narcissus/Automation/NormalizeFormats.v
 src/Narcissus/Automation/Solver.v
 src/Narcissus/Automation/SolverOpt.v
 src/Narcissus/Automation/Solver_8_5.v
@@ -341,6 +342,7 @@ src/Narcissus/ComplementaryFormats/ComplementaryFormat.v
 src/Narcissus/Examples/ByteAlignedExample.v
 src/Narcissus/Examples/ICMP_Packet.v
 src/Narcissus/Examples/IntExample.v
+src/Narcissus/Examples/README.v
 src/Narcissus/Examples/Toy.v
 src/Narcissus/Examples/Toy2.v
 src/Narcissus/Examples/TutorialFinal.v
@@ -369,6 +371,7 @@ src/Narcissus/Formats/AsciiOpt.v
 src/Narcissus/Formats/Bool.v
 src/Narcissus/Formats/CInt.v
 src/Narcissus/Formats/DomainNameOpt.v
+src/Narcissus/Formats/Empty.v
 src/Narcissus/Formats/Enum.v
 src/Narcissus/Formats/EnumOpt.v
 src/Narcissus/Formats/FixList.v
@@ -379,6 +382,7 @@ src/Narcissus/Formats/InternetChecksum.v
 src/Narcissus/Formats/Nat.v
 src/Narcissus/Formats/NatOpt.v
 src/Narcissus/Formats/Option.v
+src/Narcissus/Formats/Sequence.v
 src/Narcissus/Formats/SteppingList.v
 src/Narcissus/Formats/SteppingListOpt.v
 src/Narcissus/Formats/String.v

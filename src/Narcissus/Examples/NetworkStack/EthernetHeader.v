@@ -22,6 +22,7 @@ Require Import
         Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Automation.Solver
+        Fiat.Narcissus.Automation.NormalizeFormats
         Fiat.Narcissus.Automation.AlignedAutomation.
 
 Require Import Bedrock.Word.
@@ -126,7 +127,7 @@ Section EthernetPacketDecoder.
       -> v1042_test (mappend bin ext) = false.
   Proof.
     intros.
-    apply EquivFormat_Projection_Format_Empty_Format in H.
+    apply NormalizeFormats.EquivFormat_Projection_Format_Empty_Format in H.
     apply EquivFormat_Projection_Format in H.
     unfold compose, Bind2, format_enum, format_word in H; computes_to_inv; subst.
     injections.
@@ -224,164 +225,23 @@ Section EthernetPacketDecoder.
   Proof.
     start_synthesizing_decoder.
     normalize_format.
+    repeat apply_rules.
+    cbv beta; synthesize_cache_invariant.
+    (* Perform algebraic simplification of the decoder implementation. *)
+    unfold Sequence.sequence_Decode; cbv beta; unfold decode_nat; optimize_decoder_impl.
+    cbv beta; align_decoders.
+    eapply @AlignedDecode_ifb_dep.
+    intros; rewrite aligned_v1042_test_OK; higher_order_reflexivity.
+    simpl; intros; pattern sz, v; eapply Vector.caseS; reflexivity.
+    repeat align_decoders_step.
+    repeat align_decoders_step.
+  Defined.
 
+  (* Step Four: Extract the decoder function, and have /it/ start decoding
+     at the start of the provided ByteString [v]. *)
 
-    Ltac solve_side_condition :=
-    (* Try to discharge a side condition of one of the base rules *)
-      match goal with
-      | |- NoDupVector _ => Discharge_NoDupVector
-      | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
-        intros; apply Vector_predicate_rest_True
-      | |- context[FixList_predicate_rest (fun _ _ => True) _ _ _] =>
-        intros; eapply FixedList_predicate_rest_True
-      | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
-        let a'' := fresh in
-        intro a''; intros; repeat instantiate (1 := fun _ _ => True);
-        repeat destruct a'' as [ ? | a''] ; auto
-      | _ => solve [solve_data_inv]
-      | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
-    end.
-
-    Ltac FinishDecoder :=
-      solve [simpl; intros;
-             eapply CorrectDecoderinish;
-             [ build_fully_determined_type idtac
-             | decide_data_invariant ] ].
-
-Ltac apply_rules :=
-  (* Processes the goal by either: *)
-  (* Unfolding an identifier *)
-  match goal with
-  | |- CorrectDecoder _ _ _ ?H _ _ =>
-    progress unfold H
-  | |- context [CorrectDecoder _ _ _ empty_Format _ _] => FinishDecoder
-  | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ (_ ◦ _ ++ _) _ _ =>
-    first [
-        eapply (format_const_sequence_correct H) with (monoid := mnd);
-        clear H;
-        [ intros; solve [repeat apply_rules]
-        | solve [ solve_side_condition ]
-        | intros ]
-      | eapply (format_sequence_correct H) with (monoid := mnd);
-        clear H;
-        [ intros; solve [repeat apply_rules]
-        | solve [ solve_side_condition ]
-        | intros ]
-      ]
-  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ (Either _ Or _)%format _ _ =>
-    eapply (composeIf_format_correct H); clear H;
-    [ intros
-    | intros
-    | solve [intros; intuition (eauto with bin_split_hints) ]
-    | solve [intros; intuition (eauto with bin_split_hints) ] ]
-  | |- context [CorrectDecoder ?mnd _ _ (format_Vector _) _ _] =>
-    intros; eapply (@Vector_decode_correct _ _ _ mnd)
-  | H : cache_inv_Property _ _
-    |- context [CorrectDecoder _ _ _ format_word _ _] =>
-    intros; revert H; eapply Word_decode_correct
-  | H : cache_inv_Property _ _
-    |- context [CorrectDecoder _ _ _ (format_nat _) _ _] =>
-    intros; revert H; eapply Nat_decode_correct
-  | |- context [CorrectDecoder _ _ _ (format_list _) _ _] => intros; apply FixList_decode_correct
-
-  | |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
-    eapply bool_decode_correct
-
-  | |- context [CorrectDecoder _ _ _ (Option.format_option _ _) _ _] =>
-    intros; eapply Option.option_format_correct;
-    [ match goal with
-        H : cache_inv_Property _ _ |- _ => eexact H
-      end | .. ]
-
-| H : cache_inv_Property _ _
-  |- context [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
-  eapply (fun NoDup => @Enum_decode_correct _ _ _ _ _ _ _ tb NoDup _ H);
-    solve_side_condition
-
-  | |- context[CorrectDecoder _ _ _ StringOpt.format_string _ _ ] =>
-    eapply StringOpt.String_decode_correct
-  | |- context [CorrectDecoder _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
-    let cache_inv_H := fresh in
-    intros cache_inv_H;
-    first
-      [let types' := (eval unfold types in types) in
-       ilist_of_evar
-         (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache))
-         types'
-         ltac:(fun formatrs' =>
-                 ilist_of_evar
-                   (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-                   types'
-                   ltac:(fun decoders' =>
-                           ilist_of_evar
-                             (fun T : Type => Ensembles.Ensemble T)
-                             types'
-                             ltac:(fun invariants' =>
-                                     ilist_of_evar
-                                       (fun T : Type => T -> B -> Prop)
-                                       types'
-                                       ltac:(fun invariants_rest' =>
-                                               Vector_of_evar
-                                                 n
-                                                 (Ensembles.Ensemble (CacheDecode -> Prop))
-                                                 ltac:(fun cache_invariants' =>
-                                                         eapply (SumType_decode_correct (m := n) types) with
-                                                         (formatrs := formatrs')
-                                                           (decoders := decoders')
-                                                           (invariants := invariants')
-                                                           (invariants_rest := invariants_rest')
-                                                           (cache_invariants :=  cache_invariants')
-              )))))
-      |          ilist_of_evar
-                   (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache))
-                   types
-                   ltac:(fun formatrs' =>
-                           ilist_of_evar
-                             (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-                             types
-                             ltac:(fun decoders' =>
-                                     ilist_of_evar
-                                       (fun T : Type => Ensembles.Ensemble T)
-                                       types
-                                       ltac:(fun invariants' =>
-                                               ilist_of_evar
-                                                 (fun T : Type => T -> B -> Prop)
-                                                 types
-                                                 ltac:(fun invariants_rest' =>
-                                                         Vector_of_evar
-                                                           n
-                                                           (Ensembles.Ensemble (CacheDecode -> Prop))
-                                                           ltac:(fun cache_invariants' =>
-                                                                   eapply (SumType_decode_correct (m := n) types) with
-                                                                   (formatrs := formatrs')
-                                                                     (decoders := decoders')
-                                                                     (invariants := invariants')
-                                                                     (invariants_rest := invariants_rest')
-                                                                     (cache_invariants :=  cache_invariants'))))))
-      ];
-    [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros); try exact I
-    | apply cache_inv_H ]
-  end.
-
-repeat apply_rules.
-  cbv beta; synthesize_cache_invariant.
-  (* Perform algebraic simplification of the decoder implementation. *)
-  unfold sequence_Decode.
-  cbv beta; unfold decode_nat; optimize_decoder_impl.
-  cbv beta; align_decoders.
-  eapply @AlignedDecode_ifb_dep.
-  intros; rewrite aligned_v1042_test_OK; higher_order_reflexivity.
-  simpl; intros; pattern sz, v; eapply Vector.caseS; reflexivity.
-  repeat align_decoders_step.
-  repeat align_decoders_step.
-Defined.
-
-(* Step Four: Extract the decoder function, and have /it/ start decoding
-   at the start of the provided ByteString [v]. *)
-
-Definition Ethernet_decoder_impl {sz} v :=
-  Eval simpl in (projT1 EthernetHeader_decoder sz v 0 ()).
+  Definition Ethernet_decoder_impl {sz} v :=
+    Eval simpl in (projT1 EthernetHeader_decoder sz v 0 ()).
 
 End EthernetPacketDecoder.
 

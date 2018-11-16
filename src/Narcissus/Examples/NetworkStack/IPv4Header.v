@@ -85,40 +85,49 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
 
 (* Step One: Synthesize an encoder and a proof that it is correct. *)
 
+Ltac align_encoder_step :=
+  first
+    [ match goal with
+        |- CorrectAlignedEncoder (_ ++ _ ++ _)%format _ => associate_for_ByteAlignment
+      end
+    | match goal with
+        |- CorrectAlignedEncoder (_ ++ _)%format  _ => apply @CorrectAlignedEncoderForThenC
+      end
+    | match goal with
+        |- CorrectAlignedEncoder (Either _ Or _)%format _ =>
+        eapply CorrectAlignedEncoderEither_E
+      end
+    | apply CorrectAlignedEncoderForFormatList
+    | apply CorrectAlignedEncoderForFormatVector;
+      [ solve [ eauto ]
+      | solve [ eauto ]
+      | ]
+    | apply CorrectAlignedEncoderForFormatChar; eauto
+    | apply CorrectAlignedEncoderForFormatNat
+    | apply CorrectAlignedEncoderForFormatEnum
+    | eapply CorrectAlignedEncoderProjection
+    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2);
+      [ solve [ eauto ]
+      | solve [ eauto ] ]
+    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 3);
+      [ solve [ eauto ]
+      | solve [ eauto ] ]
+    | eapply CorrectAlignedEncoderForFormatUnusedWord
+    | eapply CorrectAlignedEncoderForFormatOption
+    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
+    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
+    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto
+    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto].
+
 Definition IPv4_encoder :
   CorrectAlignedEncoderFor IPv4_Packet_Format.
 Proof.
-Ltac decompose_aligned_encoder :=
-  first [
-           eapply @CorrectAlignedEncoderForIPChecksumThenC
-         | associate_for_ByteAlignment
-         | apply @CorrectAlignedEncoderForThenC
-         | apply @CorrectAlignedEncoderForDoneC].
-
-synthesize_aligned_encoder.
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-(decompose_aligned_encoder; eauto).
-
-repeat align_encoder_step.
-repeat align_encoder_step.
-repeat align_encoder_step.
-repeat align_encoder_step.
-repeat align_encoder_step.
-repeat align_encoder_step.
-repeat align_encoder_step.
-decompose_aligned_encoder; eauto.
-decompose_aligned_encoder; eauto.
-repeat align_encoder_step.
-repeat align_encoder_step.
-repeat align_encoder_step.
+  start_synthesizing_encoder.
+  eapply @CorrectAlignedEncoderForIPChecksumThenC.
+  repeat first [collapse_unaligned_words | align_encoder_step ];
+    repeat align_encoder_step.
+  repeat first [collapse_unaligned_words | align_encoder_step ];
+    repeat align_encoder_step.
 Defined.
 
 (* Step Two: Extract the encoder function, and have it start encoding
