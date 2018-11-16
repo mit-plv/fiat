@@ -74,7 +74,8 @@ BENCHMARKS = [
 LAYERS = {"Ether": Ether, "ARP": ARP, "IP": IP, "TCP": TCP, "UDP": UDP}
 
 def fmtarray(nums):
-    return "ArrayVector.of_array [|{}|]".format(";".join(str(num) + "L" for num in nums))
+    TEMPLATE = "CstructBytestring.of_array (Array.map Int64Word.of_int [|{}|])"
+    return TEMPLATE.format(";".join(str(num) for num in nums))
 
 def fmtip(ip):
     return fmtarray(ip.split("."))
@@ -87,7 +88,7 @@ def ocaml_hexdump(bs):
 
 SZ = 4096
 def mkenc(inputname, packet, layer):
-    out = "(ArrayVector.of_array buf)"
+    out = "(CstructBytestring.of_cstruct buf)"
     if layer is Ether:
         return "Fiat4Mirage.fiat_ethernet_encode {} {} {}".format(SZ, inputname, out)
     elif layer is ARP:
@@ -95,11 +96,11 @@ def mkenc(inputname, packet, layer):
     elif layer is IP:
         return "Fiat4Mirage.fiat_ipv4_encode {} {} {}".format(SZ, inputname, out)
     elif layer is TCP:
-        return "Fiat4Mirage.fiat_tcp_encode {} {} ({}) ({}) ({}L) {}".format(
+        return "Fiat4Mirage.fiat_tcp_encode {} {} ({}) ({}) (Int64Word.of_int {}) {}".format(
             SZ, inputname,
             fmtip(packet[IP].src), fmtip(packet[IP].dst), len(packet[TCP]), out)
     elif layer is UDP:
-        return "Fiat4Mirage.fiat_udp_encode {} {} ({}) ({}) ({}L) {}".format(
+        return "Fiat4Mirage.fiat_udp_encode {} {} ({}) ({}) (Int64Word.of_int {}) {}".format(
             SZ, inputname,
             fmtip(packet[IP].src), fmtip(packet[IP].dst), len(packet[UDP]), out)
     else:
@@ -114,11 +115,11 @@ def mkdec(inputname, packet, layer):
     elif layer is IP:
         return "Fiat4Mirage.fiat_ipv4_decode {} {}".format(length, inputname)
     elif layer is TCP:
-        return "Fiat4Mirage.fiat_tcp_decode {} {} ({}) ({}) ({}L)".format(
+        return "Fiat4Mirage.fiat_tcp_decode {} {} ({}) ({}) (Int64Word.of_int {})".format(
             length, inputname,
             fmtip(packet[IP].src), fmtip(packet[IP].dst), length)
     elif layer is UDP:
-        return "Fiat4Mirage.fiat_udp_decode {} {} ({}) ({}) ({}L)".format(
+        return "Fiat4Mirage.fiat_udp_decode {} {} ({}) ({}) (Int64Word.of_int {})".format(
             length, inputname,
             fmtip(packet[IP].src), fmtip(packet[IP].dst), length)
     else:
@@ -145,7 +146,7 @@ MAIN_TEMPLATE = '''\
 open Core_bench.Std
 open Fiat4Mirage
 
-let buf = Array.make {} 0L
+let buf = Cstruct.create {}
 let must = function Some x -> x | None -> failwith "Unexpected: 'None'"
 
 {}

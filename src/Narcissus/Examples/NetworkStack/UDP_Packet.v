@@ -40,20 +40,20 @@ Section UDP_Decoder.
   Record UDP_Packet :=
     { SourcePort : word 16;
       DestPort : word 16;
-      Payload : list (word 8)}.
+      Payload : { n & ByteBuffer.t n } }.
 
   Definition UDP_Packet_Format
     : FormatM UDP_Packet ByteString :=
     (format_word ◦ SourcePort
      ++ format_word ◦ DestPort
-     ++ format_nat 16 ◦ (Basics.compose (plus 8) (Basics.compose (@length _) Payload)))
+     ++ format_nat 16 ◦ (Basics.compose (plus 8) (Basics.compose (projT1 (P := ByteBuffer.t)) Payload)))
     ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength (natToWord 8 17)) OfSize 16
-    ThenCarryOn (format_list format_word ◦ Payload).
+    ThenCarryOn (format_bytebuffer ◦ Payload).
 
   (* The checksum takes three values provided by the IP header for
      checksum calculuation. *)
   Definition UDP_Packet_OK (udp : UDP_Packet) :=
-    lt (|udp.(Payload)|) (pow2 16 - 8).
+    lt (projT1 (udp.(Payload))) (pow2 16 - 8).
 
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition UDP_encoder :
@@ -70,6 +70,7 @@ Section UDP_Decoder.
     repeat align_encoder_step.
     repeat align_encoder_step.
     repeat align_encoder_step.
+    apply CorrectAlignedEncoderForFormatByteBuffer.
     intros; calculate_length_ByteString'.
   Defined.
 
@@ -125,7 +126,7 @@ Qed. *)
 Lemma UDP_Packet_Header_Len_bound
   : forall data : UDP_Packet,
     UDP_Packet_OK data ->
-    lt (8 + (| Payload data |)) (pow2 16).
+    lt (8 + (projT1 (Payload data))) (pow2 16).
 Proof.
   unfold UDP_Packet_OK; intros.
   omega.
@@ -163,15 +164,19 @@ Proof.
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
+  intros; apply ByteBuffer_decode_correct
+            with (n := proj1 - 8).
   decode_step ltac:(idtac).
   decode_step ltac:(idtac).
-  simpl; intros; intuition; instantiate (1 := proj1 -8); omega.
-  decode_step ltac:(idtac).
+  (* simpl; intros; intuition; instantiate (1 := proj1 -8); omega. *)
+  intros; unfold ByteBuffer_predicate_rest; eauto using Vector_predicate_rest_True.
   decode_step ltac:(idtac).
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)
   cbv beta; unfold decode_nat; optimize_decoder_impl.
   cbv beta; align_decoders.
+  eapply @AlignedDecodeByteBufferM; intros; eauto.
+  align_decoders.
   Grab Existential Variables.
   shelve.
   synthesize_cache_invariant.

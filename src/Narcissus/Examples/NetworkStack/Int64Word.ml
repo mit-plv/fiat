@@ -2,6 +2,26 @@
    word sz has all bits past the sz-th position set to 0
    (i.e. wmask sz w = w) *)
 
+module Int64 = struct
+  type t = int
+  let zero = 0
+  let one = 1
+  let add x y = x + y
+  let sub x y = x - y
+  let mul x y = x * y
+  let div x y = x / y
+  let shift_left x y = x lsl y
+  let shift_right_logical x y = x lsr y
+  let logand x y = x land y
+  let logor x y = x lor y
+  let lognot x = lnot x
+  let to_string x = string_of_int x
+  let to_int x = x
+  let of_int x = x
+  let to_int32 x = Int32.of_int x
+  let of_int32 x = Int32.to_int x
+end
+
 type t = Int64.t
 
 let w0 =
@@ -36,24 +56,23 @@ let wones sz =
 let wmask sz w =
   Int64.logand (wones sz) w
 
-external unsafe_char_of_int : int -> char = "%identity"
-let to_char w =
-  unsafe_char_of_int (Int64.to_int w)
-
-let of_char w =
-  Int64.of_int (int_of_char w)
-
-let to_int32 w =
-  Int64.to_int32 w
-
-let of_uint32 i32 =
-  wmask 32 (Int64.of_int32 i32)
+let of_int w =
+  Int64.of_int w
 
 let to_int w =
   Int64.to_int w
 
-let of_uint i31 =
-  wmask 31 (Int64.of_int i31)
+let of_char w =
+  Int64.of_int (Char.code w)
+
+let to_char w =
+  Char.unsafe_chr (Int64.to_int w)
+
+let of_uint16 i16 =
+  Int64.of_int i16
+
+let to_int32 w =
+  Int64.to_int32 w
 
 let whd _ w =
   (Int64.logand Int64.one w) = Int64.one

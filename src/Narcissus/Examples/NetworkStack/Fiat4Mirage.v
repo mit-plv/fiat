@@ -165,7 +165,6 @@ Extract Inductive VectorDef.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
   "ArrayVector.destruct_storage".
-Extract Constant AlignedByteString.ByteBuffer.t => "CstructBytestring.storage_t".
 
 Extract Inlined Constant Vector.hd => "ArrayVector.hd".
 Extract Inlined Constant VectorDef.hd => "ArrayVector.hd".
@@ -181,15 +180,20 @@ Extract Inlined Constant Vector.replace => "ArrayVector.set_nth".
 Extract Inlined Constant VectorDef.replace => "ArrayVector.set_nth".
 Extract Inlined Constant Vector_nth_opt => "ArrayVector.nth_opt".
 Extract Inlined Constant EnumOpt.word_indexed => "ArrayVector.index".
+
 Extract Inlined Constant nth_opt => "ArrayVector.nth_opt".
 Extract Inlined Constant set_nth' => "ArrayVector.set_nth".
 Extract Inlined Constant InternetChecksum.ByteBuffer_fold_left_pair => "ArrayVector.fold_left_pair".
-Extract Inlined Constant AlignedList.list_of_bytebuffer_range => "ArrayVector.list_of_range".
-(* Extract Inlined Constant AlignedList.vector_blit_list => "ArrayVector.blit_list". *)
+Extract Inlined Constant AlignedList.buffer_blit_buffer => "ArrayVector.blit_array".
+Extract Inlined Constant AlignedList.bytebuffer_of_bytebuffer_range =>
+  "(fun sz from len v ->
+    let b = ArrayVector.array_of_range sz from len v in
+    ExistT (ArrayVector.length b, b))".
 
-(* FIXME clean up ml file to remove unneeded stuff *)
-(*
+(* CPC clean up ml file to remove unneeded stuff *)
+
 Import AlignedByteString.
+Extract Constant AlignedByteString.ByteBuffer.t => "CstructBytestring.storage_t".
 Extract Inlined Constant ByteBuffer.t => "CstructBytestring.storage_t".
 Extract Inlined Constant ByteBuffer.nil => "CstructBytestring.nil".
 Extract Inlined Constant ByteBuffer.cons => "CstructBytestring.cons".
@@ -199,16 +203,16 @@ Extract Inlined Constant ByteBuffer.to_list => "CstructBytestring.to_list".
 Extract Inlined Constant ByteBuffer.of_vector => "CstructBytestring.of_vector".
 Extract Inlined Constant ByteBuffer.to_vector => "CstructBytestring.to_vector".
 Extract Inlined Constant ByteBuffer.append => "CstructBytestring.append".
-(* Extract Inlined Constant ByteBuffer.nth => "CstructBytestring.nth". *)
-(* Extract Inlined Constant ByteBuffer.replace => "CstructBytestring.set_nth". *)
 Extract Inlined Constant nth_opt => "CstructBytestring.nth_opt".
 Extract Inlined Constant set_nth' => "CstructBytestring.set_nth".
 Extract Inlined Constant initialize_Aligned_ByteString => "CstructBytestring.create".
-(* Extract Inlined Constant EnumOpt.word_indexed => "CstructBytestring.index". *)
-(* Extract Inlined Constant AlignedList.vector_blit_list => "CstructBytestring.blit_list". *)
-Extract Inlined Constant InternetChecksum.ByteBuffer_fold_left_pair => "CstructBytestring.fold_left_pair".
-Extract Inlined Constant AlignedList.list_of_bytebuffer_range => "CstructBytestring.list_of_range".
-*)
+Extract Inlined Constant InternetChecksum.ByteBuffer_checksum_bound => "CstructBytestring.checksum_bound".
+Extract Inlined Constant AlignedList.buffer_blit_buffer => "CstructBytestring.blit_buffer".
+Extract Constant AlignedList.bytebuffer_of_bytebuffer_range =>
+  "(fun sz from len v ->
+    let b = CstructBytestring.slice_range sz from len v in
+    ExistT (CstructBytestring.length b, b))".
+
 Compute
   match IPv4Header.IPv4_decoder_impl IPv4Header.bin_pkt with
   | Some (p, _, _) =>
@@ -257,5 +261,7 @@ Extraction "Fiat4Mirage"
            fiat_tcp_decode
            fiat_udp_encode
            fiat_udp_decode
-.
+
+           projT2
+           existT.
 
