@@ -141,13 +141,23 @@ Proof.
     destruct v; rewrite mempty_right; computes_to_econstructor.
 Qed.
 
-
+Lemma EquivFormat_trans
+      {S T : Type}
+      {cache : Cache}
+  : forall (FormatSpec FormatSpec' FormatSpec'' : FormatM S T),
+    EquivFormat FormatSpec FormatSpec'
+    -> EquivFormat FormatSpec' FormatSpec''
+    -> EquivFormat FormatSpec FormatSpec''.
+Proof.
+  unfold EquivFormat; intros.
+  etransitivity; eauto.
+Qed.
 
 Ltac normalize_step BitStringT :=
-  (first [ etransitivity; [apply sequence_assoc with (monoid := BitStringT)| ]
-         | etransitivity; [apply sequence_mempty with (monoid := BitStringT) | ]
+  (first [ eapply EquivFormat_trans; [apply (@sequence_assoc _ _ BitStringT) | ]
+         | eapply EquivFormat_trans; [apply sequence_mempty with (monoid := BitStringT) | ]
          | eapply EquivFormat_ComposeIf; intros
-         | etransitivity; [apply EquivFormat_If_Then_Else with (monoid := BitStringT) | ]
+         | eapply EquivFormat_trans; [apply EquivFormat_If_Then_Else with (monoid := BitStringT) | ]
          | apply EquivFormat_If_Then_Else_Proper
          | eapply (@EquivFormat_UnderSequence _ _ BitStringT)
          | eapply EquivFormat_Projection_Format_Empty_Format]; intros).

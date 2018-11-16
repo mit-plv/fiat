@@ -74,7 +74,7 @@ Definition IPv4_Packet_Format : FormatM IPv4_Packet ByteString :=
 ++ format_word ◦ FragmentOffset
 ++ format_word ◦ TTL
 ++ format_enum ProtocolTypeCodes ◦ Protocol)%format
- ThenChecksum IPChecksum_Valid' OfSize 16
+ ThenChecksum IPChecksum_Valid OfSize 16
     ThenCarryOn (format_word ◦ SourceAddress
                  ++ format_word ◦ DestAddress
                  ++ format_list format_word ◦ Options)%format.
@@ -85,49 +85,10 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
 
 (* Step One: Synthesize an encoder and a proof that it is correct. *)
 
-Ltac align_encoder_step :=
-  first
-    [ match goal with
-        |- CorrectAlignedEncoder (_ ++ _ ++ _)%format _ => associate_for_ByteAlignment
-      end
-    | match goal with
-        |- CorrectAlignedEncoder (_ ++ _)%format  _ => apply @CorrectAlignedEncoderForThenC
-      end
-    | match goal with
-        |- CorrectAlignedEncoder (Either _ Or _)%format _ =>
-        eapply CorrectAlignedEncoderEither_E
-      end
-    | apply CorrectAlignedEncoderForFormatList
-    | apply CorrectAlignedEncoderForFormatVector;
-      [ solve [ eauto ]
-      | solve [ eauto ]
-      | ]
-    | apply CorrectAlignedEncoderForFormatChar; eauto
-    | apply CorrectAlignedEncoderForFormatNat
-    | apply CorrectAlignedEncoderForFormatEnum
-    | eapply CorrectAlignedEncoderProjection
-    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2);
-      [ solve [ eauto ]
-      | solve [ eauto ] ]
-    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 3);
-      [ solve [ eauto ]
-      | solve [ eauto ] ]
-    | eapply CorrectAlignedEncoderForFormatUnusedWord
-    | eapply CorrectAlignedEncoderForFormatOption
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto].
-
 Definition IPv4_encoder :
   CorrectAlignedEncoderFor IPv4_Packet_Format.
 Proof.
-  start_synthesizing_encoder.
-  eapply @CorrectAlignedEncoderForIPChecksumThenC.
-  repeat first [collapse_unaligned_words | align_encoder_step ];
-    repeat align_encoder_step.
-  repeat first [collapse_unaligned_words | align_encoder_step ];
-    repeat align_encoder_step.
+  synthesize_aligned_encoder.
 Defined.
 
 (* Step Two: Extract the encoder function, and have it start encoding
@@ -169,13 +130,30 @@ Definition IPv4_Packet_Header_decoder
 Proof.
   (* We have to use an extra lemma at the start, because of the 'exotic'
      IP Checksum. *)
-  eapply CorrectAlignedDecoderForIPChecksumThenC.
-  unfold IPv4_Packet_Format, sequence_Format, Basics.compose.
-  repeat calculate_length_ByteString.
-  (* Once that's done, the normal automation works just fine :) *)
   start_synthesizing_decoder.
-  normalize_compose ByteStringQueueMonoid.
-  repeat decode_step ltac:(idtac).
+  Opaque CorrectDecoder.
+  match goal with
+    | H : cache_inv_Property ?mnd _
+    |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
+      eapply compose_IPChecksum_format_correct with (format1 := fmt1)
+  end.
+  apply H.
+  intros.
+  repeat calculate_length_ByteString.
+  repeat calculate_length_ByteString.
+  solve_mod_8.
+  solve_mod_8.
+  eapply Nat.mod_divides;
+  try omega.
+  eexists (4 * (| Options a |)).
+  omega.
+  simpl; intros.
+  instantiate (1 := fun _ => 0); simpl. admit.
+  intros.
+  NormalizeFormats.normalize_format.
+  unfold format_unused_word.
+  repeat apply_rules.
+  eapply format_sequence_correct.
   cbv beta; synthesize_cache_invariant.
   cbv beta; unfold decode_nat; optimize_decoder_impl.
   cbv beta; align_decoders.

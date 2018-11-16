@@ -167,7 +167,7 @@ Section EthernetPacketDecoder.
     | _, _ => false
     end.
 
-  Lemma aligned_v1042_test_OK {sz}
+  Lemma aligned_v1042_test_OK_1 {sz}
     : forall (v : t Core.char sz),
       v1042_test (build_aligned_ByteString v) =
       aligned_v1042_test v 0.
@@ -220,21 +220,20 @@ Section EthernetPacketDecoder.
     simpl; omega.
   Qed.
 
+  Lemma aligned_v1042_test_OK_2 {sz}
+    : forall (v : ByteBuffer.t (S sz)) (idx : nat),
+      aligned_v1042_test v (S idx) = aligned_v1042_test (Vector.tl v) idx.
+  Proof.
+    intros; pattern sz, v; eapply Vector.caseS; higher_order_reflexivity.
+  Qed.
+
+  Hint Resolve aligned_v1042_test_OK_1.
+  Hint Resolve aligned_v1042_test_OK_2.
+
   Definition EthernetHeader_decoder
     : CorrectAlignedDecoderFor ethernet_Header_OK EthernetHeader_Format.
   Proof.
-    start_synthesizing_decoder.
-    normalize_format.
-    repeat apply_rules.
-    cbv beta; synthesize_cache_invariant.
-    (* Perform algebraic simplification of the decoder implementation. *)
-    unfold Sequence.sequence_Decode; cbv beta; unfold decode_nat; optimize_decoder_impl.
-    cbv beta; align_decoders.
-    eapply @AlignedDecode_ifb_dep.
-    intros; rewrite aligned_v1042_test_OK; higher_order_reflexivity.
-    simpl; intros; pattern sz, v; eapply Vector.caseS; reflexivity.
-    repeat align_decoders_step.
-    repeat align_decoders_step.
+    synthesize_aligned_decoder.
   Defined.
 
   (* Step Four: Extract the decoder function, and have /it/ start decoding

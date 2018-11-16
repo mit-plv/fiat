@@ -36,13 +36,6 @@ Definition decode_IPChecksum
 Definition encode_word {sz} (w : word sz) : ByteString :=
   encode_word' sz w ByteString_id.
 
-Definition IPChecksum (b b' : ByteString) : ByteString :=
-  let b'' := if Peano_dec.eq_nat_dec (padding b) 0 then mempty
-             else encode_word (wzero (8 - (padding b))) in
-  mappend b''
-          (encode_word (wnot (onesComplement
-                                (ByteString2ListOfChar (bin_measure (mappend b b')) (BoundedByteStringToByteString(mappend b b')))))).
-
 Fixpoint Vector_checksum_bound n {sz} (bytes :ByteBuffer.t sz) acc : InternetChecksum.W16 :=
   match n, bytes with
   | 0, _ => acc
@@ -77,7 +70,7 @@ Proof.
 Qed.
 
 Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
-  : {IPChecksum_Valid' n b} + {~IPChecksum_Valid' n b} := weq _ _.
+  : {IPChecksum_Valid n b} + {~IPChecksum_Valid n b} := weq _ _.
 
 Definition calculate_IPChecksum {S} {sz}
   : AlignedEncodeM (S := S) sz :=
@@ -94,7 +87,7 @@ Definition calculate_IPChecksum {S} {sz}
         (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
         (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
     : CorrectAlignedEncoder
-        (format_B ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_A)
+        (format_B ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_A)
         (fun sz => encode_B sz >>
                    (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
                    (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
@@ -115,7 +108,7 @@ Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
       (format_A ++ format_unused_word 16 ++ format_B)%format
     -> CorrectAlignedDecoderFor
          predicate
-         (format_A ThenChecksum IPChecksum_Valid' OfSize 16 ThenCarryOn format_B).
+         (format_A ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_B).
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
   eexists (fun sz v => if weq (ByteBuffer_checksum_bound' 20 v) (wones 16) then x sz v  else ThrowAlignedDecodeM v).
@@ -133,7 +126,7 @@ Definition Pseudo_Checksum_Valid (* FIXME payload should be after src, dest *)
            (n : nat)
            (b : ByteString)
   := onesComplement (wzero 8 :: protoCode ::
-                                      (ByteString2ListOfChar (96 + n) (BoundedByteStringToByteString b))
+                                      (ByteString2ListOfChar (96 + n) b)
                                       ++ to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength))%list
      = wones 16.
 

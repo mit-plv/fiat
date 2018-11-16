@@ -51,6 +51,7 @@ Ltac align_decoders_step :=
     | eapply @Return_DecodeMEquivAlignedDecodeM
     | eapply @AlignedDecode_Sumb
     | eapply @AlignedDecode_ifb
+    | eapply @AlignedDecode_ifb_dep; [ solve [eauto] | solve [eauto] | | ]
     | eapply @AlignedDecodeBindOption; intros; eauto
     | intros; higher_order_reflexivity
     |   eapply @AlignedDecode_CollapseWord';
@@ -66,27 +67,19 @@ Ltac synthesize_aligned_decoder :=
   start_synthesizing_decoder;
   [ normalize_format; repeat apply_rules
   | cbv beta; synthesize_cache_invariant
-  | cbv beta; unfold decode_nat; optimize_decoder_impl
-  | ];
-  cbv beta; align_decoders.
+  | cbv beta; unfold decode_nat, Sequence.sequence_Decode; optimize_decoder_impl
+  | ]; cbv beta; align_decoders.
 
 Lemma length_encode_word' sz :
   forall (w : word sz) (b : ByteString),
     bin_measure (encode_word' _ w b) = sz + bin_measure b.
 Proof.
   simpl; intros.
-  rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b).
-  rewrite !length_ByteString_ByteStringToBoundedByteString_eq.
   rewrite <- length_encode_word' with (w := w).
   induction sz; intros;
     rewrite (shatter_word w); simpl.
   - reflexivity.
-  - rewrite Core.length_ByteString_enqueue, <- IHsz.
-    rewrite (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b).
-    rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (encode_word' _ _ _)).
-    rewrite ByteString_enqueue_ByteStringToBoundedByteString_eq.
-    rewrite !length_ByteString_ByteStringToBoundedByteString_eq.
-    rewrite Core.length_ByteString_enqueue; reflexivity.
+  - reflexivity.
 Qed.
 
 Lemma length_ByteString_word
@@ -416,12 +409,17 @@ Ltac start_synthesizing_encoder :=
 
 Ltac align_encoder_step :=
   first
-    [ collapse_unaligned_words
-      match goal with
+    [ match goal with
+        |- CorrectAlignedEncoder (_ ThenChecksum _ OfSize _ ThenCarryOn _) _ =>
+        eapply @CorrectAlignedEncoderForIPChecksumThenC
+      end
+    | match goal with
         |- CorrectAlignedEncoder (_ ++ _ ++ _)%format _ => associate_for_ByteAlignment
       end
     | match goal with
-        |- CorrectAlignedEncoder (_ ++ _)%format  _ => apply @CorrectAlignedEncoderForThenC
+        |- CorrectAlignedEncoder (_ ++ _)%format  _ =>
+        apply @CorrectAlignedEncoderForThenC;
+        [ | try collapse_unaligned_words ]
       end
     | match goal with
         |- CorrectAlignedEncoder (Either _ Or _)%format _ =>
@@ -447,8 +445,7 @@ Ltac align_encoder_step :=
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto
-    | collapse_unaligned_words].
+    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto].
 
 Ltac synthesize_aligned_encoder :=
   start_synthesizing_encoder;

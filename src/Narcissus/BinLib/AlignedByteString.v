@@ -682,7 +682,7 @@ Proof.
   unfold ByteString_into_queue, Core.ByteString_into_queue; simpl.
   f_equal.
   clear; induction byteString0; simpl; eauto.
-  admit. (* CPC rewrite IHbyteString0; reflexivity. *)
+  rewrite <- IHbyteString0; reflexivity. 
 Qed.
 
 Fixpoint split_Vector_bool
@@ -1111,10 +1111,10 @@ Proof.
     * autounfold with ByteBuffer in *.
       simpl in *.
       admit.
-      (* rewrite H'. *)
-      (* f_equal; f_equal. *)
-      (* eapply byteString_f_equal; simpl; *)
-      (*   try (instantiate (1 := eq_refl); reflexivity). *)
+      (* rewrite H'.
+      f_equal; f_equal.
+      eapply byteString_f_equal; simpl;
+        try (instantiate (1 := eq_refl); reflexivity). *)
       Grab Existential Variables.
       omega.
 Qed.
