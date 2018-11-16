@@ -27,6 +27,13 @@ let throw_if_stale (fn: string) (arr: 'a storage_t) =
     failwith (Printf.sprintf "ArrayVector: Array version mismatch in '%s': %d != %d."
                 fn arr.version !(arr.latest_version))
 
+let incr_version arr data =
+  let version = Pervasives.succ !(arr.latest_version) in
+  arr.latest_version := version;
+  { version = version;
+    latest_version = arr.latest_version;
+    data = data }
+
 let length (arr: 'a storage_t) =
   Array.length arr.data
 
@@ -38,13 +45,14 @@ let tl (_: int) (arr: 'a storage_t) : 'a storage_t =
   throw_if_stale "tl" arr;
   of_array (Array.init (Array.length arr.data - 1) (fun i -> arr.data.(i + 1)))
 
+let rec index' x arr i bound =
+  if i >= bound then None
+  else if arr.(i) = x then Some i
+  else index' x arr (i + 1) bound
+
 let index (_: int) (_: int) (x: 'a) (arr: 'a storage_t) : idx_t option =
   throw_if_stale "index" arr;
-  let rec loop x arr i =
-    if i >= Array.length arr then None
-    else if arr.(i) = x then Some i
-    else loop x arr (i + 1)
-  in loop x arr.data 0
+  index' x arr.data 0 (Array.length arr.data)
 
 let nth _ (arr: 'a storage_t) (idx: idx_t) : 'a =
   throw_if_stale "nth" arr;
@@ -56,17 +64,13 @@ let nth_opt _ (arr: 'a storage_t) (idx: idx_t) : 'a option =
     Some (Array.unsafe_get arr.data idx)
   else None
 
-let incr_version arr data =
-  let version = Pervasives.succ !(arr.latest_version) in
-  arr.latest_version := version;
-  { version = version;
-    latest_version = arr.latest_version;
-    data = data }
-
-let set_nth _ (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
+let set_nth' (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
   throw_if_stale "set_nth" arr;
   Array.unsafe_set arr.data idx x;
   incr_version arr arr.data
+
+let set_nth _ (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
+  set_nth' arr idx x
 
 let fold_left16 (f: 'a -> 'a -> 'b -> 'b) _ n (arr: 'a storage_t) (init: 'b) (pad: 'a) =
   (* Printf.printf "Looping up to (min %d %d)\n%!" n (Array.length arr.data); *)

@@ -158,6 +158,22 @@ Extract Inlined Constant Fin.L => "(fun _ n p -> p)".
 Extract Inlined Constant Fin.R => "(fun _ n p -> n + p)".
 
 Extract Inductive Vector.t =>
+"StackVector.t"
+  ["StackVector.empty ()" "StackVector.cons"]
+  "StackVector.destruct".
+
+Extract Inductive VectorDef.t =>
+"StackVector.t"
+  ["StackVector.empty ()" "StackVector.cons"]
+  "StackVector.destruct".
+
+Extract Inlined Constant Vector.nth => "StackVector.nth".
+Extract Inlined Constant VectorDef.nth => "StackVector.nth".
+Extract Inlined Constant Vector_nth_opt => "StackVector.nth_opt".
+Extract Inlined Constant EnumOpt.word_indexed => "StackVector.index".
+
+(*
+Extract Inductive Vector.t =>
 "ArrayVector.storage_t"
   ["ArrayVector.empty ()" "ArrayVector.cons"]
   "ArrayVector.destruct_storage".
@@ -189,8 +205,9 @@ Extract Inlined Constant AlignedList.bytebuffer_of_bytebuffer_range =>
   "(fun sz from len v ->
     let b = ArrayVector.array_of_range sz from len v in
     ExistT (ArrayVector.length b, b))".
+*)
 
-(* CPC clean up ml file to remove unneeded stuff *)
+(* CPC clean up CstructBytestring.ml to remove unneeded stuff *)
 
 Import AlignedByteString.
 Extract Constant AlignedByteString.ByteBuffer.t => "CstructBytestring.storage_t".
@@ -229,17 +246,8 @@ Definition fiat_ipv4_encode_bench (_: unit) :=
   fiat_ipv4_encode IPv4Header.pkt (MakeBuffer 20).
 
 Extraction "Fiat4Mirage"
-           (* word_split_hd_test *)
-           (* word_split_tl_test *)
-           (* split1_test *)
-           (* split2_test *)
-           (* alignword_split1'_test *)
-           (* alignword_split2'_test *)
-           (* combine_test *)
-           (* append_word_test *)
-
-           fiat_ipv4_decode_bench
-           fiat_ipv4_encode_bench
+           (* fiat_ipv4_decode_bench *)
+           (* fiat_ipv4_encode_bench *)
 
            fiat_ethernet_type_of_enum
            fiat_ethernet_type_to_enum
