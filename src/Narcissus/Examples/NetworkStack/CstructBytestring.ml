@@ -47,8 +47,8 @@ let hd (_: int) (arr: storage_t) : Int64Word.t =
   unsafe_getdata arr.data 0
 
 let sub arr off0 len =
-  throw_if_stale "sub" arr;
-  incr_version arr (Cstruct.sub arr.data off0 len)
+  throw_if_stale "sub" arr; (* No version increment on slicing *)
+  { arr with data = Cstruct.sub arr.data off0 len }
 
 let tl (_: int) (arr: storage_t) : storage_t =
   throw_if_stale "tl" arr;
@@ -84,43 +84,45 @@ let set_nth _ (arr: storage_t) (idx: idx_t) (x: 'a) : storage_t =
   unsafe_setdata arr.data idx x;
   incr_version arr arr.data
 
-let fold_left_pair (f: 'a -> 'a -> 'b -> 'a) _ n (arr: storage_t) (init: 'b) (pad: 'a) =
-  (* Printf.printf "Looping up to (min %d %d)\n%!" n (Array.length arr.data); *)
-  let rec loop f arr acc pad len offset =
-    if offset >= len then
-      acc
-    else if offset = len - 1  then
-      f (unsafe_getdata arr.data offset) pad acc
+(* let fold_left16 (f: 'a -> 'b -> 'b) _ n (arr: storage_t) (init: 'b) =
+ *   (\* Printf.printf "Looping up to (min %d %d)\n%!" n (Array.length arr.data); *\)
+ *   let rec loop f arr acc lastidx offset =
+ *     if offset < lastidx then
+ *       let acc = f (Int64Word.of_uint16 (Cstruct.BE.get_uint16 arr.data offset)) acc in
+ *       loop f arr acc lastidx (offset + 2)
+ *     else if offset = lastidx then
+ *       f (Int64Word.combine 8 (Int64Word.wzero 16) 8 (unsafe_getdata arr.data offset)) acc
+ *     else
+ *       acc
+ *   in loop f arr init (min n (length arr) - 1) 0 *)
+
+let checksum_bound n _ (arr: storage_t) =
+  (* fold_left16 (fun w acc -> Int64Word.onec_plus () w acc) () n arr (Int64Word.wzero 16) *)
+  let rec loop arr acc lastidx offset =
+    if offset < lastidx then
+      let acc = Int64Word.onec_plus ()
+                  (Int64Word.of_uint16 (Cstruct.BE.get_uint16 arr.data offset)) acc in
+      loop arr acc lastidx (offset + 2)
+    else if offset = lastidx then
+      Int64Word.onec_plus ()
+        (Int64Word.combine 8 (Int64Word.wzero 16) 8 (unsafe_getdata arr.data offset)) acc
     else
-      let acc = f (unsafe_getdata arr.data offset)
-                  (unsafe_getdata arr.data (offset + 1))
-                  acc in
-      loop f arr acc pad len (offset + 2)
-  in loop f arr init pad (min n (length arr)) 0
-
-let list_of_range _ (from: int) (len: int) (arr: storage_t) =
-  throw_if_stale "list_of_range" arr;
-  let rec loop from idx data acc =
-    if idx < from then
       acc
-    else
-      loop from (idx - 1) data (unsafe_getdata data idx :: acc)
-  in loop from (min (from + len) (length arr) - 1) arr.data []
+  in loop arr (Int64Word.wzero 16) (min n (length arr) - 1) 0
 
-let rec blit_list_unsafe (start: int) (list: data_t list) (data: Cstruct.t) =
-  match list with
-  | [] -> data
-  | h :: t ->
-     unsafe_setdata data start h;
-     blit_list_unsafe (start + 1) t data
+let slice_range _ (from: int) (len: int) (arr: storage_t) =
+  sub arr from len
 
-let blit_list _ start list arr =
-  throw_if_stale "list_of_range" arr;
-  let len = List.length list in
-  if (start + len) <= length arr then
-    let data' = blit_list_unsafe start list arr.data in
-    Some (incr_version arr data', len)
-  else None
+(* CPC why <=? *)
+let blit_buffer _ _ start src dst =
+  throw_if_stale "blit_buffer" src;
+  throw_if_stale "blit_buffer" dst;
+  let len = length src in
+  let idx' = start + len in
+  if idx' <= length dst then (
+    Cstruct.blit src.data 0 dst.data start len;
+    Some (incr_version dst dst.data, idx')
+  ) else None
 
 let append _ _ (arr1: storage_t) (arr2: storage_t) : storage_t =
   throw_if_stale "append" arr1;
@@ -135,19 +137,22 @@ let to_list _ (arr: storage_t) : data_t list =
   done;
   !ls
 
-let of_array (v: data_t array) : storage_t =
-  let arr = Cstruct.create (Array.length v) in
+let cstruct_of_array (v: data_t array): Cstruct.t =
+  let cs = Cstruct.create (Array.length v) in
   for idx = 0 to Array.length v - 1 do
-    unsafe_setdata arr idx (Array.unsafe_get v idx)
+    unsafe_setdata cs idx (Array.unsafe_get v idx)
   done;
-  of_cstruct arr
+  cs
+
+let of_array (v: data_t array) : storage_t =
+  of_cstruct (cstruct_of_array v)
 
 let of_vector _ (v: data_t ArrayVector.storage_t) : storage_t =
   of_array (ArrayVector.to_array v)
 
 let to_vector _ (arr: storage_t) : data_t ArrayVector.storage_t =
   throw_if_stale "to_vector" arr;
-  let v = Array.make (length arr) 0L in
+  let v = Array.make (length arr) Int64Word.w0 in
   for idx = 0 to length arr - 1 do
     Array.unsafe_set v idx (unsafe_getdata arr.data idx)
   done;
