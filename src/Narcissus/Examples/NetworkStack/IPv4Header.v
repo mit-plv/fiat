@@ -33,15 +33,15 @@ Open Scope Tuple_scope.
 (* Our source data type for IP packets. *)
 Record IPv4_Packet :=
   { TotalLength : word 16;
-     ID : word 16;
-     DF : bool; (* Don't fragment flag *)
-     MF : bool; (*  Multiple fragments flag *)
-     FragmentOffset : word 13;
-     TTL : word 8;
-     Protocol : EnumType ["ICMP"; "TCP"; "UDP"];
-     SourceAddress : word 32;
-     DestAddress : word 32;
-     Options : list (word 32) }.
+    ID : word 16;
+    DF : bool; (* Don't fragment flag *)
+    MF : bool; (*  Multiple fragments flag *)
+    FragmentOffset : word 13;
+    TTL : word 8;
+    Protocol : EnumType ["ICMP"; "TCP"; "UDP"];
+    SourceAddress : word 32;
+    DestAddress : word 32;
+    Options : list (word 32) }.
 
 (* Protocol Numbers from [RFC5237]*)
 Definition ProtocolTypeCodes : Vector.t (word 8) 3 :=
@@ -54,20 +54,20 @@ Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4.(Options)|.
 
 Definition IPv4_Packet_Format : FormatM IPv4_Packet ByteString :=
   (format_word ◦ (fun _ => natToWord 4 4)
-++ (format_nat 4) ◦ IPv4_Packet_Header_Len
-++ format_unused_word 8 (* TOS Field! *)
-++ format_word ◦ TotalLength
-++ format_word ◦ ID
-++ format_unused_word 1 (* Unused flag! *)
-++ format_bool ◦ DF
-++ format_bool ◦ MF
-++ format_word ◦ FragmentOffset
-++ format_word ◦ TTL
-++ format_enum ProtocolTypeCodes ◦ Protocol)%format
- ThenChecksum IPChecksum_Valid OfSize 16
-    ThenCarryOn (format_word ◦ SourceAddress
-                 ++ format_word ◦ DestAddress
-                 ++ format_list format_word ◦ Options)%format.
+               ++ (format_nat 4) ◦ IPv4_Packet_Header_Len
+               ++ format_unused_word 8 (* TOS Field! *)
+               ++ format_word ◦ TotalLength
+               ++ format_word ◦ ID
+               ++ format_unused_word 1 (* Unused flag! *)
+               ++ format_bool ◦ DF
+               ++ format_bool ◦ MF
+               ++ format_word ◦ FragmentOffset
+               ++ format_word ◦ TTL
+               ++ format_enum ProtocolTypeCodes ◦ Protocol)%format
+                                                           ThenChecksum IPChecksum_Valid OfSize 16
+                                                           ThenCarryOn (format_word ◦ SourceAddress
+                                                                                    ++ format_word ◦ DestAddress
+                                                                                    ++ format_list format_word ◦ Options)%format.
 
 Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
   lt (|ipv4.(Options)|) 11 /\
@@ -75,10 +75,17 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
 
 (* Step One: Synthesize an encoder and a proof that it is correct. *)
 
+Ltac new_encoder_rules ::=
+  match goal with
+    |- CorrectAlignedEncoder (_ ThenChecksum _ OfSize _ ThenCarryOn _) _ =>
+    eapply @CorrectAlignedEncoderForIPChecksumThenC
+  end.
+
 Definition IPv4_encoder :
   CorrectAlignedEncoderFor IPv4_Packet_Format.
 Proof.
-  synthesize_aligned_encoder.
+  start_synthesizing_encoder;
+    repeat align_encoder_step.
 Defined.
 
 (* Step Two: Extract the encoder function, and have it start encoding
@@ -123,20 +130,20 @@ Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
 Lemma IPv4_Packet_Header_Len_OK
   : forall ip4 ctx ctx' ctx'' c b b'' ext,
     (   format_word ◦ (fun _ => natToWord 4 4)
-     ++ (format_nat 4) ◦ IPv4_Packet_Header_Len
-     ++ format_unused_word 8 (* TOS Field! *)
-     ++ format_word ◦ TotalLength
-     ++ format_word ◦ ID
-     ++ format_unused_word 1 (* Unused flag! *)
-     ++ format_bool ◦ DF
-     ++ format_bool ◦ MF
-     ++ format_word ◦ FragmentOffset
-     ++ format_word ◦ TTL
-     ++ format_enum ProtocolTypeCodes ◦ Protocol)%format
-                                                 ip4 ctx ∋ (b, ctx') ->
+                    ++ (format_nat 4) ◦ IPv4_Packet_Header_Len
+                    ++ format_unused_word 8 (* TOS Field! *)
+                    ++ format_word ◦ TotalLength
+                    ++ format_word ◦ ID
+                    ++ format_unused_word 1 (* Unused flag! *)
+                    ++ format_bool ◦ DF
+                    ++ format_bool ◦ MF
+                    ++ format_word ◦ FragmentOffset
+                    ++ format_word ◦ TTL
+                    ++ format_enum ProtocolTypeCodes ◦ Protocol)%format
+                                                                ip4 ctx ∋ (b, ctx') ->
     (   format_word ◦ SourceAddress
-     ++ format_word ◦ DestAddress
-     ++ format_list format_word ◦ Options)%format ip4 ctx' ∋ (b'', ctx'') ->
+                    ++ format_word ◦ DestAddress
+                    ++ format_list format_word ◦ Options)%format ip4 ctx' ∋ (b'', ctx'') ->
     IPv4_Packet_OK ip4 ->
     (fun _ => 128) ip4 + (fun a => 16 + |ip4.(Options)| * 32) ip4 + 16
     = IPv4_Packet_encoded_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext).
@@ -154,29 +161,28 @@ Definition aligned_IPv4_Packet_encoded_measure
   if weq (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then true
   else false.
 
-
 Lemma aligned_IPv4_Packet_encoded_measure_OK_1 {sz}
   : forall (v : t Core.char sz),
     (if
-    IPChecksum_Valid_dec (IPv4_Packet_encoded_measure (build_aligned_ByteString v)) (build_aligned_ByteString v)
-   then true
-   else false) =
+        IPChecksum_Valid_dec (IPv4_Packet_encoded_measure (build_aligned_ByteString v)) (build_aligned_ByteString v)
+      then true
+      else false) =
     aligned_IPv4_Packet_encoded_measure v 0.
-  Proof.
+Proof.
 Admitted.
 
-  Lemma aligned_IPv4_Packet_encoded_measure_OK_2 {sz}
-    : forall (v : ByteBuffer.t (S sz)) (idx : nat),
-      aligned_IPv4_Packet_encoded_measure v (S idx) =
-      aligned_IPv4_Packet_encoded_measure (Vector.tl v) idx.
-  Proof.
-  Admitted.
+Lemma aligned_IPv4_Packet_encoded_measure_OK_2 {sz}
+  : forall (v : ByteBuffer.t (S sz)) (idx : nat),
+    aligned_IPv4_Packet_encoded_measure v (S idx) =
+    aligned_IPv4_Packet_encoded_measure (Vector.tl v) idx.
+Proof.
+Admitted.
 
-  Arguments andb : simpl never.
-  
-  Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_1.
-  Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_2.
-  
+Arguments andb : simpl never.
+
+Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_1.
+Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_2.
+
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
@@ -186,9 +192,9 @@ Proof.
   start_synthesizing_decoder.
   Opaque CorrectDecoder.
   match goal with
-    | H : cache_inv_Property ?mnd _
+  | H : cache_inv_Property ?mnd _
     |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
-      eapply compose_IPChecksum_format_correct with (format1 := fmt1)
+    eapply compose_IPChecksum_format_correct with (format1 := fmt1)
   end.
   apply H.
   repeat calculate_length_ByteString.
@@ -273,34 +279,34 @@ Eval compute in
 
 (* Some addition checksum sanity checks. *)
 Compute
-   match IPv4_decoder_impl bin_pkt with
-   | Some (p, _, _) => Some ((wordToN p.(SourceAddress)), wordToN p.(DestAddress))
-   | None => None
-   end.
+  match IPv4_decoder_impl bin_pkt with
+  | Some (p, _, _) => Some ((wordToN p.(SourceAddress)), wordToN p.(DestAddress))
+  | None => None
+  end.
 
 Goal match AlignedIPChecksum.calculate_IPChecksum bin_pkt' 0 ()()  with
-   | Some (p, _, _) => p = bin_pkt
-   | None => True
-   end.
+     | Some (p, _, _) => p = bin_pkt
+     | None => True
+     end.
   reflexivity.
 Qed.
 
 Definition pkt' := {|
-  TotalLength := WO~0~1~1~0~0~1~0~0~0~0~0~0~0~0~0~0;
-  ID := WO~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0;
-  DF := false;
-  MF := false;
-  FragmentOffset := WO~0~0~0~0~0~0~0~0~0~0~0~0~0;
-  TTL := WO~0~0~1~0~0~1~1~0;
-  Protocol := Fin.F1;
-  SourceAddress := WO~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0~0~0~0~0~1~0~1~0;
-  DestAddress := WO~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0~0~0~0~0~0~0~0~1;
-  Options := [] |}.
+                    TotalLength := WO~0~1~1~0~0~1~0~0~0~0~0~0~0~0~0~0;
+                    ID := WO~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0;
+                    DF := false;
+                    MF := false;
+                    FragmentOffset := WO~0~0~0~0~0~0~0~0~0~0~0~0~0;
+                    TTL := WO~0~0~1~0~0~1~1~0;
+                    Protocol := Fin.F1;
+                    SourceAddress := WO~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0~0~0~0~0~1~0~1~0;
+                    DestAddress := WO~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0~0~0~0~0~0~0~0~1;
+                    Options := [] |}.
 
 Goal match IPv4_encoder_impl (initialize_Aligned_ByteString 24) pkt'  with
-   | Some (p, _, _) => p = bin_pkt
-   | None => True
-   end.
+     | Some (p, _, _) => p = bin_pkt
+     | None => True
+     end.
   compute.
   reflexivity.
 Qed.

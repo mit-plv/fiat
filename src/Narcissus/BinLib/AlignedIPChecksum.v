@@ -314,7 +314,7 @@ Lemma compose_PseudoChecksum_format_correct {A}
         CorrectDecoder monoid predicate (fun _ _ => True)
                        (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B)
                        (fun (v : ByteString) (env : CacheDecode) =>
-                          if weq (onesComplement (wzero 8 :: protoCode ::
+                          if weqb (onesComplement (wzero 8 :: protoCode ::
                            (ByteString2ListOfChar (96 + (formated_measure v)) v)
                            ++ to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength))%list) (wones 16)
                           then
@@ -381,7 +381,7 @@ Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
 Proof.
   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
   eexists (fun sz v =>
-             if weq (pseudoHeader_checksum' srcAddr destAddr udpLength protoCode v) (wones 16)
+             if weqb (pseudoHeader_checksum' srcAddr destAddr udpLength protoCode v) (wones 16)
              then x sz v
              else ThrowAlignedDecodeM v).
   admit.

@@ -92,29 +92,15 @@ Section TCPPacketDecoder.
   Definition TCP_Length :=
     (fun _ : ByteString => wordToNat tcpLength * 8).
 
+  Ltac new_encoder_rules ::=
+    eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
+    [ | | intros; calculate_length_ByteString'].
+
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition TCP_encoder :
     CorrectAlignedEncoderFor TCP_Packet_Format.
   Proof.
-    start_synthesizing_encoder.
-    eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
-      repeat align_encoder_step.
-    repeat align_encoder_step.
-    eapply CorrectAlignedEncoderForFormatByteBuffer.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    align_encoder_step.
-    unfold format_bytebuffer.
-    apply CorrectAlignedEncoderForFormatByteBuffer.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    intros; calculate_length_ByteString'.
+    synthesize_aligned_encoder.
   Defined.
 
   (* Step Two: Extract the encoder function, and have it start encoding
@@ -142,192 +128,126 @@ Arguments andb : simpl never.
 Hint Resolve TCP_Packet_Len_OK : data_inv_hints.
 
 Arguments GetCurrentBytes : simpl never.
+
+Lemma TCP_Packet_Header_Len_OK
+      : forall (a : TCP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
+  (format_word ◦ SourcePort ++
+   format_word ◦ DestPort ++
+   format_word ◦ SeqNumber ++
+   format_word ◦ AckNumber ++
+   format_nat 4 ◦ Init.Nat.add 5 ∘ (Datatypes.length (A:=word 32) ∘ Options) ++
+   format_unused_word 3 ++
+   format_bool ◦ NS ++
+   format_bool ◦ CWR ++
+   format_bool ◦ ECE ++
+   format_bool ◦ (fun urg_opt : option (word 16) => Ifopt urg_opt as _ Then true Else false) ∘ UrgentPointer ++
+   format_bool ◦ ACK ++
+   format_bool ◦ PSH ++ format_bool ◦ RST ++ format_bool ◦ SYN ++ format_bool ◦ FIN ++ format_word ◦ WindowSize) a ctx ∋
+  (b, ctx') ->
+  (Option.format_option format_word (format_unused_word 16) ◦ UrgentPointer ++
+   format_list format_word ◦ Options ++ format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') ->
+  TCP_Packet_OK a ->
+  (fun _ : TCP_Packet => 16 + (16 + (32 + (32 + (4 + (3 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + 16))))))))))))))) a +
+  (fun a' : TCP_Packet => 16 + ((| Options a' |) * 32 + 8 * projT1 (Payload a'))) a + 16 =
+  TCP_Length
+    (mappend
+       (mappend b
+          (mappend (format_checksum ByteString AlignedByteString.ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
+Proof.
+  intros.
+  unfold TCP_Length; rewrite (proj2 H1).
+  omega.
+Qed.
+
+Definition aligned_TCP_Packet_checksum
+           {sz}
+           (v : t Core.char sz)
+           (idx : nat)
+  : bool :=
+  if weqb (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then true
+  else false.
+
+Lemma aligned_TCP_Packet_checksum_OK_1 {sz}
+  : forall (v : t Core.char sz),
+    weqb
+    (InternetChecksum.add_bytes_into_checksum (wzero 8) (natToWord 8 6)
+       (onesComplement
+          (ByteString2ListOfChar (96 + TCP_Length (build_aligned_ByteString v)) (build_aligned_ByteString v) ++
+                                 to_list srcAddr ++ to_list destAddr ++ to_list (splitLength tcpLength)))) WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1
+    = aligned_TCP_Packet_checksum v 0.
+Proof.
+Admitted.
+
+Lemma aligned_TCP_Packet_checksum_OK_2 {sz}
+  : forall (v : ByteBuffer.t (S sz)) (idx : nat),
+    aligned_TCP_Packet_checksum v (S idx) =
+    aligned_TCP_Packet_checksum (Vector.tl v) idx.
+Proof.
+Admitted.
+
+Hint Resolve aligned_TCP_Packet_checksum_OK_1.
+Hint Resolve aligned_TCP_Packet_checksum_OK_2.
+
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
 Proof.
-  (* We have to use an extra lemma at the start, because of the 'exotic'
-     IP Checksum. *)
-  eapply CorrectAlignedDecoderForUDPChecksumThenC.
-  intros; calculate_length_ByteString'; rewrite H; higher_order_reflexivity.
-    (* Once that's done, the normal automation works just fine :) *)
   start_synthesizing_decoder.
-  match goal with
-  | |- CorrectDecoder ?monoid _ _ _ _ _ => normalize_compose monoid
-  end.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  simpl; instantiate (1 := proj7); simpl.
-  intro; destruct (UrgentPointer data); simpl; intuition;
-    subst; simpl; congruence.
-  destruct a'; simpl; decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  simpl; instantiate (1 := proj3 - 5); intuition.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  intros; apply ByteBuffer_decode_correct
-            with (n := wordToNat tcpLength - (20 + 4 * (proj3 - 5))).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  intros; unfold ByteBuffer_predicate_rest; eauto using Vector_predicate_rest_True.
-  simpl in *; unfold TCP_Packet_OK in *; intuition.
-  decode_step ltac:(idtac).
+  NormalizeFormats.normalize_format.
+  eapply compose_PseudoChecksum_format_correct.
+  repeat calculate_length_ByteString.
+  repeat calculate_length_ByteString.
+  exact H.
+  solve_mod_8.
+  solve_mod_8.
+  apply TCP_Packet_Header_Len_OK.
+  intros; NormalizeFormats.normalize_format.
+  repeat apply_rules.
+  eapply (format_sequence_correct H4).
+  apply Nat_decode_correct.
+  simpl; intros;
+    unfold Basics.compose.
+  eapply TCP_Packet_Len_OK; intuition eauto.
+  intros; repeat apply_rules.
+  eapply (format_sequence_correct H16).
+  Opaque CorrectDecoder.
+  intros; eapply Option.option_format_correct'.
+  exact H16.
+  intros; apply_rules.
+  intros; eapply unused_word_decode_correct; eauto.
+  simpl.
+  intros; intuition.
+  unfold Basics.compose in H25.
+  instantiate (1 := s'7).
+  destruct s; simpl in *.
+  destruct UrgentPointer0; simpl in *; subst; simpl; eauto.
+  congruence.
+  destruct s; destruct UrgentPointer0; eauto.
+  intros.
+  eapply (format_sequence_correct H16).
+  intros; repeat apply_rules.
+  intros.
+  instantiate (1 := s'3 - 5); simpl; intuition.
+  unfold Basics.compose in H32; omega.
+  intros; eapply (format_sequence_correct).
+  eauto.
+  intros; eapply ByteBuffer_decode_correct
+            with (n := wordToNat tcpLength - (20 + 4 * (s'3 - 5))).
+  intros; repeat apply_rules.
+  simpl; eauto.
+  intros; repeat apply_rules.
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)
-  cbv beta; optimize_decoder_impl.
-  cbv beta.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
+  Opaque ByteString2ListOfChar.
+  cbv beta; unfold decode_nat; optimize_decoder_impl.
+  unfold Basics.compose; simpl.
+  cbv beta; align_decoders.
   eapply @AlignedDecodeByteBufferM; intros; eauto.
-  (* align_decoders_step. *)
-  (* align_decoders_step. *)
-  align_decoders_step.
-  align_decoders_step.
-  align_decoders_step.
+  align_decoders.
   Grab Existential Variables.
   eauto.
   eauto.
-  eauto.
-  eauto.
-  shelve.
-  synthesize_cache_invariant.
-  synthesize_cache_invariant.
 Defined.
-
-(*Lemma TCP_Packet_Header_Len_OK
-    : forall (tcp : TCP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
-      (      format_word (tcp!"SourcePort")
-          ++ format_word (tcp!"DestPort")
-          ++ format_word (tcp!"SeqNumber")
-          ++ format_word (tcp!"AckNumber")
-          ++ format_nat 4 (5 + |tcp!"Options"|)
-          ++ format_unused_word 3 (* These bits are reserved for future use. *)
-          ++ format_bool tcp!"NS"
-          ++ format_bool tcp!"CWR"
-          ++ format_bool tcp!"ECE"
-          ++ format_bool (match tcp!"UrgentPointer" with
-                                  | Some _ => true
-                                  | _ => false
-                                  end)
-          ++ format_bool tcp!"ACK"
-          ++ format_bool tcp!"PSH"
-          ++ format_bool tcp!"RST"
-          ++ format_bool tcp!"SYN"
-          ++ format_bool tcp!"FIN"
-          ++ format_word tcp!"WindowSize" DoneC) ctx ↝ (b, ctx') ->
-      (format_option format_word (format_unused_word' 16 ByteString_id) tcp!"UrgentPointer"
-       ++ format_list format_word tcp!"Options"
-       ++ format_list format_word tcp!"Payload" DoneC) ctx' ↝ (b'', ctx'') ->
-      (lt (|tcp!"Options"|) 11
-       /\ wordToNat tcpLength = 20 (* length of packet header *)
-                                + (4 * |tcp!"Options"|) (* length of option field *)
-                                + (|tcp!"Payload"|)) ->
-      (fun _ : TCP_Packet =>
-    16 +
-    (16 + (32 + (32 + (4 + (3 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (16 + length_ByteString ByteString_id))))))))))))))))
-     tcp +
-   (fun a0 : TCP_Packet =>
-    16 + ((|a0!"Options"|) * 32 + ((|a0!"Payload" |) * 8 + length_ByteString ByteString_id))) tcp + 16 =
-    (TCP_Length
-       (mappend (mappend b (mappend (format_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext)).
-Proof.
-  intros.
-  intros; change mempty with ByteString_id; rewrite length_ByteString_ByteString_id.
-  unfold TCP_Length; rewrite (proj2 H1).
-  match goal with
-    |- context [ @length ?A ?l] => remember (@length A l)
-  end.
-  match goal with
-    |- context [ @length ?A ?l] => remember (@length A l)
-  end.
-  omega.
-Qed. *)
 
 Definition TCP_decoder_impl {sz} v :=
   Eval simpl in (projT1 TCP_Packet_Header_decoder sz v 0 ()).
@@ -352,9 +272,9 @@ Definition srcAddr := (Vector.map (natToWord 8) [192; 168; 1; 109]).
 Definition destAddr := (Vector.map (natToWord 8) [151; 101; 129; 164]).
 Definition Vector_length {A n} (v: Vector.t A n) := n.
 
-Definition out :=
+(*Definition out :=
 Eval compute in
-    match (@TCP_decoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input)) _ tcp_decode_input) with
+    match (@TCP_decoder_impl (wzero _ ) srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input)) _ tcp_decode_input) with
     | Some (p, _, _) =>
       (Some (Vector.fold_right (fun c s => String (Ascii.ascii_of_N (wordToN c)) s) (projT2 p.(Payload)) EmptyString),
        match (@TCP_encoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input))
@@ -363,4 +283,4 @@ Eval compute in
        | None => None
        end)
     | None => (None, None)
-    end.
+    end. *)

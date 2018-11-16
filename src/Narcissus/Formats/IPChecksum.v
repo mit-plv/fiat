@@ -1521,6 +1521,12 @@ Proof.
   rewrite NPeano.Nat.mod_mul; eauto.
 Qed.
 
+Lemma mult_8_mod_8': forall n' : nat, (8 * n') mod 8 = 0.
+Proof.
+  intros; rewrite mult_comm.
+  rewrite Nat.mod_mul; omega.
+Qed.
+
 Ltac solve_mod_8 :=
   intros; cbv beta; simpl mempty;
   repeat first [
@@ -1531,6 +1537,7 @@ Ltac solve_mod_8 :=
          | rewrite mult_32_mod_8
          | rewrite mult_16_mod_8
          | rewrite mult_8_mod_8
+         | rewrite mult_8_mod_8'
          | rewrite <- plus_n_O
          | reflexivity ].
 

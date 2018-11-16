@@ -268,7 +268,7 @@ Section AlignedList.
   (*   end. *)
 
   Require Import Fiat.Narcissus.Formats.Vector.
-  
+
 Section ByteBuffer.
   (* Context {A : Type}. *)
   Context {T : Type}.
@@ -304,7 +304,7 @@ Section ByteBuffer.
         CorrectDecoder
           monoid
           (fun ls => forall x, Vector.In x (projT2 ls) -> A_predicate x)
-          ByteBuffer_predicate_rest
+          (fun _ _ => True)
           format_bytebuffer (decode_bytebuffer n) A_cache_inv.
   Proof.
   Admitted.

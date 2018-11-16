@@ -55,26 +55,15 @@ Section UDP_Decoder.
   Definition UDP_Packet_OK (udp : UDP_Packet) :=
     lt (projT1 (udp.(Payload))) (pow2 16 - 8).
 
+  Ltac new_encoder_rules ::=
+    eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
+    [ | | intros; calculate_length_ByteString'].
+
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition UDP_encoder :
     CorrectAlignedEncoderFor UDP_Packet_Format.
   Proof.
-    start_synthesizing_encoder.
-    eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
-      repeat align_encoder_step.
     synthesize_aligned_encoder.
-    eapply @CorrectAlignedEncoderForPseudoChecksumThenC.
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    repeat align_encoder_step.
-    eapply CorrectAlignedEncoderForFormat2Nat.
-    simpl; eauto.
-    simpl; eauto.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    repeat align_encoder_step.
-    apply CorrectAlignedEncoderForFormatByteBuffer.
-    intros; calculate_length_ByteString'.
   Defined.
 
   (* Step Two: Extract the encoder function, and have it start encoding
@@ -82,23 +71,32 @@ Section UDP_Decoder.
   Definition UDP_encoder_impl r {sz} v :=
     Eval simpl in (projT1 UDP_encoder sz v 0 r tt).
 
+Definition UDP_Packet_format_measure (udp_b : ByteString)
+  : nat :=
+  match (`(u, b') <- decode_unused_word' 16 udp_b;
+         `(u, b') <- decode_unused_word' 16 b';
+           decode_word' 16 b') with
+  | Some n => wordToNat (fst n) * 8
+  | None => 0
+end.
+
 (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
-(*Lemma UDP_Packet_Header_Len_OK
-  : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
-    (format_word (a.(SourcePort))
-                      ThenC format_word (a.(DestPort))
-                      ThenC format_nat 16 (8 + |a.(Payload)|) DoneC) ctx ↝
-                                                                            (b, ctx') ->
-    (format_list format_word a.(Payload) DoneC) ctx' ↝ (b'', ctx'') ->
-    (lt (|a.(Payload)|) (pow2 16 - 8))%nat ->
-    (fun _ : UDP_Packet => 16 + (16 + (16 + length_ByteString ByteString_id))) a +
-    (fun a0 : UDP_Packet => (|a0.(Payload) |) * 8 + length_ByteString ByteString_id) a + 16 =
-    UDP_Packet_formatd_measure
-      (mappend (mappend b (mappend (format_checksum ByteString monoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
+  Lemma UDP_Packet_Header_Len_OK
+    : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
+      (format_word ◦ SourcePort ++ format_word ◦ DestPort ++ format_nat 16 ◦ Init.Nat.add 8 ∘ (projT1 (P:=ByteBuffer.t) ∘ Payload)) a
+                                                                                                                                    ctx ∋ (b, ctx') ->
+      (format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') ->
+      UDP_Packet_OK a ->
+      (fun _ : UDP_Packet => 16 + (16 + 16)) a + (fun a' : UDP_Packet => 8 * projT1 (Payload a')) a + 16 =
+      UDP_Packet_format_measure
+       (mappend
+          (mappend b
+                   (mappend (format_checksum ByteString AlignedByteString.ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
 Proof.
-  unfold UDP_Packet_formatd_measure.
+Admitted.
+(*  unfold UDP_Packet_format_measure.
   intros; rewrite <- !mappend_assoc.
   simpl in H0.
   eapply computes_to_compose_decode_unused_word in H;
@@ -139,50 +137,71 @@ Opaque pow2.
 
 Hint Resolve UDP_Packet_Header_Len_bound : data_inv_hints.
 
+Definition aligned_UDP_Packet_checksum
+           {sz}
+           (v : t Core.char sz)
+           (idx : nat)
+  : bool :=
+  if weqb (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then true
+  else false.
+
+Lemma aligned_UDP_Packet_checksum_OK_1 {sz}
+  : forall (v : t Core.char sz),
+    weqb
+    (InternetChecksum.add_bytes_into_checksum (wzero 8) (natToWord 8 17)
+       (onesComplement
+          (ByteString2ListOfChar (96 + UDP_Packet_format_measure (build_aligned_ByteString v)) (build_aligned_ByteString v) ++
+                                 to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength)))) WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1
+    = aligned_UDP_Packet_checksum v 0.
+Proof.
+Admitted.
+
+Lemma aligned_UDP_Packet_checksum_OK_2 {sz}
+  : forall (v : ByteBuffer.t (S sz)) (idx : nat),
+    aligned_UDP_Packet_checksum v (S idx) =
+    aligned_UDP_Packet_checksum (Vector.tl v) idx.
+Proof.
+Admitted.
+
+Hint Resolve aligned_UDP_Packet_checksum_OK_1.
+Hint Resolve aligned_UDP_Packet_checksum_OK_2.
+
 Arguments GetCurrentBytes : simpl never.
+
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition UDP_Packet_Header_decoder
   : CorrectAlignedDecoderFor UDP_Packet_OK UDP_Packet_Format.
 Proof.
-  (* We have to use an extra lemma at the start, because of the 'exotic'
-     IP Checksum. *)
-  eapply CorrectAlignedDecoderForUDPChecksumThenC.
-  repeat calculate_length_ByteString.
-  (* Once that's done, the normal automation works just fine :) *)
   start_synthesizing_decoder.
-  match goal with
-  | |- CorrectDecoder ?monoid _ _ _ _ _ => normalize_compose monoid
-  end.
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  intros; apply ByteBuffer_decode_correct
-            with (n := proj1 - 8).
-  decode_step ltac:(idtac).
-  decode_step ltac:(idtac).
-  (* simpl; intros; intuition; instantiate (1 := proj1 -8); omega. *)
-  intros; unfold ByteBuffer_predicate_rest; eauto using Vector_predicate_rest_True.
-  decode_step ltac:(idtac).
+  NormalizeFormats.normalize_format.
+  eapply compose_PseudoChecksum_format_correct.
+  repeat calculate_length_ByteString.
+  repeat calculate_length_ByteString.
+  exact H.
+  solve_mod_8.
+  solve_mod_8.
+  apply UDP_Packet_Header_Len_OK.
+  intros; NormalizeFormats.normalize_format.
+  apply_rules.
+  apply_rules.
+  eapply (format_sequence_correct H2).
+  apply Nat_decode_correct.
+  simpl; intros;
+    unfold Basics.compose.
+  eapply UDP_Packet_Header_Len_bound; eauto; apply H3.
+  intros; apply_rules.
+  eapply (format_sequence_correct H4).
+  intros; eapply @ByteBuffer_decode_correct with (n := s'1 - 8).
+  intros; apply_rules.
+  solve_side_condition.
+  intros; apply_rules.
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)
+  Opaque ByteString2ListOfChar.
   cbv beta; unfold decode_nat; optimize_decoder_impl.
   cbv beta; align_decoders.
   eapply @AlignedDecodeByteBufferM; intros; eauto.
   align_decoders.
-  Grab Existential Variables.
-  shelve.
-  synthesize_cache_invariant.
 Defined.
 
 (* Step Four: Extract the decoder function, and have /it/ start decoding

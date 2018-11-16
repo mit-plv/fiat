@@ -573,7 +573,7 @@ Ltac apply_rules :=
     intros; revert H; eapply bool_decode_correct
 
   | |- context [CorrectDecoder _ _ _ (Option.format_option _ _) _ _] =>
-    intros; eapply Option.option_format_correct;
+    intros; eapply Option.option_format_correct';
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]

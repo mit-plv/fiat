@@ -377,6 +377,24 @@ Proof.
   apply unfold_computes; eexists; split; eauto.
 Qed.
 
+Lemma length_ByteString_bytebuffer
+  : forall (ctx : CacheFormat) (b : ByteString) (ctx' : CacheFormat) (bb : { n : nat & ByteBuffer.t n}),
+    format_bytebuffer bb ctx ∋ (b, ctx') -> length_ByteString b = 8 * projT1 bb.
+  intros.
+  destruct bb; simpl in *.
+  unfold format_bytebuffer in H.
+  revert ctx b ctx' H; induction t; intros.
+  - simpl in *; computes_to_inv; subst; injections.
+    reflexivity.
+  - simpl in *; unfold Bind2 in *; computes_to_inv; subst;
+      injections; destruct v; simpl in *.
+    destruct v0.
+    rewrite length_ByteString_enqueue_ByteString.
+    apply IHt in H'.
+    simpl; rewrite H'.
+    apply length_ByteString_word in H; subst; omega.
+Qed.
+
 Lemma length_ByteString_Projection {S S'}:
   forall (format1 : FormatM S ByteString)
          (f : S' -> S)
@@ -410,6 +428,8 @@ Ltac calculate_length_ByteString :=
        | eapply (length_ByteString_bool _ _ _ _ H)
        | eapply (length_ByteString_word _ _ _ _ _ H)
        | eapply (fun H' => length_ByteString_format_list _ _ _ _ _ _ H' H)
+       | eapply (length_ByteString_Projection _ _ _ _ _ _ _ H)
+       | eapply (length_ByteString_bytebuffer _ _ _ _ H)
        | eapply (length_ByteString_ret _ _ _ _ H) ]);
     clear H
   end.
@@ -441,17 +461,9 @@ Ltac new_encoder_rules := fail.
 
 Ltac align_encoder_step :=
   first
-    [ match goal with
-        |- CorrectAlignedEncoder (_ ThenChecksum _ OfSize _ ThenCarryOn _) _ =>
-        eapply @CorrectAlignedEncoderForIPChecksumThenC
-      end
-    | match goal with
+    [
+     match goal with
         |- CorrectAlignedEncoder (_ ++ _ ++ _)%format _ => associate_for_ByteAlignment
-      end
-    | match goal with
-        |- CorrectAlignedEncoder (_ ++ _)%format  _ =>
-        apply @CorrectAlignedEncoderForThenC;
-        [ try collapse_unaligned_words | try collapse_unaligned_words ]
       end
     | match goal with
         |- CorrectAlignedEncoder (Either _ Or _)%format _ =>
@@ -466,7 +478,9 @@ Ltac align_encoder_step :=
       | ]
     | apply CorrectAlignedEncoderForFormatChar; eauto
     | apply CorrectAlignedEncoderForFormatNat
+    | apply CorrectAlignedEncoderForFormat2Nat; eauto
     | apply CorrectAlignedEncoderForFormatEnum
+    | eapply CorrectAlignedEncoderForFormatByteBuffer
     | eapply CorrectAlignedEncoderProjection
     | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2);
       [ solve [ eauto ]
@@ -476,10 +490,19 @@ Ltac align_encoder_step :=
       | solve [ eauto ] ]
     | eapply CorrectAlignedEncoderForFormatUnusedWord
     | eapply CorrectAlignedEncoderForFormatOption
+    | intros; try collapse_unaligned_words;
+      eapply CorrectAlignedEncoderProjection;
+      solve [eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto]
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
     | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto].
+    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto
+    | match goal with
+        |- CorrectAlignedEncoder (_ ++ _)%format  _ =>
+        apply @CorrectAlignedEncoderForThenC;
+        [ | try collapse_unaligned_words ]
+      end
+    ].
 
 Ltac synthesize_aligned_encoder :=
   start_synthesizing_encoder;
