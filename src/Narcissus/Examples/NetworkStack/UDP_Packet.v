@@ -59,6 +59,9 @@ Section UDP_Decoder.
   Definition UDP_encoder :
     CorrectAlignedEncoderFor UDP_Packet_Format.
   Proof.
+    start_synthesizing_encoder.
+    eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
+      repeat align_encoder_step.
     synthesize_aligned_encoder.
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC.
     (decompose_aligned_encoder; eauto).

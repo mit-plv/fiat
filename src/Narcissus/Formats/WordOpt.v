@@ -23,6 +23,8 @@ Section Word.
 
   Definition encode_word (w : word sz) (ce : CacheFormat) : T * CacheFormat := (encode_word' sz w mempty, addE ce sz).
 
+  Definition serialize := encode_word.
+
   Definition format_word (w : word sz) (ce : CacheFormat) : Comp (T * CacheFormat) :=
     ret (encode_word' sz w mempty, addE ce sz).
 
@@ -241,6 +243,19 @@ Section Word.
       split; eauto using add_correct.
       eexists; eexists; repeat split.
       eauto using add_correct.
+  Qed.
+
+  Corollary encode_Word_decode_correct
+          {P : CacheDecode -> Prop}
+          (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
+    :
+      CorrectDecoder monoid (fun _ => True)
+                              (fun _ _ => True)
+                              (fun w ctx => ret (serialize w ctx)) decode_word P.
+  Proof.
+    unfold CorrectDecoder; split; intros.
+    - eapply Word_decode_correct; eauto.
+    - eapply Word_decode_correct in H1; eauto.
   Qed.
 
   Lemma decode_word'_le
@@ -492,7 +507,7 @@ Proof.
     simpl; rewrite mappend_assoc; reflexivity.
     eassumption.
     eassumption.
-  } 
+  }
   Grab Existential Variables.
   constructor.
 Qed.

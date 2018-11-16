@@ -10,8 +10,7 @@ We start with an extremely simple record, and a correspondingly simple format:
 
 Module Sensor0.
   Record sensor_msg :=
-    { stationID: word 8;
-      measurement: word 16 }.
+    { stationID: word 8; measurement: word 16 }.
 
   Let format :=
        format_word ◦ stationID
@@ -43,8 +42,7 @@ End Sensor0.
 
 Module Sensor1.
   Record sensor_msg :=
-    { stationID: word 8;
-      measurement: word 16 }.
+    { stationID: word 8; measurement: word 16 }.
 
   Let format :=
        format_word ◦ stationID
@@ -79,12 +77,12 @@ End Sensor1.
 (** Our next enhancement is to introduce a version number field in our packet, and to tag each measurement with a `kind`, `"TEMPERATURE"` or `"HUMIDITY"`.  To save space, we allocate 2 bits for the `kind` tag, and 14 bits to the actual measurement. **)
 
 Module Sensor2.
+
   Let kind :=
-    EnumType ["TEMPERATURE"; "HUMIDITY"].
+      EnumType ["TEMPERATURE"; "HUMIDITY"].
 
   Record sensor_msg :=
-    { stationID: word 8;
-      measurement: (kind * word 14) }.
+    { stationID: word 8; measurement: (kind * word 14) }.
 
   Let format :=
        format_word ◦ stationID
@@ -97,23 +95,7 @@ Module Sensor2.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof.
-    econstructor.
-    start_synthesizing_encoder.
-    align_encoder_step.
-    align_encoder_step.
-    align_encoder_step.
-    collapse_unaligned_words.
-    align_encoder_step.
-    align_encoder_step.
-    align_encoder_step.
-    align_encoder_step.
-    align_encoder_step.
-    align_encoder_step.
-    align_encoder_step.
-    align_encoder_step.
-    synthesize_aligned_decoder.
-  Defined.
+  Proof. derive_encoder_decoder_pair. Defined.
 
   Let encode := encoder_impl enc_dec.
   Let decode := decoder_impl enc_dec.
@@ -125,8 +107,7 @@ End Sensor2.
 
 Module Sensor3.
   Record sensor_msg :=
-    { stationID: word 8;
-      measurements: list (word 16) }.
+    { stationID: word 8; measurements: list (word 16) }.
 
   Let format :=
        format_word ◦ stationID
@@ -156,8 +137,7 @@ Our attempted fix, unfortunately, only gets us half of the way there (`format_na
 
 Module Sensor4.
   Record sensor_msg :=
-    { stationID: word 8;
-      measurements: list (word 16) }.
+    { stationID: word 8; measurements: list (word 16) }.
 
   Let format :=
        format_word ◦ stationID
@@ -186,8 +166,7 @@ The problem is that, since we encode the list's length on 16 bits, the round-tri
 
 Module Sensor5.
   Record sensor_msg :=
-    { stationID: word 8;
-      measurements: list (word 16) }.
+    { stationID: word 8; measurements: list (word 16) }.
 
   Let format :=
        format_word ◦ stationID
@@ -233,3 +212,90 @@ Module Sensor5.
         return {| stationID := b; measurements := l |}
        else fail)) v 0 tt *)
 End Sensor5.
+
+Module Sensor6.
+
+  Inductive reading :=
+  | Temperature (_ : word 14)
+  | Humidity (_ : word 14).
+
+  Let format_reading m s :=
+    match m with
+    | Temperature t => ret (serialize (Word.combine WO~0~0 t) s)
+    | Humidity h => ret (serialize (Word.combine WO~0~1 h) s)
+    end.
+
+  Let enc_reading sz :=
+    (fun buf idx m => @SetCurrentBytes _ _ sz 2 buf idx match m with
+         | Temperature t => Word.combine WO~0~0 t
+         | Humidity h => Word.combine WO~0~1 h
+         end).
+
+  Lemma enc_readingCorrect
+    : CorrectAlignedEncoder format_reading enc_reading.
+  Proof.
+    unfold enc_reading, format_reading.
+    eapply refine_CorrectAlignedEncoder.
+    2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
+    intros; destruct s; simpl;
+      rewrite refine_Projection_Format;
+      reflexivity.
+  Qed.
+
+  Let dec_reading :=
+    fun t ctx =>
+    `(w, rest, ctx') <- decode_word t ctx;
+      if weqb (split1 2 14 w) WO~0~0
+      then Some (Temperature (split2 2 14 w), rest, ctx')
+      else (if weqb (split1 2 14 w) WO~0~1 then
+              Some (Humidity (split2 2 14 w), rest, ctx')
+            else None).
+
+  Lemma dec_readingCorrect
+    : CorrectDecoder _ (fun _ => True) (fun _ _ => True) format_reading dec_reading (fun _ => True).
+  Proof.
+    unfold format_reading, dec_reading; split; intros.
+    - destruct data; eapply encode_Word_decode_correct in H2; eauto;
+        destruct_ex; intuition; try rewrite H3; simpl;
+          eexists; rewrite split2_combine; eauto.
+    - eapply DecodeBindOpt2_inv in H1; destruct_ex; intuition.
+      destruct (weqb (split1 2 14 x) WO~0~0) eqn:? .
+      + destruct (shatter_word_S x) as [? [x' ?] ];
+          destruct (shatter_word_S x') as [? [x'' ?] ];
+          subst; apply weqb_true_iff in Heqb; injections;
+            unfold split2; simpl.
+        eapply (@encode_Word_decode_correct _ _ _ _ _ _ (fun _ => True)) in H2;
+          unfold cache_inv_Property; intuition eauto.
+      + destruct (weqb (split1 2 14 x) WO~0~1) eqn:? ; try discriminate;
+          destruct (shatter_word_S x) as [? [x' ?] ];
+          destruct (shatter_word_S x') as [? [x'' ?] ];
+          subst.
+        apply weqb_true_iff in Heqb0; injections;
+          unfold split2; simpl;
+            eapply (@encode_Word_decode_correct _ _ _ _ _ _ (fun _ => True)) in H2;
+          unfold cache_inv_Property; intuition eauto.
+  Qed.
+
+  Record sensor_msg :=
+    { stationID: word 8; measurements: list reading }.
+
+  Let format :=
+       format_word ◦ stationID
+    ++ format_unused_word 8
+    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_nat 8 ◦ (Basics.compose length measurements)
+    ++ format_list format_reading ◦ measurements.
+
+  Let invariant :=
+    fun (msg: sensor_msg) =>
+      length (msg.(measurements)) < pow2 8.
+
+  Ltac new_encoder_rules ::= apply enc_readingCorrect.
+  Ltac new_decoder_rules ::= apply dec_readingCorrect.
+
+  Let enc_dec : EncoderDecoderPair format invariant.
+  Proof. derive_encoder_decoder_pair. Defined.
+
+  Let encode := encoder_impl enc_dec.
+  Let decode := decoder_impl enc_dec.
+End Sensor6.

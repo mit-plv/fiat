@@ -55,6 +55,7 @@ Ltac align_decoders_step :=
                         eapply H; clear H;
                         [ solve [eauto] | solve [eauto] | | ]
     | eapply @AlignedDecode_ifb
+    | eapply @AlignedDecode_ifb_both
     | eapply @AlignedDecode_ifb_dep; [ solve [eauto] | solve [eauto] | | ]
     | eapply @AlignedDecodeBindOption; intros; eauto
     | eapply @AlignedDecode_Throw
@@ -376,22 +377,22 @@ Proof.
   apply unfold_computes; eexists; split; eauto.
 Qed.
 
-  Lemma length_ByteString_Projection {S S'}:
-    forall (format1 : FormatM S ByteString)
-           (f : S' -> S)
-           (b : ByteString) s (ctx ctx' : CacheFormat)
-           (n : nat),
-      (Projection_Format format1 f)%format s ctx ↝ (b, ctx') ->
-      (forall (ctx0 : CacheFormat) (b0 : ByteString) (ctx'0 : CacheFormat),
-          format1 (f s) ctx0 ↝ (b0, ctx'0) -> length_ByteString b0 = n) ->
-      length_ByteString b = n.
-  Proof.
-    intros.
-    eapply H0.
-    eapply EquivFormat_Projection_Format; eauto.
-  Qed.
+Lemma length_ByteString_Projection {S S'}:
+  forall (format1 : FormatM S ByteString)
+         (f : S' -> S)
+         (b : ByteString) s (ctx ctx' : CacheFormat)
+         (n : nat),
+    (Projection_Format format1 f)%format s ctx ↝ (b, ctx') ->
+    (forall (ctx0 : CacheFormat) (b0 : ByteString) (ctx'0 : CacheFormat),
+        format1 (f s) ctx0 ↝ (b0, ctx'0) -> length_ByteString b0 = n) ->
+    length_ByteString b = n.
+Proof.
+  intros.
+  eapply H0.
+  eapply EquivFormat_Projection_Format; eauto.
+Qed.
 
-  Ltac calculate_length_ByteString :=
+Ltac calculate_length_ByteString :=
   intros;
   match goal with
   | H:_ ↝ _
@@ -413,18 +414,18 @@ Qed.
     clear H
   end.
 
-  Ltac collapse_unaligned_words :=
-    intros; eapply refine_CorrectAlignedEncoder;
-    [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
-     unfold format_nat;
-     repeat first [eapply refine_format_option_map; intros
-                  | eapply refine_format_bool_map
-                  | eauto using refine_format_bool, refine_format_unused_word_map,
-                    refine_format_bool_map, refine_format_unused_word,
-                    refine_format_option_map, refine_format_enum_map,
-                    refine_format_nat_map];
-     reflexivity
-    | ].
+Ltac collapse_unaligned_words :=
+  intros; eapply refine_CorrectAlignedEncoder;
+  [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
+   unfold format_nat;
+   repeat first [eapply refine_format_option_map; intros
+                | eapply refine_format_bool_map
+                | eauto using refine_format_bool, refine_format_unused_word_map,
+                  refine_format_bool_map, refine_format_unused_word,
+                  refine_format_option_map, refine_format_enum_map,
+                  refine_format_nat_map];
+   reflexivity
+  | ].
 
 Ltac start_synthesizing_encoder :=
   lazymatch goal with
@@ -434,6 +435,9 @@ Ltac start_synthesizing_encoder :=
   (* Memoize any string constants *)
   (*pose_string_hyps; *)
   eexists; simpl; intros.
+
+(* Redefine this tactic to implement new encoder rules *)
+Ltac new_encoder_rules := fail.
 
 Ltac align_encoder_step :=
   first
@@ -447,12 +451,14 @@ Ltac align_encoder_step :=
     | match goal with
         |- CorrectAlignedEncoder (_ ++ _)%format  _ =>
         apply @CorrectAlignedEncoderForThenC;
-        [ | try collapse_unaligned_words ]
+        [ try collapse_unaligned_words | try collapse_unaligned_words ]
       end
     | match goal with
         |- CorrectAlignedEncoder (Either _ Or _)%format _ =>
         eapply CorrectAlignedEncoderEither_E
       end
+    (* Here is the hook for new encoder rules: *)
+    | new_encoder_rules
     | apply CorrectAlignedEncoderForFormatList
     | apply CorrectAlignedEncoderForFormatVector;
       [ solve [ eauto ]

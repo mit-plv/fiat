@@ -79,24 +79,41 @@ Definition calculate_IPChecksum {S} {sz}
       (fun v idx s => SetByteAt (n := sz) 10 v 0 (wnot (split2 8 8 checksum)) ) >>
                                                                                 (fun v idx s => SetByteAt (n := sz) 11 v 0 (wnot (split1 8 8 checksum)))) v)%AlignedEncodeM.
 
-Lemma CorrectAlignedDecoderForIPChecksumThenC {A}
-      predicate
-      (format_A format_B : FormatM A ByteString)
-      (len_format_A : A -> nat)
-      (len_format_A_OK : forall a' b ctx ctx',
-          computes_to (format_A a' ctx) (b, ctx')
-          -> length_ByteString b = len_format_A a')
-  : CorrectAlignedDecoderFor
-      predicate
-      (format_A ++ format_unused_word 16 ++ format_B)%format
-    -> CorrectAlignedDecoderFor
-         predicate
-         (format_A ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_B).
-Proof.
-  intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v => if weq (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then x sz v  else ThrowAlignedDecodeM v).
-  admit.
-Defined.
+Lemma CorrectAlignedEncoderForIPChecksumThenC
+        {S}
+        (format_A format_B : FormatM S ByteString)
+        (encode_A : forall sz, AlignedEncodeM sz)
+        (encode_B : forall sz, AlignedEncodeM sz)
+        (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+        (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+    : CorrectAlignedEncoder
+        (format_B ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_A)
+        (fun sz => encode_B sz >>
+                   (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
+                   (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
+                   encode_A sz >>
+                   calculate_IPChecksum)% AlignedEncodeM.
+  Proof.
+Admitted.
+
+(* Lemma CorrectAlignedDecoderForIPChecksumThenC {A} *)
+(*       predicate *)
+(*       (format_A format_B : FormatM A ByteString) *)
+(*       (len_format_A : A -> nat) *)
+(*       (len_format_A_OK : forall a' b ctx ctx', *)
+(*           computes_to (format_A a' ctx) (b, ctx') *)
+(*           -> length_ByteString b = len_format_A a') *)
+(*   : CorrectAlignedDecoderFor *)
+(*       predicate *)
+(*       (format_A ++ format_unused_word 16 ++ format_B)%format *)
+(*     -> CorrectAlignedDecoderFor *)
+(*          predicate *)
+(*          (format_A ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_B). *)
+(* Proof. *)
+(*   intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *. *)
+(*   eexists (fun sz v => if weq (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then x sz v  else ThrowAlignedDecodeM v). *)
+(*   admit. *)
+(* Defined. *)
 
 Definition splitLength (len: word 16) : Vector.t (word 8) 2 :=
   Vector.cons _ (split2 8 8 len) _ (Vector.cons _ (split1 8 8 len) _ (Vector.nil _)).

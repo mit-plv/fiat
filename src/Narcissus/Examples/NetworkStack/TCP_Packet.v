@@ -97,24 +97,10 @@ Section TCPPacketDecoder.
     CorrectAlignedEncoderFor TCP_Packet_Format.
   Proof.
     start_synthesizing_encoder.
-    eapply @CorrectAlignedEncoderForPseudoChecksumThenC.
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
-    (decompose_aligned_encoder; eauto).
+    eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
+      repeat align_encoder_step.
     repeat align_encoder_step.
-    repeat align_encoder_step.
+    eapply CorrectAlignedEncoderForFormatByteBuffer.
     repeat align_encoder_step.
     repeat align_encoder_step.
     repeat align_encoder_step.

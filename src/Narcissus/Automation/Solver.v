@@ -515,13 +515,18 @@ Ltac Vector_of_evar n T k :=
              [ build_fully_determined_type idtac
              | decide_data_invariant ] ].
 
+    (* Redefine this tactic to implement new decoder rules*)
+Ltac new_decoder_rules := fail.
+
 Ltac apply_rules :=
   (* Processes the goal by either: *)
   (* Unfolding an identifier *)
   match goal with
   | |- CorrectDecoder _ _ _ ?H _ _ =>
     progress unfold H
+  (* Finishing a derivation *)
   | |- context [CorrectDecoder _ _ _ empty_Format _ _] => FinishDecoder
+  (* Or applying one of our other decoder rules *)
   | H : cache_inv_Property ?P ?P_inv
     |- CorrectDecoder ?mnd _ _ (_ ◦ _ ++ _) _ _ =>
     first [
@@ -549,6 +554,10 @@ Ltac apply_rules :=
     | intros
     | solve [intros; intuition (eauto with bin_split_hints) ]
     | solve [intros; intuition (eauto with bin_split_hints) ] ]
+
+  (* Here is the hook for new decoder rules *)
+  | |- _ => new_decoder_rules
+
   | |- context [CorrectDecoder ?mnd _ _ (format_Vector _) _ _] =>
     intros; eapply (@Vector_decode_correct _ _ _ mnd)
   | H : cache_inv_Property _ _
@@ -569,9 +578,9 @@ Ltac apply_rules :=
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]
 
-| H : cache_inv_Property _ _
-  |- context [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
-  eapply (fun NoDup => @Enum_decode_correct _ _ _ _ _ _ _ tb NoDup _ H);
+  | H : cache_inv_Property _ _
+    |- context [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
+    eapply (fun NoDup => @Enum_decode_correct _ _ _ _ _ _ _ tb NoDup _ H);
     solve_side_condition
 
   | |- context[CorrectDecoder _ _ _ StringOpt.format_string _ _ ] =>

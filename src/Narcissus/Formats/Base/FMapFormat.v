@@ -169,5 +169,34 @@ Section ComposeSpecializations.
 
 End ComposeSpecializations.
 
+Lemma Projection_format_compose
+      {S S' S'' T}
+      {monoid : Monoid T}
+      {cache : Cache}
+  : forall (f : S -> S')
+           (f' : S' -> S'')
+           (formatS'' : FormatM S'' T)
+           (formatS : FormatM S T),
+    EquivFormat (Projection_Format (Projection_Format formatS'' f') f)
+                (Projection_Format formatS'' (f' ∘ f)).
+Proof.
+  unfold EquivFormat, refineEquiv; intros.
+  unfold Projection_Format, Compose_Format; split;
+    intros ? ?.
+  - apply unfold_computes.
+    apply (proj1 (unfold_computes _ _)) in H; simpl in *.
+    destruct_ex; eexists; intuition eauto.
+    apply unfold_computes.
+    eexists; intuition eauto.
+  -  apply (proj2 (unfold_computes _ _)); simpl in *.
+     apply (proj1 (unfold_computes _ _)) in H; simpl in *.
+     destruct_ex; intuition.
+     apply (proj1 (unfold_computes _ _)) in H0; simpl in *.
+     destruct_ex; intuition eauto.
+     eexists.
+     split; eauto.
+     unfold Basics.compose; congruence.
+Qed.
+
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
 Notation "P ∩ format" := (Restrict_Format P format) (at level 55) : format_scope.
