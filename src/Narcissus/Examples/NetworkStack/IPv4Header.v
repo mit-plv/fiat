@@ -121,10 +121,14 @@ Hint Resolve IPv4_Packet_Header_Len_bound : data_inv_hints.
 
 Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
   : nat :=
-  match decode_word' 8 ipv4_b with
-       | Some n => wordToNat (split1 4 4 (fst n))
-       | None => 0
-       end * 32.
+  match decode_unused_word' 4 ipv4_b with
+  | Some (_, b') =>
+    match decode_word' 4 b' with
+    | Some (w, _) => wordToNat w
+    | None => 0
+    end
+  | None => 0
+  end * 32.
 
 Lemma IPv4_Packet_Header_Len_OK
   : forall ip4 ctx ctx' ctx'' c b b'' ext,
@@ -152,40 +156,13 @@ Proof.
     rewrite <- !H''.
   unfold IPv4_Packet_encoded_measure.
   unfold sequence_Format at 1 in H.
+  eapply computes_to_compose_proj_decode_unused_word in H;
+    let H' := fresh in
+    destruct H as [? [? [? H'] ] ]; rewrite H'.
   unfold sequence_Format at 1 in H.
-  unfold compose, Bind2 in H.
-  computes_to_inv; subst.
-  destruct v; destruct v1.
-  eapply EquivFormat_Projection_Format in H.
-  unfold format_word in H; computes_to_inv; subst.
-  eapply EquivFormat_Projection_Format in H'.
-  unfold format_word in H'; computes_to_inv; subst; simpl in *.
-  injections.
-  replace (ByteString_enqueue_ByteString
-         (ByteString_enqueue_ByteString
-            (ByteString_enqueue false
-                                (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
-            (ByteString_enqueue_ByteString b1 (fst v2)))
-         (ByteString_enqueue_ByteString (format_checksum ByteString ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c)
-                                        (ByteString_enqueue_ByteString b'' ext)))
-    with
-      (ByteString_enqueue_ByteString
-         (ByteString_enqueue_ByteString
-         (ByteString_enqueue false
-                             (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
-         b1)
-         (ByteString_enqueue_ByteString (fst v2)
-                                        (ByteString_enqueue_ByteString (format_checksum ByteString ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c)
-                                                                       (ByteString_enqueue_ByteString b'' ext)))).
-  replace ((ByteString_enqueue_ByteString
-            (ByteString_enqueue false
-                                (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
-            b1))
-    with (encode_word' 8 (Word.combine (natToWord 4 (IPv4_Packet_Header_Len ip4)) (WO~0~1~0~0)) mempty).
-  pose proof (@decode_encode_word' ByteString _ _) as H''''; simpl in H''''.
-  rewrite H''''.
-  simpl.
-  rewrite split1_combine.
+  eapply computes_to_compose_proj_decode_nat in H;
+    let H' := fresh in
+    destruct H as [? [? [? H'] ] ]; rewrite H'.
   rewrite wordToNat_natToWord_idempotent;
     unfold IPv4_Packet_Header_Len; try omega.
   unfold IPv4_Packet_OK in H1.
@@ -193,16 +170,6 @@ Proof.
   rewrite Nnat.Nat2N.id.
   unfold Npow2; simpl.
   unfold Pos.to_nat; simpl; intuition.
-  rewrite (ByteString_into_queue_eq (ByteString_enqueue _ _)).
-  rewrite (ByteString_into_queue_eq b1).
-  rewrite ByteString_enqueue_ByteString_into_BitString.
-  unfold format_nat, format_word in H'; computes_to_inv; subst.
-  Opaque natToWord.
-  injections.
-  generalize (natToWord 4 (IPv4_Packet_Header_Len ip4)); intros; shatter_word w.
-  reflexivity.
-  rewrite !ByteString_enqueue_ByteString_assoc.
-  reflexivity.
 Qed.
 
 Definition aligned_IPv4_Packet_encoded_measure

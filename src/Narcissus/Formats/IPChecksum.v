@@ -571,6 +571,86 @@ Proof.
     intros; rewrite H''; reflexivity.
 Qed. *)
 
+Lemma computes_to_compose_proj_decode_word {S}
+  : forall s sz (f : S -> word sz) (ctx ctx'' : CacheFormat)
+           (rest : CacheFormat -> Comp (ByteString * CacheFormat))
+           (b : ByteString),
+    computes_to ((((WordOpt.format_word ◦ f) s) ThenC rest) ctx) (b, ctx'')
+    -> exists b' ctx',
+      computes_to (rest ctx') (b', ctx'')
+      /\ forall ext,
+        decode_word' sz (mappend b ext) = Some (f s, mappend b' ext).
+Proof.
+  unfold composeChecksum, compose, Bind2; intros; computes_to_inv; injections.
+  eapply EquivFormat_Projection_Format in H.
+  unfold format_word in *; computes_to_inv; subst.
+  destruct v0; simpl in *; do 2 eexists;
+    repeat split; eauto.
+  unfold decode_word'; intros.
+  rewrite <- !ByteString_enqueue_ByteString_assoc.
+  pose proof (monoid_dequeue_encode_word' (T := ByteString)) as H''; simpl in H''.
+  intros; rewrite H''; reflexivity.
+Qed.
+
+Lemma computes_to_compose_proj_decode_nat {S}
+  : forall s sz (f : S -> nat) (ctx ctx'' : CacheFormat)
+           (rest : CacheFormat -> Comp (ByteString * CacheFormat))
+           (b : ByteString),
+    computes_to ((((format_nat sz ◦ f) s) ThenC rest) ctx) (b, ctx'')
+    -> exists b' ctx',
+      computes_to (rest ctx') (b', ctx'')
+      /\ forall ext,
+        decode_word' sz (mappend b ext) = Some (natToWord _ (f s), mappend b' ext).
+Proof.
+  unfold composeChecksum, compose, Bind2; intros; computes_to_inv; injections.
+  eapply EquivFormat_Projection_Format in H.
+  unfold format_nat, format_word in *; computes_to_inv; subst.
+  destruct v0; simpl in *; do 2 eexists;
+    repeat split; eauto.
+  unfold decode_word'; intros.
+  rewrite <- !ByteString_enqueue_ByteString_assoc.
+  pose proof (monoid_dequeue_encode_word' (T := ByteString)) as H''; simpl in H''.
+  intros; rewrite H''; reflexivity.
+Qed.
+
+Lemma computes_to_proj_decode_nat {S}
+  : forall s sz (f : S -> nat) (ctx ctx'' : CacheFormat)
+           (b : ByteString),
+    computes_to ((((format_nat sz ◦ f) s)) ctx) (b, ctx'')
+    -> forall ext,
+        decode_word' sz (mappend b ext) = Some (natToWord _ (f s), ext).
+Proof.
+  unfold composeChecksum, compose, Bind2; intros; computes_to_inv; injections.
+  eapply EquivFormat_Projection_Format in H.
+  unfold format_nat, format_word in *; computes_to_inv; subst.
+  simpl in *; repeat split; eauto.
+  injections.
+  unfold decode_word'; intros.
+  pose proof (monoid_dequeue_encode_word' (T := ByteString)) as H''; simpl in H''.
+  intros; rewrite H''; reflexivity.
+Qed.
+
+Lemma computes_to_compose_proj_decode_unused_word {S}
+  : forall s sz (f : S -> word sz) (ctx ctx'' : CacheFormat)
+           (rest : CacheFormat -> Comp (ByteString * CacheFormat))
+           (b : ByteString),
+    computes_to ((((WordOpt.format_word ◦ f) s) ThenC rest) ctx) (b, ctx'')
+    -> exists b' ctx',
+      computes_to (rest ctx') (b', ctx'')
+      /\ forall ext,
+        decode_unused_word' sz (mappend b ext) = Some ((), mappend b' ext).
+Proof.
+  unfold composeChecksum, compose, Bind2; intros; computes_to_inv; injections.
+  eapply EquivFormat_Projection_Format in H.
+  unfold format_word in *; computes_to_inv; subst.
+  destruct v0; simpl in *; do 2 eexists;
+    repeat split; eauto.
+  unfold decode_unused_word'; intros.
+  rewrite <- !ByteString_enqueue_ByteString_assoc.
+  pose proof (monoid_dequeue_encode_word' (T := ByteString)) as H''; simpl in H''.
+  intros; rewrite H''; reflexivity.
+Qed.
+
 Lemma computes_to_compose_decode_word
   : forall sz (w : word sz) (ctx ctx'' : CacheFormat)
            (rest : CacheFormat -> Comp (ByteString * CacheFormat))

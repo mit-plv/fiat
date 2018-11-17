@@ -100,42 +100,32 @@ Section UDP_Decoder.
       rewrite <- !H''.
     unfold UDP_Packet_format_measure.
     unfold sequence_Format at 1 in H.
-    unfold sequence_Format at 1 in H.
-    unfold compose, Bind2 in H.
-    computes_to_inv; subst.
-    destruct v; destruct v1; destruct v2.
-    eapply EquivFormat_Projection_Format in H.
-    unfold format_word in H; computes_to_inv; subst.
-    eapply EquivFormat_Projection_Format in H'.
-    unfold format_word in H'; computes_to_inv; subst; simpl in *.
-    injections.
-Admitted.
-
-
-  (*eapply computes_to_compose_decode_unused_word in H;
+    eapply computes_to_compose_proj_decode_unused_word in H;
       let H' := fresh in
       destruct H as [? [? [? H'] ] ]; rewrite H'.
-  unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
-  eapply computes_to_compose_decode_unused_word in H;
-    let H' := fresh in
-    destruct H as [? [? [? H'] ] ]; rewrite H'.
-  unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
-  eapply computes_to_compose_decode_word in H;
-    let H' := fresh in
-    destruct H as [? [? [? H'] ] ]; rewrite H'.
-  unfold fst.
-  rewrite wordToNat_natToWord_idempotent; try reflexivity.
-  rewrite !Plus.plus_assoc.
-  clear.
-  rewrite length_ByteString_id.
-  omega.
-  rewrite <- BinNat.N.compare_lt_iff.
-  rewrite Nnat.N2Nat.inj_compare.
-  rewrite Nnat.Nat2N.id.
-  rewrite <- Compare_dec.nat_compare_lt.
-  rewrite Npow2_nat.
-  omega.
-Qed. *)
+    unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
+    unfold sequence_Format at 1 in H.
+    eapply computes_to_compose_proj_decode_unused_word in H;
+      let H' := fresh in
+      destruct H as [? [? [? H'] ] ]; rewrite H'.
+    unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
+    eapply computes_to_proj_decode_nat in H;
+      rewrite H.
+    unfold fst.
+    rewrite wordToNat_natToWord_idempotent; try reflexivity.
+    rewrite !Plus.plus_assoc.
+    clear; unfold Basics.compose; simpl.
+    destruct (Payload a); simpl; omega.
+    rewrite <- BinNat.N.compare_lt_iff.
+    rewrite Nnat.N2Nat.inj_compare.
+    rewrite Nnat.Nat2N.id.
+    rewrite <- Compare_dec.nat_compare_lt.
+    rewrite Npow2_nat.
+    unfold Basics.compose.
+    unfold UDP_Packet_OK in H1.
+    revert H1; destruct (Payload a); simpl projT1.
+    intros; omega.
+  Qed.
 
   Lemma UDP_Packet_Header_Len_bound
     : forall data : UDP_Packet,
