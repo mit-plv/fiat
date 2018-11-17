@@ -122,7 +122,7 @@ Hint Resolve IPv4_Packet_Header_Len_bound : data_inv_hints.
 Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
   : nat :=
   match decode_word' 8 ipv4_b with
-       | Some n => wordToNat (split2 4 4 (fst n))
+       | Some n => wordToNat (split1 4 4 (fst n))
        | None => 0
        end * 32.
 
@@ -161,16 +161,31 @@ Proof.
   eapply EquivFormat_Projection_Format in H'.
   unfold format_word in H'; computes_to_inv; subst; simpl in *.
   injections.
-  simpl.
+  replace (ByteString_enqueue_ByteString
+         (ByteString_enqueue_ByteString
+            (ByteString_enqueue false
+                                (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
+            (ByteString_enqueue_ByteString b1 (fst v2)))
+         (ByteString_enqueue_ByteString (format_checksum ByteString ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c)
+                                        (ByteString_enqueue_ByteString b'' ext)))
+    with
+      (ByteString_enqueue_ByteString
+         (ByteString_enqueue_ByteString
+         (ByteString_enqueue false
+                             (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
+         b1)
+         (ByteString_enqueue_ByteString (fst v2)
+                                        (ByteString_enqueue_ByteString (format_checksum ByteString ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c)
+                                                                       (ByteString_enqueue_ByteString b'' ext)))).
   replace ((ByteString_enqueue_ByteString
             (ByteString_enqueue false
-               (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
-            (ByteString_enqueue_ByteString b1 (fst v2))))
-    with (encode_word' 8 (Word.combine (natToWord 4 4) (natToWord 4 (IPv4_Packet_Header_Len ip4))) mempty).
+                                (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
+            b1))
+    with (encode_word' 8 (Word.combine (natToWord 4 (IPv4_Packet_Header_Len ip4)) (WO~0~1~0~0)) mempty).
   pose proof (@decode_encode_word' ByteString _ _) as H''''; simpl in H''''.
   rewrite H''''.
   simpl.
-  rewrite split2_combine.
+  rewrite split1_combine.
   rewrite wordToNat_natToWord_idempotent;
     unfold IPv4_Packet_Header_Len; try omega.
   unfold IPv4_Packet_OK in H1.
@@ -178,16 +193,25 @@ Proof.
   rewrite Nnat.Nat2N.id.
   unfold Npow2; simpl.
   unfold Pos.to_nat; simpl; intuition.
-  simpl.
-Admitted.
+  rewrite (ByteString_into_queue_eq (ByteString_enqueue _ _)).
+  rewrite (ByteString_into_queue_eq b1).
+  rewrite ByteString_enqueue_ByteString_into_BitString.
+  unfold format_nat, format_word in H'; computes_to_inv; subst.
+  Opaque natToWord.
+  injections.
+  generalize (natToWord 4 (IPv4_Packet_Header_Len ip4)); intros; shatter_word w.
+  reflexivity.
+  rewrite !ByteString_enqueue_ByteString_assoc.
+  reflexivity.
+Qed.
 
 Definition aligned_IPv4_Packet_encoded_measure
            {sz} (ipv4_b : ByteBuffer.t sz)
   : nat :=
   match nth_opt ipv4_b 0 with
-  | Some n => wordToNat (split2 4 4 n)
+  | Some n => wordToNat (split1 4 4 n)
   | None => 0
-  end * 32.
+  end * 4.
 
 Fixpoint aligned_IPv4_Packet_Checksum {sz}
          (v : t Core.char sz) (idx : nat)
@@ -216,13 +240,13 @@ Proof.
   - rewrite aligned_decode_char_eq.
     unfold aligned_IPv4_Packet_Checksum, aligned_IPv4_Packet_encoded_measure.
     simpl.
-    replace (wordToNat (split2 4 4 h) * 32) with ((wordToNat (split2 4 4 h) * 4) * 8) by omega.
     rewrite <- InternetChecksum_To_ByteBuffer_Checksum.
     unfold onesComplement.
+    replace (wordToNat (split1 4 4 h) * 4 * 8) with (wordToNat (split1 4 4 h) * 32) by omega.
     find_if_inside.
     rewrite e.
     reflexivity.
-    destruct (weqb (InternetChecksum.checksum (ByteString2ListOfChar (wordToNat (split2 4 4 h) * 4 * 8) (build_aligned_ByteString (h :: v))))
+    destruct (weqb (InternetChecksum.checksum (ByteString2ListOfChar (wordToNat (split1 4 4 h) * 32) (build_aligned_ByteString (h :: v))))
     WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1) eqn: ? ; eauto.
     apply weqb_sound in Heqb; congruence.
 Qed.
@@ -241,6 +265,20 @@ Arguments andb : simpl never.
 Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_1.
 Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_2.
 
+Ltac new_decoder_rules ::=
+  match goal with
+  | H : cache_inv_Property ?mnd _
+    |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
+    eapply compose_IPChecksum_format_correct with (format1 := fmt1);
+      [ exact H
+      | repeat calculate_length_ByteString
+      | repeat calculate_length_ByteString
+      | solve_mod_8
+      | solve_mod_8
+      | eapply IPv4_Packet_Header_Len_OK; eauto
+      | intros; NormalizeFormats.normalize_format]
+    end.
+
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
@@ -248,29 +286,12 @@ Proof.
   (* We have to use an extra lemma at the start, because of the 'exotic'
      IP Checksum. *)
   start_synthesizing_decoder.
-  Opaque CorrectDecoder.
-  match goal with
-  | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
-    eapply compose_IPChecksum_format_correct with (format1 := fmt1)
-  end.
-  apply H.
-  repeat calculate_length_ByteString.
-  repeat calculate_length_ByteString.
-  solve_mod_8.
-  solve_mod_8.
-  pose proof (mult_32_mod_8 0 (| Options a|));
-    rewrite <- plus_n_O in H0; eauto.
-  apply IPv4_Packet_Header_Len_OK.
-  intros.
-  NormalizeFormats.normalize_format.
   repeat apply_rules.
   synthesize_cache_invariant.
   cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
   let H := fresh in pose proof @AlignedDecode_if_Sumb_dep as H;
-                      eapply H; clear H.
+                      eapply H; clear H; eauto.
   eauto using aligned_IPv4_Packet_encoded_measure_OK_1.
-  eauto using aligned_IPv4_Packet_encoded_measure_OK_2.
   repeat align_decoders_step.
   repeat align_decoders_step.
 Defined.
@@ -320,6 +341,7 @@ Definition bad_pkt :=
 
 Eval vm_compute in (IPv4_decoder_impl bin_pkt).
 
+Transparent natToWord.
 (* This should succeed, *)
 Eval compute in
     Ifopt (IPv4_encoder_impl (initialize_Aligned_ByteString 100) pkt)

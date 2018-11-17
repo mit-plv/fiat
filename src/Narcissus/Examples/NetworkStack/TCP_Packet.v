@@ -159,41 +159,23 @@ Proof.
   omega.
 Qed.
 
-Definition aligned_TCP_Packet_checksum
-           {sz}
-           (v : t Core.char sz)
-           (idx : nat)
-  : bool :=
-  weqb (InternetChecksum.ByteBuffer_checksum_bound (96 + TCP_Length (build_aligned_ByteString v))
-                                                      ([wzero 8] ++ [natToWord 8 6] ++
-                                                                 v ++ srcAddr ++ destAddr ++ (splitLength tcpLength)))%vector
-                                                      (wones 16).
+Definition aligned_TCP_Packet_checksum {sz} :=
+  @aligned_Pseudo_checksum srcAddr destAddr tcpLength (natToWord 8 6) sz.
 
-Lemma aligned_TCP_Packet_checksum_OK_1 {sz}
-  : forall (v : t Core.char sz),
-    weqb
-    (InternetChecksum.add_bytes_into_checksum (wzero 8) (natToWord 8 6)
-       (onesComplement
-          (ByteString2ListOfChar (96 + TCP_Length (build_aligned_ByteString v)) (build_aligned_ByteString v) ++
-                                 to_list srcAddr ++ to_list destAddr ++ to_list (splitLength tcpLength)))) WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1
-    = aligned_TCP_Packet_checksum v 0.
-Proof.
-  unfold aligned_TCP_Packet_checksum; intros; f_equal.
-  unfold TCP_Length.
-  replace (96 + wordToNat tcpLength * 8) with ((12 + wordToNat tcpLength) * 8) by omega.
-  rewrite <- InternetChecksum_To_ByteBuffer_Checksum.
-  unfold onesComplement.
-Admitted.
-
-Lemma aligned_TCP_Packet_checksum_OK_2 {sz}
-  : forall (v : ByteBuffer.t (S sz)) (idx : nat),
-    aligned_TCP_Packet_checksum v (S idx) =
-    aligned_TCP_Packet_checksum (Vector.tl v) idx.
-Proof.
-Admitted.
-
-Hint Resolve aligned_TCP_Packet_checksum_OK_1.
-Hint Resolve aligned_TCP_Packet_checksum_OK_2.
+Ltac new_decoder_rules ::=
+  match goal with
+  | |- _ => intros; eapply unused_word_decode_correct; eauto
+  | H : cache_inv_Property ?mnd _
+    |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
+      eapply compose_PseudoChecksum_format_correct;
+    [ repeat calculate_length_ByteString
+      | repeat calculate_length_ByteString
+      | exact H
+      | solve_mod_8
+      | solve_mod_8
+      | apply TCP_Packet_Header_Len_OK
+      | intros; NormalizeFormats.normalize_format ]
+  end.
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition TCP_Packet_Header_decoder
@@ -201,14 +183,6 @@ Definition TCP_Packet_Header_decoder
 Proof.
   start_synthesizing_decoder.
   NormalizeFormats.normalize_format.
-  eapply compose_PseudoChecksum_format_correct.
-  repeat calculate_length_ByteString.
-  repeat calculate_length_ByteString.
-  exact H.
-  solve_mod_8.
-  solve_mod_8.
-  apply TCP_Packet_Header_Len_OK.
-  intros; NormalizeFormats.normalize_format.
   repeat apply_rules.
   eapply (format_sequence_correct H4).
   apply Nat_decode_correct.
@@ -217,27 +191,20 @@ Proof.
   eapply TCP_Packet_Len_OK; intuition eauto.
   intros; repeat apply_rules.
   eapply (format_sequence_correct H16).
-  Opaque CorrectDecoder.
-  intros; eapply Option.option_format_correct'.
-  exact H16.
+  intros; repeat apply_rules.
   intros; apply_rules.
-  intros; eapply unused_word_decode_correct; eauto.
-  simpl.
   intros; intuition.
-  unfold Basics.compose in H25.
+  unfold Basics.compose in *.
   instantiate (1 := s'7).
   destruct s; simpl in *.
   destruct UrgentPointer0; simpl in *; subst; simpl; eauto.
   congruence.
   destruct s; destruct UrgentPointer0; eauto.
-  intros.
-  eapply (format_sequence_correct H16).
+  intros; eapply (format_sequence_correct H16).
   intros; repeat apply_rules.
-  intros.
-  instantiate (1 := s'3 - 5); simpl; intuition.
+  intros; instantiate (1 := s'3 - 5); simpl; intuition.
   unfold Basics.compose in H32; omega.
-  intros; eapply (format_sequence_correct).
-  eauto.
+  intros; eapply (format_sequence_correct); eauto.
   intros; eapply ByteBuffer_decode_correct
             with (n := wordToNat tcpLength - (20 + 4 * (s'3 - 5))).
   intros; repeat apply_rules.
@@ -249,7 +216,14 @@ Proof.
   cbv beta; unfold decode_nat; optimize_decoder_impl.
   unfold Basics.compose; simpl.
   cbv beta; align_decoders.
-  eapply @AlignedDecodeByteBufferM; intros; eauto.
+  Opaque DecodeMEquivAlignedDecodeM.
+  eapply @AlignedDecode_ifb_dep.
+  intros; eapply (aligned_Pseudo_checksum_OK_1 _ _ _ _
+                                               (fun sz v => TCP_Length (build_aligned_ByteString v))); eauto.
+  intros; eapply aligned_Pseudo_checksum_OK_2; eauto.
+  cbv beta; align_decoders.
+  intros; eapply @AlignedDecodeByteBufferM; intros; eauto.
+  align_decoders.
   align_decoders.
   Grab Existential Variables.
   eauto.

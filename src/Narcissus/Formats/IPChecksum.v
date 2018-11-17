@@ -839,7 +839,7 @@ Lemma InternetChecksum_To_ByteBuffer_Checksum {sz}
   : forall m (v : Vector.t _ sz),
     InternetChecksum.checksum
       (ByteString2ListOfChar (m * 8) (build_aligned_ByteString v))
-    = InternetChecksum.ByteBuffer_checksum_bound (m * 8) v.
+    = InternetChecksum.ByteBuffer_checksum_bound m v.
 Proof.
   induction m.
   - intros; reflexivity.
@@ -1538,6 +1538,14 @@ Proof.
   rewrite Nat.mod_mul; omega.
 Qed.
 
+Lemma mult_32_mod_8'
+  : forall n,  (n * 32) mod 8 = 0.
+Proof.
+  intros.
+  pose proof (mult_32_mod_8 0 n);
+    rewrite <- plus_n_O in H; eauto.
+Qed.
+
 Ltac solve_mod_8 :=
   intros; cbv beta; simpl mempty;
   repeat first [
@@ -1549,6 +1557,7 @@ Ltac solve_mod_8 :=
          | rewrite mult_16_mod_8
          | rewrite mult_8_mod_8
          | rewrite mult_8_mod_8'
+         | rewrite mult_32_mod_8'
          | rewrite <- plus_n_O
          | reflexivity ].
 

@@ -126,7 +126,7 @@ Definition Pseudo_Checksum_Valid (* FIXME payload should be after src, dest *)
            (n : nat)
            (b : ByteString)
   := onesComplement (wzero 8 :: protoCode ::
-                           (ByteString2ListOfChar (96 + n) b)
+                           (ByteString2ListOfChar n b)
                            ++ to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength))%list
      = wones 16.
 
@@ -279,6 +279,20 @@ Proof.
   admit.
 Defined.
 
+Lemma ByteBuffer_to_list_append {sz sz'}
+  : forall (v : ByteBuffer.t sz)
+           (v' : ByteBuffer.t sz'),
+    ByteBuffer.to_list (v ++ v')%vector
+    = ((ByteBuffer.to_list v) ++ (ByteBuffer.to_list v'))%list.
+Proof.
+  induction v.
+  - reflexivity.
+  - simpl; intros.
+    unfold ByteBuffer.to_list at 1; unfold to_list.
+    f_equal.
+    apply IHv.
+Qed.
+
 Import VectorNotations.
 
 Lemma compose_PseudoChecksum_format_correct {A}
@@ -315,8 +329,8 @@ Lemma compose_PseudoChecksum_format_correct {A}
                        (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B)
                        (fun (v : ByteString) (env : CacheDecode) =>
                           if weqb (onesComplement (wzero 8 :: protoCode ::
-                           (ByteString2ListOfChar (96 + (formated_measure v)) v)
-                           ++ to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength))%list) (wones 16)
+                                                         to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength)
+                                                         ++(ByteString2ListOfChar ((formated_measure v)) v))%list) (wones 16)
                           then
                             decodeA v env
                           else None) P.
@@ -360,6 +374,57 @@ Proof.
       reflexivity.
 Qed. *)
 Admitted.
+
+Fixpoint aligned_Pseudo_checksum
+           (srcAddr : ByteBuffer.t 4)
+           (destAddr : ByteBuffer.t 4)
+           (pktlength : word 16)
+           id
+         {sz}
+         (v : t Core.char sz) (idx : nat)
+  := match idx with
+     | 0 =>
+       weqb (InternetChecksum.ByteBuffer_checksum_bound (12 + (wordToNat pktlength))
+                                                        ([wzero 8; id] ++ srcAddr ++ destAddr ++
+                                                                       (splitLength pktlength) ++ v ))%vector
+            (wones 16)
+     | S idx' =>
+       match v with
+       | Vector.cons _ _ v' => aligned_Pseudo_checksum srcAddr destAddr pktlength id v' idx'
+       | _ => false
+       end
+     end.
+
+Lemma aligned_Pseudo_checksum_OK_1
+      (srcAddr : ByteBuffer.t 4)
+      (destAddr : ByteBuffer.t 4)
+      (pktlength : word 16)
+      id
+      measure
+      {sz}
+    : forall (v : t Core.char sz),
+      weqb
+        (InternetChecksum.add_bytes_into_checksum (wzero 8) id
+       (onesComplement(to_list srcAddr ++ to_list destAddr ++ to_list (splitLength pktlength)
+                               ++ (ByteString2ListOfChar (measure sz v) (build_aligned_ByteString v)))))
+    WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1
+      = aligned_Pseudo_checksum srcAddr destAddr pktlength id v 0.
+  Proof.
+  Admitted.
+
+  Lemma aligned_Pseudo_checksum_OK_2
+      (srcAddr : ByteBuffer.t 4)
+      (destAddr : ByteBuffer.t 4)
+      (pktlength : word 16)
+      id
+      {sz}
+    : forall (v : ByteBuffer.t (S sz)) (idx : nat),
+      aligned_Pseudo_checksum srcAddr destAddr pktlength id v (S idx) =
+      aligned_Pseudo_checksum srcAddr destAddr pktlength id (Vector.tl v) idx.
+  Proof.
+    intros v; pattern sz, v.
+    apply Vector.caseS; reflexivity.
+  Qed.
 
 Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
       (srcAddr : Vector.t (word 8) 4)
