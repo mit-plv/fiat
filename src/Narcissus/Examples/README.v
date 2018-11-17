@@ -10,11 +10,11 @@ We start with an extremely simple record, and a correspondingly simple format:
 
 Module Sensor0.
   Record sensor_msg :=
-    { stationID: word 8; measurement: word 16 }.
+    { stationID: word 8; data: word 16 }.
 
   Let format :=
        format_word ◦ stationID
-    ++ format_word ◦ measurement.
+    ++ format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
     True.
@@ -25,7 +25,7 @@ Module Sensor0.
   Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
      (stationID ▹ SetCurrentByte ≫
-      measurement ▹ (low_bits 8 ▹ SetCurrentByte ≫
+      data ▹ (low_bits 8 ▹ SetCurrentByte ≫
                      shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
   Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
@@ -33,21 +33,21 @@ Module Sensor0.
       b0 <- GetCurrentByte;
       b' <- GetCurrentByte;
       w <- return b0⋅b';
-      return {| stationID := b; measurement := w |}) v 0 tt *)
+      return {| stationID := b; data := w |}) v 0 tt *)
 End Sensor0.
 
-(** All user input is contained in box 1. `sensor_msg` is a record type with two fields; the Coq `Record` command additionally defines two functions `stationID` and `measurement` (of type `sensor_msg → …`) to access these fields. `format` specifies how to encode instances of this record: `format_word` is a Narcissus primitive that writes out its input bit by bit, and `++` is a sequencing operator (write this, then that).  `invariant` specifies additional constraints on well-formed packets, but there are none here.  Box 2 calls the `derive_encoder_decoder_pair` tactic provided by Narcissus, which generates an encoder and a decoder along with proofs of correctness (it takes about two to five seconds to return); the rest is routine boilerplate.  Boxes 2 and 3 show generated code. In box 2, the generated encoder takes a packet and a byte buffer and returns the encoded packet or `None` if it did not fit in the supplied buffer. In box 3, the decoder takes a buffer, and returns a packet or None if the buffer did not contain a valid encoding. Both generated programs live in stateful error monads, offering primitives to read (GetCurrentByte), skip (SkipCurrentByte), and write (SetCurrentByte) a single byte.  The encoder uses `low_bits` and `shift_right` to extract the low and high bits of the `measurement` field, and the decoder reassembles these two bytes using a shift and an addition, using the `⋅` operator: this byte-alignment transformation is part of the `derive_encoder_decoder_pair` logic. **)
+(** All user input is contained in box 1. `sensor_msg` is a record type with two fields; the Coq `Record` command additionally defines two functions `stationID` and `data` (of type `sensor_msg → …`) to access these fields. `format` specifies how to encode instances of this record: `format_word` is a Narcissus primitive that writes out its input bit by bit, and `++` is a sequencing operator (write this, then that).  `invariant` specifies additional constraints on well-formed packets, but there are none here.  Box 2 calls the `derive_encoder_decoder_pair` tactic provided by Narcissus, which generates an encoder and a decoder along with proofs of correctness (it takes about two to five seconds to return); the rest is routine boilerplate.  Boxes 2 and 3 show generated code. In box 2, the generated encoder takes a packet and a byte buffer and returns the encoded packet or `None` if it did not fit in the supplied buffer. In box 3, the decoder takes a buffer, and returns a packet or None if the buffer did not contain a valid encoding. Both generated programs live in stateful error monads, offering primitives to read (GetCurrentByte), skip (SkipCurrentByte), and write (SetCurrentByte) a single byte.  The encoder uses `low_bits` and `shift_right` to extract the low and high bits of the `data` field, and the decoder reassembles these two bytes using a shift and an addition, using the `⋅` operator: this byte-alignment transformation is part of the `derive_encoder_decoder_pair` logic. **)
 
 (** We now introduce a twist: to preserve 16-bit alignment, we introduce 8 bits of padding after encoding `stationID`; these bits will be reserved for future use. **)
 
 Module Sensor1.
   Record sensor_msg :=
-    { stationID: word 8; measurement: word 16 }.
+    { stationID: word 8; data: word 16 }.
 
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_word ◦ measurement.
+    ++ format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
     True.
@@ -59,7 +59,7 @@ Module Sensor1.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
     (stationID ▹ SetCurrentByte ≫
      const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
-     measurement ▹ (low_bits 8 ▹ SetCurrentByte ≫
+     data ▹ (low_bits 8 ▹ SetCurrentByte ≫
                     shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
 
   Let decode := decoder_impl enc_dec.
@@ -69,7 +69,7 @@ Module Sensor1.
       b1 <- GetCurrentByte;
       b' <- GetCurrentByte;
       w <- return b1⋅b';
-      return {| stationID := b; measurement := w |}) v 0 tt *)
+      return {| stationID := b; data := w |}) v 0 tt *)
 End Sensor1.
 
 (** Notice the asymmetry that these 8 under-specified bits introduce: although the encoder always writes `0x00`, the decoder accepts any value.  This is crucial because the `format_unused_word` specification allows conforming encoders to output any 8-bits value; as a result, the decoder must accept all 8-bit values.  In that sense, the encoder and decoder that Narcissus generates are not inverse of each other: the encoder is one among a family of functions permitted by the formatting specification, and the decoder is the inverse of the *entire family*, accepting any output produced by a conforming encoder. **)
@@ -82,14 +82,14 @@ Module Sensor2.
       EnumType ["TEMPERATURE"; "HUMIDITY"].
 
   Record sensor_msg :=
-    { stationID: word 8; measurement: (kind * word 14) }.
+    { stationID: word 8; data: (kind * word 14) }.
 
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_enum [WO~0~0; WO~0~1] ◦ (Basics.compose fst measurement)
-    ++ format_word ◦ (Basics.compose snd measurement).
+    ++ format_enum [WO~0~0; WO~0~1] ◦ (Basics.compose fst data)
+    ++ format_word ◦ (Basics.compose snd data).
 
   Let invariant (msg: sensor_msg) :=
     True.
@@ -107,13 +107,13 @@ End Sensor2.
 
 Module Sensor3.
   Record sensor_msg :=
-    { stationID: word 8; measurements: list (word 16) }.
+    { stationID: word 8; data: list (word 16) }.
 
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_list format_word ◦ measurements.
+    ++ format_list format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
     True.
@@ -127,24 +127,24 @@ End Sensor3.
 <<
 forall msg : sensor_msg,
   stationID msg = sid ->
-  length msg.(measurements) = ?Goal
+  length msg.(data) = ?Goal
 >>
 
-It shows one of the side-conditions build by Narcissus as it generates the decoder.  On the left of the arrow is all that is known about an abstract incoming packet after decoding its stationID to the abstract value `sID`; on the right what needs to be known about the packet to be able to decode the list of measurements; namely, that this list has a known length, equal to some undetermined value `?Goal` (an “evar” in Coq parlance). In brief: we forgot to encode the length of the `measurements` list, and this prevents Narcissus from generating a decoder.
+It shows one of the side-conditions build by Narcissus as it generates the decoder.  On the left of the arrow is all that is known about an abstract incoming packet after decoding its stationID to the abstract value `sID`; on the right what needs to be known about the packet to be able to decode the list of measurements; namely, that this list has a known length, equal to some undetermined value `?Goal` (an “evar” in Coq parlance). In brief: we forgot to encode the length of the `data` list, and this prevents Narcissus from generating a decoder.
 
 Our attempted fix, unfortunately, only gets us half of the way there (`format_nat 16 ◦ length` specifies that the length of the list should be truncated to 16 bits and written out):
 **)
 
 Module Sensor4.
   Record sensor_msg :=
-    { stationID: word 8; measurements: list (word 16) }.
+    { stationID: word 8; data: list (word 16) }.
 
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 16 ◦ length ◦ measurements
-    ++ format_list format_word ◦ measurements.
+    ++ format_nat 8 ◦ length ◦ data
+    ++ format_list format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
     True.
@@ -158,7 +158,7 @@ End Sensor4.
 <<
 forall data : sensor_msg,
   invariant data /\ stationID data = proj ->
-  length data.(measurements) < pow2 16
+  length data.(data) < pow2 16
 >>
 
 The problem is that, since we encode the list's length on 16 bits, the round-trip property that Narcissus attempts to prove only holds if the list has less than \(2^{16}\) elements: larger lists have their length truncated, and it becomes impossible for the decoder to know for cetain how many elements it should decode.  What we need is an input restriction: a predicate defining which messages we may encode; to this end, we update our example as follows:
@@ -166,18 +166,18 @@ The problem is that, since we encode the list's length on 16 bits, the round-tri
 
 Module Sensor5.
   Record sensor_msg :=
-    { stationID: word 8; measurements: list (word 16) }.
+    { stationID: word 8; data: list (word 16) }.
 
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 8 ◦ (Basics.compose length measurements)
-    ++ format_list format_word ◦ measurements.
+    ++ format_nat 8 ◦ (Basics.compose length data)
+    ++ format_list format_word ◦ data.
 
   Let invariant :=
     fun (msg: sensor_msg) =>
-      length (msg.(measurements)) < pow2 8.
+      length (msg.(data)) < pow2 8.
 
   Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair. Defined.
@@ -188,8 +188,8 @@ Module Sensor5.
       const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
       const WO~0~0~0~0~0~1~1~1 ▹ SetCurrentByte ≫
       const WO~1~1~1~0~0~0~1~0 ▹ SetCurrentByte ≫
-      measurements ▹ Datatypes.length ▹ natToWord 8 ▹ SetCurrentByte ≫
-      measurements ▹ AlignedEncodeList (fun n => low_bits 8 ▹ SetCurrentByte ≫
+      data ▹ Datatypes.length ▹ natToWord 8 ▹ SetCurrentByte ≫
+      data ▹ AlignedEncodeList (fun n => low_bits 8 ▹ SetCurrentByte ≫
                                                  shift_right 8 ▹ SetCurrentByte) sz) v 0 r tt *)
 
   Let decode := decoder_impl enc_dec.
@@ -209,7 +209,7 @@ Module Sensor5.
                       w' <- return WO;
                       return w1⋅w';
                 return w0⋅w') (wordToNat b2);
-        return {| stationID := b; measurements := l |}
+        return {| stationID := b; data := l |}
        else fail)) v 0 tt *)
 End Sensor5.
 
@@ -277,18 +277,18 @@ Module Sensor6.
   Qed.
 
   Record sensor_msg :=
-    { stationID: word 8; measurements: list reading }.
+    { stationID: word 8; data: list reading }.
 
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 8 ◦ (Basics.compose length measurements)
-    ++ format_list format_reading ◦ measurements.
+    ++ format_nat 8 ◦ (Basics.compose length data)
+    ++ format_list format_reading ◦ data.
 
   Let invariant :=
     fun (msg: sensor_msg) =>
-      length (msg.(measurements)) < pow2 8.
+      length (msg.(data)) < pow2 8.
 
   Ltac new_encoder_rules ::= apply enc_readingCorrect.
   Ltac new_decoder_rules ::= apply dec_readingCorrect.

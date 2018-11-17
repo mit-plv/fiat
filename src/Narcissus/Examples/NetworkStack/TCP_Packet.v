@@ -164,8 +164,10 @@ Definition aligned_TCP_Packet_checksum
            (v : t Core.char sz)
            (idx : nat)
   : bool :=
-  if weqb (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then true
-  else false.
+  weqb (InternetChecksum.ByteBuffer_checksum_bound (96 + TCP_Length (build_aligned_ByteString v))
+                                                      ([wzero 8] ++ [natToWord 8 6] ++
+                                                                 v ++ srcAddr ++ destAddr ++ (splitLength tcpLength)))%vector
+                                                      (wones 16).
 
 Lemma aligned_TCP_Packet_checksum_OK_1 {sz}
   : forall (v : t Core.char sz),
@@ -176,6 +178,11 @@ Lemma aligned_TCP_Packet_checksum_OK_1 {sz}
                                  to_list srcAddr ++ to_list destAddr ++ to_list (splitLength tcpLength)))) WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1
     = aligned_TCP_Packet_checksum v 0.
 Proof.
+  unfold aligned_TCP_Packet_checksum; intros; f_equal.
+  unfold TCP_Length.
+  replace (96 + wordToNat tcpLength * 8) with ((12 + wordToNat tcpLength) * 8) by omega.
+  rewrite <- InternetChecksum_To_ByteBuffer_Checksum.
+  unfold onesComplement.
 Admitted.
 
 Lemma aligned_TCP_Packet_checksum_OK_2 {sz}
@@ -272,9 +279,9 @@ Definition srcAddr := (Vector.map (natToWord 8) [192; 168; 1; 109]).
 Definition destAddr := (Vector.map (natToWord 8) [151; 101; 129; 164]).
 Definition Vector_length {A n} (v: Vector.t A n) := n.
 
-(*Definition out :=
+Definition out :=
 Eval compute in
-    match (@TCP_decoder_impl (wzero _ ) srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input)) _ tcp_decode_input) with
+    match (@TCP_decoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input)) _ tcp_decode_input) with
     | Some (p, _, _) =>
       (Some (Vector.fold_right (fun c s => String (Ascii.ascii_of_N (wordToN c)) s) (projT2 p.(Payload)) EmptyString),
        match (@TCP_encoder_impl srcAddr destAddr (natToWord _ (Vector_length tcp_decode_input))
@@ -283,4 +290,4 @@ Eval compute in
        | None => None
        end)
     | None => (None, None)
-    end. *)
+    end.

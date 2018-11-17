@@ -83,7 +83,7 @@ end.
 (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
-  Lemma UDP_Packet_Header_Len_OK
+Lemma UDP_Packet_Header_Len_OK
     : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
       (format_word ◦ SourcePort ++ format_word ◦ DestPort ++ format_nat 16 ◦ Init.Nat.add 8 ∘ (projT1 (P:=ByteBuffer.t) ∘ Payload)) a
                                                                                                                                     ctx ∋ (b, ctx') ->

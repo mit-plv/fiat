@@ -91,7 +91,6 @@ Proof.
   apply le_uniqueness_proof. *)
 Admitted.
 
-
 Fixpoint ByteString2ListOfChar (n : nat)
          (b : ByteString) : list char :=
   match n with
@@ -835,6 +834,18 @@ Proof.
       rewrite padding_eq_mod_8, H11.
       reflexivity.
 Qed.
+
+Lemma InternetChecksum_To_ByteBuffer_Checksum {sz}
+  : forall m (v : Vector.t _ sz),
+    InternetChecksum.checksum
+      (ByteString2ListOfChar (m * 8) (build_aligned_ByteString v))
+    = InternetChecksum.ByteBuffer_checksum_bound (m * 8) v.
+Proof.
+  induction m.
+  - intros; reflexivity.
+  - intros; rewrite <- InternetChecksum.ByteBuffer_checksum_bound_ok.
+    destruct v.
+Admitted.
 
 (*Lemma compose_IPChecksum_format_correct
   : forall (A : Type)

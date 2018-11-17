@@ -121,11 +121,10 @@ Hint Resolve IPv4_Packet_Header_Len_bound : data_inv_hints.
 
 Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
   : nat :=
-  match (`(u, b') <- decode_unused_word' 4 ipv4_b;
-           decode_word' 4 b') with
-  | Some n => 32 * wordToNat (fst n)
-  | None => 0
-  end.
+  match decode_word' 8 ipv4_b with
+       | Some n => wordToNat (split2 4 4 (fst n))
+       | None => 0
+       end * 32.
 
 Lemma IPv4_Packet_Header_Len_OK
   : forall ip4 ctx ctx' ctx'' c b b'' ext,
@@ -149,17 +148,57 @@ Lemma IPv4_Packet_Header_Len_OK
     = IPv4_Packet_encoded_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext).
 Proof.
   intros; simpl.
+  pose proof mappend_assoc as H''; simpl in H'';
+    rewrite <- !H''.
   unfold IPv4_Packet_encoded_measure.
-  rewrite <- !ByteString_enqueue_ByteString_assoc.
+  unfold sequence_Format at 1 in H.
+  unfold sequence_Format at 1 in H.
+  unfold compose, Bind2 in H.
+  computes_to_inv; subst.
+  destruct v; destruct v1.
+  eapply EquivFormat_Projection_Format in H.
+  unfold format_word in H; computes_to_inv; subst.
+  eapply EquivFormat_Projection_Format in H'.
+  unfold format_word in H'; computes_to_inv; subst; simpl in *.
+  injections.
+  simpl.
+  replace ((ByteString_enqueue_ByteString
+            (ByteString_enqueue false
+               (ByteString_enqueue false (ByteString_enqueue true (ByteString_enqueue false ByteString_id))))
+            (ByteString_enqueue_ByteString b1 (fst v2))))
+    with (encode_word' 8 (Word.combine (natToWord 4 4) (natToWord 4 (IPv4_Packet_Header_Len ip4))) mempty).
+  pose proof (@decode_encode_word' ByteString _ _) as H''''; simpl in H''''.
+  rewrite H''''.
+  simpl.
+  rewrite split2_combine.
+  rewrite wordToNat_natToWord_idempotent;
+    unfold IPv4_Packet_Header_Len; try omega.
+  unfold IPv4_Packet_OK in H1.
+  eapply Nomega.Nlt_in.
+  rewrite Nnat.Nat2N.id.
+  unfold Npow2; simpl.
+  unfold Pos.to_nat; simpl; intuition.
+  simpl.
 Admitted.
 
 Definition aligned_IPv4_Packet_encoded_measure
-           {sz}
-           (v : t Core.char sz)
-           (idx : nat)
-  : bool :=
-  if weq (InternetChecksum.ByteBuffer_checksum_bound 20 v) (wones 16) then true
-  else false.
+           {sz} (ipv4_b : ByteBuffer.t sz)
+  : nat :=
+  match nth_opt ipv4_b 0 with
+  | Some n => wordToNat (split2 4 4 n)
+  | None => 0
+  end * 32.
+
+Fixpoint aligned_IPv4_Packet_Checksum {sz}
+         (v : t Core.char sz) (idx : nat)
+  := match idx with
+     | 0 => weqb (InternetChecksum.ByteBuffer_checksum_bound (aligned_IPv4_Packet_encoded_measure v) v) (wones 16)
+     | S idx' =>
+       match v with
+       | Vector.cons _ _ v' => aligned_IPv4_Packet_Checksum v' idx'
+       | _ => false
+       end
+     end.
 
 Lemma aligned_IPv4_Packet_encoded_measure_OK_1 {sz}
   : forall (v : t Core.char sz),
@@ -167,16 +206,35 @@ Lemma aligned_IPv4_Packet_encoded_measure_OK_1 {sz}
         IPChecksum_Valid_dec (IPv4_Packet_encoded_measure (build_aligned_ByteString v)) (build_aligned_ByteString v)
       then true
       else false) =
-    aligned_IPv4_Packet_encoded_measure v 0.
+    aligned_IPv4_Packet_Checksum v 0.
 Proof.
-Admitted.
+  intros.
+  unfold IPChecksum_Valid_dec.
+  unfold IPv4_Packet_encoded_measure.
+  destruct v.
+  - reflexivity.
+  - rewrite aligned_decode_char_eq.
+    unfold aligned_IPv4_Packet_Checksum, aligned_IPv4_Packet_encoded_measure.
+    simpl.
+    replace (wordToNat (split2 4 4 h) * 32) with ((wordToNat (split2 4 4 h) * 4) * 8) by omega.
+    rewrite <- InternetChecksum_To_ByteBuffer_Checksum.
+    unfold onesComplement.
+    find_if_inside.
+    rewrite e.
+    reflexivity.
+    destruct (weqb (InternetChecksum.checksum (ByteString2ListOfChar (wordToNat (split2 4 4 h) * 4 * 8) (build_aligned_ByteString (h :: v))))
+    WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1) eqn: ? ; eauto.
+    apply weqb_sound in Heqb; congruence.
+Qed.
 
 Lemma aligned_IPv4_Packet_encoded_measure_OK_2 {sz}
   : forall (v : ByteBuffer.t (S sz)) (idx : nat),
-    aligned_IPv4_Packet_encoded_measure v (S idx) =
-    aligned_IPv4_Packet_encoded_measure (Vector.tl v) idx.
+    aligned_IPv4_Packet_Checksum v (S idx) =
+    aligned_IPv4_Packet_Checksum (Vector.tl v) idx.
 Proof.
-Admitted.
+  intros v; pattern sz, v.
+  apply Vector.caseS; reflexivity.
+Qed.
 
 Arguments andb : simpl never.
 
@@ -211,9 +269,8 @@ Proof.
   cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
   let H := fresh in pose proof @AlignedDecode_if_Sumb_dep as H;
                       eapply H; clear H.
-  intros; eauto.
-  eapply aligned_IPv4_Packet_encoded_measure_OK_1.
-  intros; eapply aligned_IPv4_Packet_encoded_measure_OK_2.
+  eauto using aligned_IPv4_Packet_encoded_measure_OK_1.
+  eauto using aligned_IPv4_Packet_encoded_measure_OK_2.
   repeat align_decoders_step.
   repeat align_decoders_step.
 Defined.
