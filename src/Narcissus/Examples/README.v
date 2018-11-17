@@ -98,7 +98,34 @@ Module Sensor2.
   Proof. derive_encoder_decoder_pair. Defined.
 
   Let encode := encoder_impl enc_dec.
+  (* (stationID ▹ SetCurrentByte ≫
+     const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
+     const WO~0~0~0~0~0~1~1~1 ▹ SetCurrentByte ≫
+     const WO~1~1~1~0~0~0~1~0 ▹ SetCurrentByte ≫
+     (fun (v4 : ByteBuffer.t sz) (idx4 : nat) (r4 : sensor_msg) =>
+      (low_bits 8 ▹ SetCurrentByte ≫
+       shift_right 8 ▹ SetCurrentByte) v4 idx4 (Word.combine ((snd ∘ data) r4) ((Vector.nth [WO~0~0; WO~0~1] ∘ (fst ∘ data)) r4)))) v
+  0 r tt *)
   Let decode := decoder_impl enc_dec.
+  (* fun (sz : nat) (v : ByteBuffer.t sz) =>
+     (b <- GetCurrentByte;
+     _ <- GetCurrentByte;
+     b1 <- GetCurrentByte;
+     b' <- GetCurrentByte;
+     w <- return b1⋅b';
+     (if weq w WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+     then
+        b2 <- GetCurrentByte;
+        b'0 <- GetCurrentByte;
+        w0 <- return b2⋅b'0;
+        Ifopt if weqb (split2 14 2 w0) WO~0~0
+        then Some Fin.F1
+        else
+        match (if weqb (split2 14 2 w0) WO~0~1 then Some Fin.F1 else None) with
+          | Some f => Some (Fin.FS f)
+          | None => None
+          end as a' Then return {| stationID := b; data := (a', split1 14 2 w0) |} Else fail
+  else fail)) v 0 tt *)
 End Sensor2.
 
 (** The use of `format_const` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
