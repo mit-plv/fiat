@@ -7,6 +7,10 @@ let empty () =
   { len = 0;
     arr = ArrayVector.of_array [| |] }
 
+let of_rev_array arr =
+  { len = Array.length arr;
+    arr = ArrayVector.of_array arr }
+
 let full v =
   v.len = ArrayVector.length v.arr
 
@@ -23,11 +27,18 @@ let cons ((hd, _, tl): ('a * 'b * 'a t)) : 'a t =
     { len = tl.len + 1;
       arr = ArrayVector.set_nth' tl.arr tl.len hd }
 
-let nth _n (v: 'a t) (idx: ArrayVector.idx_t) : 'a =
-  ArrayVector.nth _n v.arr (v.len - idx - 1)
+let nth' (v: 'a t) (idx: ArrayVector.idx_t) : 'a =
+  ArrayVector.nth' v.arr (v.len - idx - 1)
 
-let nth_opt _n (v: 'a t) (idx: ArrayVector.idx_t) : 'a option =
-  if idx < v.len then Some (nth _n v idx) else None
+let nth _ (v: 'a t) (idx: ArrayVector.idx_t) : 'a =
+  nth' v idx
+
+let nth_opt' (v: 'a t) (idx: ArrayVector.idx_t) : 'a option =
+  if idx < v.len then Some (nth' v idx) else None
+
+let nth_opt _ (v: 'a t) (idx: ArrayVector.idx_t) : 'a option =
+  nth_opt' v idx
+
 
 let index (_: int) (_: int) (x: 'a) (v: 'a t) : ArrayVector.idx_t option =
   match ArrayVector.index' x v.arr.ArrayVector.data 0 v.len with
