@@ -92,7 +92,8 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.BinLib.AlignedEncodeMonad.
 Extraction Inline fst snd Basics.compose.
-Extraction Inline AlignedEncodeMonad.Projection_AlignedEncodeM.
+Extraction Inline Projection_AlignedEncodeM.
+Extraction Inline GetCurrentByte SetCurrentByte.
 Extraction Inline BindAlignedDecodeM ReturnAlignedDecodeM ThrowAlignedDecodeM.
 Extraction Inline AppendAlignedEncodeM ReturnAlignedEncodeM ThrowAlignedEncodeM.
 Extraction Inline Common.If_Opt_Then_Else AlignedDecoders.LetIn_If_Opt_Then_Else.

@@ -54,15 +54,21 @@ let index (_: int) (_: int) (x: 'a) (arr: 'a storage_t) : idx_t option =
   throw_if_stale "index" arr;
   index' x arr.data 0 (Array.length arr.data)
 
-let nth _ (arr: 'a storage_t) (idx: idx_t) : 'a =
+let nth' (arr: 'a storage_t) (idx: idx_t) : 'a =
   throw_if_stale "nth" arr;
   Array.unsafe_get arr.data idx
 
-let nth_opt _ (arr: 'a storage_t) (idx: idx_t) : 'a option =
+let nth _ (arr: 'a storage_t) (idx: idx_t) : 'a =
+  nth' arr idx
+
+let nth_opt' (arr: 'a storage_t) (idx: idx_t) : 'a option =
   throw_if_stale "nth_opt" arr;
   if idx < Array.length arr.data then
     Some (Array.unsafe_get arr.data idx)
   else None
+
+let nth_opt _ (arr: 'a storage_t) (idx: idx_t) : 'a option =
+  nth_opt' arr idx
 
 let set_nth' (arr: 'a storage_t) (idx: idx_t) (x: 'a) : 'a storage_t =
   throw_if_stale "set_nth" arr;

@@ -96,19 +96,31 @@ let set_nth _ (arr: storage_t) (idx: idx_t) (x: 'a) : storage_t =
  *       acc
  *   in loop f arr init (min n (length arr) - 1) 0 *)
 
-let checksum_bound n _ (arr: storage_t) =
-  (* fold_left16 (fun w acc -> Int64Word.onec_plus () w acc) () n arr (Int64Word.wzero 16) *)
-  let rec loop arr acc lastidx offset =
+let checksum' cstr =
+  let rec loop cstr acc lastidx offset =
     if offset < lastidx then
       let acc = Int64Word.onec_plus ()
-                  (Int64Word.of_uint16 (Cstruct.BE.get_uint16 arr.data offset)) acc in
-      loop arr acc lastidx (offset + 2)
+                  (Int64Word.of_uint16 (Cstruct.BE.get_uint16 cstr offset)) acc in
+      loop cstr acc lastidx (offset + 2)
     else if offset = lastidx then
       Int64Word.onec_plus ()
-        (Int64Word.combine 8 (Int64Word.wzero 16) 8 (unsafe_getdata arr.data offset)) acc
+        (Int64Word.combine 8 (Int64Word.wzero 16) 8 (unsafe_getdata cstr offset)) acc
     else
       acc
-  in loop arr (Int64Word.wzero 16) (min n (length arr) - 1) 0
+  in
+  loop cstr (Int64Word.wzero 16) (Cstruct.len cstr - 1) 0
+
+let checksum : (Cstruct.t -> int) ref = ref checksum'
+
+let compare_chksum bytes =
+  let c = Cstruct.of_bytes bytes in
+  let us = checksum' c in
+  let them = !checksum c in
+  Printf.printf "Computed checksums of '%s': slow %d, fast %d, 65535 - fast %d\n" bytes us them (65535 - them)
+
+let checksum_bound n _ (arr: storage_t) =
+  throw_if_stale "checksum_bound" arr;
+  Int64Word.of_int (0xffff - !checksum (Cstruct.set_len (to_cstruct arr) (min n (length arr))))
 
 let slice_range _ (from: int) (len: int) (arr: storage_t) =
   sub arr from len
