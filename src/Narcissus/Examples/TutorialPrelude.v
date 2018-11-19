@@ -216,18 +216,20 @@ Ltac derive_clean_encoder :=
   [ derive_clean_encoder_do_projections | derive_clean_encoder_do_postprocess ];
   higher_order_reflexivity.
 
-Notation "x ▹ y" :=
+Notation "x ⋙ y" :=
   (Projection_AlignedEncodeM' y x)
     (at level 80, right associativity,
-    format "'[hv  ' x  '/' ▹  y ']'") : AlignedEncodeM_scope.
+    format "'[hv  ' x  '/' ⋙  y ']'") : AlignedEncodeM_scope.
 
 Notation "y ≫ z" :=
   (AppendAlignedEncodeM y z)
     (at level 81, right associativity,
      format "'[' y  ≫ '//' z ']'") : AlignedEncodeM_scope.
 
-Notation low_bits n := (split1' n _).
-Notation shift_right n := (split2' n _).
+Compute (split2' 6 2 (natToWord 8 3)).
+
+Notation high_bits n := (split1' n _).
+Notation low_bits n := (split2' _ n).
 
 Ltac cleanup_encoder' enc :=
   constr:(ltac:(eexists; derive_clean_encoder)
