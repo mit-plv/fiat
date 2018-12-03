@@ -317,6 +317,7 @@ src/Narcissus/BinLib/AlignedDecoders.v
 src/Narcissus/BinLib/AlignedDomainName.v
 src/Narcissus/BinLib/AlignedFix.v
 src/Narcissus/BinLib/AlignedList.v
+src/Narcissus/BinLib/AlignedString.v
 src/Narcissus/BinLib/AlignedSumType.v
 src/Narcissus/BinLib/CharString.v
 src/Narcissus/BinLib/Core.v
@@ -335,6 +336,7 @@ src/Narcissus/Examples/ICMP_Packet.v
 src/Narcissus/Examples/IntExample.v
 src/Narcissus/Examples/Toy.v
 src/Narcissus/Examples/Toy2.v
+src/Narcissus/Examples/BRASS/Telemetry.v
 src/Narcissus/Examples/DNS/DNSPacket.v
 src/Narcissus/Examples/DNS/DnsOpt.v
 src/Narcissus/Examples/DNS/RRecordTypes.v
