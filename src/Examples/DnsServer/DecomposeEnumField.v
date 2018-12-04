@@ -7,8 +7,7 @@ Require Import
 Require Import
         Fiat.Common.SumType
         Fiat.Computation.ListComputations
-        Fiat.QueryStructure.Automation.AutoDB
-        Fiat.Examples.DnsServer.Packet.
+        Fiat.QueryStructure.Automation.AutoDB.
 
 Require Import
         Bedrock.Word

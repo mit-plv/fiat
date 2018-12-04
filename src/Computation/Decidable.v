@@ -164,12 +164,12 @@ Global Program Instance N_eq_Decidable {n m : N} : Decidable (n = m) := {
 }.
 Obligation 1. t' N.eqb_eq. Qed.
 
-Global Program Instance Nle_Decidable {n m} : Decidable (Nle n m) := {
+Global Program Instance Nle_Decidable {n m} : Decidable (N.le n m) := {
   Decidable_witness := N.leb n m
 }.
 Obligation 1. t' N.leb_le. Qed.
 
-Global Program Instance Nlt_Decidable {n m} : Decidable (Nlt n m) := {
+Global Program Instance Nlt_Decidable {n m} : Decidable (N.lt n m) := {
   Decidable_witness := N.ltb n m
 }.
 Obligation 1. t' N.ltb_lt. Qed.
@@ -181,12 +181,12 @@ Global Program Instance Z_eq_Decidable {n m : Z} : Decidable (n = m) := {
 }.
 Obligation 1. t' Z.eqb_eq. Qed.
 
-Global Program Instance Zle_Decidable {n m} : Decidable (Zle n m) := {
+Global Program Instance Zle_Decidable {n m} : Decidable (Z.le n m) := {
   Decidable_witness := Z.leb n m
 }.
 Obligation 1. t' Z.leb_le. Qed.
 
-Global Program Instance Zlt_Decidable {n m} : Decidable (Zlt n m) := {
+Global Program Instance Zlt_Decidable {n m} : Decidable (Z.lt n m) := {
   Decidable_witness := Z.ltb n m
 }.
 Obligation 1. t' Z.ltb_lt. Qed.

@@ -679,7 +679,7 @@ Section AlignedDomainName.
     reflexivity.
     reflexivity.
   Qed. *)
-  intros. (* 8.6 script. *)
+  intros. 
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
@@ -898,9 +898,9 @@ Section AlignedDomainName.
                                                       end)
                                                      Else None.
   Proof.
-    (* 8.4 script *)
   Admitted.
-  (*unfold If_Opt_Then_Else,decode_DomainName,
+  (*(* 8.4 script *)
+    unfold If_Opt_Then_Else,decode_DomainName,
     byte_aligned_decode_DomainName; simpl; intros.
     eapply (@optimize_Fix dns_list_cache).
     Focus 3.
@@ -1002,7 +1002,8 @@ Section AlignedDomainName.
       replace z' with z by reflexivity; destruct z; eauto
     end.
     find_if_inside; simpl; eauto.
-    match goal with
+  Admitted.
+  match goal with
       |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
       replace z' with z by reflexivity; destruct z; eauto
     end.

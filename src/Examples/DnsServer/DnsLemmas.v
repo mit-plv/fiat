@@ -12,7 +12,9 @@ Require Import
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation
-        Fiat.Examples.DnsServer.Packet
+        Fiat.Narcissus.Formats.DomainNameOpt
+        Fiat.Narcissus.Examples.DNS.DnsOpt
+        Fiat.Narcissus.Examples.DNS.DNSPacket
         Fiat.Examples.DnsServer.DecomposeSumField
         Fiat.Computation.FoldComp
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
@@ -30,7 +32,6 @@ Qed.
 (* Instances used in DecideableEnsemble. *)
 Global Instance Query_eq_OurRRecordType :
   Query_eq OurRRecordType := {| A_eq_dec := OurRRecordType_dec |}.
-
 
 Lemma beq_RRecordType_dec :
   forall rr rr', ?[RRecordType_dec rr rr'] = beq_RRecordType rr rr'.

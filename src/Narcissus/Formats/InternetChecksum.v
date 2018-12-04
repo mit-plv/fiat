@@ -758,7 +758,28 @@ Proof.
   reflexivity.
 Qed.
 
-(* 8.7 Definition *)
+(*(* 8.7 Definition *)
+   Lemma wmsb_combine {sz} :
+  forall (w : word (S sz)) b,
+  exists w' : word sz,
+    w = match eq_sym (Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
+        | eq_refl => fun w' => w'
+        end (w' +^+ WS (wmsb w b) WO).
+Proof.
+  induction sz; intros;
+    destruct (shatter_word_S w) as (b' & [ w' ? ]); subst.
+  - exists WO; pose proof (shatter_word_0 w'); subst; simpl.
+    rewrite (UIP_nat _ _ (Nat.add_1_r 0) eq_refl); reflexivity.
+  - specialize (IHsz w' b'); destruct IHsz as (w'' & Heq).
+    simpl.
+    exists (WS b' w'').
+    change (WS b' w'' +^+ WS (wmsb w' b') WO) with (WS b' (w'' +^+ WS (wmsb w' b') WO)).
+    eapply WS_match_eq_refl.
+    rewrite Heq at 1.
+    reflexivity.
+Qed. *)
+
+(* 8.4 Definition *)
    Lemma wmsb_combine {sz} :
   forall (w : word (S sz)) b,
   exists w' : word sz,
@@ -779,28 +800,6 @@ Proof.
     reflexivity.
 Qed.
 
-(*
-(* 8.4 Definition *)
-   Lemma wmsb_combine {sz} :
-  forall (w : word (S sz)) b,
-  exists w' : word sz,
-    w = match eq_sym (NPeano.Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
-        | eq_refl => fun w' => w'
-        end (w' +^+ WS (wmsb w b) WO).
-Proof.
-  induction sz; intros;
-    destruct (shatter_word_S w) as (b' & [ w' ? ]); subst.
-  - exists WO; pose proof (shatter_word_0 w'); subst; simpl.
-    rewrite (UIP_nat _ _ (NPeano.Nat.add_1_r 0) eq_refl); reflexivity.
-  - specialize (IHsz w' b'); destruct IHsz as (w'' & Heq).
-    simpl.
-    exists (WS b' w'').
-    change (WS b' w'' +^+ WS (wmsb w' b') WO) with (WS b' (w'' +^+ WS (wmsb w' b') WO)).
-    eapply WS_match_eq_refl.
-    rewrite Heq at 1.
-    reflexivity.
-Qed. *)
-
 Lemma normalizeZ_OneCToZ {sz} :
   forall w: word (S sz), normalizeZ sz (OneCToZ w) = (OneCToZ w).
 Proof.
@@ -808,7 +807,7 @@ Proof.
   apply normalizeZ_noop.
   unfold OneCToZ.
   pose proof (Npow2_ge_one sz).
-  (* 8.7 script:  *)
+  (* (* 8.7 script:  *)
      destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with
            | _ => lia
@@ -825,7 +824,7 @@ Proof.
                rewrite wordToN_combine in Heqn;
                pose proof (wordToN_bound w');
                simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
-           end. (*
+           end.  *)
   (* 8.4 script *)
   destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
     repeat match goal with
@@ -837,13 +836,13 @@ Proof.
              let Heqw := fresh in
              destruct (wmsb_combine w b) as (w' & Heqw);
                rewrite Heqw in Heqn;
-               rewrite <- (NPeano.Nat.add_1_r sz) in *;
+               rewrite <- (Nat.add_1_r sz) in *;
                simpl in Heqn;
                clear Heqw;
                rewrite wordToN_combine in Heqn;
                pose proof (wordToN_bound w');
                simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
-           end. *)
+           end.
 Qed.
 
 Lemma NToWord_zero {sz} :

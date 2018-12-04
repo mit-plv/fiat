@@ -98,24 +98,44 @@ Definition BookStoreSpec : ADT BookStoreSig :=
         ret (r, count)
   }%methDefParsing.
 
-Record DelegationADT (Sig : ADTSig)
-  : Type
-  := Build_SharpenedUnderDelegates
-       { DelegateeIDs : nat;
-         DelegateeSigs : Fin.t DelegateeIDs -> ADTSig;
-         DelegatedImplementation :
-           forall (DelegateImpls : forall idx,
-                      ADT (DelegateeSigs idx)),
-             ADT Sig;
-         DelegateeSpecs : forall idx, ADT (DelegateeSigs idx) }.
-
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
 
-  master_plan EqIndexTactics.
+  (* To pick a specific index structure using
+     [master_plan_w_specific_indexes], users provide a list of (type
+     of index, attribute name) for each table.  As an example, the
+     invocation below specifies that the Books table should be indexed
+     first on authors and then ISBNs (using nested AVLs keyed on those
+     attributes), and that the Orders table should be indexed on
+     ISBNs, again using an AVL tree keyed on order ISBNs.
 
-Time Defined.
+     Changing the attributes used, the order of those attributes, and
+     the type of index for each pair will result in a different data
+     structure.
+
+     We currently support (more details on each are in the
+     QueryStructure/Automation/SearchTerms/ directory):
+
+     - "EqualityIndex" : AVL Trees keyed on equality
+     - "FindPrefixIndex" : Tries
+     - "InclusionIndex" : Inverted Indexes
+     - "RangeIndex" : AVL Trees keyed on range
+
+     You'll also have to change the package of tactics, as
+     demonstrated by other examples in this directory, in order to use
+     these different index data structures. *)
+
+  master_plan_w_specific_indexes
+    ({|prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
+                    ("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                      prim_snd := () |} |}
+     : @ilist3 RawSchema (fun sch : RawSchema => list (string * Attributes (rawSchemaHeading sch)))
+         (numRawQSschemaSchemas BookStoreSchema) (qschemaSchemas BookStoreSchema))
+    EqIndexTactics.
+
+Defined.
 
 Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=
   Eval simpl in projT1 SharpenedBookStore.

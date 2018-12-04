@@ -8,7 +8,7 @@ module WITH_DB =
   (* [args] : tactic arguments *)
   (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
   let ltac_lcall tac args =
-    Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag @@ (Misctypes.ArgVar(Loc.tag @@ Names.Id.of_string tac),args)))
+    Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag @@ (Misctypes.ArgVar(CAst.make @@ Names.Id.of_string tac),args)))
 
   (* [ltac_apply] : Run a tactic with arguments... *)
   let ltac_apply (f: Tacinterp.Value.t) (arg:Tacinterp.Value.t) =
@@ -17,7 +17,7 @@ module WITH_DB =
     let id = Id.of_string "X" in
     let idf = Id.of_string "F" in
     let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
-    let arg = Tacexpr.Reference (Misctypes.ArgVar (Loc.tag id)) in
+    let arg = Tacexpr.Reference (Misctypes.ArgVar (CAst.make id)) in
     Tacinterp.eval_tactic_ist ist
       (ltac_lcall "F" [arg])
 
