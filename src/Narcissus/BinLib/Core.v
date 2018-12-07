@@ -272,6 +272,28 @@ Fixpoint append_word {n m}
   | S n' => fun w => WS (whd w) (append_word (wtl w) w')
   end w.
 
+Lemma split1_append_word
+  : forall sz1 sz2 w1 w2,
+      (split1 sz1 sz2 (append_word w1 w2)) = w1.
+Proof.
+  induction w1; simpl; try reflexivity.
+  - intros.
+    unfold append_word; fold @append_word.
+    unfold split1; fold split1.
+    simpl; rewrite IHw1; reflexivity.
+Qed.
+
+Lemma split2_append_word
+  : forall sz1 sz2 w1 w2,
+      (split2 sz1 sz2 (append_word w1 w2)) = w2.
+Proof.
+  induction w1; simpl; try reflexivity.
+  - intros.
+    unfold append_word; fold @append_word.
+    unfold split2; fold split2.
+    simpl; rewrite IHw1; reflexivity.
+Qed.
+
 Lemma minus_inj
   : forall m m' y q q',
     (q < y)%nat

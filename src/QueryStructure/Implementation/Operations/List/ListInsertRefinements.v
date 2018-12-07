@@ -303,7 +303,7 @@ Qed.
 
 Ltac refine_list_insert_in_other_table :=
   match goal with
-    | [ |- appcontext [
+    | [ |- context [
                EnsembleIndexedListEquivalence
                  (GetUnConstrRelation
                     (UpdateUnConstrRelation ?qs ?index1

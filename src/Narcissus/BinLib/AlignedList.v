@@ -8,6 +8,8 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Common.DecideableEnsembles
+        Fiat.Common.IterateBoundedIndex
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
@@ -18,14 +20,13 @@ Require Import
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.DomainNameOpt
+        Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedDecoders
         Fiat.Narcissus.BinLib.AlignedEncodeMonad
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
-        Fiat.Narcissus.BaseFormats
-        Fiat.Common.IterateBoundedIndex
-        Fiat.Common.Tactics.CacheStringConstant.
+        Fiat.Narcissus.BaseFormats.
 
 Require Import
         Bedrock.Word.
@@ -267,7 +268,7 @@ Section AlignedList.
   (*     end *)
   (*   end. *)
 
-  Require Import Fiat.Narcissus.Formats.Vector.
+
 
 Section ByteBuffer.
   (* Context {A : Type}. *)
@@ -380,8 +381,6 @@ End ByteBuffer.
                                                               As' (snd a')
                                                               Else None
     end.
-
-  Require Import Fiat.Narcissus.Formats.Vector.
 
   Fixpoint buffer_blit_buffer' {sz1 sz2} start (src: ByteBuffer.t sz1) (dst: ByteBuffer.t sz2) :=
     match src with

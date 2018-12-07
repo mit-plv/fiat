@@ -19,6 +19,8 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
+Require Import Fiat.Common.List.ListFacts.
+Require Import TransparentAbstract.
 
 Section SharpenedBagImplementation.
 
@@ -118,7 +120,6 @@ Section SharpenedBagImplementation.
     - exists bnd; unfold UnConstrFreshIdx in *; intros; apply fresh_bnd;
     destruct H; eauto.
     - pose proof (bdelete_correct nr search_term H0); intuition.
-      Require Import Fiat.Common.List.ListFacts.
       rewrite partition_filter_neq in H1; symmetry in H1.
       destruct (permutation_filter _ _ _ H1) as [l [l_eq Perm_l] ].
       symmetry in Perm_l.
@@ -604,8 +605,6 @@ Section SharpenedBagImplementation.
 
   Time Definition BagADTImpl : ComputationalADT.cADT (BagSig (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
     Eval simpl in projT1 SharpenedBagImpl'.
-
-  Require Import TransparentAbstract.
 
   Definition SharpenedBagImpl
   : FullySharpened (@BagSpec (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus

@@ -680,21 +680,17 @@ Section AlignEncodeWord.
       unfold decode_word; simpl.
       eapply DecodeMEquivAlignedDecodeM_trans;
         intros; try eapply AlignedDecodeMEquiv_refl.
-      Focus 2.
-      intros; unfold mult; simpl; rewrite decode_word_plus'; simpl; fold mult.
-      instantiate (1 := fun b cd => `(w, v', cd') <- decode_word (sz := 8) b cd;
-                                    `(w', v'', cd') <- decode_word (sz := m * 8) v' cd';
-                                    Some (eq_rect (m * 8 + 8) word (Core.append_word w' w) (8 + m * 8) (plus_comm_transparent (m * 8) 8), v'', cd')).
-      simpl.
-      unfold decode_word.
-      destruct (decode_word' 8 b) as [ [? ?] | ]; simpl; eauto.
-      destruct (decode_word' (m * 8) b0) as [ [? ?] | ]; simpl; eauto.
-      rewrite addD_addD_plus; eauto.
-      eapply AlignedDecodeBindCharM; intros.
-      eapply Bind_DecodeMEquivAlignedDecodeM.
-      eassumption.
-      intros.
-      pose proof (@Return_DecodeMEquivAlignedDecodeM); eapply H.
+      + eapply AlignedDecodeBindCharM; intros.
+        eapply Bind_DecodeMEquivAlignedDecodeM.
+        eassumption.
+        intros.
+        pose proof (@Return_DecodeMEquivAlignedDecodeM); eapply H.
+      + intros; unfold mult; simpl; rewrite decode_word_plus'; simpl; fold mult;
+        simpl.
+        unfold decode_word.
+        destruct (decode_word' 8 b) as [ [? ?] | ]; simpl; eauto.
+        destruct (decode_word' (m * 8) b0) as [ [? ?] | ]; simpl; eauto.
+        rewrite addD_addD_plus; eauto.
   Qed.
 
   Lemma AlignedDecodeBindCharM' {A C : Type}

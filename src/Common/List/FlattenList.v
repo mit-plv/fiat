@@ -1,4 +1,5 @@
 Require Import Coq.Lists.List Coq.Lists.SetoidList Fiat.Common.
+Require Import Coq.Arith.Arith.
 
 Unset Implicit Arguments.
 
@@ -80,8 +81,6 @@ Section FlattenList.
   Proof.
     intuition.
   Qed.
-
-  Require Import Coq.Arith.Arith.
 
   Lemma length_flatten_aux :
     forall {A} seq,

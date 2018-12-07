@@ -121,12 +121,8 @@ Hint Resolve IPv4_Packet_Header_Len_bound : data_inv_hints.
 
 Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
   : nat :=
-  match decode_unused_word' 4 ipv4_b with
-  | Some (_, b') =>
-    match decode_word' 4 b' with
-    | Some (w, _) => wordToNat w
-    | None => 0
-    end
+  match decode_word' 8 ipv4_b with
+  | Some (w, b') => wordToNat (split1 4 4 w)
   | None => 0
   end * 32.
 
@@ -156,13 +152,16 @@ Proof.
     rewrite <- !H''.
   unfold IPv4_Packet_encoded_measure.
   unfold sequence_Format at 1 in H.
-  eapply computes_to_compose_proj_decode_unused_word in H;
+  eapply computes_to_compose_proj_decode_word in H;
     let H' := fresh in
-    destruct H as [? [? [? H'] ] ]; rewrite H'.
+    destruct H as [? [? [? H'] ] ].
   unfold sequence_Format at 1 in H.
   eapply computes_to_compose_proj_decode_nat in H;
     let H' := fresh in
-    destruct H as [? [? [? H'] ] ]; rewrite H'.
+    destruct H as [? [? [? H'] ] ].
+  rewrite (decode_word_plus' 4 4).
+  rewrite H2; simpl; rewrite H3; simpl.
+  rewrite Core.split1_append_word.
   rewrite wordToNat_natToWord_idempotent;
     unfold IPv4_Packet_Header_Len; try omega.
   unfold IPv4_Packet_OK in H1.
@@ -204,12 +203,13 @@ Proof.
   unfold IPv4_Packet_encoded_measure.
   destruct v.
   - reflexivity.
-  - rewrite aligned_decode_char_eq.
-    unfold aligned_IPv4_Packet_Checksum, aligned_IPv4_Packet_encoded_measure.
+  - unfold aligned_IPv4_Packet_Checksum, aligned_IPv4_Packet_encoded_measure.
     simpl.
     rewrite <- InternetChecksum_To_ByteBuffer_Checksum.
     unfold onesComplement.
     replace (wordToNat (split1 4 4 h) * 4 * 8) with (wordToNat (split1 4 4 h) * 32) by omega.
+    rewrite aligned_decode_char_eq.
+    simpl.
     find_if_inside.
     rewrite e.
     reflexivity.

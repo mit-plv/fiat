@@ -241,9 +241,8 @@ Lemma refine_Join_List_Query_In {QueryT ResultT}
 Proof.
   intros; unfold QueryResultComp, List_Query_In.
   rewrite refine_flatten_CompList_func.
-  Focus 2.
-  unfold pointwise_relation; intros.
-  apply refine_List_Query_In; eassumption.
+  2: unfold pointwise_relation; intros;
+    apply refine_List_Query_In; eassumption.
   unfold List_Query_In, flatten_CompList.
   induction l'; simpl.
   reflexivity.

@@ -10,7 +10,7 @@ Ltac Implement_Bags BuildEarlyBag BuildLastBag :=
     eapply FullySharpened_Finish;
     [pose_headings_all;
       match goal with
-      | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
+      | |- context[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
         FullySharpenQueryStructure Schema Indexes
       end
     | simpl; pose_string_ids; pose_headings_all;

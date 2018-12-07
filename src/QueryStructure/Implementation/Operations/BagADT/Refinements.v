@@ -22,13 +22,13 @@ Require Import Coq.Bool.Bool
         Fiat.QueryStructure.Implementation.ListImplementation
         Fiat.Common.List.PermutationFacts
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
+        Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
+        Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements.
 
 Import Lists.List.ListNotations.
 
 Section BagsQueryStructureRefinements.
-
-  Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
   Import Vectors.VectorDef.VectorNotations.
 
@@ -908,23 +908,21 @@ Section BagsQueryStructureRefinements.
     end.
     setoid_rewrite refineEquiv_unit_bind.
     etransitivity.
-    Focus 2.
-    unfold List_Query_In.
-    etransitivity.
-    Focus 2.
-    apply refine_under_bind.
-    intros.
-    set_evars.
-    rewrite <- refineEquiv_bind_unit with (f := fun x => flatten_CompList (map resultComp x))
+    2: unfold List_Query_In; etransitivity.
+    3: {
+      apply refine_under_bind.
+      intros; set_evars.
+      rewrite <- refineEquiv_bind_unit with (f := fun x => flatten_CompList (map resultComp x))
                                             (x := filter filter_rest a).
-    unfold H1; finish honing.
-    simpl.
-    rewrite <- refine_bind_bind.
-    rewrite <- filter_and_join_ilist2_hd_dep with
-    (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx')
-                                          (search_pattern tup)))
-    (filter_rest0 := filter_rest).
-    finish honing.
+      unfold H1; finish honing.
+      }
+    2: { simpl.
+         rewrite <- refine_bind_bind.
+         rewrite <- filter_and_join_ilist2_hd_dep with
+             (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx')
+                                                   (search_pattern tup)))
+             (filter_rest0 := filter_rest).
+         finish honing. }
     simplify with monad laws.
     rewrite refineEquiv_bind_bind.
     setoid_rewrite refineEquiv_bind_unit.
@@ -1035,8 +1033,6 @@ Section BagsQueryStructureRefinements.
     reflexivity.
     intro; reflexivity.
   Qed.
-
-  Require Import Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements.
 
   Lemma refineEquiv_Join_Comp_Lists_Build_single_Tuple_list
   : forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx,

@@ -1190,7 +1190,7 @@ Ltac implement_bag_constructors :=
                  eapply Lookup_Iterate_Dep_Type; simpl; intuition ]
          | |- context[CallBagConstructor ?ridx ?cidx ?d] =>
            match goal with
-             |- appcontext[@Build_IndexedQueryStructure_Impl_AbsR
+             |- context[@Build_IndexedQueryStructure_Impl_AbsR
                              ?qs_schema ?Index
                              ?DelegateReps ?DelegateImpls ?ValidImpls] =>
              let r_o' := fresh "r_o'" in
@@ -2249,7 +2249,7 @@ Ltac implement_bag_methods :=
   (* Clean up any leftover CallBagImplMethods *)
   repeat (cbv beta; simpl;
           match goal with
-                |- appcontext[CallBagImplMethod] =>
+                |- context[CallBagImplMethod] =>
                 unfold CallBagImplMethod; cbv beta; simpl;
                 try remove_spurious_Dep_Type_BoundedIndex_nth_eq
           end);
@@ -2624,10 +2624,10 @@ Ltac plan CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
   match goal with
   | |- context[QSEmptySpec _] => initializer
-  | |- appcontext[EnsembleInsert] =>
+  | |- context[EnsembleInsert] =>
     insertion CreateTerm EarlyIndex LastIndex
               makeClause_dep EarlyIndex_dep LastIndex_dep
-  | |- appcontext[EnsembleDelete] =>
+  | |- context[EnsembleDelete] =>
     deletion CreateTerm EarlyIndex LastIndex
              makeClause_dep EarlyIndex_dep LastIndex_dep
   | |- _ =>
@@ -2705,7 +2705,7 @@ Ltac implement_drill CreateTerm EarlyIndex LastIndex :=
           end;
           pose_headings_all;
           match goal with
-            | |- appcontext[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
+            | |- context[@BuildADT (IndexedQueryStructure ?Schema ?Indexes)] =>
               FullySharpenQueryStructure Schema Indexes
           end
          )
