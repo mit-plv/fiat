@@ -8,7 +8,7 @@ synthesizing binary encoders and decoders from specifications.
   * To build the library:          Coq 8.8.1
 
 ## Compiling and running the code
-  * To build the core library: `make narcissus`
+  * To build the core library: `make bedrock narcissus`
 
 ## Getting Started:
   * A tour of Narcissus can be found in src/Narcissus/Examples/README.v
