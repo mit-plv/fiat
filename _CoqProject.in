@@ -1,5 +1,8 @@
 -R src Fiat
 -I src/Common/Tactics
+Bedrock/Nomega.v
+Bedrock/Memory.v
+Bedrock/Word.v
 src/ADT.v
 src/ADTInduction.v
 src/ADTNotation.v
@@ -7,7 +10,6 @@ src/ADTRefinement.v
 src/Common.v
 src/Computation.v
 src/ComputationalEnsembles.v
-src/FiniteSetADTs.v
 src/ADT/ADTHide.v
 src/ADT/ADTSig.v
 src/ADT/ComputationalADT.v
@@ -189,30 +191,6 @@ src/Examples/Tutorial/NotInList_template.v
 src/Examples/Tutorial/Queue.v
 src/Examples/Tutorial/Queue_template.v
 src/Examples/Tutorial/Tutorial.v
-src/Fiat4Monitors/LandsharkNodes.v
-src/Fiat4Monitors/LandsharkTopics.v
-src/Fiat4Monitors/MonitorRepInv.v
-src/Fiat4Monitors/RADLMNodeADTs.v
-src/Fiat4Monitors/RADLNodeADTs.v
-src/Fiat4Monitors/RADL_Flag.v
-src/Fiat4Monitors/RADL_Flags.v
-src/Fiat4Monitors/RADL_Messages.v
-src/Fiat4Monitors/RADL_Nodes.v
-src/Fiat4Monitors/RADL_Notations.v
-src/Fiat4Monitors/RADL_Topics.v
-src/Fiat4Monitors/TurretMonitor.v
-src/Fiat4Monitors/TurretMonitorSpec.v
-src/Fiat4Monitors/HealthMonitor/HealthMonitorSpec.v
-src/Fiat4Monitors/HealthMonitor/HealthMonitors.v
-src/Fiat4Monitors/TurretMonitor/FacadeImpl.v
-src/Fiat4Monitors/TurretMonitor/FiatSpec.v
-src/FiniteSetADTs/BedrockWord.v
-src/FiniteSetADTs/FiniteSetADT.v
-src/FiniteSetADTs/FiniteSetADTImplementation.v
-src/FiniteSetADTs/FiniteSetADTMethodLaws.v
-src/FiniteSetADTs/FiniteSetRefinement.v
-src/FiniteSetADTs/NatWord.v
-src/FiniteSetADTs/WordInterface.v
 src/Narcissus/BaseFormats.v
 src/Narcissus/BinLib.v
 src/Narcissus/Formats.v
@@ -249,8 +227,6 @@ src/Narcissus/Examples/ByteAlignedExample.v
 src/Narcissus/Examples/ICMP_Packet.v
 src/Narcissus/Examples/IntExample.v
 src/Narcissus/Examples/README.v
-src/Narcissus/Examples/Toy.v
-src/Narcissus/Examples/Toy2.v
 src/Narcissus/Examples/TutorialPrelude.v
 src/Narcissus/Examples/BRASS/Telemetry.v
 src/Narcissus/Examples/DNS/DNSPacket.v

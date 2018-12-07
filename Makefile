@@ -253,6 +253,7 @@ HACMSDEMO_VO := src/Examples/HACMSDemo/DuplicateFree.vo src/Examples/HACMSDemo/H
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
 EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(TUTORIAL_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
 NARCISSUS_VO := $(filter-out $(NARCISSUS_UNMADE_VO), $(filter src/Narcissus/%.vo,$(VOFILES)))
+BEDROCK_VO := Bedrock/Nomega.vo Bedrock/Memory.vo Bedrock/Word.vo
 
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
 TACTICS_TARGETS := $(filter src/Common/Tactics/%,$(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)))
@@ -274,6 +275,7 @@ hacms-demo: $(HACMSDEMO_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)
 examples: $(EXAMPLES_VO)
 narcissus: $(NARCISSUS_VO)
+bedrock: $(BEDROCK_VO)
 narcissus-examples: $(NARCISSUS_EXAMPLES_VO)
 
 fiat-quick: $(addsuffix .vio,$(basename $(FIAT_VO))) $(TACTICS_TARGETS)
