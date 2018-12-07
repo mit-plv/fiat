@@ -148,7 +148,6 @@ src/Computation/Refinements/Tactics.v
 src/ComputationalEnsembles/Core.v
 src/ComputationalEnsembles/Laws.v
 src/ComputationalEnsembles/Morphisms.v
-src/Examples/FacadeTest.v
 src/Examples/CacheADT/CacheADT.v
 src/Examples/CacheADT/CacheRefinements.v
 src/Examples/CacheADT/CacheSig.v

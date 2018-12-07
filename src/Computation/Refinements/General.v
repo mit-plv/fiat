@@ -731,8 +731,6 @@ and gives you the computational hypothesis for the second *)
     intros; subst; reflexivity.
   Qed.
 
-  Require Import Fiat.Computation.Refinements.Tactics.
-
   Lemma refine_snd :
     forall {A B: Type} (P: B -> Prop),
       refine

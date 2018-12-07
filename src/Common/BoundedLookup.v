@@ -1,6 +1,10 @@
 Require Import Coq.Lists.List
         Coq.Strings.String
-        Coq.Arith.Arith.
+        Coq.Arith.Arith
+        Coq.Logic.Eqdep_dec
+        Fiat.Common.ilist
+        Fiat.Common.ilist2.
+
 Require Coq.Vectors.Vector.
 Global Set Asymmetric Patterns.
 
@@ -35,7 +39,7 @@ Section BoundedIndex.
 
   Definition BoundedIndex_nil
              (AnyT : Type)
-             (idx : BoundedIndex 0 [])
+             (idx : @BoundedIndex 0 [])
   : AnyT.
   Proof.
     destruct idx as [idx [n nth_n] ].
@@ -64,7 +68,6 @@ Section BoundedIndex.
     Variable A_eq_dec :
       forall a a' : A, {a = a'} + {a <> a'}.
 
-    Require Import Coq.Logic.Eqdep_dec.
 
     Program Definition Opt_A_eq_dec (a a' : option A) :
       {a = a'} + {a <> a'} :=
@@ -97,7 +100,7 @@ Section BoundedIndex.
         ibound (indexb idx) = ibound (indexb idx') ->
         idx = idx'.
     Proof.
-      intros; generalize (indexb_ibound_eq _ _ idx idx' H);
+      intros; generalize (@indexb_ibound_eq _ _ idx idx' H);
       destruct idx as [idx [n' In_n'] ];
         destruct idx' as [idx' [n'' In_n'' ] ]; intros;
         simpl in *; subst; f_equal.
@@ -335,7 +338,7 @@ Definition BoundedString_eq_dec
            {Bound}
            (bidx bidx' : BoundedString Bound)
 : {bidx = bidx'} + {bidx <> bidx'} :=
-  BoundedIndex_eq_dec n Bound bidx bidx'.
+  @BoundedIndex_eq_dec _ n Bound bidx bidx'.
 
 Notation "x ++ y" := (Vector.append x y) : vector_scope.
 
@@ -344,9 +347,10 @@ Notation "`` A" :=
 
 Arguments BoundedString {n} _%vector_scope.
 
+
+
 Section ithIndexBound.
 
-  Require Import Fiat.Common.ilist.
   Import Vectors.VectorDef.VectorNotations.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
@@ -478,7 +482,6 @@ End ithIndexBound.
 
 Section ithIndexBound2.
 
-  Require Import Fiat.Common.ilist2.
   Import Vectors.VectorDef.VectorNotations.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
