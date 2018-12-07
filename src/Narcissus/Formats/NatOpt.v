@@ -1,5 +1,7 @@
 Require Import
         Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.BaseFormats
+        Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.WordOpt.
 Require Import
         Coq.omega.Omega
@@ -8,17 +10,19 @@ Require Import
 Section Nat.
   Variable sz : nat.
 
-  Context {B : Type}.
+  Context {T : Type}.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
-  Context {monoid : Monoid B}.
+  Context {monoid : Monoid T}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
   Definition format_nat (n : nat) (ce : CacheFormat)
-    : Comp (B * CacheFormat) :=
+    : Comp (T * CacheFormat) :=
     format_word (natToWord sz n) ce.
 
-  Definition encode_nat (n : nat) (ce : CacheFormat) : B * CacheFormat :=
+  Open Scope vector_scope.
+
+  Definition encode_nat (n : nat) (ce : CacheFormat) : T * CacheFormat :=
     encode_word (natToWord sz n) ce.
 
   Lemma refine_format_nat :
@@ -28,7 +32,7 @@ Section Nat.
     reflexivity.
   Qed.
 
-  Definition decode_nat (b : B) (cd : CacheDecode) : option (nat * B * CacheDecode) :=
+  Definition decode_nat (b : T) (cd : CacheDecode) : option (nat * T * CacheDecode) :=
     `(w, b, cd) <- decode_word (sz:=sz) b cd;
       Some (wordToNat w, b, cd).
 

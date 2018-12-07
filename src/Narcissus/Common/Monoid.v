@@ -90,3 +90,14 @@ Class QueueMonoidOpt (bin : Type) (trans : Monoid bin) (B : Type) :=
       + constructor; eauto.
       + eauto.
   Qed.
+
+  Lemma measure_mempty {B} `{Monoid B} :
+    bin_measure mempty = 0.
+  Proof.
+    assert (forall m n, n = n + m -> m = 0) by
+        (induction n; simpl; eauto).
+    eapply H0.
+    etransitivity.
+    - eapply (mappend_measure mempty mempty).
+    - rewrite mempty_left; reflexivity.
+  Qed.

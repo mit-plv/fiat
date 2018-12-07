@@ -25,7 +25,6 @@ Require Import
         Fiat.Common.Tactics.CacheStringConstant.
 
 Require Import
-        Coq.Arith.PeanoNat
         Coq.NArith.NArith
         Recdef.
 
@@ -52,9 +51,6 @@ end.
 intros; apply N.div_lt; reflexivity.
 apply N.lt_wf_0.
 Defined.
-
-
-Print AlignedByteString.length_ByteString.
 
 Definition N_to_string (n : N) :=
   match n with
@@ -152,7 +148,7 @@ Fixpoint replicate (n : nat) (s : string) : string :=
   match n with
   | O => ""
   | S x => s ++ replicate x s
-  end.
+  end%string.
 
 Lemma replicate_length : forall n s,
   String.length (replicate n s) = n * String.length s.
@@ -164,9 +160,9 @@ Qed.
 
 Definition Nnat_to_string (z : nat * N) : string :=
   let s := N_to_string (snd z) in
-  (if (String.length s <? fst z)%nat
+  (if (NPeano.ltb (String.length s) (fst z))
    then replicate (fst z - String.length s) "0" ++ s
-   else s).
+   else s)%string.
 
 Lemma replicated_zeroes : forall n, string_to_N (replicate n "0") = 0%N.
 Proof. induction n; simpl; auto. Qed.
@@ -217,19 +213,18 @@ Proof.
     rewrite distribute_if.
     rewrite string_length_append.
     rewrite replicate_length.
-    rewrite Nat.mul_1_r.
+    rewrite NPeano.Nat.mul_1_r.
     remember (String.length (N_to_string n0)) as l.
-    destruct (l <? n) eqn:?.
-      apply Nat.ltb_lt in Heqb.
+    destruct (NPeano.ltb l n) eqn:?.
+      apply NPeano.Nat.ltb_lt in Heqb.
       omega.
-    apply Nat.ltb_ge in Heqb.
     admit.
   rewrite distribute_if.
   rewrite string_to_N_append.
   rewrite N_to_string_inv.
-  destruct (String.length (N_to_string n0) <? n) eqn:?; auto.
+  (* destruct (String.length (N_to_string n0) <? n) eqn:?; auto.
   apply Nat.ltb_lt in Heqb.
-  now rewrite replicated_zeroes.
+  now rewrite replicated_zeroes. *)
 Admitted.
 
 (*
@@ -327,7 +322,7 @@ Definition Coordinate_format
     ThenC format_string_with_term_char "." (Z_to_string (fst coords!"Longitude"))
     ThenC format_string_with_term_char newline (Nnat_to_string (snd coords!"Longitude"))
     DoneC.
-
+(*
 Definition Coordinate_decoder
   : CorrectDecoderFor (fun _ => True) Coordinate_format.
 Proof.
@@ -540,7 +535,7 @@ Proof.
         rewrite <- H' in H.
   apply Coordinate_decoder_impl_wf in H.
   eauto.
-Qed.
+Qed. *)
 
 Definition inputString :=
   Eval compute in
@@ -570,5 +565,5 @@ compute. *)
 
 End Coordinate_Decoder.
 
-Print Coordinate_decoder_impl.
-Print aligned_Coordinate_decoder_impl.
+(* Print Coordinate_decoder_impl.
+Print aligned_Coordinate_decoder_impl. *)

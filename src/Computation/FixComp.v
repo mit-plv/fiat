@@ -701,6 +701,7 @@ Module LeastFixedPointFun.
                 (Lift_cfunType (recT :: fDom) fCod (Fix wf_P _ fDef' )).
   Proof.
     unfold LeastFixedPoint, respectful_hetero; intros.
+    simpl in H.
     simpl.
     simpl in H.
     intros; pattern t; eapply (well_founded_ind wf_P).

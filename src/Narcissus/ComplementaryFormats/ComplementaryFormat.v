@@ -60,7 +60,7 @@ Section ComplementaryFormats.
                   Format a s ∋ (b, s')
                   -> predicate a)
              (rest_predicate : A -> B -> Prop := fun _ _ => True)
-             (decode : @DecodeM A B store)
+             (decode : @DecodeM (A * B) B store)
              (decode_inv : CacheDecode -> Prop),
       CorrectDecoder _ predicate rest_predicate Format decode decode_inv
       -> ComplementaryDecoder decode decode_inv
@@ -173,7 +173,12 @@ Proof.
   eexists _, _; intuition eauto.
   unfold computes_to; eauto.
 Qed.
+<<<<<<< variant A
+>>>>>>> variant B
+*)
+======= end
 
+<<<<<<< variant A
 Require Import Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedList
@@ -233,7 +238,7 @@ Section ExampleRecord.
                           (fun ml => (|mlist2 ml| + |mlist1 ml|) <> mlen1 ml + mlen2 ml)
                           decode_inv.
   Proof.
-    eexists. 
+    eexists.
     unfold ComplementaryFormat; intros.
     unfold MoreListFormat, compose, Bind2 in H.
     computes_to_inv; subst; simpl in *.
@@ -381,3 +386,6 @@ Section ExampleRecord.
 (* Qed. *)
 
 End ExampleRecord.
+>>>>>>> variant B
+End ComplementaryFormats.
+======= end

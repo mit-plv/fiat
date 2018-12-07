@@ -238,8 +238,8 @@ Section DomainName.
 
   Import FixComp.LeastFixedPointFun.
 
-  Definition format_DomainName (domain : DomainName) (env : CacheFormat)
-    : Comp (B * CacheFormat) :=
+  Definition format_DomainName
+    : FormatM DomainName B :=
     LeastFixedPoint
       (fDom := [DomainName; CacheFormat])
       (fun format_DomainName domain env =>
@@ -266,7 +266,7 @@ Section DomainName.
             (* If the pointer would overflow, don't record *)
             Ifopt peekE env as curPtr Then addE_G env' (domain, curPtr)
                                       Else env'
-      )))) domain env.
+      )))).
 
   (* Decode now uses a measure on the length of B *)
   Lemma lt_B_trans :

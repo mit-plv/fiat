@@ -21,7 +21,9 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedDecoders
-        Fiat.Narcissus.BinLib.AlignedMonads
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad
+        Fiat.Narcissus.BinLib.AlignedDecodeMonad
+        Fiat.Narcissus.BaseFormats
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.CacheStringConstant.
 
@@ -35,13 +37,13 @@ Section AlignedList.
 
   Fixpoint align_decode_list {A}
            (A_decode_align : forall n,
-               Vector.t (word 8) n
+               ByteBuffer.t n
                -> CacheDecode
                -> option (A * {n : _ & Vector.t _ n}
                           * CacheDecode))
            (n : nat)
            {sz}
-           (v : Vector.t (word 8) sz)
+           (v : ByteBuffer.t sz)
            (cd : CacheDecode)
     : option (list A *  {n : _ & Vector.t _ n} * CacheDecode) :=
     match n with
@@ -58,7 +60,7 @@ Section AlignedList.
            -> CacheDecode
            -> option (A * ByteString * CacheDecode))
         (A_decode_align : forall n,
-            Vector.t (word 8) n
+            ByteBuffer.t n
             -> CacheDecode
             -> option (A * {n : _ & Vector.t _ n}
                        * CacheDecode))
@@ -71,7 +73,7 @@ Section AlignedList.
                                               None)
     : forall (n : nat)
              {sz}
-             (v : Vector.t (word 8) sz)
+             (v : ByteBuffer.t sz)
              (cd : CacheDecode),
       decode_list A_decode n (build_aligned_ByteString v) cd =
       Ifopt align_decode_list A_decode_align n v cd as a Then
@@ -93,10 +95,10 @@ Section AlignedList.
            (A_format_align :
               A
               ->  CacheFormat
-              -> {n : _ & Vector.t (word 8) n} * CacheFormat)
+              -> {n : _ & ByteBuffer.t n} * CacheFormat)
            (As : list A)
            (ce : CacheFormat)
-    : {n : _ & Vector.t (word 8) n} * CacheFormat :=
+    : {n : _ & ByteBuffer.t n} * CacheFormat :=
     match As with
     | nil => (existT _ _ (Vector.nil _), ce)
     | a :: As' =>
@@ -112,7 +114,7 @@ Section AlignedList.
         (A_format_align :
            A
            ->  CacheFormat
-           -> {n : _ & Vector.t (word 8) n} * CacheFormat)
+           -> {n : _ & ByteBuffer.t n} * CacheFormat)
         (A_format_OK :
            forall a ce,
              A_OK a
@@ -194,11 +196,11 @@ Section AlignedList.
               return (a :: l)
     end%AlignedDecodeM%list.
 
-  Lemma AlignedDecodeListM {A C : Set}
-        (A_decode : DecodeM A ByteString)
+  Lemma AlignedDecodeListM {A C : Type}
+        (A_decode : DecodeM (A * _) ByteString)
         (A_decode_align : forall {m}, AlignedDecodeM A m)
         (n : nat)
-    : forall (t : list A -> DecodeM C ByteString)
+    : forall (t : list A -> DecodeM (C * _) ByteString)
              (t' : list A -> forall {numBytes}, AlignedDecodeM C numBytes),
       (DecodeMEquivAlignedDecodeM A_decode (@A_decode_align))
       -> (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
@@ -234,6 +236,104 @@ Section AlignedList.
     eapply H0.
   Qed.
 
+  (* Fixpoint list_of_vector_range {A} {sz: nat} n (from: Fin.t (n + sz)) (to: Fin.t sz) (v: Vector.t A (n + sz)) (acc: list A) : list A := *)
+  (*   let to' := (eq_rect (sz + n) _ (Fin.L n to) (n + sz) (plus_comm _ _)) in *)
+  (*   let acc' := List.cons (Vector.nth v to') acc in *)
+  (*   if Fin.eq_dec from to' then acc' *)
+  (*   else *)
+  (*     match to in Fin.t sz return forall (from: Fin.t (n + sz)) (v: Vector.t A (n + sz)), list A with *)
+  (*     | Fin.FS sz pred => *)
+  (*       fun from v => @list_of_vector_range A sz (n + 1) *)
+  (*                                        (eq_rect (n + S sz) _ from (n + 1 + sz) ltac:(omega)) *)
+  (*                                        pred *)
+  (*                                        (eq_rect (n + S sz) _ v (n + 1 + sz) ltac:(omega)) *)
+  (*                                        acc' *)
+  (*     | Fin.F1 _ => *)
+  (*       fun _ _ => acc' *)
+  (*     end from v. *)
+
+  (* fun (v: ByteBuffer.t m) idx env => *)
+  (*   match len with *)
+  (*   | 0 => Some ((List.nil, idx), env) *)
+  (*   | S len' => *)
+  (*     match Fin.of_nat idx m with *)
+  (*     | inleft fidx => *)
+  (*       let last_idx := idx + len' in *)
+  (*       match Fin.of_nat last_idx m with *)
+  (*       | inleft flast_idx => Some ((list_of_vector_range 0 fidx flast_idx v [], last_idx), addD env (8 * len)) *)
+  (*       | inright _ => None *)
+  (*       end *)
+  (*     | inright _ => None *)
+  (*     end *)
+  (*   end. *)
+
+  Require Import Fiat.Narcissus.Formats.Vector.
+
+Section ByteBuffer.
+  (* Context {A : Type}. *)
+  Context {T : Type}.
+  Context {monoid : Monoid T}.
+  Context {monoidUnit : QueueMonoidOpt monoid bool}.
+
+  Variable A_predicate : Core.char -> Prop.
+  Variable A_predicate_rest : Core.char -> T -> Prop.
+  Variable A_cache_inv : CacheDecode -> Prop.
+  Variable A_decode_pf
+    : CorrectDecoder monoid A_predicate
+                              A_predicate_rest
+                              format_word decode_word A_cache_inv.
+
+  Definition format_bytebuffer (b : { n & ByteBuffer.t n }) (ce : CacheFormat) : Comp (T * CacheFormat) :=
+    format_Vector format_word (projT2 b) ce.
+
+  Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n & ByteBuffer.t n } * T * CacheDecode) :=
+    match decode_Vector (decode_word (sz := 8)) s b cd with
+    | Some (v, t, cd) => Some (existT _ _ v, t, cd)
+    | None => None
+    end.
+
+  Definition ByteBuffer_predicate_rest
+           (v : { n & ByteBuffer.t n })
+           (b : T)
+    : Prop :=
+    Vector_predicate_rest A_predicate_rest format_word (projT1 v) (projT2 v) b.
+
+  Theorem ByteBuffer_decode_correct
+    :
+      forall n,
+        CorrectDecoder
+          monoid
+          (fun ls => forall x, Vector.In x (projT2 ls) -> A_predicate x)
+          (fun _ _ => True)
+          format_bytebuffer (decode_bytebuffer n) A_cache_inv.
+  Proof.
+  Admitted.
+End ByteBuffer.
+
+  Definition bytebuffer_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : { n & ByteBuffer.t n } :=
+    let l := List.firstn len (List.skipn from (Vector.to_list v)) in
+    existT _ _ (Vector.of_list l).
+
+  Definition ByteBufferAlignedDecodeM {m : nat} (len: nat) : @AlignedDecodeM cache {n & ByteBuffer.t n} m :=
+    fun (v: ByteBuffer.t m) idx env =>
+      let lastidx := idx + len in
+      if NPeano.leb lastidx m then
+        Some ((bytebuffer_of_bytebuffer_range idx len v, lastidx, addD env (8 * len)))
+      else
+        None.
+
+  Lemma AlignedDecodeByteBufferM {C : Type}
+        (n : nat)
+    : forall (t : { n & ByteBuffer.t n } -> DecodeM (C * _) ByteString)
+        (t' : { n & ByteBuffer.t n } -> forall {numBytes}, AlignedDecodeM C numBytes),
+      (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
+      -> DecodeMEquivAlignedDecodeM
+          (fun v cd => `(b, bs, cd') <- decode_bytebuffer n v cd;
+                      t b bs cd')
+          (fun numBytes => b <- ByteBufferAlignedDecodeM n;
+                          t' b)%AlignedDecodeM%list.
+  Admitted.
+
   Lemma AlignedFormatListDoneC {A}
         (A_OK : A -> Prop)
         format_A
@@ -264,5 +364,234 @@ Section AlignedList.
     simpl; reflexivity.
     intros; rewrite zeta_to_fst; simpl; reflexivity.
   Qed.
+
+  Fixpoint AlignedEncodeList' {A}
+           (A_format_align : forall sz, AlignedEncodeM (S := A) sz)
+           (sz : nat)
+           v
+           idx
+           As
+           env :=
+      match As with
+      | nil => if NPeano.ltb idx (S sz) then @ReturnAlignedEncodeM _ (list A) _ v idx nil env else None
+      | a :: As' => Ifopt (A_format_align sz v idx a env) as a' Then
+                                                                AlignedEncodeList' A_format_align sz (fst (fst a'))
+                                                              (snd (fst a'))
+                                                              As' (snd a')
+                                                              Else None
+    end.
+
+  Require Import Fiat.Narcissus.Formats.Vector.
+
+  Fixpoint buffer_blit_buffer' {sz1 sz2} start (src: ByteBuffer.t sz1) (dst: ByteBuffer.t sz2) :=
+    match src with
+    | Vector.nil => dst
+    | Vector.cons h _ t => buffer_blit_buffer' (S start) t (set_nth' dst start h)
+    end.
+
+  Definition buffer_blit_buffer {sz1 sz2} start (src: ByteBuffer.t sz1) (dst: ByteBuffer.t sz2) :=
+    let idx' := start + sz1 in
+    if NPeano.leb idx' sz2 then
+      Some (buffer_blit_buffer' start src dst, idx')
+    else None.
+
+  Definition AlignedEncodeByteBuffer
+    : forall sz, AlignedEncodeM (S := { n & ByteBuffer.t n }) sz :=
+    fun sz2 (dst: ByteBuffer.t sz2) idx src env =>
+      let '(existT len src) := src in
+      match buffer_blit_buffer idx src dst with
+      | Some (v', idx') => Some (v', idx', addE env (8 * len))
+      | None => None
+      end.
+
+  Lemma CorrectAlignedEncoderForFormatByteBuffer :
+    CorrectAlignedEncoder format_bytebuffer AlignedEncodeByteBuffer.
+  Admitted.
+
+  Definition AlignedEncodeList {A}
+             (A_format_align : forall sz, AlignedEncodeM (S := A) sz)
+    : forall sz, AlignedEncodeM (S := list A) sz :=
+    AlignedEncodeList' A_format_align.
+
+  Lemma CorrectAlignedEncoderForFormatList {A}
+        format_A
+        encode_A
+    : (CorrectAlignedEncoder format_A encode_A)
+      -> CorrectAlignedEncoder (format_list format_A)
+                               (@AlignedEncodeList A encode_A).
+  Proof.
+    unfold CorrectAlignedEncoder; intros.
+    eexists ((fix AlignedEncodeList (As : list A) env :=
+               match As with
+               | nil => Some (mempty, env)
+               | a :: As' => `(t1, env') <- projT1 X a env;
+                             `(t2, env'') <- AlignedEncodeList As' env';
+                             Some (mappend t1 t2, env'')
+               end)); split; [ | split ].
+    - induction s; intros; simpl; eauto.
+      + injections; reflexivity.
+      + destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
+        destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+        unfold Bind2.
+        rewrite r, refineEquiv_bind_unit; eauto.
+        destruct ((fix AlignedEncodeList (As : list A) (env : CacheFormat) {struct As} :
+                          option (ByteString * CacheFormat) :=
+                          match As with
+                          | [] => Some (ByteString_id, env)
+                          | a :: As' =>
+                              `(t1, env') <- encode_A' a env;
+                              `(t2, env'') <- AlignedEncodeList As' env';
+                              Some (ByteString_enqueue_ByteString t1 t2, env'')
+                          end)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+        rewrite IHs, refineEquiv_bind_unit; simpl; eauto.
+        injections; reflexivity.
+    - induction s; intros; simpl; eauto.
+      + injections; reflexivity.
+      + destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
+        destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+        destruct ((fix AlignedEncodeList (As : list A) (env : CacheFormat) {struct As} :
+                          option (ByteString * CacheFormat) :=
+                          match As with
+                          | [] => Some (ByteString_id, env)
+                          | a :: As' =>
+                              `(t1, env') <- encode_A' a env;
+                              `(t2, env'') <- AlignedEncodeList As' env';
+                              Some (ByteString_enqueue_ByteString t1 t2, env'')
+                          end)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+        injections.
+        erewrite padding_ByteString_enqueue_ByteString, e, IHs; eauto.
+    - unfold EncodeMEquivAlignedEncodeM; intros.
+      pose proof (Append_EncodeMEquivAlignedEncodeM (Basics.compose (projT1 X) fst)
+                                                    (Basics.compose (fix AlignedEncodeList (As : list A) env :=
+                                                                match As with
+                                                                | nil => Some (mempty, env)
+                                                                | a :: As' => `(t1, env') <- projT1 X a env;
+                                                                              `(t2, env'') <- AlignedEncodeList As' env';
+                                                                              Some (mappend t1 t2, env'')
+                                                                end) snd)).
+      revert env idx. induction s; intros.
+      + admit.
+      +
+
+        destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
+        destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+        destruct ((fix AlignedEncodeList (As : list A) (env : CacheFormat) {struct As} :
+                          option (ByteString * CacheFormat) :=
+                          match As with
+                          | [] => Some (ByteString_id, env)
+                          | a :: As' =>
+                              `(t1, env') <- encode_A' a env;
+                              `(t2, env'') <- AlignedEncodeList As' env';
+                              Some (ByteString_enqueue_ByteString t1 t2, env'')
+                          end)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+  Admitted.
+  (*injections.
+        revert b0.
+        rewrite numBytes_ByteString_enqueue_ByteString; intros.
+        destruct (proj1 (e0 env a idx) _ _ Heqo) with
+            (v1 := v1) (v := fst (Vector_split _ _ v))
+            (v2 := append (snd (Vector_split _ _ v)) v2); split_and.
+        eapply e; eauto.
+        rewrite ByteString_enqueue_ByteString_assoc in H2.
+        eapply (IHs _ (idx + numBytes b) _ m (append v1 (fst (Vector_split _ _ v)))  (snd (Vector_split _ _ v))) in Heqo0;
+          destruct_ex; split_and.
+        assert (idx + numBytes b + (numBytes b0 + m) =
+                idx + (numBytes b + numBytes b0 + m)) by Omega.omega.
+        eexists (eq_rect _ _ x0 _ H).
+        replace (encode_A (idx + (numBytes b + numBytes b0 + m)) (append v1 (append v v2)) idx a env)
+          with (Some (eq_rect _ (fun m => t Core.char (idx + m) )%type x _ (plus_assoc (numBytes b) (numBytes b0) m), idx + numBytes b, c)); simpl.
+        split.
+        admit.
+        admit.
+        admit.
+        admit.
+        eapply e; eauto.
+        (*generalize (PeanoNat.Nat.add_assoc (numBytes b) (numBytes b0) m); intros.
+        assert (exists (v' : Vector.t _ (numBytes b)), b = build_aligned_ByteString v').
+        { eexists (byteString b); destruct b; simpl.
+          apply e in Heqo; simpl in Heqo; generalize Heqo front paddingOK; clear; intro.
+          rewrite Heqo; intro; shatter_word front; intros.
+          eapply byteString_f_equal; simpl; eauto.
+          instantiate (1 := eq_refl _); reflexivity. }
+        admit. *)
+      + revert env idx t env' numBytes' v H H0; induction s; intros.
+        * injections.
+          simpl.
+          rewrite (proj2 (NPeano.Nat.ltb_nlt idx (S numBytes'))); eauto.
+          intro.
+          rewrite length_ByteString_id in H0.
+          Omega.omega.
+        * destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
+          unfold DecodeBindOpt, BindOpt in H.
+          destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+          pose proof (proj2 (e0 env a idx)).
+          erewrite (proj1 H1); simpl; eauto.
+          edestruct (proj1 (e0 env a idx) _ _ Heqo).
+          eapply e; eauto.
+          admit.
+      + revert env idx t env' numBytes' v H H0; induction s; intros.
+        * injections; simpl in H0; Omega.omega.
+        * simpl.
+          shelve.
+      + revert env idx numBytes' v H; induction s; intros.
+        * discriminate.
+        * simpl.
+          admit.
+
+  Admitted.
+  (*(* injections.
+          simpl.
+          rewrite (proj2 (NPeano.Nat.ltb_nlt idx (S numBytes'))); eauto.
+          intro.
+          rewrite length_ByteString_id in H0.
+          Omega.omega. *)
+        * simpl.
+          destruct (encode_A numBytes' v idx a env) as [ [? ?] | ] eqn: ?; simpl; eauto.
+          eapply IHs.
+          shelve.
+          shelve.
+
+        *  simpl; eapply Return_EncodeMEquivAlignedEncodeM.
+      + simpl; destruct (X a) as [encode_A' [? [? ?] ] ];
+          eapply Append_EncodeMEquivAlignedEncodeM; eauto.
+      (*eapply (IHs _ (idx + numBytes b) _ m (append v1 (fst (Vector_split _ _ v)))  (snd (Vector_split _ _ v))) in Heqo0;
+          destruct_ex; split_and.
+        assert (idx + numBytes b + (numBytes b0 + m) =
+                idx + (numBytes b + numBytes b0 + m)) by Omega.omega.
+        eexists (eq_rect _ _ x0 _ H).
+        replace (encode_A (idx + (numBytes b + numBytes b0 + m)) (append v1 (append v v2)) idx a env)
+          with (Some (eq_rect _ (fun m => t Core.char (idx + m) )%type x _ (plus_assoc (numBytes b) (numBytes b0) m), idx + numBytes b, c)); simpl.
+        split.
+        generalize (PeanoNat.Nat.add_assoc (numBytes b) (numBytes b0) m); intros.
+
+        revert x0 H3 H4.
+        clear.
+        destruct H.
+        rewrite (plus_assoc idx (numBytes b) (numBytes b0)).
+        rewrite <- H3.
+        erewrite Vector_append_assoc in H3.
+
+        rewrite
+        rewrite H.
+
+
+
+        destruct Heqo0.
+        replace (numBytes (ByteString_enqueue_ByteString b b0)) with
+            (numBytes b + numBytes b0) at 1.
+        setoid_rewrite numBytes_ByteString_enqueue_ByteString.
+
+        rewrite H1.
+        destruct_ex
+
+        injections. *)
+
+
+
+      +
+
+
+
+  Qed. *) *)
 
 End AlignedList.

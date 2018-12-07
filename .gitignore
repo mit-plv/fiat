@@ -112,3 +112,9 @@ bug_*.v
 gmon.out
 ocamlprof.dump
 web
+/src/Narcissus/Examples/NetworkStack/Fiat4Mirage.ml
+/.coqdeps.d
+/CoqMakefile.conf
+.lia.cache
+/src/Narcissus/Examples/NetworkStack/fiat4mirage-bench
+/Makefile.coq-old.conf

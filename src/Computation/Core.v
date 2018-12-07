@@ -61,6 +61,13 @@ Proof.
   constructor.
 Qed.
 
+Lemma unfold_computes {A : Type}
+  : forall (c : Comp A) (a : A),
+    c ↝ a <-> c a.
+Proof.
+  intuition.
+Qed.
+
 Lemma BindComputes
       {A B: Type}
 : forall (ca : Comp A)

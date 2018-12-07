@@ -649,7 +649,7 @@ Section AlignedDomainName.
              (ret (let (v, ce') := Fix wf_lt_A _ body' (existT _ _ a_OK) ce in
                    (build_aligned_ByteString (projT2 v), ce'))).
   Proof.
-    (*intros. (* 8.4 script *)
+    (* intros. (* 8.4 script *)
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT _ a a_OK)) at 1.
@@ -678,8 +678,8 @@ Section AlignedDomainName.
     rewrite Heqp, Heqp'.
     reflexivity.
     reflexivity.
-  Qed. *)
-  intros. 
+  Qed.  *)
+  intros. (* 8.8 script. *)
     unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
     simpl.
     replace a with (projT1 (existT (fun a0 : A => A_OK a0) a a_OK)) at 1 by reflexivity.
@@ -704,7 +704,6 @@ Section AlignedDomainName.
               (wf_lt_A a')).
     simpl; intros; rewrite H; eauto;  reflexivity.
     admit.
-    (*rewrite Heqp; try reflexivity. *)
   Qed.
 
   Lemma AlignedFormatDomainNameThenC
@@ -918,8 +917,7 @@ Section AlignedDomainName.
     set_refine_evar.
     etransitivity;
       [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
-
-    apply optimize_under_match; intros.
+    (*apply optimize_under_match; intros.
     simpl.
 
     apply optimize_under_match; intros.
@@ -935,6 +933,7 @@ Section AlignedDomainName.
     apply case0; reflexivity.
     set_refine_evar.
     simpl.
+
     etransitivity;
       [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
     apply optimize_under_match; intros.
@@ -1001,7 +1000,7 @@ Section AlignedDomainName.
       |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
       replace z' with z by reflexivity; destruct z; eauto
     end.
-    find_if_inside; simpl; eauto.
+    find_if_inside; simpl; eauto. *)
   Admitted.
   match goal with
       |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
