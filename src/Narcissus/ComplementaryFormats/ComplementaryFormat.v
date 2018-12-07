@@ -20,9 +20,6 @@ Section ComplementaryFormats.
   Variable NA_OK : NA -> Prop. (* Not source data property that ensures it will
                                 generate invalid bytestrings *)
 
-  Notation "a ∋ b" := (@computes_to _ a b) (at level 90).
-  Notation "a ∌ b" := (~ @computes_to _ a b) (at level 90).
-
   (* To start, we define the set of invalid bytestrings for a format. *)
   Definition ComplementaryFormat
              (decode_inv : @CacheDecode store -> Prop) :=
@@ -53,7 +50,7 @@ Section ComplementaryFormats.
           decode_inv s
           -> decode (mappend b b') s = None.
 
-  Theorem CorrectDecoderComplementary
+  (* Theorem CorrectDecoderComplementary
     : forall (predicate : A -> Prop)
              (predicate_OK :
                 forall a s b s',
@@ -70,12 +67,13 @@ Section ComplementaryFormats.
     intro.
     eapply H0 in H1; eauto.
     exact (@CorrectDecoderNone _ _ _ _ _ _ _ _ _ H _ mempty _ H3 H1 _ _ _ H4 (predicate_OK _ _ _ _ H5) I H5).
-  Qed.
+  Qed. *)
 
 End ComplementaryFormats.
 
 Local Transparent computes_to.
 
+(*
 Require Fiat.Narcissus.Stores.EmptyStore.
 (* Given a proof that a decoder is correct, can we use it to derive
    an invalid format?*)
@@ -173,219 +171,4 @@ Proof.
   eexists _, _; intuition eauto.
   unfold computes_to; eauto.
 Qed.
-<<<<<<< variant A
->>>>>>> variant B
 *)
-======= end
-
-<<<<<<< variant A
-Require Import Fiat.Narcissus.BinLib.AlignedByteString
-        Fiat.Narcissus.BinLib.AlignWord
-        Fiat.Narcissus.BinLib.AlignedList
-        Fiat.Narcissus.BinLib.AlignedDecoders
-        Fiat.Narcissus.Formats.WordOpt
-        Fiat.Narcissus.Formats.NatOpt
-        Fiat.Narcissus.Formats.FixListOpt
-        Fiat.Narcissus.Automation.Solver.
-Require Import Bedrock.Word.
-
-Section ExampleRecord.
-
-  Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
-  Instance store : Cache := Fiat.Narcissus.Stores.EmptyStore.test_cache. (* Pure Formats are easier to deal with *)
-
-  Record TwoLists := { list1 : list (word 8); list2 : list (word 16)}.
-
-  Definition TwoLists_Format
-             (tl : TwoLists) :=
-        format_nat 8 (|list1 tl|)
-  ThenC format_nat 8 (|list2 tl|)
-  ThenC format_list format_word (list2 tl)
-  ThenC format_list format_word (list1 tl)
-  DoneC.
-
-  Definition TwoLists_OK (p : TwoLists) :=
-    ((|list1 p|) < pow2 8 /\ ((|list2 p|) < pow2 8))%nat.
-
-  Definition Simple_Format_decoder
-    : CorrectDecoderFor TwoLists_OK TwoLists_Format.
-  Proof.
-    start_synthesizing_decoder.
-    normalize_compose monoid.
-    repeat decode_step idtac.
-    intros; eauto using FixedList_predicate_rest_True.
-    synthesize_cache_invariant.
-    cbv beta; optimize_decoder_impl.
-  Defined.
-
-  Record MoreLists := { mlen1 : nat;
-                        mlen2 : nat;
-                        mlist1 : list (word 8);
-                        mlist2 : list (word 16)}.
-
-  Definition MoreListFormat
-             (ml : MoreLists) :=
-        format_nat 8 (mlen1 ml)
-  ThenC format_nat 8 (mlen2 ml)
-  ThenC format_list format_word (mlist2 ml)
-  ThenC format_list format_word (mlist1 ml)
-  DoneC.
-
-  Lemma ComplementaryListFormat
-    : exists decode_inv,
-      ComplementaryFormat TwoLists MoreLists _ store store TwoLists_Format
-                          MoreListFormat
-                          (fun ml => (|mlist2 ml| + |mlist1 ml|) <> mlen1 ml + mlen2 ml)
-                          decode_inv.
-  Proof.
-    eexists.
-    unfold ComplementaryFormat; intros.
-    unfold MoreListFormat, compose, Bind2 in H.
-    computes_to_inv; subst; simpl in *.
-    injections.
-    (* Okay, what do we do from here?*)
-  Abort.
-
-(* Lemma ComplementComposeFormat *)
-(*       (* If a format places any invariants on the source data, we can *)
-(*          generate a invalid input by formatting data violating that *)
-(*          invariant. *) *)
-(* {A A' NA B monoid_B Format1 Format2 NAFormat1 NAFormat2 NAFormat_OK} *)
-(*       (store := Fiat.Narcissus.Stores.EmptyStore.test_cache) (* Pure Formats are easier to deal with *) *)
-(*   : forall (predicate : A -> Prop) *)
-(*            (predicate' : A' -> Prop) *)
-(*            (predicate'' : NA -> Prop) *)
-(*            (project : A -> A') *)
-(*            (rest_predicate : A -> B -> Prop := fun _ _ => True) *)
-(*            (decode : @DecodeM A B store) *)
-(*            (decode_inv : CacheDecode -> Prop) *)
-(*            (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'), *)
-(*     CorrectDecoder monoid_B predicate rest_predicate (fun a => Format1 (project a)) decode decode_inv *)
-(*     -> (forall a, predicate a -> predicate' (project a)) *)
-(*     -> (forall na na' b s s' s'', *)
-(*            predicate' na *)
-(*            -> computes_to (Format1 na s) (b, s') *)
-(*            -> computes_to (Format1 na' s) (b, s'') *)
-(*            -> na = na') *)
-(*     -> ComplementaryFormat A _ B store store *)
-(*                           (fun (data : A) (ctx : CacheFormat) => *)
-(*                              compose _ (Format1 (project data)) (Format2 data) ctx)%comp *)
-(*                           (fun (data : A' * NA) (ctx : CacheFormat) => *)
-(*                              compose _ (NAFormat1 (fst data)) (NAFormat2 (snd data)) ctx)%comp *)
-(*                           NAFormat_OK decode_inv *)
-(* . *)
-
-
-(*   : forall (predicate : A -> Prop) *)
-(*            (predicate' : NA -> Prop) *)
-(*            (proj : A -> NA) *)
-(*            (rest_predicate : A -> B -> Prop := fun _ _ => True) *)
-(*            (decode : @DecodeM A B store) *)
-(*            (decode_inv : CacheDecode -> Prop) *)
-(*            (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'), *)
-(*     CorrectDecoder monoid_B predicate rest_predicate (fun a => Format (proj a)) decode decode_inv *)
-(*     -> (forall a, predicate a -> predicate' (proj a)) *)
-(*     -> (forall na na' b s s' s'', *)
-(*            predicate' na *)
-(*            -> computes_to (Format na s) (b, s') *)
-(*            -> computes_to (Format na' s) (b, s'') *)
-(*            -> na = na') *)
-
-(*       {A A' B} *)
-(*       {cache : Cache} *)
-(*       {P  : CacheDecode -> Prop} *)
-(*       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop} *)
-(*       (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P)) *)
-(*       (monoid : Monoid B) *)
-(*       (project : A -> A') *)
-(*       (predicate : A -> Prop) *)
-(*       (predicate' : A' -> Prop) *)
-(*       (predicate_rest' : A -> B -> Prop) *)
-(*       (predicate_rest : A' -> B -> Prop) *)
-(*       (format1 : A' -> CacheFormat -> Comp (B * CacheFormat)) *)
-(*       (format2 : A -> CacheFormat -> Comp (B * CacheFormat)) *)
-(*       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode)) *)
-(*       (decode1_pf : *)
-(*          cache_inv_Property P P_inv1 *)
-(*          -> CorrectDecoder *)
-(*               monoid predicate' *)
-(*               predicate_rest *)
-(*               format1 decode1 P) *)
-(*       (pred_pf : forall data, predicate data -> predicate' (project data)) *)
-(*       (predicate_rest_impl : *)
-(*          forall a' b *)
-(*                 a ce ce' ce'' b' b'', *)
-(*            computes_to (format1 a' ce) (b', ce') *)
-(*            -> project a = a' *)
-(*            -> predicate a *)
-(*            -> computes_to (format2 a ce') (b'', ce'') *)
-(*            -> predicate_rest' a b *)
-(*            -> predicate_rest a' (mappend b'' b)) *)
-(*       (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode)) *)
-(*       (decode2_pf : forall proj, *)
-(*           predicate' proj ->c *)
-(*           cache_inv_Property P P_inv2 -> *)
-(*           CorrectDecoder monoid *)
-(*                                   (fun data => predicate data /\ project data = proj) *)
-(*                                   predicate_rest' *)
-(*                                   format2 *)
-(*                                   (decode2 proj) P) *)
-(*   : ComplementaryFormat A NA B store store *)
-(*                         (fun (data : A) (ctx : CacheFormat) => *)
-(*                            compose _ (format1 (project data)) (format2 data)  ctx)%comp *)
-(*                         (fun (data : A) (ctx : CacheFormat) => *)
-(*                            compose _ (format1 (project data)) (format2 data)  ctx *)
-(*                         )%comp. *)
-
-(*     CorrectDecoder *)
-(*       monoid *)
-(*       (fun a => predicate a) *)
-(*       predicate_rest' *)
-(*       (fun (data : A) (ctx : CacheFormat) => *)
-(*          compose _ (format1 (project data)) (format2 data)  ctx *)
-(*       )%comp *)
-(*       (fun (bin : B) (env : CacheDecode) => *)
-(*          `(proj, rest, env') <- decode1 bin env; *)
-(*            decode2 proj rest env') P. *)
-(* Proof. *)
-
-(* Lemma ComplementFormatByInvertingPredicate *)
-(*       (* If a format places any invariants on the source data, we can *)
-(*       generate a invalid input by formatting data violating that *)
-(*       invariant. *) *)
-(*       {A NA B monoid_B Format} *)
-(*       (store := Fiat.Narcissus.Stores.EmptyStore.test_cache) (* Pure Formats are easier to deal with *) *)
-(*   : forall (predicate : A -> Prop) *)
-(*            (predicate' : NA -> Prop) *)
-(*            (proj : A -> NA) *)
-(*            (rest_predicate : A -> B -> Prop := fun _ _ => True) *)
-(*            (decode : @DecodeM A B store) *)
-(*            (decode_inv : CacheDecode -> Prop) *)
-(*            (monoid_inj : forall b1 b2 b1' b2', mappend b1 b2 = mappend b1' b2' -> b1 = b1' /\ b2 = b2'), *)
-(*     CorrectDecoder monoid_B predicate rest_predicate (fun a => Format (proj a)) decode decode_inv *)
-(*     -> (forall a, predicate a -> predicate' (proj a)) *)
-(*     -> (forall na na' b s s' s'', *)
-(*            predicate' na *)
-(*            -> computes_to (Format na s) (b, s') *)
-(*            -> computes_to (Format na' s) (b, s'') *)
-(*            -> na = na') *)
-(*     -> ComplementaryFormat A NA B store store (fun a s b => Format (proj a) s b /\ predicate a) *)
-(*                            Format (fun a => ~ predicate' a) decode_inv. *)
-(* Proof. *)
-(*   intros; eapply CorrectDecoderComplementary; eauto. *)
-(*   3: eapply DeriveComplementaryDecoder_hetero; eauto. *)
-(*   intros. *)
-(*   unfold computes_to in H2; exact (proj2 H2). *)
-(*   revert H; clear. *)
-(*   unfold CorrectDecoder; intros [? ?]; split; intros. *)
-(*   eapply H; eauto. *)
-(*   apply (proj1 H4). *)
-(*   destruct (H0 env env' xenv' data bin ext) as [? [? [? ?] ] ]; intuition eauto. *)
-(*   eexists _, _; intuition eauto. *)
-(*   unfold computes_to; eauto. *)
-(* Qed. *)
-
-End ExampleRecord.
->>>>>>> variant B
-End ComplementaryFormats.
-======= end
