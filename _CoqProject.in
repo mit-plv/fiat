@@ -1,4 +1,5 @@
 -R src Fiat
+-I Bedrock
 -I src/Common/Tactics
 Bedrock/Memory.v
 Bedrock/Nomega.v
@@ -164,7 +165,6 @@ src/Narcissus/BinLib/AlignedIPChecksum.v
 src/Narcissus/BinLib/AlignedList.v
 src/Narcissus/BinLib/AlignedString.v
 src/Narcissus/BinLib/AlignedSumType.v
-src/Narcissus/BinLib/CharString.v
 src/Narcissus/BinLib/Core.v
 src/Narcissus/Common/Compose.v
 src/Narcissus/Common/ComposeCheckSum.v
@@ -178,7 +178,6 @@ src/Narcissus/Common/WordFacts.v
 src/Narcissus/ComplementaryFormats/ComplementaryFormat.v
 src/Narcissus/Examples/ByteAlignedExample.v
 src/Narcissus/Examples/ICMP_Packet.v
-src/Narcissus/Examples/IntExample.v
 src/Narcissus/Examples/README.v
 src/Narcissus/Examples/TutorialPrelude.v
 src/Narcissus/Examples/BRASS/Telemetry.v
@@ -202,7 +201,6 @@ src/Narcissus/Formats/ASN1.v
 src/Narcissus/Formats/Ascii.v
 src/Narcissus/Formats/AsciiOpt.v
 src/Narcissus/Formats/Bool.v
-src/Narcissus/Formats/CInt.v
 src/Narcissus/Formats/DomainNameOpt.v
 src/Narcissus/Formats/Empty.v
 src/Narcissus/Formats/Enum.v

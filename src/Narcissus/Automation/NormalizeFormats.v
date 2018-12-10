@@ -35,8 +35,6 @@ Require Import
 
 Open Scope format_scope.
 
-Locate "++".
-
 Lemma sequence_assoc
       {S T : Type}
       {monoid : Monoid T}

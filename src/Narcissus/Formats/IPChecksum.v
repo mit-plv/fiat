@@ -1788,5 +1788,3 @@ Ltac apply_IPChecksum_dep Len_OK :=
       simpl; intros; exact I
     |  ]
   end. *)
-
-Print Assumptions compose_IPChecksum_format_correct.
