@@ -64,11 +64,36 @@ Fixpoint monoid_dequeue_word {B}
     end
   end.
 
+Lemma monoid_dequeue_empty
+  : forall sz,
+    monoid_dequeue_word sz mempty = (wzero _, mempty).
+Proof.
+  simpl; unfold ByteString_id; induction sz; reflexivity.
+Qed.
+
+Lemma ByteString_dequeue_mappend_opt
+  : forall (t : bool) (b b' b'' : ByteString),
+    ByteString_dequeue b = Some (t, b') ->
+    ByteString_dequeue (ByteString_enqueue_ByteString b b'') = Some (t, ByteString_enqueue_ByteString b' b'').
+Proof.
+  intros ? ? ? ? ;
+    rewrite (ByteString_into_queue_eq b),
+    (ByteString_into_queue_eq b'),
+    (ByteString_into_queue_eq b'').
+  rewrite !ByteString_enqueue_ByteString_into_BitString.
+  rewrite !ByteString_dequeue_into_BitString.
+  destruct (ByteString_into_queue b) eqn : ?; intros; try discriminate;
+    injections.
+  simpl.
+  rewrite <- !ByteString_enqueue_ByteString_into_BitString.
+  rewrite H0; reflexivity.
+Qed.
+
 Lemma monoid_dequeue_enqueue_word
   : forall (w : word (0 + 1 * 8)) (ext : ByteString) OK,
     monoid_dequeue_word _ (ByteString_enqueue_ByteString (ByteStringToBoundedByteString (word_into_ByteString OK w)) ext) = (w, ext).
 Proof.
-  (*simpl; intros; shatter_word w.
+  simpl; intros; shatter_word w.
   unfold word_into_ByteString; simpl.
   do 8 match goal with
          |- context [ByteString_dequeue (ByteString_enqueue_ByteString ?z _)] =>
@@ -86,10 +111,10 @@ Proof.
              end
        end.
   repeat f_equal.
-  rewrite <- ByteString_enqueue_ByteString_id_left.
+  pose proof (mempty_left ext) as H7; simpl in H7; rewrite <- H7 at -1.
   unfold ByteString_id; repeat f_equal.
-  apply le_uniqueness_proof. *)
-Admitted.
+  apply le_uniqueness_proof. 
+Qed.
 
 Fixpoint ByteString2ListOfChar (n : nat)
          (b : ByteString) : list char :=
@@ -115,16 +140,23 @@ Proof.
   Local Opaque monoid_dequeue_word.
   intros.
   simpl.
-  (*
-  replace {| padding := 0; front := WO; paddingOK := PaddingOK; byteString := [c] |} with (word_into_ByteString ByteString_id_subproof (c : word (0 + 1 * 8))).
+  replace {| padding := 0; front := WO; paddingOK := PaddingOK; byteString := [c] |} with (ByteStringToBoundedByteString (word_into_ByteString PaddingOK (c : word (0 + 1 * 8)))).
   rewrite monoid_dequeue_enqueue_word.
   reflexivity.
   unfold char in c; shatter_word c.
-  unfold word_into_ByteString; simpl.
-  f_equal.
-  apply le_uniqueness_proof.
-Qed. *)
-Admitted.
+  reflexivity.
+Qed. 
+
+Lemma ByteBuffer_to_list_append
+  : forall sz1 l1 sz2 l2, 
+    ByteBuffer.to_list (l1 ++ l2)%vector =
+    (ByteBuffer.to_list (n := sz1) l1 ++ ByteBuffer.to_list (n := sz2) l2)%list.
+Proof.
+  induction l1.
+  - reflexivity.
+  - intros; simpl; rewrite <- IHl1.
+    reflexivity.
+Qed.    
 
 Lemma ByteString2ListOfChar_eq
   : forall (b ext : ByteString),
@@ -138,30 +170,85 @@ Proof.
   simpl Core.byteString.
   revert front paddingOK; induction byteString; intros.
   - reflexivity.
-  - Admitted.
-(*
-    simpl Core.byteString; simpl length.
+  - simpl numBytes in *.
     rewrite Mult.mult_succ_r, NPeano.Nat.add_comm.
     rewrite Mult.mult_comm.
     do 8 rewrite plus_Sn_m.
     rewrite plus_O_n.
     symmetry.
+    unfold ByteBuffer.to_list, to_list in *; simpl.
     rewrite <- (IHbyteString WO paddingOK) at 1.
-    replace (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := a :: byteString |} ext)
+    replace (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := h :: byteString |} ext)
     with
-    (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := [a] |} (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := byteString |} ext) ).
-    pose proof ByteString2ListOfChar_push_char as H'.
-    simpl plus in H'.
-    shatter_word front.
-    rewrite H'.
-    f_equal.
-    f_equal.
-    omega.
+      (ByteString_enqueue_ByteString
+         (ByteStringToBoundedByteString (word_into_ByteString (m := 1) paddingOK h)) (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := byteString |} ext) ).
+    rewrite (fun ext => monoid_dequeue_enqueue_word h ext paddingOK).
+    rewrite mult_comm; shatter_word front; reflexivity.
     rewrite ByteString_enqueue_ByteString_assoc.
     f_equal.
     shatter_word front.
-    erewrite <- massage_queue_into_ByteString; reflexivity.
-Qed. *)
+    unfold char in h; shatter_word h.
+    unfold word_into_ByteString; simpl.
+    unfold ByteStringToBoundedByteString, ByteBuffer.of_list, of_list; simpl.
+    unfold ByteString_enqueue_ByteString; simpl.
+    match goal with
+      |- context [ ?w :: byteString] =>
+      generalize w
+    end.
+    intros.
+    assert (forall byteString m (l : ByteBuffer.t m), ByteBuffer.fold_left ByteString_enqueue_char
+    {| padding := 0; front := WO; paddingOK := paddingOK; numBytes := m; byteString := l |} byteString =
+  {| padding := 0; front := WO; paddingOK := paddingOK; numBytes := m + n; byteString := Vector.append l byteString |}).
+    { clear; induction byteString.
+      - simpl; intros; rewrite Vector_append_nil_r'.
+        revert l; rewrite (plus_n_O m); simpl; reflexivity.
+      - simpl; intros.
+        assert (m + 1 + n = m + (1 + n)) by omega.
+        pose proof (Vector_append_assoc _ _ _ H l [h] byteString)%vector.
+        simpl in H0; rewrite H0; clear H0.
+        revert H.
+        simpl.
+        replace (ByteString_enqueue_char {| padding := 0; front := WO; paddingOK := paddingOK; numBytes := m; byteString := l |} h)
+          with {| padding := 0; front := WO; paddingOK := paddingOK; numBytes := m + 1; byteString := l ++ [h]|}%vector.
+        generalize (l ++ [h])%vector.
+        rewrite (plus_comm m 1).
+        simpl.
+        rewrite <- (plus_n_Sm m n).
+        intros.
+        destruct H; simpl.
+        apply IHbyteString.
+        unfold char in h; shatter_word h.
+        unfold ByteString_enqueue_char.
+        rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq
+                {| padding := 0; front := WO; paddingOK := paddingOK; numBytes := m; byteString := l |}).
+        rewrite <- ByteStringToBoundedByteString_enqueue_word.
+        simpl.
+        Local Transparent Core.ByteString_enqueue_word.
+        simpl.
+        unfold Core.ByteString_enqueue at 6.
+        simpl.
+        unfold Core.ByteString_enqueue at 5.
+        simpl.
+        unfold Core.ByteString_enqueue at 4.
+        simpl.
+        unfold Core.ByteString_enqueue at 3.
+        simpl.
+        unfold Core.ByteString_enqueue at 2.
+        simpl.
+        unfold Core.ByteString_enqueue at 1.
+        simpl.
+        rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq
+                      {| padding := 0; front := WO; paddingOK := paddingOK; numBytes := m + 1; byteString := l ++ _ |})%vector.
+        f_equal.
+        unfold BoundedByteStringToByteString.
+        simpl.
+        f_equal.
+        apply le_uniqueness_proof. 
+        unfold eq_rec_r; simpl.
+        rewrite (ByteBuffer_to_list_append _ l _ [_]); reflexivity.
+    } 
+    apply H7.
+Qed. 
 
 Corollary ByteString2ListOfChar_eq'
   : forall (b : ByteString),
@@ -251,25 +338,58 @@ Proof.
   rewrite <- ByteString_into_BitString_eq; reflexivity.
 Qed.
 
+Lemma padding_eq_mod_8
+  : forall b : ByteString, padding b = length_ByteString b mod 8.
+Proof.
+  intros; unfold length_ByteString.
+  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by omega.
+  rewrite NPeano.Nat.mod_small; destruct b; eauto.
+Qed.
+
+Lemma ByteString_enqueue_padding_eq
+  : forall a b,
+    padding (ByteString_enqueue a b) =
+    NPeano.modulo (S (padding b)) 8.
+Proof.
+  intros.
+  rewrite padding_eq_mod_8.
+  unfold length_ByteString.
+  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by omega.
+  destruct b; simpl.
+  destruct padding as [ | [ | [ | [ | [ | [ | [ | [ | ?] ] ] ] ] ] ] ]; try omega;
+    shatter_word front; reflexivity.
+Qed.
+
+Lemma encode_word'_padding' :
+  forall sz (w : word sz) bs,
+    padding (encode_word' _ w bs) = NPeano.modulo (sz + padding bs) 8.
+Proof.
+  intros.
+  rewrite <- padding_mod_8.
+  revert bs; induction w; intros.
+  - reflexivity.
+  - simpl encode_word'.
+    rewrite ByteString_enqueue_padding_eq.
+    replace (S n + padding bs) with (1 + (n + padding bs)) by omega.
+    rewrite <- Nat.add_mod_idemp_r by omega.
+    rewrite <- IHw.
+    rewrite !Nat.add_mod_idemp_r by omega.
+    replace (S (padding (encode_word' n w bs))) with
+        (1 + (padding (encode_word' n w bs))) by omega.
+    rewrite <- Nat.add_mod_idemp_r at 1 by omega.
+    rewrite NPeano.Nat.mod_mod by omega.
+    rewrite Nat.add_mod_idemp_r by omega; reflexivity.
+Qed.
+
 Lemma encode_word'_padding :
   forall sz (w : word sz),
     padding (encode_word' _ w mempty) = NPeano.modulo sz 8.
 Proof.
   intros.
-  rewrite (ByteString_into_queue_eq (encode_word' _ _ _)).
-  rewrite padding_ByteString_queue_into_ByteString.
-  rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq _).
-  rewrite ByteStringToBoundedByteString_into_queue_eq'.
-  (*rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq _).
-  intros; rewrite (ByteString_into_BitString_eq _).
-  rewrite padding_BitString_into_ByteString.
-  f_equal.
-  rewrite length_ByteString_into_BitString_measure.
-  simpl.
-  rewrite length_encode_word'; simpl; rewrite length_ByteString_id.
-  omega.
-Qed. *)
-Admitted.
+  rewrite encode_word'_padding'.
+  simpl padding.
+  rewrite <- plus_n_O; reflexivity.
+Qed. 
 
 Definition IPChecksum_Valid (n : nat) (b : ByteString) : Prop :=
   onesComplement (ByteString2ListOfChar n b) = wones 16.
@@ -300,14 +420,6 @@ Proof.
   unfold length_ByteString; simpl.
   omega.
 Qed.
-
-(*Lemma length_BitString_into_ByteString
-  : forall l, length_ByteString (BitString_into_ByteString l) = length l.
-Proof.
-  induction l.
-  - reflexivity.
-  - simpl; rewrite length_ByteString_push; eauto.
-Qed. *)
 
 Definition IPv4_Packet_format_measure (ipv4_b : ByteString)
   : nat :=
@@ -753,21 +865,6 @@ Proof.
     erewrite <- IHl; eauto with arith.
 Qed.
 
-Lemma padding_eq_mod_8
-  : forall b : ByteString, padding b = length_ByteString b mod 8.
-Admitted.
-
-Lemma ByteString_enqueue_padding_eq
-  : forall a b,
-    padding (ByteString_enqueue a b) =
-    NPeano.modulo (S (padding b)) 8.
-Proof.
-  intros.
-Admitted.
-(*  rewrite !padding_eq_mod_8.
-  rewrite (NPeano.Nat.add_mod_idemp_r 1 _ 8); auto.
-
-Qed. *)
 
 Lemma queue_into_ByteString_padding_eq
   : forall l,
@@ -780,10 +877,15 @@ Proof.
   - apply padding_eq_mod_8.
   - simpl fold_left.
     rewrite IHl.
-Admitted.
-(*    rewrite length_ByteString_enqueue.
-    f_equal; simpl; omega.
-Qed. *)
+    replace bin_measure with length_ByteString by reflexivity.
+    rewrite <- NPeano.Nat.add_mod_idemp_r by omega.
+    rewrite <- NPeano.Nat.add_mod_idemp_r with (b := length_ByteString _) by omega.
+    rewrite <- !padding_eq_mod_8.
+    rewrite ByteString_enqueue_padding_eq.
+    rewrite NPeano.Nat.add_mod_idemp_r by omega.
+    f_equal.
+    simpl; omega.
+Qed.
 
 Lemma ByteString_enqueue_ByteString_padding_eq
   : forall b b',
@@ -796,21 +898,18 @@ Proof.
   rewrite queue_into_ByteString_app.
   generalize (queue_into_ByteString (ByteString_into_queue b)).
   induction (ByteString_into_queue b'); intros; simpl fold_left.
-Admitted.
-  (*
-  - change (padding (queue_into_ByteString nil)) with 0.
-    rewrite <- plus_n_O.
-    rewrite (ByteString_into_BitString_eq b0).
-    rewrite padding_BitString_into_ByteString.
-    rewrite NPeano.Nat.mod_mod; auto.
+  - rewrite <- NPeano.Nat.add_mod_idemp_r by omega.
+    replace (padding (queue_into_ByteString []%list) mod 8) with 0 by reflexivity.
+    rewrite NPeano.Nat.mod_small; destruct b0; simpl; eauto.
+    omega.
   - rewrite IHb0.
-    rewrite ByteString_enqueue_padding_eq.
     rewrite !queue_into_ByteString_padding_eq.
-    simpl length.
-    rewrite <- NPeano.Nat.add_mod; auto.
-    rewrite NPeano.Nat.add_mod_idemp_r; auto.
-    f_equal; omega.
-Qed. *)
+    rewrite !NPeano.Nat.add_mod_idemp_r by omega.
+    rewrite ByteString_enqueue_padding_eq.
+    rewrite plus_comm.
+    rewrite !NPeano.Nat.add_mod_idemp_r by omega.
+    f_equal; simpl length; omega.
+Qed.
 
 Definition length_ByteString_ByteString_id
   : length_ByteString ByteString_id = 0 := eq_refl.
@@ -921,10 +1020,19 @@ Lemma InternetChecksum_To_ByteBuffer_Checksum {sz}
       (ByteString2ListOfChar (m * 8) (build_aligned_ByteString v))
     = InternetChecksum.ByteBuffer_checksum_bound m v.
 Proof.
+  intros; rewrite <- ByteBuffer_checksum_bound_ok.
+  revert sz v.
   induction m.
   - intros; reflexivity.
-  - intros; rewrite <- InternetChecksum.ByteBuffer_checksum_bound_ok.
+  - intros; simpl.
     destruct v.
+    + simpl.
+      replace (build_aligned_ByteString []) with ByteString_id.
+      rewrite monoid_dequeue_empty.
+      destruct m.
+      reflexivity.
+      simpl.
+      rewrite monoid_dequeue_empty.
 Admitted.
 
 (*Lemma compose_IPChecksum_format_correct
