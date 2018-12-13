@@ -334,7 +334,16 @@ Section AlignWord.
   Proof.
     intros.
     unfold decode_enum.
-  Admitted.
+    rewrite <- CollapseWord'' with
+        (b0 := b)
+        (cd0 := cd)
+        (k0 := fun w1 w2 b cd =>
+                Ifopt (word_indexed w1 tb) as idx Then k idx w2 b cd Else None).
+    unfold decode_word; repeat setoid_rewrite If_Opt_Then_Else_DecodeBindOpt; simpl.
+    destruct (decode_word' sz b) as [ [? ?] | ] eqn: ?; simpl; eauto.
+    destruct (word_indexed w tb) as [ | [? ?] ] eqn: ?; simpl; eauto.
+    destruct (decode_word' sz' b0) as [ [? ?] | ] eqn: ?; simpl; eauto.
+  Qed.
 
   Variable addE_addE_plus :
     forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).
@@ -1476,10 +1485,12 @@ Section AlignEncodeWord.
         (Projection_Format format_word proj)
         (fun sz v idx s => SetCurrentBytes v idx (proj s)).
   Proof.
-    apply CorrectAlignedEncoder_morphism
-      with (encode := (fun (sz : nat) (v : t Core.char sz) (idx : nat) (s : S) => SetCurrentBytes' v idx (proj s))).
-    eauto using SetCurrentBytes_SetCurrentBytes'.
-  Admitted.
+    eapply CorrectAlignedEncoderForProjection_Format with
+        (format := format_word)
+        (encoder := fun sz => @SetCurrentBytes sz n)
+        (f := proj).
+    eapply CorrectAlignedEncoderForFormatNChar; eauto.
+  Qed.
 
 End AlignEncodeWord.
 

@@ -1014,11 +1014,19 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma build_aligned_ByteString_nil
+  :   build_aligned_ByteString [] = ByteString_id.
+Proof.
+  unfold build_aligned_ByteString, ByteString_id; simpl.
+  f_equal.
+  eapply le_uniqueness_proof.
+Qed.
+  
 Lemma InternetChecksum_To_ByteBuffer_Checksum {sz}
   : forall m (v : Vector.t _ sz),
     InternetChecksum.checksum
-      (ByteString2ListOfChar (m * 8) (build_aligned_ByteString v))
-    = InternetChecksum.ByteBuffer_checksum_bound m v.
+      (ByteString2ListOfChar ((m * 2) * 8) (build_aligned_ByteString v))
+    = InternetChecksum.ByteBuffer_checksum_bound (m * 2) v.
 Proof.
   intros; rewrite <- ByteBuffer_checksum_bound_ok.
   revert sz v.
@@ -1027,13 +1035,70 @@ Proof.
   - intros; simpl.
     destruct v.
     + simpl.
-      replace (build_aligned_ByteString []) with ByteString_id.
+      rewrite build_aligned_ByteString_nil.
       rewrite monoid_dequeue_empty.
       destruct m.
       reflexivity.
       simpl.
       rewrite monoid_dequeue_empty.
-Admitted.
+      rewrite monoid_dequeue_empty.
+      rewrite monoid_dequeue_empty.
+      simpl; fold mult.
+      assert (checksum (ByteString2ListOfChar (m * 2 * 8) ByteString_id) = wzero 16).
+      { clear; induction m; simpl; eauto.
+        fold mult.
+        rewrite monoid_dequeue_empty.
+        simpl; rewrite monoid_dequeue_empty.
+        simpl; rewrite IHm.
+        reflexivity. }
+      rewrite !H.
+      reflexivity.
+    + pose proof (monoid_dequeue_enqueue_word h (build_aligned_ByteString v)) .
+      pose proof (build_aligned_ByteString_append v [h]) as H'; simpl in H';
+        rewrite H'; clear H'.
+      assert (lt 0 8)%nat as OK by omega.
+      replace (build_aligned_ByteString [h]) with
+          (ByteStringToBoundedByteString (word_into_ByteString (m := 1) OK h)).
+      rewrite H.
+      destruct v.
+      * simpl; rewrite build_aligned_ByteString_nil.
+        rewrite monoid_dequeue_empty.
+        fold mult.
+        simpl.
+        rewrite <- build_aligned_ByteString_nil.
+        rewrite IHm.
+        f_equal.
+        destruct m; reflexivity.
+      * pose proof (monoid_dequeue_enqueue_word h0 (build_aligned_ByteString v)) .
+        pose proof (build_aligned_ByteString_append v [h0]) as H'; simpl in H';
+          rewrite H'; clear H'.
+        replace (build_aligned_ByteString [h0]) with
+            (ByteStringToBoundedByteString (word_into_ByteString (m := 1) OK h0)).
+        rewrite H0. 
+        simpl.
+        fold mult.
+        rewrite IHm.
+        clear; generalize (wzero 16); revert h h0 n v.
+        induction m; simpl; intros; eauto.
+        destruct v; eauto.
+        destruct v; eauto.
+        rewrite add_bytes_into_checksum_swap; eauto.
+        fold mult.
+        rewrite add_bytes_into_checksum_swap.
+        rewrite <- !IHm; reflexivity.
+        unfold char in h0; shatter_word h0.
+        clear; simpl.
+        unfold word_into_ByteString, build_aligned_ByteString, ByteStringToBoundedByteString.
+        simpl.
+        f_equal.
+        apply le_uniqueness_proof.
+      * unfold char in h; shatter_word h.
+        clear; simpl.
+        unfold word_into_ByteString, build_aligned_ByteString, ByteStringToBoundedByteString.
+        simpl.
+        f_equal.
+        apply le_uniqueness_proof.
+Qed.
 
 (*Lemma compose_IPChecksum_format_correct
   : forall (A : Type)

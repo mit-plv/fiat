@@ -31,7 +31,7 @@ Ltac align_decoders_step :=
     | eapply @AlignedDecodeBind4CharM; intros; eauto
     | eapply @AlignedDecodeBindEnum; intros; eauto
     | let H' := fresh in
-      pose proof (fun C D E => @AlignedDecodeBindEnumM _ _ C D E 2) as H';
+      pose proof (fun C D => @AlignedDecodeBindEnumM _ _ C D 2) as H';
       simpl in H'; eapply H'; eauto; intros
     | eapply @AlignedDecodeBindUnused2CharM; simpl; eauto;
       eapply DecodeMEquivAlignedDecodeM_trans;
@@ -472,10 +472,7 @@ Ltac align_encoder_step :=
     (* Here is the hook for new encoder rules: *)
     | new_encoder_rules
     | apply CorrectAlignedEncoderForFormatList
-    | apply CorrectAlignedEncoderForFormatVector;
-      [ solve [ eauto ]
-      | solve [ eauto ]
-      | ]
+    | apply CorrectAlignedEncoderForFormatVector
     | apply CorrectAlignedEncoderForFormatChar; eauto
     | apply CorrectAlignedEncoderForFormatNat
     | apply CorrectAlignedEncoderForFormat2Nat; eauto

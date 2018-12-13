@@ -205,9 +205,10 @@ Proof.
   - reflexivity.
   - unfold aligned_IPv4_Packet_Checksum, aligned_IPv4_Packet_encoded_measure.
     simpl.
+    replace (wordToNat (split1 4 4 h) * 4) with ((wordToNat (split1 4 4 h) * 2) * 2) by omega.
     rewrite <- InternetChecksum_To_ByteBuffer_Checksum.
     unfold onesComplement.
-    replace (wordToNat (split1 4 4 h) * 4 * 8) with (wordToNat (split1 4 4 h) * 32) by omega.
+    replace (wordToNat (split1 4 4 h) * 2 * 2 * 8) with (wordToNat (split1 4 4 h) * 32) by omega.
     rewrite aligned_decode_char_eq.
     simpl.
     find_if_inside.
@@ -262,6 +263,8 @@ Proof.
   repeat align_decoders_step.
   repeat align_decoders_step.
 Defined.
+
+Print Assumptions IPv4_Packet_Header_decoder.
 
 (* Step Four: Extract the decoder function, and have /it/ start decoding
    at the start of the provided ByteString [v]. *)

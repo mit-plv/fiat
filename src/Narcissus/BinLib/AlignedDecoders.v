@@ -93,6 +93,7 @@ Section AlignedDecoders.
   Variable addE_addE_plus :
     forall (ce : CacheFormat) (n m : nat), addE (addE ce n) m = addE ce (n + m).
   Variable addE_0 : forall ce, addE ce 0 = ce.
+  Variable addD_0 : forall cd, addD cd 0 = cd.
 
   Lemma AlignedFormat2Char' {numBytes}
     : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
@@ -251,28 +252,17 @@ Section AlignedDecoders.
     destruct_ex; intuition; subst; eauto.
   Qed.
 
-  Lemma CorrectAlignedEncoderForFormatMChar_f n
-        {S}
-        (proj : S -> word (n * 8))
-    : CorrectAlignedEncoder
-        (FMapFormat.Projection_Format format_word proj)
-        (fun sz v idx s => SetCurrentBytes v idx (proj s)).
-  Proof.
-  Admitted.
-
   Lemma CorrectAlignedEncoderForFormat2Nat
     : CorrectAlignedEncoder
         (format_nat 16 (monoidUnit := ByteString_QueueMonoidOpt))
         (fun sz v idx n => SetCurrentBytes (sz := 2) v idx (natToWord 16 n)).
   Proof.
     eapply refine_CorrectAlignedEncoder.
-    2: eapply CorrectAlignedEncoderForFormatMChar_f.
+    2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
     unfold format_nat; intros.
     intros ? ?.
     eapply FMapFormat.EquivFormat_Projection_Format; eauto.
   Qed.
-
-
 
   Fixpoint AlignedEncodeVector' n n' {sz} {S}
            (S_format_align : forall numBytes, AlignedEncodeM (S := S) numBytes)
@@ -298,6 +288,16 @@ Section AlignedDecoders.
     : forall numBytes, AlignedEncodeM (S := Vector.t S sz) numBytes :=
     AlignedEncodeVector' sz 0 S_format_align .
 
+  Lemma Vector_nth_opt_append S
+    : forall n (t2 : Vector.t S n) m (t1 : Vector.t S m) k,
+      Vector_nth_opt (Vector.append t1 t2) (k + m) =
+      Vector_nth_opt t2 k.
+  Proof.
+    induction t1; simpl; intros; eauto.
+    rewrite plus_comm; simpl; eauto.
+    rewrite (plus_comm n0 k); eauto.
+  Qed.
+
   Lemma CorrectAlignedEncoderForFormatVector {sz}
         {S}
     : forall (format_S : FormatM S ByteString)
@@ -305,7 +305,46 @@ Section AlignedDecoders.
       CorrectAlignedEncoder format_S encode_S ->
       CorrectAlignedEncoder (Vector.format_Vector format_S)
                             (AlignedEncodeVector encode_S (sz := sz)).
-  Admitted.
+  Proof.
+    intros; induction sz.
+    - eapply refine_CorrectAlignedEncoder with (format' := fun s env => ret (mempty, env)).
+      intros.
+      pattern s; eapply Vector.case0.
+      reflexivity.
+      unfold AlignedEncodeVector; simpl.
+      eapply CorrectAlignedEncoderForDoneC.
+    - eapply refine_CorrectAlignedEncoder with (format' :=
+                                                  SequenceFormat.sequence_Format
+                                                    (FMapFormat.Projection_Format format_S Vector.hd)
+                                                    (FMapFormat.Projection_Format (Vector.format_Vector format_S) Vector.tl)).
+      + intros; pattern sz, s; eapply Vector.caseS; intros; simpl.
+        unfold SequenceFormat.sequence_Format; simpl.
+        unfold compose, Bind2.
+        f_equiv; [ apply FMapFormat.EquivFormat_Projection_Format | intro].
+        f_equiv; apply FMapFormat.EquivFormat_Projection_Format.
+      + unfold AlignedEncodeVector.
+        eapply CorrectAlignedEncoder_morphism.
+        2: eapply CorrectAlignedEncoderForThenC.
+        2: eapply CorrectAlignedEncoderProjection; eauto.
+        2: eapply CorrectAlignedEncoderProjection; eauto.
+        intros.
+        pattern sz, w; apply Vector.caseS; intros.
+        unfold AppendAlignedEncodeM, Projection_AlignedEncodeM,
+        AlignedEncodeVector; simpl.
+        destruct (encode_S sz0 v idx h c) as [ [ [? ?] ?] | ] eqn: ?; simpl; eauto.
+        assert (forall n' m (t1 : Vector.t S m) n (t2 : Vector.t S n) sz0 t0 k idx cf,
+                   AlignedEncodeVector' n' (k + m) encode_S sz0 t0 idx (Vector.append t1 t2) cf =
+                   AlignedEncodeVector' n' k encode_S sz0 t0 idx t2 cf).
+        { clear; induction n'; simpl; intros; eauto.
+          rewrite Vector_nth_opt_append; simpl.
+          destruct (Vector_nth_opt t2 k); simpl; eauto.
+          destruct (encode_S sz0 t0 idx s cf) as [ [ [? ?] ?] | ] eqn: ?; simpl; eauto.
+          erewrite <- IHn' with (k := 1 + k); simpl; reflexivity.
+        }
+        erewrite <- H with (k := 0) (m := 1)
+                           (t1 := Vector.cons _ h _ (Vector.nil _)).
+        reflexivity.
+  Qed.
 
   Lemma CorrectAlignedEncoderForFormatNEnum
         m
@@ -316,7 +355,7 @@ Section AlignedDecoders.
         (fun sz v idx n => SetCurrentBytes (sz := m) v idx (Vector.nth codes n)).
   Proof.
     eapply refine_CorrectAlignedEncoder.
-    2: eapply CorrectAlignedEncoderForFormatMChar_f.
+    2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
     unfold format_enum; intros.
     intros ? ?.
     unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
@@ -332,7 +371,7 @@ Section AlignedDecoders.
         (fun sz v idx n => @SetCurrentByte _ _ sz v idx (Vector.nth codes n)).
   Proof.
     eapply refine_CorrectAlignedEncoder.
-    2: eapply CorrectAlignedEncoderForFormatChar_f.
+    2: eapply CorrectAlignedEncoderForFormatChar_f; eauto.
     unfold format_enum; intros.
     intros ? ?.
     unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
@@ -1684,7 +1723,6 @@ Section AlignedDecoders.
 
 
   Lemma AlignedDecodeBind3CharM:
-    forall (cache : Cache) (cacheAddNat : CacheAdd cache nat),
       (forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m)) ->
       forall (C : Type) (t : word 24 -> DecodeM (C * _) ByteString)
              (t' : word 24 -> forall numBytes : nat, AlignedDecodeM C numBytes),
@@ -1700,10 +1738,25 @@ Section AlignedDecoders.
                 w <- return (Core.append_word b3 (Core.append_word b2 b1));
                               t' w numBytes)%AlignedDecodeM).
   Proof.
-  Admitted.
+    intros; eapply DecodeMEquivAlignedDecodeM_trans.
+    - eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply H0.
+    - simpl; intros.
+      unfold decode_word; rewrite (decode_word_plus' 8 16).
+      unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+      destruct (decode_word' 8 b) as [ [? ?] | ]; eauto.
+      unfold decode_word; rewrite (decode_word_plus' 8 8).
+      unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+      destruct (decode_word' 8 b0) as [ [? ?] | ]; eauto.
+      destruct (decode_word' 8 b1) as [ [? ?] | ]; eauto.
+      rewrite !addD_addD_plus; simpl plus.
+      higher_order_reflexivity.
+      - intros; reflexivity.
+  Qed.
 
   Lemma AlignedDecodeBind4CharM:
-    forall (cache : Cache) (cacheAddNat : CacheAdd cache nat),
       (forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m)) ->
       forall (C : Type) (t : word 32 -> DecodeM (C * _) ByteString)
              (t' : word 32 -> forall numBytes : nat, AlignedDecodeM C numBytes),
@@ -1720,7 +1773,27 @@ Section AlignedDecoders.
                 w <- return (Core.append_word b4 (Core.append_word b3 (Core.append_word b2 b1)));
                               t' w numBytes)%AlignedDecodeM).
   Proof.
-  Admitted.
+    intros; eapply DecodeMEquivAlignedDecodeM_trans.
+    - eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply H0.
+      - simpl; intros.
+        unfold decode_word; rewrite (decode_word_plus' 8 24).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 16).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b0) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 8).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b1) as [ [? ?] | ]; eauto.
+        destruct (decode_word' 8 b2) as [ [? ?] | ]; eauto.
+        rewrite !addD_addD_plus; simpl plus.
+        higher_order_reflexivity.
+      - intros; reflexivity.
+  Qed.
 
   Lemma AlignedDecode_ifb_dep {A : Type}
         (decode_T decode_E : DecodeM (A * ByteString) ByteString)
@@ -1843,7 +1916,23 @@ Section AlignedDecoders.
         (fun numBytes : nat => (b <- Aligned_decode_enum tb numBytes;
                                   t' b numBytes)%AlignedDecodeM).
   Proof.
-  Admitted.
+    unfold decode_enum, Aligned_decode_enum.
+    intros; eapply DecodeMEquivAlignedDecodeM_trans.
+    eapply AlignedDecodeBindCharM; intros.
+    2: { simpl; intros.
+         unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+         destruct (decode_word b cd) as [ [ [? ?] ] | ]; eauto.
+         higher_order_reflexivity.
+    }
+    2: { unfold AlignedDecodeMEquiv; simpl; intros.
+         unfold BindAlignedDecodeM.
+         destruct (GetCurrentByte v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
+         higher_order_reflexivity.
+    }
+    simpl.
+    destruct (word_indexed b tb); simpl; eauto.
+    eapply AlignedDecode_Throw.
+  Qed.
 
   Definition Aligned_decode_enumN
              sz
@@ -1867,13 +1956,25 @@ Section AlignedDecoders.
         (fun numBytes : nat => (b <- Aligned_decode_enumN sz tb numBytes;
                                   t' b numBytes)%AlignedDecodeM).
   Proof.
-  Admitted.
-
-  Lemma AlignedDecodeUnused2CharM:
-    DecodeMEquivAlignedDecodeM (decode_unused_word (sz := 16))
-                               (fun numBytes : nat => b <- SkipCurrentByte; SkipCurrentByte).
-  Proof.
-  Admitted.
+    unfold decode_enum, Aligned_decode_enum.
+    intros; eapply DecodeMEquivAlignedDecodeM_trans.
+    eapply Bind_DecodeMEquivAlignedDecodeM; 
+      [ eapply AlignedDecodeNCharM with (m := sz); intros; eauto | ].
+    2: { simpl; intros.
+         unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+         destruct (decode_word b cd) as [ [ [? ?] ] | ]; eauto.
+         higher_order_reflexivity.
+    }
+    2: { unfold AlignedDecodeMEquiv; simpl; intros.
+         unfold Aligned_decode_enumN; simpl.
+         unfold BindAlignedDecodeM.
+         destruct (GetCurrentBytes sz v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
+         higher_order_reflexivity.
+    }
+    simpl.
+    intros; destruct (word_indexed a tb); simpl; eauto.
+    eapply AlignedDecode_Throw.
+  Qed.
 
   Lemma AlignedDecodeBindUnused2CharM {C : Type}
         (t : unit -> DecodeM (C * _) ByteString)
@@ -1886,10 +1987,15 @@ Section AlignedDecoders.
   Proof.
     intro.
     eapply DecodeMEquivAlignedDecodeM_trans.
-    3: intros; eapply BindAlignedDecodeM_assoc.
-    2: intros; higher_order_reflexivity.
-    eapply Bind_DecodeMEquivAlignedDecodeM; eauto using AlignedDecodeUnused2CharM.
-    intro; destruct a; eauto.
+    eapply Bind_DecodeMEquivAlignedDecodeM.
+    eapply AlignedDecodeNUnusedCharM with (m := 2); eauto.
+    intros [ ]; eassumption.
+    reflexivity.
+    intros; simpl.
+    unfold AlignedDecodeMEquiv, BindAlignedDecodeM; simpl; intros.
+    destruct (SkipCurrentByte v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
+    destruct (SkipCurrentByte v n0 c0) as [ [ [? ?] ] | ]; simpl; eauto.
+    destruct u0; reflexivity.
   Qed.
 
   Definition aligned_option_decode {S}
@@ -1928,8 +2034,66 @@ Section AlignedDecoders.
   Proof.
     intros.
     destruct b'; simpl; eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
-    unfold aligned_option_decode; simpl.
-  Admitted.
+    - unfold DecodeMEquivAlignedDecodeM; split; intros.
+      { unfold aligned_option_decode; simpl.
+        destruct H.
+        rewrite H.
+        destruct (aligned_decode_Some numBytes_hd (Vector.tl v) n cd)
+        as [ [ [? ?] ] | ]; simpl; eauto. }
+      split; intros.
+      { destruct (decode_Some b cd) as [ [ [? ?] ?] | ] eqn: ? ;
+          try discriminate.
+        injections.
+        eapply H; eauto. }
+      split; intros.
+      unfold aligned_option_decode; simpl.
+      split; intros.
+      { destruct (decode_Some (build_aligned_ByteString v) cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H in Heqo.
+        rewrite Heqo; eauto. }
+      { destruct (aligned_decode_Some n v 0 cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H in Heqo; rewrite Heqo; reflexivity. }
+      split.
+      { destruct (decode_Some (build_aligned_ByteString v) cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H in Heqo; destruct Heqo. rewrite H3.
+        injections; reflexivity. }
+      { destruct (decode_Some (build_aligned_ByteString v) cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H in Heqo; destruct Heqo. destruct H4.
+        injections; eauto. }
+    - unfold DecodeMEquivAlignedDecodeM; split; intros.
+      { unfold aligned_option_decode; simpl.
+        destruct H0; rewrite H0.
+        destruct (aligned_decode_None numBytes_hd (Vector.tl v) n cd)
+        as [ [ [? ?] ] | ]; simpl; eauto. }
+      split; intros.
+      { destruct (decode_None b cd) as [ [ [? ?] ?] | ] eqn: ? ;
+          try discriminate.
+        injections.
+        eapply H0; eauto. }
+      split; intros.
+      unfold aligned_option_decode; simpl.
+      split; intros.
+      { destruct (decode_None (build_aligned_ByteString v) cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H0 in Heqo.
+        rewrite Heqo; eauto. }
+      { destruct (aligned_decode_None n v 0 cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H0 in Heqo; rewrite Heqo; reflexivity. }
+      split.
+      { destruct (decode_None (build_aligned_ByteString v) cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H0 in Heqo; destruct Heqo. rewrite H3.
+        injections; reflexivity. }
+      { destruct (decode_None (build_aligned_ByteString v) cd)
+          as [ [ [? ?] ] | ] eqn: ?; simpl; try discriminate.
+        eapply H0 in Heqo; destruct Heqo. destruct H4.
+        injections; eauto. }
+  Qed.
 
 End AlignedDecoders.
 
