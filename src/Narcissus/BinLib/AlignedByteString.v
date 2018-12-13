@@ -1110,11 +1110,23 @@ Proof.
       erewrite IHl; f_equal.
     * autounfold with ByteBuffer in *.
       simpl in *.
-      admit.
-      (* rewrite H'.
+      match goal with
+        |- ?l'' = _ => replace l'' with
+          (ByteString_enqueue_word w1
+         (Vector.fold_left ByteString_enqueue_char
+            {|
+            padding := 0;
+            front := WO;
+            paddingOK := paddingOK''';
+            numBytes := sz + 1;
+            byteString := Vector.append l
+                            (Vector.cons (word 8) (WS x (WS x0 (WS x1 (WS x2 (WS x3 (WS x4 (WS x5 (WS x6 WO)))))))) 0
+                                         (Vector.nil char)) |} l'))
+      end.
       f_equal; f_equal.
       eapply byteString_f_equal; simpl;
-        try (instantiate (1 := eq_refl); reflexivity). *)
+        try (instantiate (1 := eq_refl); reflexivity).
+      rewrite <- H'; reflexivity.
       Grab Existential Variables.
       omega.
 Qed.

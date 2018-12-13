@@ -166,7 +166,7 @@ Section AlignedList.
                               Some (String (ascii_of_N (wordToN c)) s, b', cd')
     end.
 
-  Lemma optimize_align_decode_string_w_term_char
+  (*Lemma optimize_align_decode_string_w_term_char
     : forall (term_char : Ascii.ascii)
              {sz}
              (v : Vector.t (word 8) sz)
@@ -179,6 +179,6 @@ Section AlignedList.
               None.
   Proof.
     intros.
-  Admitted.
+  Admitted. *)
 
 End AlignedList.
