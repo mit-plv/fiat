@@ -268,49 +268,6 @@ Section AlignedList.
   (*     end *)
   (*   end. *)
 
-
-
-Section ByteBuffer.
-  (* Context {A : Type}. *)
-  Context {T : Type}.
-  Context {monoid : Monoid T}.
-  Context {monoidUnit : QueueMonoidOpt monoid bool}.
-
-  Variable A_predicate : Core.char -> Prop.
-  Variable A_predicate_rest : Core.char -> T -> Prop.
-  Variable A_cache_inv : CacheDecode -> Prop.
-  Variable A_decode_pf
-    : CorrectDecoder monoid A_predicate
-                              A_predicate_rest
-                              format_word decode_word A_cache_inv.
-
-  Definition format_bytebuffer (b : { n & ByteBuffer.t n }) (ce : CacheFormat) : Comp (T * CacheFormat) :=
-    format_Vector format_word (projT2 b) ce.
-
-  Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n & ByteBuffer.t n } * T * CacheDecode) :=
-    match decode_Vector (decode_word (sz := 8)) s b cd with
-    | Some (v, t, cd) => Some (existT _ _ v, t, cd)
-    | None => None
-    end.
-
-  Definition ByteBuffer_predicate_rest
-           (v : { n & ByteBuffer.t n })
-           (b : T)
-    : Prop :=
-    Vector_predicate_rest A_predicate_rest format_word (projT1 v) (projT2 v) b.
-
-  Theorem ByteBuffer_decode_correct
-    :
-      forall n,
-        CorrectDecoder
-          monoid
-          (fun ls => forall x, Vector.In x (projT2 ls) -> A_predicate x)
-          (fun _ _ => True)
-          format_bytebuffer (decode_bytebuffer n) A_cache_inv.
-  Proof.
-  Admitted.
-End ByteBuffer.
-
   Definition bytebuffer_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : { n & ByteBuffer.t n } :=
     let l := List.firstn len (List.skipn from (Vector.to_list v)) in
     existT _ _ (Vector.of_list l).
