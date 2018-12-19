@@ -191,8 +191,10 @@ Section UDP_Decoder.
     intros; apply_rules.
     eapply (format_sequence_correct H4).
     intros; eapply @ByteBuffer_decode_correct with (n := s'1 - 8).
-    repeat apply_rules.
     solve_side_condition.
+    unfold Basics.compose; unfold UDP_Packet_OK; intros; intuition.
+    revert H7; simpl; intro; auto with arith.
+    rewrite <- H7, minus_plus; reflexivity.
     intros; apply_rules.
     cbv beta; synthesize_cache_invariant.
     (* Perform algebraic simplification of the decoder implementation. *)

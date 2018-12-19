@@ -471,13 +471,13 @@ Ltac align_encoder_step :=
       end
     (* Here is the hook for new encoder rules: *)
     | new_encoder_rules
-    | apply CorrectAlignedEncoderForFormatList
+    | apply CorrectAlignedEncoderForFormatList; eauto
     | apply CorrectAlignedEncoderForFormatVector
     | apply CorrectAlignedEncoderForFormatChar; eauto
     | apply CorrectAlignedEncoderForFormatNat
     | apply CorrectAlignedEncoderForFormat2Nat; eauto
     | apply CorrectAlignedEncoderForFormatEnum
-    | eapply CorrectAlignedEncoderForFormatByteBuffer
+    | eapply CorrectAlignedEncoderForFormatByteBuffer; eauto
     | eapply CorrectAlignedEncoderProjection
     | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2);
       [ solve [ eauto ]

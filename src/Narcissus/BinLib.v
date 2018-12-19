@@ -4,6 +4,7 @@ Require Import Bedrock.Word.
 
 Require Export
         Fiat.Narcissus.BinLib.AlignedByteString
+        Fiat.Narcissus.BinLib.AlignedByteBuffer
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedList
         Fiat.Narcissus.BinLib.AlignedDecoders

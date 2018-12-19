@@ -207,8 +207,13 @@ Proof.
   intros; eapply (format_sequence_correct); eauto.
   intros; eapply ByteBuffer_decode_correct
             with (n := wordToNat tcpLength - (20 + 4 * (s'3 - 5))).
-  intros; repeat apply_rules.
   simpl; eauto.
+  intros; intuition.
+  destruct H22.
+  rewrite H22.
+  rewrite <- H35.
+  unfold Basics.compose.
+  omega.
   intros; repeat apply_rules.
   cbv beta; synthesize_cache_invariant.
   (* Perform algebraic simplification of the decoder implementation. *)

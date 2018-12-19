@@ -8,111 +8,8 @@ Require Import
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.BinLib.Core.
 
-Lemma eq_rect_Vector_cons {A}
-  : forall n m a v H H',
-    eq_rect (S n) (Vector.t A) (VectorDef.cons A a n v) (S m) H =
-    Vector.cons _ a _ (eq_rect n (Vector.t A) v _ H').
-Proof.
-  intros.
-  destruct H'; simpl; symmetry;
-    apply Eqdep_dec.eq_rect_eq_dec; intros; eauto using Peano_dec.eq_nat_dec.
-Qed.
-
-(* Module Type BYTEBUFFER. *)
-(*   Axiom t : forall (n: nat), Type. *)
-
-(*   Axiom nil: t 0. *)
-(*   Axiom cons: forall (c: char) {n} (b: t n), t (S n). *)
-
-(*   Axiom hd: forall {n} (b: t (S n)), char. *)
-(*   Axiom tl: forall {n} (b: t (S n)), t n. *)
-
-(*   Axiom append: forall {n1 n2} (b1: t n1) (b2: t n2), t (n1 + n2). *)
-(*   Axiom fold_left: forall {B: Type} (f: B -> char -> B) (b: B) {n} (v: t n), B. *)
-(*   Axiom to_list: forall {n} (b: t n), list char. *)
-(*   Axiom of_list: forall (l: list char), t (List.length l). *)
-
-(*   Axiom to_list_of_list_eq : *)
-(*     forall (v : list _), *)
-(*       to_list (of_list v) = v. *)
-
-(*   Axiom to_list_length : *)
-(*     forall n (v : t n), *)
-(*       n = length (to_list v). *)
-
-(*   Axiom t_ind : *)
-(*     forall (P : forall n : nat, t n -> Prop), *)
-(*       P 0 nil -> *)
-(*       (forall (h : char) (n : nat) (t : t n), P n t -> P (S n) (cons h t)) -> *)
-(*       forall (n : nat) (t : t n), P n t. *)
-
-(*   Axiom of_list_to_list : *)
-(*     forall (n : nat) (b : t n), *)
-(*       of_list (to_list b) = *)
-(*       eq_rect n t b (length (to_list b)) *)
-(*               (to_list_length n b). *)
-(* End BYTEBUFFER. *)
-
-Module ByteBuffer.
-  Definition t n := Vector.t char n.
-
-  Definition nil := @Vector.nil char.
-  Definition cons (c: char) {n} (b: t n): t (S n) := Vector.cons _ c n b.
-
-  Definition hd {n} (b: t (S n)): char := Vector.hd b.
-  Definition tl {n} (b: t (S n)): t n := Vector.tl b.
-
-  Definition append {n1 n2} (b1: t n1) (b2: t n2): t (n1 + n2) :=
-    Vector.append b1 b2.
-  Definition fold_left {B: Type} (f: B -> char -> B) (b: B) {n} (v: t n): B :=
-    Vector.fold_left f b v.
-  Definition to_list {n} (b: t n): list char :=
-    Vector.to_list b.
-  Definition of_list (l: list char): t (List.length l) :=
-    Vector.of_list l.
-  Definition to_vector {n} (b: t n): Vector.t char n :=
-    b.
-  Definition of_vector {n} (v: Vector.t char n): t n :=
-    v.
-
-  Lemma to_list_of_list_eq
-    : forall (v : list _),
-      to_list (of_list v) = v.
-  Proof.
-    induction v; simpl.
-    reflexivity.
-    replace (a :: v) with (a :: to_list (of_list v)).
-    reflexivity.
-    rewrite IHv; reflexivity.
-  Qed.
-
-  Lemma to_list_length :
-    forall n (v : t n),
-      n = length (to_list v).
-  Proof.
-    induction v; simpl; eauto.
-  Qed.
-
-  Lemma t_ind :
-    forall (P : forall n : nat, t n -> Prop),
-      P 0 nil ->
-      (forall (h : char) (n : nat) (v : t n), P n v -> P (S n) (cons h v)) ->
-      forall (n : nat) (v : t n), P n v.
-  Proof. intros. induction v; eauto. Qed.
-
-  Lemma of_list_to_list :
-    forall (n : nat) (b : t n),
-      of_list (to_list b) =
-      eq_rect n t b (length (to_list b))
-              (to_list_length n b).
-  Proof.
-    induction b; simpl.
-    - apply Eqdep_dec.eq_rect_eq_dec; intros; eauto using Peano_dec.eq_nat_dec.
-    - unfold of_list, to_list, Vector.to_list in *.
-      simpl; rewrite IHb; clear.
-      unfold t; erewrite eq_rect_Vector_cons; f_equal.
-  Qed.
-End ByteBuffer.
+Require Export
+        Fiat.Narcissus.Formats.ByteBuffer.
 
 Hint Unfold
      ByteBuffer.t
@@ -682,7 +579,7 @@ Proof.
   unfold ByteString_into_queue, Core.ByteString_into_queue; simpl.
   f_equal.
   clear; induction byteString0; simpl; eauto.
-  rewrite <- IHbyteString0; reflexivity. 
+  rewrite <- IHbyteString0; reflexivity.
 Qed.
 
 Fixpoint split_Vector_bool
