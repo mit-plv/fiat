@@ -133,7 +133,7 @@ Section ByteBufferFormat.
 
   Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n & ByteBuffer.t n } * T * CacheDecode) :=
     match decode_Vector (decode_word (sz := 8)) s b cd with
-    | Some (v, t, cd) => Some (existT _ _ v, t, cd)
+    | Some (v, t, cd) => Some (existT ByteBuffer.t _ v, t, cd)
     | None => None
     end.
 

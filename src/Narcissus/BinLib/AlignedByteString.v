@@ -8,6 +8,9 @@ Require Import
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.BinLib.Core.
 
+Require Export
+        Fiat.Narcissus.Formats.ByteBuffer.
+
 Hint Unfold
      ByteBuffer.t
      ByteBuffer.nil ByteBuffer.cons
