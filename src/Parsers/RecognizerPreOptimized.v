@@ -48,9 +48,9 @@ Section recursive_descent_parser.
   Local Arguments minus !_ !_.
   Local Arguments min !_ !_.
 
-  Local Instance optsplitdata_correct : @boolean_parser_completeness_dataT' _ _ _ G optdata
+  Local Program Instance optsplitdata_correct : @boolean_parser_completeness_dataT' _ _ _ G optdata
     := { split_string_for_production_complete := _ }.
-  Proof.
+  Next Obligation.
     pose proof (@split_string_for_production_complete _ _ _ _ _ splitdata_correct) as H.
     repeat (let x := fresh in intro x; specialize (H x)).
     revert H.
