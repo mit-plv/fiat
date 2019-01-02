@@ -48,9 +48,11 @@ Section implementation.
 
   Local Arguments split_string_for_production : simpl never.
 
-  Local Instance parser_precompleteness_data : @boolean_parser_completeness_dataT' Char _ _ G preparser_data
+  Local Obligation Tactic := intros.
+
+  Local Program Instance parser_precompleteness_data : @boolean_parser_completeness_dataT' Char _ _ G preparser_data
     := { split_string_for_production_complete len0 valid str offset len pf nt Hvalid := _ }.
-  Proof.
+  Next Obligation.
     apply initial_nonterminals_correct in Hvalid.
     generalize (fun it its idx offset len Hvalid' Heqb n pf pf' pit pits prefix H' => @splits_for_complete Char G splitter str idx offset len Hvalid' Heqb it its n pf pf' (ex_intro _ nt (ex_intro _ prefix (conj Hvalid H'))) pit pits).
     clear Hvalid.
@@ -113,6 +115,8 @@ Section implementation.
 
   Local Instance parser_completeness_data : @boolean_parser_completeness_dataT' Char _ _ G parser_data
     := optsplitdata_correct.
+
+  Local Obligation Tactic := program_simpl.
 
   Program Definition parser : Parser G splitter
     := {| has_parse str := parse_nonterminal (data := parser_data) str (Start_symbol G);

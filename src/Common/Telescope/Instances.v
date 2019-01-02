@@ -17,27 +17,33 @@ Module Export Telescope.
   Defined.
 
   Global Instance flattenT_R_Reflexive {t X R} {_ : @Reflexive X R}
-  : Reflexive (@flattenT_R_relation X R t)
-    := flattenT_R_lift (@Reflexive) R _ _.
-  Proof. lazy; eauto with nocore. Defined.
+  : Reflexive (@flattenT_R_relation X R t).
+  Proof.
+  refine (flattenT_R_lift (@Reflexive) R _ _).
+  lazy; eauto with nocore.
+  Defined.
 
   Global Instance flattenT_R_Symmetric {t X R} {_ : @Symmetric X R}
-  : Symmetric (@flattenT_R_relation X R t)
-    := flattenT_R_lift (@Symmetric) R _ _.
-  Proof. lazy; eauto with nocore. Defined.
+  : Symmetric (@flattenT_R_relation X R t).
+  Proof.
+  refine (flattenT_R_lift (@Symmetric) R _ _).
+  lazy; eauto with nocore.
+  Defined.
 
   Global Instance flattenT_R_Transitive {t X R} {_ : @Transitive X R}
-  : Transitive (@flattenT_R_relation X R t)
-    := flattenT_R_lift (@Transitive) R _ _.
-  Proof. lazy; eauto with nocore. Defined.
+  : Transitive (@flattenT_R_relation X R t).
+  Proof.
+  refine (flattenT_R_lift (@Transitive) R _ _).
+  lazy; eauto with nocore.
+  Defined.
 
   Global Instance flattenT_R_relation_flip_impl_Proper {t X R}
          {H : Proper (Basics.flip R ==> R ==> Basics.flip Basics.impl)
                      R}
   : Proper (Basics.flip (flattenT_R_relation R) ==> flattenT_R_relation R ==> Basics.flip Basics.impl)
-           (@flattenT_R_relation X R t)
-    := @flattenT_R_lift X t (fun A R => Proper (Basics.flip R ==> R ==> Basics.flip Basics.impl) R) _ H _.
+           (@flattenT_R_relation X R t).
   Proof.
+  refine (@flattenT_R_lift X t (fun A R => Proper (Basics.flip R ==> R ==> Basics.flip Basics.impl) R) _ H _).
     unfold Proper, respectful, Basics.flip, Basics.impl, forall_relation in *; intros.
     eauto with nocore.
   Defined.

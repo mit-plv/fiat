@@ -44,24 +44,36 @@ Proof.
   apply asymmetry in H'; assumption.
 Qed.
 
-Global Instance gensym_nat : PreGensym nat
+Global Program Instance gensym_nat : PreGensym nat
   := { s_gt := gt;
        sym_init := 0;
        combine_symbols x y := S (x + y) }.
-Proof.
+Next Obligation.
   repeat intro; abstract omega.
+Defined.
+Next Obligation.
   repeat intro; abstract omega.
+Defined.
+Next Obligation.
   repeat intro; abstract omega.
+Defined.
+Next Obligation.
   repeat intro; abstract omega.
 Defined.
 
-Global Instance gensym_string : PreGensym string
+Global Program Instance gensym_string : PreGensym string
   := { s_gt x y := gt (length x) (length y);
        sym_init := ""%string;
        combine_symbols x y := String.String "a"%char (x ++ y)%string }.
-Proof.
+Next Obligation.
   repeat intro; abstract omega.
+Defined.
+Next Obligation.
   repeat intro; abstract omega.
+Defined.
+Next Obligation.
   simpl; repeat intro; abstract (rewrite concat_length; omega).
+Defined.
+Next Obligation.
   simpl; repeat intro; abstract (rewrite concat_length; omega).
 Defined.
