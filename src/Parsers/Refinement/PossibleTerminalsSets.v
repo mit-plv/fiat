@@ -319,7 +319,9 @@ Section correctness.
     unfold lattice_for_rect; simpl; handle_match_two_lattice_either_bottom_same;
     t.
 
-  Global Instance possible_aicdata
+  Local Obligation Tactic := intros.
+
+  Global Program Instance possible_aicdata
     : AbstractInterpretationCorrectness possible_accurate
     := { prerelated_ext
          := prod_prerelated_ext
@@ -356,32 +358,31 @@ Section correctness.
                           _ _ _ _ _ _ _ _ _ _)
                     _)
        }.
-  Proof.
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { t. }
-    { auto with nocore. }
-    { auto with nocore. }
-    { subst; destruct_head_hnf and; assumption. }
-    { subst; destruct_head_hnf and; assumption. }
-    { t_combine. }
-    { t_combine. }
-    { t_combine. }
-  Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { t. } Qed.
+  Next Obligation. { auto with nocore. } Qed.
+  Next Obligation. { auto with nocore. } Qed.
+  Next Obligation. { subst; destruct_head_hnf and; assumption. } Qed.
+  Next Obligation. { subst; destruct_head_hnf and; assumption. } Qed.
+  Next Obligation. { t_combine. } Qed.
+  Next Obligation. { t_combine. } Qed.
+  Next Obligation. { t_combine. } Qed.
+
 End correctness.
 
 Definition possible_data (G : pregrammar' Ascii.ascii)

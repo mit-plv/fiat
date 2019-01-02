@@ -29,10 +29,10 @@ Section brute_force_splitter.
     := { predata := @rdp_list_predata _ G;
          split_data := brute_force_split_data }.
 
-  Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ _ G brute_force_data
+  Global Program Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ _ G brute_force_data
     := { split_string_for_production_complete str0 valid str offset len pf nt pf' pf''
          := ForallT_all (fun _ => Forall_tails_all (fun prod => _)) }.
-  Proof.
+  Next Obligation.
     destruct prod; try solve [ constructor ].
     hnf.
     intros; intros [ n [ p0 p1 ] ].

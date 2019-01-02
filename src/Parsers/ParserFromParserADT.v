@@ -61,7 +61,7 @@ Section parser.
   Local Instance split_dataProj : @split_dataT _ (adt_based_splitter splitter_impl) (ParserImplementation.parser_data (adt_based_splitter splitter_impl))
     := { split_string_for_production idx str offset len := msplits splitter_impl idx offset len (proj1_sig str) }.
 
-  Local Instance adtProj
+  Local Program Instance adtProj
   : @StringLikeProj
       _
       (adt_based_splitter splitter_impl)
@@ -70,12 +70,6 @@ Section parser.
       (ParserImplementation.parser_split_data (adt_based_splitter splitter_impl))
       (@RecognizerPreOptimized.optsplitdata _ _ _ split_dataProj')
     := { proj := @proj1_sig _ _ }.
-  Proof.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-  Defined.
 
   Definition parser' : Parser G stringlike_stringlike.
   Proof.
