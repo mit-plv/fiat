@@ -126,15 +126,48 @@ Proof.
      demonstrated by other examples in this directory, in order to use
      these different index data structures. *)
 
-  master_plan_w_specific_indexes
-    ({|prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
-                    ("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
-       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
-                      prim_snd := () |} |}
-     : @ilist3 RawSchema (fun sch : RawSchema => list (string * Attributes (rawSchemaHeading sch)))
-         (numRawQSschemaSchemas BookStoreSchema) (qschemaSchemas BookStoreSchema))
-    EqIndexTactics.
+  Notation IndexType :=
+    (@ilist3 RawSchema (fun sch : RawSchema =>
+                          list (string * Attributes (rawSchemaHeading sch)))
+             (numRawQSschemaSchemas BookStoreSchema) (qschemaSchemas BookStoreSchema)).
 
+  Definition indices0 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices1 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
+                   ("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices2 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sTITLE # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices3 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sTITLE # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sDATE # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices4 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
+                   ("EqualityIndex", sTITLE # sBOOKS ## BookStoreSchema);
+                   ("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices5 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
+                   ("RangeIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("RangeIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  master_plan_w_specific_indexes
+    indices0
+    ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics).
 Defined.
 
 Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=
