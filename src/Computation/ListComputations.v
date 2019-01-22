@@ -124,9 +124,9 @@ End UpperBound.
 Instance DecideableEnsembleUpperBound {A}
          (f : A -> nat)
          (ns : list A)
-  : DecideableEnsemble (UpperBound (fun a a' => f a <= f a') ns) :=
-  {| dec n := NPeano.Nat.leb (fold_right (fun n acc => max (f n) acc) O ns) (f n) |}.
+  : DecideableEnsemble (UpperBound (fun a a' => f a <= f a') ns).
 Proof.
+refine {| dec n := NPeano.Nat.leb (fold_right (fun n acc => max (f n) acc) O ns) (f n) |}.
   unfold UpperBound, ge; intros; rewrite NPeano.Nat.leb_le; intuition.
   - remember (f a); clear Heqn; subst; eapply le_trans;
       [ apply fold_right_max_is_max; apply H0 | assumption ].
