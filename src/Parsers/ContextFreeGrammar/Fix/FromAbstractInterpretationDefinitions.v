@@ -136,7 +136,7 @@ Section general_fold.
       : Proper (pointwise_relation _ eq ==> eq ==> eq) fold_production' | 2
       := _.
 
-    Global Instance: Params (@fold_production') 5.
+    Global Instance: Params (@fold_production') 5 := {}.
 
     Definition fold_productions'
                (fold_nt : default_nonterminal_carrierT -> state)
