@@ -157,4 +157,4 @@ Global Instance: forall T H,
                     (HSLM : StringLikeMin Char) (HSL : StringLike Char),
                 String -> T Char)
             H
-            3.
+            3 := {}.
