@@ -1,5 +1,5 @@
 -R src Fiat
--I Bedrock
+-R Bedrock Bedrock
 -I src/Common/Tactics
 Bedrock/Memory.v
 Bedrock/Nomega.v

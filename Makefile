@@ -311,8 +311,10 @@ install-fiat install-fiat-core install-querystructures install-parsers install-p
 	$(SHOW)'MAKE -f Makefile.coq INSTALL'
 	$(HIDE)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
+# This target is used to update the _CoqProject.in file.
+# Use -R, not -I for Bedrock, as it is Coq input, not OCaml input.
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-I Bedrock'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.{ml4,mlg}" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES_PATTERN)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
+	(echo '-R src Fiat'; echo '-R Bedrock Bedrock'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.{ml4,mlg}" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
 
 ifeq ($(IS_FAST),0)
 # see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))
