@@ -219,6 +219,4 @@ Definition get_titles (author: string) (rep: ComputationalADT.cRep BookstoreImpl
 Definition num_orders (author: string) (rep: ComputationalADT.cRep BookstoreImpl) : (_ * nat) :=
   Eval simpl in CallMethod BookstoreImpl "NumOrders" rep (author).
 
-Extraction Inline Vector.case0.
-
 Extraction "bookstore.ml" init_bookstore add_book place_order get_titles num_orders.
