@@ -550,7 +550,7 @@ Section DnsPacket.
     apply wordToNat_bound.
   Qed.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Definition GoodCache (env : CacheDecode) :=
     forall domain p,

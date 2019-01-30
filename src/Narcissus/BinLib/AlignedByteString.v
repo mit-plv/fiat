@@ -204,7 +204,7 @@ Qed.
 
 Lemma eq_rect_Vector_cons {A}
   : forall n m a v H H',
-    eq_rect (S n) (Vector.t A) (VectorDef.cons A a n v) (S m) H =
+    eq_rect (S n) (Vector.t A) (Vector.cons A a n v) (S m) H =
     Vector.cons _ a _ (eq_rect n (Vector.t A) v _ H').
 Proof.
   intros.
@@ -493,7 +493,7 @@ Lemma build_aligned_ByteString_cons
 Proof.
   intros; rewrite <- (build_aligned_ByteString_append (Vector.tl v)
                                                       (Vector.cons _ (Vector.hd v) _ (Vector.nil _))).
-  pattern numBytes, v; apply VectorDef.caseS; simpl; intros; reflexivity.
+  pattern numBytes, v; apply Vector.caseS; simpl; intros; reflexivity.
 Qed.
 
 Lemma ByteString_into_queue_eq
@@ -853,7 +853,7 @@ Qed.
 
 Lemma Vector_append_nil_r' {A}
   : forall sz (v : Vector.t A sz),
-    Vector.append v (VectorDef.nil A) = eq_rect sz (Vector.t A) v (sz + 0) (plus_n_O sz).
+    Vector.append v (Vector.nil A) = eq_rect sz (Vector.t A) v (sz + 0) (plus_n_O sz).
 Proof.
   induction v; simpl;
     try (rewrite <- eq_rect_eq_dec; eauto with arith).

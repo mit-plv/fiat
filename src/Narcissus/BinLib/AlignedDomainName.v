@@ -33,7 +33,7 @@ Require Import
 
 Section AlignedDomainName.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Arguments natToWord : simpl never.
   Arguments wordToNat : simpl never.

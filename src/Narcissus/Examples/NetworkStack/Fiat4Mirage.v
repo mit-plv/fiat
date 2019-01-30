@@ -30,14 +30,14 @@ Require Import
 
 Require Import Bedrock.Word.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Open Scope string_scope.
 Open Scope Tuple_scope.
 
 Definition InjectEnum {n A}
-           (gallina_constructors: VectorDef.t A n)
+           (gallina_constructors: Vector.t A n)
            (enum_member: Fin.t n) : A :=
-  VectorDef.nth gallina_constructors enum_member.
+  Vector.nth gallina_constructors enum_member.
   Require Import IPv4Header.
 
 Definition MakeDecoder {A}

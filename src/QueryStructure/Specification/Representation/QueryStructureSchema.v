@@ -12,7 +12,7 @@ Require Export
         Fiat.QueryStructure.Specification.Representation.Schema
         Fiat.QueryStructure.Specification.Representation.Relation.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 
 (* A Query Structure schema is a set of named relation
    schemas and a set of cross-relation constraints

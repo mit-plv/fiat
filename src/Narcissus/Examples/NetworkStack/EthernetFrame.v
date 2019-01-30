@@ -29,7 +29,7 @@ Require Import Bedrock.Word.
 
 (* This is a deprecated example. *)
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Open Scope string_scope.
 Open Scope Tuple_scope.
 

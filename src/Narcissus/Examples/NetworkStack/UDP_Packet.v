@@ -52,7 +52,7 @@ Qed.
 
 Require Import Bedrock.Word.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Open Scope string_scope.
 Open Scope Tuple_scope.
 

@@ -468,8 +468,8 @@ Ltac decide_data_invariant :=
 
 Ltac ilist_of_evar B As k :=
   match As with
-  | VectorDef.nil _ => k (@inil _ B)
-  | VectorDef.cons _ ?a _ ?As' =>
+  | Vector.nil _ => k (@inil _ B)
+  | Vector.cons _ ?a _ ?As' =>
     makeEvar (B a)
              ltac:(fun b =>
                      ilist_of_evar

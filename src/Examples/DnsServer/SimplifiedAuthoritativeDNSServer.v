@@ -80,7 +80,7 @@ Section BinaryDns.
   Arguments ilist2_hd A B n As !il /.
   Arguments ilist2_tl A B n As !il /.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
   Arguments Vector.nth A !m !v' !p /.
 
   Lemma GetAA_buildempty_packet

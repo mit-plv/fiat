@@ -16,7 +16,7 @@ Section ilist.
      by our ADT notations uses these to implement notation-friendly
      method lookups.  *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Context {A : Type}. (* The indexing type. *)
   Context {B : A -> Type}. (* The type of indexed elements. *)
@@ -166,7 +166,7 @@ End ilist.
 Section ilist_map.
   Context {A} (B : A -> Type).
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Fixpoint imap_list (f : forall a : A, B a) {n} (As : Vector.t A n) : ilist As
     := match As with
@@ -190,7 +190,7 @@ Section ilist_imap.
 
   (* Mapping a function over an indexed Vector.t. *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Variable A : Type. (* The indexing type. *)
   Variable B B' : A -> Type. (* The two types of indexed elements. *)
@@ -228,7 +228,7 @@ End ilist_imap.
 
 Section ilist_replace.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   (* Replacing an element of an indexed Vector.t. *)
   Context {A : Type}. (* The indexing type. *)

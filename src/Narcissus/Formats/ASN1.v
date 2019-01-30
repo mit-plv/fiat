@@ -135,7 +135,7 @@ Section ASN1_Format.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Coq.Vectors.Vector.VectorNotations.
 
   Definition Tag_Classes :=
     ["Universal"; "Application"; "Context-Specific"; "Private"]%string.

@@ -22,7 +22,7 @@ Section i2list2.
       prim_3_snd : B;
       prim_3_thd : C }.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Fixpoint i2list2 {n}
            (l : Vector.t A n)

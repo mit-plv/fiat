@@ -15,7 +15,7 @@ Section i3list2.
      by our ADT notations uses these to implement notation-friendly
      method lookups.  *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Context {A : Type}. (* The indexing type. *)
   Context {B : A -> Type}. (* The type of indexed elements. *)

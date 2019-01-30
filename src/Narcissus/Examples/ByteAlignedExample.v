@@ -75,7 +75,7 @@ Definition byte_aligned_simple_encoder
              (r : simple_record)
   := Eval simpl in (projT1 (projT2 refine_simple_format) r).
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Print byte_aligned_simple_encoder.
 
 Definition Simple_Format_decoder

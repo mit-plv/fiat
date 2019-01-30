@@ -15,7 +15,7 @@ Require Import
         Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Examples.DnsServer.RecursiveDNSSchema.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 
 Local Open Scope vector.
 Local Open Scope Tuple_scope.

@@ -30,7 +30,7 @@ Section BagsQueryStructureRefinements.
 
   Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Variable qs_schema : RawQueryStructureSchema.
   Variable BagIndexKeys :
