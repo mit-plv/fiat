@@ -58,14 +58,17 @@ let toCharList str =
 let toString chars =
   let buffer = Bytes.create (List.length chars) in
   let _ = List.fold_left (fun pos char -> Bytes.set buffer pos char; succ pos) 0 chars in
-  buffer
+  Bytes.to_string buffer
 
-let random_string length =
+let random_bytes length =
   let buffer = Bytes.create length in
   for pos = 0 to length - 1 do
     Bytes.set buffer pos (Char.chr (Random.int 256))
   done;
   buffer
+
+let random_string length =
+  Bytes.to_string (random_bytes length)
 
 let stats start_time iterations =
   let elapsed_time_s = Unix.gettimeofday () -. start_time in
