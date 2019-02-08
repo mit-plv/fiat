@@ -82,61 +82,89 @@ let stats start_time iterations =
 let gc () =
   Gc.compact ()
 
-let benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries store  =
-  Printf.printf "Initialization\n";
-  store        := init_bookstore;
+type bench_params = {
+    nb_authors: int;
+    nb_books: int;
+    nb_orders: int;
+    nb_titles_queries: int;
+    nb_orders_queries: int;
+  }
+
+type bench_data = {
+    names: char list array;
+    authors: char list array;
+    titles: char list array;
+    isbns: int array;
+    title_authors: char list array;
+    order_authors: char list array;
+  }
+
+let bench_init { nb_authors; nb_books; nb_orders; nb_titles_queries; nb_orders_queries } =
   let names    = Random.init 1; Array.init nb_authors (fun _ -> toCharList (random_string 25)) in
   let authors  = Random.init 2; Array.init nb_books   (fun _ -> names.(Random.int nb_authors)) in
   let titles   = Random.init 3; Array.init nb_books   (fun _ -> toCharList (random_string 50)) in
   let isbns    = Random.init 4; Array.init nb_orders  (fun _ -> Random.int nb_books) in
   let title_authors = Random.init 5; Array.init nb_titles_queries (fun _ -> names.(Random.int nb_authors)) in
   let order_authors = Random.init 6; Array.init nb_orders_queries (fun _ -> names.(Random.int nb_authors)) in
+  { names; authors; titles; isbns; title_authors; order_authors }
+
+let bench_add_books bparams bdata store =
+  for iteration = 0 to bparams.nb_books - 1 do
+    ignore (run (add_book bdata.authors.(iteration) bdata.titles.(iteration) iteration) store)
+  done
+
+let bench_place_orders bparams bdata store =
+  for iteration = 0 to bparams.nb_orders - 1 do
+    ignore (run (place_order bdata.isbns.(iteration) iteration) store)
+  done
+
+let bench_get_titles bparams bdata store =
+  for iteration = 0 to bparams.nb_titles_queries - 1 do
+    ignore (run (get_titles bdata.title_authors.(iteration)) store)
+  done
+
+let bench_count_orders bparams bdata store =
+  for iteration = 0 to bparams.nb_orders_queries - 1 do
+    ignore (run (num_orders bdata.order_authors.(iteration)) store)
+  done
+
+let benchmark bparams bdata store  =
+  store        := init_bookstore;
 
   gc ();
 
   Printf.printf "Adding books...\n";
   let books_start = Unix.gettimeofday () in
-  for iteration = 0 to nb_books - 1 do
-    let _ = run (add_book authors.(iteration) titles.(iteration) iteration) store in ()
-  done;
-  let books_duration = stats books_start nb_books in 
+  bench_add_books bparams bdata store;
+  let books_duration = stats books_start bparams.nb_books in
 
   gc ();
 
   Printf.printf "Placing orders\n";
   let orders_start = Unix.gettimeofday () in
-  for iteration = 0 to nb_orders - 1 do
-    let _ = run (place_order isbns.(iteration) iteration) store in ()
-  done;
-  let orders_duration = stats orders_start nb_orders in
+  bench_place_orders bparams bdata store;
+  let orders_duration = stats orders_start bparams.nb_orders in
 
   gc ();
 
   Printf.printf "Getting titles\n";
   let titles_start = Unix.gettimeofday () in
-  for iteration = 0 to nb_titles_queries - 1 do
-    let _ = run (get_titles title_authors.(iteration)) store in ()
-    (* List.iter (fun x -> Printf.printf "%s\n" (toString x)) a *)
-  done;
-  let get_titles_duration = stats titles_start nb_titles_queries in 
+  bench_get_titles bparams bdata store;
+  let get_titles_duration = stats titles_start bparams.nb_titles_queries in
 
   gc ();
 
   Printf.printf "Counting orders\n";
   let orders_start = Unix.gettimeofday () in
-  for iteration = 0 to nb_orders_queries - 1 do
-    let _ = run (num_orders order_authors.(iteration)) store in ()
-    (* Printf.printf "%d\n" count *)
-  done;
-  let num_orders_duration = stats orders_start nb_orders_queries in
+  bench_count_orders bparams bdata store;
+  let num_orders_duration = stats orders_start bparams.nb_orders_queries in
 
   gc ();
 
   Printf.fprintf stderr "%d\t%d\t%d\t%.6f\t%.6f\t%.6f\t%.6f\n" 
-    nb_authors nb_books nb_orders 
+    bparams.nb_authors bparams.nb_books bparams.nb_orders
     books_duration orders_duration get_titles_duration num_orders_duration;
   flush stderr
-
 
 let _for _start _step _end _repeat body =
   let n = ref _start in
@@ -151,7 +179,7 @@ let store = ref init_bookstore
 
 let repeat = 5
 
-let _ =
+let repl_main () =
   try
     while true do
       (try (
@@ -190,24 +218,33 @@ let _ =
 
           | "benchmark*books" -> let [nb_authors; nb_books_start; nb_books_step; nb_books_end;
                                       nb_orders; nb_titles_queries; nb_orders_queries] =
-                                   map int_of_string (read_arguments command 7 input_line offset) in
-                                 _for nb_books_start nb_books_step nb_books_end repeat (fun nb_books ->
-                                   benchmark nb_authors nb_books nb_orders
-                                     nb_titles_queries nb_orders_queries store);
+                                   List.map int_of_string (read_arguments command 7 input_line offset) in
+                                 _for nb_books_start nb_books_step nb_books_end repeat
+                                   (fun nb_books ->
+                                     let bparams = { nb_authors; nb_books; nb_orders;
+                                                     nb_titles_queries; nb_orders_queries } in
+                                     let bdata = bench_init bparams in
+                                     benchmark bparams bdata store);
                                  Printf.printf "Benchmark completed\n";
 
           | "benchmark*orders" -> let [nb_authors; nb_books; nb_orders_start; nb_orders_step; nb_orders_end;
                                        nb_titles_queries; nb_orders_queries] =
-                                   map int_of_string (read_arguments command 7 input_line offset) in
-                                 _for nb_orders_start nb_orders_step nb_orders_end repeat (fun nb_orders ->
-                                   benchmark nb_authors nb_books nb_orders
-                                     nb_titles_queries nb_orders_queries store);
-                                 Printf.printf "Benchmark completed\n";
+                                    List.map int_of_string (read_arguments command 7 input_line offset) in
+                                  _for nb_orders_start nb_orders_step nb_orders_end repeat
+                                    (fun nb_orders ->
+                                      let bparams = { nb_authors; nb_books; nb_orders;
+                                                      nb_titles_queries; nb_orders_queries } in
+                                      let bdata = bench_init bparams in
+                                      benchmark bparams bdata store);
+                                  Printf.printf "Benchmark completed\n";
 
           | "benchmark" -> let [nb_authors; nb_books; nb_orders; nb_titles_queries; nb_orders_queries] =
-                              map int_of_string (read_arguments command 5 input_line offset) in
-                            benchmark nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries store;
-                            Printf.printf "Benchmark completed\n";
+                             List.map int_of_string (read_arguments command 5 input_line offset) in
+                           let bparams = { nb_authors; nb_books; nb_orders;
+                                           nb_titles_queries; nb_orders_queries } in
+                           let bdata = bench_init bparams in
+                           benchmark bparams bdata store;
+                           Printf.printf "Benchmark completed\n";
 
           | unknown      -> Printf.printf "Unknown command %s!
 Expecting any of
@@ -227,3 +264,61 @@ Expecting any of
     done
   with
     End_of_file -> ()
+
+let corebench_main () =
+  let open Core_bench.Std in
+
+  let bparams, argv =
+    match Array.to_list Sys.argv with
+    | _ :: ("-help" | "--help" | "-h") :: _ ->
+       Core.Command.run (Bench.make_command []);
+       exit 1
+    | exe :: nb_authors :: nb_books ::
+        nb_orders :: nb_titles_queries ::
+          nb_orders_queries :: argv ->
+       { nb_authors = int_of_string nb_authors;
+         nb_books = int_of_string nb_books;
+         nb_orders = int_of_string nb_orders;
+         nb_titles_queries = int_of_string nb_titles_queries;
+         nb_orders_queries = int_of_string nb_orders_queries },
+       (exe :: argv)
+    | _ -> Printf.printf "Usage:
+./bookstore_repl nb_authors nb_books nb_orders nb_titles_queries nb_orders_queries ...args\n";
+           exit 1 in
+
+  let bdata =
+    bench_init bparams in
+
+  Printf.printf "Initializing... %!";
+
+  store := init_bookstore;
+  let add_books_store = !store in
+  bench_add_books bparams bdata store;
+  let place_orders_store = !store in
+  bench_place_orders bparams bdata store;
+  let get_titles_store = !store in
+  bench_get_titles bparams bdata store;
+  let count_orders_store = !store in
+  bench_count_orders bparams bdata store;
+
+  Printf.printf "done\n%!";
+  (* benchmark bparams bdata store; *)
+
+  let benchmarks = [
+      Bench.Test.create ~name:"Adding books" (fun () ->
+          store := add_books_store; bench_add_books bparams bdata store);
+
+      Bench.Test.create ~name:"Placing orders" (fun () ->
+          store := place_orders_store; bench_place_orders bparams bdata store);
+
+      Bench.Test.create ~name:"Getting titles" (fun () ->
+          store := get_titles_store; bench_get_titles bparams bdata store);
+
+      Bench.Test.create ~name:"Counting orders" (fun () ->
+          store := count_orders_store; bench_count_orders bparams bdata store);
+    ] in
+
+  Core.Command.run ~argv (Bench.make_command benchmarks)
+
+let _ =
+  corebench_main ()
