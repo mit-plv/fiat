@@ -111,21 +111,8 @@ Section TCPPacketDecoder.
 (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
-Lemma TCP_Packet_Len_OK
-  : forall tcp,
-    TCP_Packet_OK tcp ->
-    (lt (5 + (| Options tcp |)) (pow2 4)).
-Proof.
-  unfold TCP_Packet_OK; simpl; intros.
-  intuition; intros.
-  unfold pow2, mult; simpl.
-  omega.
-Qed.
-
 Opaque pow2.
 Arguments andb : simpl never.
-
-Hint Resolve TCP_Packet_Len_OK : data_inv_hints.
 
 Arguments GetCurrentBytes : simpl never.
 
@@ -175,61 +162,22 @@ Ltac new_decoder_rules ::=
       | solve_mod_8
       | apply TCP_Packet_Header_Len_OK
       | intros; NormalizeFormats.normalize_format ]
+  | H : cache_inv_Property ?mnd _
+    |- CorrectDecoder _ _ _ format_bytebuffer _ _ =>
+    intros; eapply @ByteBuffer_decode_correct;
+    first [exact H | solve [intros; intuition eauto] ]
   end.
+
+Hint Extern 4 => intros; eapply (aligned_Pseudo_checksum_OK_1
+                                   _ _ _ _
+                                   (fun sz v => TCP_Length (build_aligned_ByteString v))).
+Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
 Proof.
-  start_synthesizing_decoder.
-  NormalizeFormats.normalize_format.
-  repeat apply_rules.
-  eapply (format_sequence_correct H4).
-  apply Nat_decode_correct.
-  simpl; intros;
-    unfold Basics.compose.
-  eapply TCP_Packet_Len_OK; intuition eauto.
-  intros; repeat apply_rules.
-  eapply (format_sequence_correct H16).
-  intros; repeat apply_rules.
-  intros; apply_rules.
-  intros; intuition.
-  unfold Basics.compose in *.
-  instantiate (1 := s'7).
-  destruct s; simpl in *.
-  destruct UrgentPointer0; simpl in *; subst; simpl; eauto.
-  congruence.
-  destruct s; destruct UrgentPointer0; eauto.
-  intros; eapply (format_sequence_correct H16).
-  intros; repeat apply_rules.
-  intros; instantiate (1 := s'3 - 5); simpl; intuition.
-  unfold Basics.compose in H32; omega.
-  intros; eapply (format_sequence_correct); eauto.
-  intros; eapply ByteBuffer_decode_correct
-            with (n := wordToNat tcpLength - (20 + 4 * (s'3 - 5))).
-  simpl; eauto.
-  intros; intuition.
-  destruct H22.
-  rewrite H22.
-  rewrite <- H35.
-  unfold Basics.compose.
-  omega.
-  intros; repeat apply_rules.
-  cbv beta; synthesize_cache_invariant.
-  (* Perform algebraic simplification of the decoder implementation. *)
-  Opaque ByteString2ListOfChar.
-  cbv beta; unfold decode_nat; optimize_decoder_impl.
-  unfold Basics.compose; simpl.
-  cbv beta; align_decoders.
-  Opaque DecodeMEquivAlignedDecodeM.
-  eapply @AlignedDecode_ifb_dep.
-  intros; eapply (aligned_Pseudo_checksum_OK_1 _ _ _ _
-                                               (fun sz v => TCP_Length (build_aligned_ByteString v))); eauto.
-  intros; eapply aligned_Pseudo_checksum_OK_2; eauto.
-  cbv beta; align_decoders.
-  intros; eapply @AlignedDecodeByteBufferM; intros; eauto.
-  align_decoders.
-  align_decoders.
+  synthesize_aligned_decoder.
   Grab Existential Variables.
   eauto.
   eauto.

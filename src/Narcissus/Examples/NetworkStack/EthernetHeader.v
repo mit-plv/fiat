@@ -83,8 +83,6 @@ Section EthernetPacketDecoder.
     | _ => false
     end.
 
-  Opaque natToWord.
-
   Lemma v1042_OKT
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
       ((   format_nat 16 ◦ (fun _ => packet_len)
@@ -118,7 +116,7 @@ Section EthernetPacketDecoder.
     reflexivity.
   Qed.
 
-  Hint Resolve v1042_OKT : bin_split_hints.
+  Hint Extern 4 => eapply v1042_OKT : bin_split_hints.
 
     Lemma v1042_OKE
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
@@ -142,7 +140,7 @@ Section EthernetPacketDecoder.
       unfold wlt; compute; intros; discriminate.
   Qed.
 
-  Hint Resolve v1042_OKE : bin_split_hints.
+  Hint Extern 4 => eapply v1042_OKE : bin_split_hints.
 
   Lemma valid_packet_len_OK_good_Len
     : lt packet_len (pow2 16).
@@ -154,7 +152,7 @@ Section EthernetPacketDecoder.
     simpl; eapply BinNat.N.ltb_lt; reflexivity.
   Qed.
 
-  Hint Resolve valid_packet_len_OK_good_Len : data_inv_hints.
+  Hint Extern 4 => eapply valid_packet_len_OK_good_Len : data_inv_hints.
 
   Definition aligned_v1042_test
         {sz : nat}
@@ -227,8 +225,9 @@ Section EthernetPacketDecoder.
     intros; pattern sz, v; eapply Vector.caseS; higher_order_reflexivity.
   Qed.
 
-  Hint Resolve aligned_v1042_test_OK_1.
-  Hint Resolve aligned_v1042_test_OK_2.
+  Hint Extern 4 => eapply aligned_v1042_test_OK_1.
+  Hint Extern 4 => eapply aligned_v1042_test_OK_2.
+
 
   Definition EthernetHeader_decoder
     : CorrectAlignedDecoderFor ethernet_Header_OK EthernetHeader_Format.

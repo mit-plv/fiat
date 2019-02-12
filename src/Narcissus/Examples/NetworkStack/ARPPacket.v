@@ -111,7 +111,6 @@ Arguments Vector.nth : simpl never.
 Definition ARP_Packet_Header_decoder
   : CorrectAlignedDecoderFor ARP_Packet_OK ARPPacket_Format.
 Proof.
-  unfold ARP_Packet_OK.
   synthesize_aligned_decoder.
 Defined.
 

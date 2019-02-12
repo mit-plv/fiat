@@ -25,6 +25,7 @@ Ltac start_synthesizing_decoder :=
 Ltac align_decoders_step :=
   first [
       eapply @AlignedDecodeNatM; intros
+    | eapply @AlignedDecodeByteBufferM; intros; eauto
     | eapply @AlignedDecodeBind2CharM; intros; eauto
     | eapply @AlignedDecodeBindCharM; intros; eauto
     | eapply @AlignedDecodeBind3CharM; intros; eauto

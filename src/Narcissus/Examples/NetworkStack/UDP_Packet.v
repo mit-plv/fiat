@@ -127,18 +127,7 @@ Section UDP_Decoder.
     intros; omega.
   Qed.
 
-  Lemma UDP_Packet_Header_Len_bound
-    : forall data : UDP_Packet,
-      UDP_Packet_OK data ->
-      lt (8 + (projT1 (Payload data))) (pow2 16).
-  Proof.
-    unfold UDP_Packet_OK; intros.
-    omega.
-  Qed.
-
   Opaque pow2.
-
-  Hint Resolve UDP_Packet_Header_Len_bound : data_inv_hints.
 
   Definition aligned_UDP_Packet_encoded_measure
              {sz} (ipv4_b : ByteBuffer.t sz)
@@ -172,43 +161,22 @@ Section UDP_Decoder.
       | solve_mod_8
       | apply UDP_Packet_Header_Len_OK
       | intros; NormalizeFormats.normalize_format ]
+    | H : cache_inv_Property ?mnd _
+      |- CorrectDecoder _ _ _ format_bytebuffer _ _ =>
+      intros; eapply @ByteBuffer_decode_correct;
+      first [exact H | solve [intros; intuition eauto] ]
   end.
+
+  Hint Extern 4 => intros; eapply (aligned_Pseudo_checksum_OK_1
+                                     _ _ _ _
+                                     (fun sz v => UDP_Packet_format_measure (build_aligned_ByteString v))).
+  Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
 
   (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
   Definition UDP_Packet_Header_decoder
     : CorrectAlignedDecoderFor UDP_Packet_OK UDP_Packet_Format.
   Proof.
-    start_synthesizing_decoder.
-    NormalizeFormats.normalize_format.
-    apply_rules.
-    apply_rules.
-    apply_rules.
-    eapply (format_sequence_correct H2).
-    apply Nat_decode_correct.
-    simpl; intros;
-      unfold Basics.compose.
-    eapply UDP_Packet_Header_Len_bound; eauto; apply H3.
-    intros; apply_rules.
-    eapply (format_sequence_correct H4).
-    intros; eapply @ByteBuffer_decode_correct with (n := s'1 - 8).
-    solve_side_condition.
-    unfold Basics.compose; unfold UDP_Packet_OK; intros; intuition.
-    revert H7; simpl; intro; auto with arith.
-    rewrite <- H7, minus_plus; reflexivity.
-    intros; apply_rules.
-    cbv beta; synthesize_cache_invariant.
-    (* Perform algebraic simplification of the decoder implementation. *)
-    Opaque ByteString2ListOfChar.
-    cbv beta; unfold decode_nat; optimize_decoder_impl.
-    cbv beta; align_decoders.
-    eapply @AlignedDecode_ifb_dep.
-    intros; eapply (aligned_Pseudo_checksum_OK_1 _ _ _ _
-                                                 (fun sz v => UDP_Packet_format_measure (build_aligned_ByteString v))); eauto.
-    intros; eapply aligned_Pseudo_checksum_OK_2; eauto.
-    align_decoders.
-    eapply @AlignedDecodeByteBufferM; intros; eauto.
-    align_decoders.
-    align_decoders.
+    synthesize_aligned_decoder.
   Defined.
 
   (* Step Four: Extract the decoder function, and have /it/ start decoding

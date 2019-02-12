@@ -121,25 +121,56 @@ Ltac decompose_pair_hyp :=
             | rewrite H in * ]
     end; subst.
 
+Ltac decompose_source_predicate :=
+  (* Decompose the source predicate into 'base' facts *)
+  repeat match goal with
+         | H : cache_inv_Property _ _ |- _ => clear H
+         | H : _ |- _ =>
+           let H1 := fresh in
+           let H2 := fresh in
+           pose proof (proj1 H) as H1;
+           pose proof (proj2 H) as H2;
+           clear H; simpl in H1;
+           simpl in H2
+         end.
+
+Lemma IsProj_eq {S S'}
+      {f : S -> S'}
+      {s : S}
+      {s' : S'}
+      (H : IsProj f s s') : f s = s'.
+Proof.
+  apply H.
+Qed.
+
+Ltac subst_projections :=
+  (* Substitute any source projections learned during parsing *)
+  repeat match goal with
+         | H : ?s1 = ?s2 |- _ =>
+           first [apply decompose_pair_eq in H; (let H1 := fresh in
+                                                 let H2 := fresh in
+                                                 destruct H as [H1 H2]; simpl in H1; simpl in H2)
+                 ]
+         | H : IsProj _ _ _ |- _ => apply IsProj_eq in H;
+                                    unfold Basics.compose in H;
+                                    simpl in H; rewrite H in *|-*
+         end.
+
 (* Solves data invariants using the data_inv_hints database *)
 Ltac solve_data_inv :=
-  first [ simpl; intros; exact I
-        | solve [intuition eauto with data_inv_hints]
-        | solve [simpl;
-                 intuition eauto with data_inv_hints;
-                 repeat
-                   match goal with
-                   | H : _ = _ |- _ =>
-                     first [apply decompose_pair_eq in H;
-                            let H1 := fresh in
-                            let H2 := fresh in
-                            destruct H as [H1 H2];
-                            simpl in H1;
-                            simpl in H2
-                           | rewrite H in * ]
-                   end;
-                 eauto with data_inv_hints]
-        | shelve_inv ].
+  first
+    [ simpl; intros; exact I
+    | (* Decompose the source predicate *)
+    let src := fresh in
+    let src_Pred := fresh in
+    intros src src_Pred ;
+    decompose_source_predicate;
+    (* Substitute any equations on the source predicate where it is
+      productive. We do not rewrite in the goal to avoid touching any
+       evars. *)
+    subst_projections; unfold Basics.compose;
+    solve [intuition eauto with data_inv_hints]
+    | shelve_inv ].
 
 Ltac start_synthesizing_decoder :=
   match goal with
@@ -173,21 +204,13 @@ Ltac build_fully_determined_type cleanup_tac :=
   (* inferred during parsing. *)
   unfold Domain, GetAttribute, GetAttributeRaw in *;
   simpl in *; intros;
-  (* Decompose data predicate *) intuition;
+  (* Decompose data predicate *)
+  decompose_source_predicate;
   (* Substitute any inferred equalities; decomposing *)
   (* any product types that might have been built up *)
   (* along the way *)
-  repeat
-    match goal with
-    | H : _ = _ |- _ =>
-      first [apply decompose_pair_eq in H;
-             let H1 := fresh in
-             let H2 := fresh in
-             destruct H as [H1 H2];
-             simpl in H1;
-             simpl in H2
-            | rewrite H in * ]
-    end; cleanup_tac;
+  subst_projections;
+  cleanup_tac;
   (* And unify with original object *) reflexivity.
 
 Lemma decides_True' {A}
@@ -448,7 +471,7 @@ Ltac decide_data_invariant :=
   (* of the clauses in this predicate are obviously true by *)
   (* construction, but there may be some that need to be checked *)
   (* by a decision procedure*)
-  unfold GetAttribute, GetAttributeRaw in *;
+  unfold GetAttribute, GetAttributeRaw, IsProj in *;
   simpl in *; intros; intuition;
   repeat first [ progress subst
                | match goal with
@@ -493,29 +516,75 @@ Ltac Vector_of_evar n T k :=
                          ltac:(fun a => k (@Vector.cons T a n' l)))
   end.
 
-    Ltac solve_side_condition :=
-    (* Try to discharge a side condition of one of the base rules *)
-      match goal with
-      | |- NoDupVector _ => Discharge_NoDupVector
-      | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
-        intros; apply Vector_predicate_rest_True
-      | |- context[FixList_predicate_rest (fun _ _ => True) _ _ _] =>
-        intros; eapply FixedList_predicate_rest_True
-      | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
-        let a'' := fresh in
-        intro a''; intros; repeat instantiate (1 := fun _ _ => True);
-        repeat destruct a'' as [ ? | a''] ; auto
-      | _ => solve [solve_data_inv]
-      | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
-    end.
+Lemma pow2_1 : pow2 1 = 2.
+  reflexivity.
+Qed.
 
-    Ltac FinishDecoder :=
-      solve [simpl; intros;
-             eapply CorrectDecoderEmpty;
-             [ build_fully_determined_type idtac
-             | decide_data_invariant ] ].
+Lemma pow2_2 : pow2 2 = 4.
+  reflexivity.
+Qed.
 
-    (* Redefine this tactic to implement new decoder rules*)
+Lemma pow2_3 : pow2 3 = 8.
+  reflexivity.
+Qed.
+
+Lemma pow2_4 : pow2 4 = 16.
+  reflexivity.
+Qed.
+
+Lemma pow2_5 : pow2 5 = 32.
+  reflexivity.
+Qed.
+
+Lemma pow2_6 : pow2 6 = 64.
+  reflexivity.
+Qed.
+
+Lemma pow2_7 : pow2 7 = 128.
+  reflexivity.
+Qed.
+
+Lemma pow2_8 : pow2 8 = 256.
+  reflexivity.
+Qed.
+
+Ltac subst_pow2 :=
+  rewrite ?pow2_1 in *;
+  rewrite ?pow2_2 in *;
+  rewrite ?pow2_3 in *;
+  rewrite ?pow2_4 in *;
+  rewrite ?pow2_5 in *;
+  rewrite ?pow2_6 in *;
+  rewrite ?pow2_7 in *;
+  rewrite ?pow2_8 in *.
+
+Hint Extern 4 => subst_pow2 : data_inv_hints.
+Hint Extern 4 => omega : data_inv_hints.
+
+
+Ltac solve_side_condition :=
+  (* Try to discharge a side condition of one of the base rules *)
+  match goal with
+  | |- NoDupVector _ => Discharge_NoDupVector
+  | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
+    intros; apply Vector_predicate_rest_True
+  | |- context[FixList_predicate_rest (fun _ _ => True) _ _ _] =>
+    intros; eapply FixedList_predicate_rest_True
+  | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
+    let a'' := fresh in
+    intro a''; intros; repeat instantiate (1 := fun _ _ => True);
+    repeat destruct a'' as [ ? | a''] ; auto
+  | _ => solve [solve_data_inv]
+  | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
+  end.
+
+Ltac FinishDecoder :=
+  solve [simpl; intros;
+         eapply CorrectDecoderEmpty;
+         [ build_fully_determined_type idtac
+         | decide_data_invariant ] ].
+
+(* Redefine this tactic to implement new decoder rules*)
 Ltac new_decoder_rules := fail.
 
 Ltac apply_rules :=
@@ -543,11 +612,11 @@ Ltac apply_rules :=
       ]
   | H : cache_inv_Property ?P ?P_inv
     |- CorrectDecoder ?mnd _ _ (_ ++ _) _ _ =>
-      eapply (format_unused_sequence_correct H) with (monoid := mnd);
-      clear H;
-      [ intros; solve [repeat apply_rules]
-      | solve [ solve_side_condition ]
-      | intros ]
+    eapply (format_unused_sequence_correct H) with (monoid := mnd);
+    clear H;
+    [ intros; solve [repeat apply_rules]
+    | solve [ solve_side_condition ]
+    | intros ]
   | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ (Either _ Or _)%format _ _ =>
     eapply (composeIf_format_correct H); clear H;
     [ intros
@@ -611,7 +680,7 @@ Ltac apply_rules :=
                                                  (Ensembles.Ensemble (CacheDecode -> Prop))
                                                  ltac:(fun cache_invariants' =>
                                                          eapply (SumType_decode_correct (m := n) types) with
-                                                         (formatrs := formatrs')
+                                                           (formatrs := formatrs')
                                                            (decoders := decoders')
                                                            (invariants := invariants')
                                                            (invariants_rest := invariants_rest')
@@ -638,7 +707,7 @@ Ltac apply_rules :=
                                                            (Ensembles.Ensemble (CacheDecode -> Prop))
                                                            ltac:(fun cache_invariants' =>
                                                                    eapply (SumType_decode_correct (m := n) types) with
-                                                                   (formatrs := formatrs')
+                                                                     (formatrs := formatrs')
                                                                      (decoders := decoders')
                                                                      (invariants := invariants')
                                                                      (invariants_rest := invariants_rest')
@@ -815,6 +884,33 @@ Proof.
   simpl; eapply BinNat.N.ltb_lt; reflexivity.
 Qed.
 
+Lemma decides_Option_eq_None {B}
+  : forall (s_opt : option B) b,
+    (Ifopt s_opt as _ Then true Else false) = b
+    -> decides (negb b) (s_opt = None).
+Proof.
+  intros; destruct s_opt; simpl in *; subst;
+    simpl in *; congruence.
+Qed.
+
+Lemma Option_predicate_True {B}
+  : forall (s_opt : option B),
+    match s_opt with
+    | Some _ | _ => True
+    end.
+Proof.
+  destruct s_opt; eauto.
+Qed.
+
+Lemma plus_minus : forall m n n',
+    m + n = n' -> n = n' - m.
+  intros; omega.
+Qed.
+
+Hint Extern 4 => eapply plus_minus.
+Hint Extern 4 => eapply (proj2 (NPeano.Nat.lt_add_lt_sub_l _ _ _)).
+Hint Extern 4 => eapply Option_predicate_True : data_inv_hints.
+Hint Extern 4 => eapply decides_Option_eq_None : data_inv_hints.
 Hint Resolve lt_1_pow2_16 : data_inv_hints.
 Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
 
@@ -935,4 +1031,4 @@ Ltac solve_decoder :=
   | |- _ => eapply compose_format_correct; [ solve_decoder | solve_predicate | intro; solve_decoder ]
   end.
 
-*)
+ *)

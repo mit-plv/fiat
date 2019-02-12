@@ -50,11 +50,9 @@ Definition ProtocolTypeCodes : Vector.t (word 8) 3 :=
      WO~0~0~0~1~0~0~0~1  (* UDP:  17*)
   ].
 
-Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4.(Options)|.
-
 Definition IPv4_Packet_Format : FormatM IPv4_Packet ByteString :=
   (format_word ◦ (fun _ => natToWord 4 4)
-               ++ (format_nat 4) ◦ IPv4_Packet_Header_Len
+               ++ (format_nat 4) ◦ (Basics.compose (plus 5) (Basics.compose (@length _) Options))
                ++ format_unused_word 8 (* TOS Field! *)
                ++ format_word ◦ TotalLength
                ++ format_word ◦ ID
@@ -84,8 +82,7 @@ Ltac new_encoder_rules ::=
 Definition IPv4_encoder :
   CorrectAlignedEncoderFor IPv4_Packet_Format.
 Proof.
-  start_synthesizing_encoder;
-    repeat align_encoder_step.
+  synthesize_aligned_encoder.
 Defined.
 
 (* Step Two: Extract the encoder function, and have it start encoding
@@ -93,31 +90,6 @@ Defined.
 Definition IPv4_encoder_impl {sz} v r :=
   Eval simpl in (projT1 IPv4_encoder sz v 0 r tt).
 Print IPv4_encoder_impl.
-
-(* Step Two and a Half: Add some simple facts about correct packets
-   for the decoder automation. *)
-Lemma IPv4_Packet_Header_Len_eq
-  : forall packet len,
-    IPv4_Packet_Header_Len packet = len
-    -> ((|packet.(Options) |) = len - 5).
-Proof.
-  unfold IPv4_Packet_Header_Len; intros.
-  apply Minus.plus_minus.
-  rewrite H; reflexivity.
-Qed.
-
-Lemma IPv4_Packet_Header_Len_bound
-  : forall packet,
-    IPv4_Packet_OK packet ->
-    lt (IPv4_Packet_Header_Len packet) (pow2 4)%nat.
-Proof.
-  intros; replace (pow2 4) with 16 by reflexivity.
-  unfold IPv4_Packet_OK in H; unfold IPv4_Packet_Header_Len.
-  omega.
-Qed.
-
-Hint Resolve IPv4_Packet_Header_Len_eq : data_inv_hints.
-Hint Resolve IPv4_Packet_Header_Len_bound : data_inv_hints.
 
 Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
   : nat :=
@@ -129,7 +101,7 @@ Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
 Lemma IPv4_Packet_Header_Len_OK
   : forall ip4 ctx ctx' ctx'' c b b'' ext,
     (   format_word ◦ (fun _ => natToWord 4 4)
-                    ++ (format_nat 4) ◦ IPv4_Packet_Header_Len
+                    ++ (format_nat 4) ◦  (Basics.compose (plus 5) (Basics.compose (@length _) Options))
                     ++ format_unused_word 8 (* TOS Field! *)
                     ++ format_word ◦ TotalLength
                     ++ format_word ◦ ID
@@ -163,7 +135,7 @@ Proof.
   rewrite H2; simpl; rewrite H3; simpl.
   rewrite Core.split1_append_word.
   rewrite wordToNat_natToWord_idempotent;
-    unfold IPv4_Packet_Header_Len; try omega.
+    unfold Basics.compose; try omega.
   unfold IPv4_Packet_OK in H1.
   eapply Nomega.Nlt_in.
   rewrite Nnat.Nat2N.id.
@@ -230,8 +202,8 @@ Qed.
 
 Arguments andb : simpl never.
 
-Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_1.
-Hint Resolve aligned_IPv4_Packet_encoded_measure_OK_2.
+Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_1.
+Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_2.
 
 Ltac new_decoder_rules ::=
   match goal with
@@ -251,17 +223,7 @@ Ltac new_decoder_rules ::=
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
 Proof.
-  (* We have to use an extra lemma at the start, because of the 'exotic'
-     IP Checksum. *)
-  start_synthesizing_decoder.
-  repeat apply_rules.
-  synthesize_cache_invariant.
-  cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
-  let H := fresh in pose proof @AlignedDecode_if_Sumb_dep as H;
-                      eapply H; clear H; eauto.
-  eauto using aligned_IPv4_Packet_encoded_measure_OK_1.
-  repeat align_decoders_step.
-  repeat align_decoders_step.
+  synthesize_aligned_decoder.
 Defined.
 
 Print Assumptions IPv4_Packet_Header_decoder.

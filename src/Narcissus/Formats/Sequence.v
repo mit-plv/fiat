@@ -7,7 +7,6 @@ Require Import
         Fiat.Computation.Refinements.General
         Fiat.Narcissus.BaseFormats.
 
-
 Definition sequence_Decode
            {S S' T : Type}
            {cache : Cache}
@@ -17,6 +16,14 @@ Definition sequence_Decode
   fun t env =>
     `(s', t', env') <- decode1 t env;
       decode2 s' t' env'.
+
+(* An alias so that our automation can identify facts about the
+projection of the source value learned during decoding *)  
+Definition IsProj {S S'}
+           (f : S -> S')
+           (s : S)
+           (s' : S') :=
+  f s = s'.
 
 Lemma format_sequence_correct
       {S S' T}
@@ -42,7 +49,7 @@ Lemma format_sequence_correct
       (decode2_pf : forall s',
           P' s' ->
           cache_inv_Property Q P_inv2 ->
-          CorrectDecoder monoid (fun s => P s /\ f s = s')
+          CorrectDecoder monoid (fun s => P s /\ IsProj f s s')
                          (fun _ _ => True)
                          format2
                          (decode2 s') Q)
@@ -53,6 +60,7 @@ Lemma format_sequence_correct
       (format1 ◦ f ++ format2)
       (sequence_Decode decode1 decode2) Q.
 Proof.
+  unfold IsProj.
   unfold cache_inv_Property in *; split.
   { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold sequence_Format, Projection_Format, Compose_Format, ComposeOpt.compose, Bind2 in com_pf; computes_to_inv. destruct v;
