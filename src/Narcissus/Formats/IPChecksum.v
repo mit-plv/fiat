@@ -113,7 +113,7 @@ Proof.
   repeat f_equal.
   pose proof (mempty_left ext) as H7; simpl in H7; rewrite <- H7 at -1.
   unfold ByteString_id; repeat f_equal.
-  apply le_uniqueness_proof. 
+  apply le_uniqueness_proof.
 Qed.
 
 Fixpoint ByteString2ListOfChar (n : nat)
@@ -145,10 +145,10 @@ Proof.
   reflexivity.
   unfold char in c; shatter_word c.
   reflexivity.
-Qed. 
+Qed.
 
 Lemma ByteBuffer_to_list_append
-  : forall sz1 l1 sz2 l2, 
+  : forall sz1 l1 sz2 l2,
     ByteBuffer.to_list (l1 ++ l2)%vector =
     (ByteBuffer.to_list (n := sz1) l1 ++ ByteBuffer.to_list (n := sz2) l2)%list.
 Proof.
@@ -156,7 +156,7 @@ Proof.
   - reflexivity.
   - intros; simpl; rewrite <- IHl1.
     reflexivity.
-Qed.    
+Qed.
 
 Lemma ByteString2ListOfChar_eq
   : forall (b ext : ByteString),
@@ -243,12 +243,12 @@ Proof.
         unfold BoundedByteStringToByteString.
         simpl.
         f_equal.
-        apply le_uniqueness_proof. 
+        apply le_uniqueness_proof.
         unfold eq_rec_r; simpl.
         rewrite (ByteBuffer_to_list_append _ l _ [_]); reflexivity.
-    } 
+    }
     apply H7.
-Qed. 
+Qed.
 
 Corollary ByteString2ListOfChar_eq'
   : forall (b : ByteString),
@@ -389,7 +389,7 @@ Proof.
   rewrite encode_word'_padding'.
   simpl padding.
   rewrite <- plus_n_O; reflexivity.
-Qed. 
+Qed.
 
 Definition IPChecksum_Valid (n : nat) (b : ByteString) : Prop :=
   onesComplement (ByteString2ListOfChar n b) = wones 16.
@@ -1021,7 +1021,7 @@ Proof.
   f_equal.
   eapply le_uniqueness_proof.
 Qed.
-  
+
 Lemma InternetChecksum_To_ByteBuffer_Checksum {sz}
   : forall m (v : Vector.t _ sz),
     InternetChecksum.checksum
@@ -1074,7 +1074,7 @@ Proof.
           rewrite H'; clear H'.
         replace (build_aligned_ByteString [h0]) with
             (ByteStringToBoundedByteString (word_into_ByteString (m := 1) OK h0)).
-        rewrite H0. 
+        rewrite H0.
         simpl.
         fold mult.
         rewrite IHm.

@@ -90,7 +90,7 @@ Section TCPPacketDecoder.
   Local Arguments NPeano.modulo : simpl never.
 
   Definition TCP_Length :=
-    (fun _ : ByteString => wordToNat tcpLength * 8).
+    (fun _ : ByteString => wordToNat tcpLength).
 
   Ltac new_encoder_rules ::=
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
@@ -136,7 +136,7 @@ Lemma TCP_Packet_Header_Len_OK
   TCP_Packet_OK a ->
   (fun _ : TCP_Packet => 16 + (16 + (32 + (32 + (4 + (3 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + 16))))))))))))))) a +
   (fun a' : TCP_Packet => 16 + ((| Options a' |) * 32 + 8 * projT1 (Payload a'))) a + 16 =
-  TCP_Length
+  8 * TCP_Length
     (mappend
        (mappend b
           (mappend (format_checksum ByteString AlignedByteString.ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c) b'')) ext).

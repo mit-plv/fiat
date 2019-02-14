@@ -76,7 +76,7 @@ Section UDP_Decoder.
     match (`(u, b') <- decode_unused_word' 16 udp_b;
              `(u, b') <- decode_unused_word' 16 b';
              decode_word' 16 b') with
-    | Some n => wordToNat (fst n) * 8
+    | Some n => wordToNat (fst n)
     | None => 0
     end.
 
@@ -90,7 +90,7 @@ Section UDP_Decoder.
       (format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') ->
       UDP_Packet_OK a ->
       (fun _ : UDP_Packet => 16 + (16 + 16)) a + (fun a' : UDP_Packet => 8 * projT1 (Payload a')) a + 16 =
-      UDP_Packet_format_measure
+      8 * UDP_Packet_format_measure
         (mappend
            (mappend b
                     (mappend (format_checksum ByteString AlignedByteString.ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
