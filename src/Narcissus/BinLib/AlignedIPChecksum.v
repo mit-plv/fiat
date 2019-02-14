@@ -103,11 +103,24 @@ Lemma CorrectAlignedEncoderForIPChecksumThenC
                           encode_A sz >>
                           calculate_IPChecksum)% AlignedEncodeM.
 Proof.
-  intros.
+(*  intros.
   unfold CorrectAlignedEncoder; intros.
   destruct encoder_A_OK as [encoder_A ?], encoder_B_OK as [encoder_B ?]; intuition;
     eexists; split; [ | split]; intros.
-  3: repeat eapply Append_EncodeMEquivAlignedEncodeM.
+  unfold composeChecksum, Bind2.
+  3: {
+    instantiate (1 := fun s ce =>
+                        `(b1, ce') <- encoder_B s ce;
+                        `(b2, ce') <- encoder_A s ce';
+                        let checksum := InternetChecksum.ByteBuffer_checksum_bound 18 _ in
+                        Some (mappend b1 (mappend (_ checksum) b2), ce')).
+    unfold calculate_IPChecksum.
+    repeat eapply Append_EncodeMEquivAlignedEncodeM.
+
+     ).
+
+
+    3: repeat eapply Append_EncodeMEquivAlignedEncodeM.
   4: eassumption.
   9: eassumption.
   5: eapply (proj2 (proj2 (projT2 (CorrectAlignedEncoderForFormatUnusedWord)))).
@@ -116,12 +129,64 @@ Proof.
   5: eauto.
   3: eapply (proj1 (proj2 (projT2 (CorrectAlignedEncoderForFormatUnusedWord)))).
   3: eapply (proj1 (proj2 (projT2 (CorrectAlignedEncoderForFormatUnusedWord)))).
+  eapply DecodeBindOpt_inv in H2; destruct_ex; split_and.
+  symmetry in H7.
+  eapply DecodeBindOpt_inv in H7; destruct_ex; split_and.
+  eapply DecodeBindOpt_inv in H7; destruct_ex; split_and.
+  symmetry in H9.
+  eapply DecodeBindOpt_inv in H9; destruct_ex; split_and.
+  eapply DecodeBindOpt_inv in H9; destruct_ex; split_and.
+  symmetry in H11.
+  eapply DecodeBindOpt_inv in H11; destruct_ex; split_and.
+  eapply DecodeBindOpt_inv in H11; destruct_ex; split_and.
+  symmetry in H13.
+  eapply DecodeBindOpt_inv in H13; destruct_ex; split_and.
+  injections.
+  unfold composeChecksum, Bind2.
+  rewrite H; try eassumption; simplify with monad laws.
+  eapply (proj1 (projT2 (@CorrectAlignedEncoderForFormatUnusedWord _ _ S )) s x0 x3 x4) in H7.
+  simpl.
+  destruct x8; destruct x0.
+  rewrite H1; try eassumption. simplify with monad laws; simpl.
+  unfold IPChecksum_Valid.
+  unfold onesComplement.
+  refine pick val _.
+  simplify with monad laws.
+  destruct x12; destruct x14.
+  f_equiv.
+  f_equiv.
+  f_equiv.
+
+  unfold format_checksum.
+  2: { intros.
+       erewrite <- @InternetChecksum.checksum_correct.
+       Check (ByteString2ListOfChar).
+       (length_ByteString
+          (ByteString_enqueue_ByteString x
+             (ByteString_enqueue_ByteString (format_checksum ByteString ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 foo)
+                x11)))
+       (ByteString_enqueue_ByteString
+          (ByteString_enqueue_ByteString x
+             (ByteString_enqueue_ByteString (format_checksum ByteString ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 ?Goal1)
+                x11)) ext)).
+
+
+  Unset Printing Notations.
+
+
+  injections.
+
+  unfold sequence_Encode, DecodeBindOpt in H2.
+
+
+  Focus 3. *)
+
 Admitted.
 
 Definition splitLength (len: word 16) : Vector.t (word 8) 2 :=
   Vector.cons _ (split2 8 8 len) _ (Vector.cons _ (split1 8 8 len) _ (Vector.nil _)).
 
-Definition Pseudo_Checksum_Valid (* FIXME payload should be after src, dest *)
+Definition Pseudo_Checksum_Valid
            (srcAddr : Vector.t (word 8) 4)
            (destAddr : Vector.t (word 8) 4)
            (udpLength : word 16)
@@ -129,8 +194,9 @@ Definition Pseudo_Checksum_Valid (* FIXME payload should be after src, dest *)
            (n : nat)
            (b : ByteString)
   := onesComplement (wzero 8 :: protoCode ::
-                           (ByteString2ListOfChar n b)
-                           ++ to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength))%list
+                           to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength)
+                           ++ (ByteString2ListOfChar n b)
+                    )%list
      = wones 16.
 
 Import VectorNotations.
@@ -338,46 +404,83 @@ Lemma compose_PseudoChecksum_format_correct {A}
                           decodeA v env
                         else None) P.
 Proof.
-  (*intros.
+  intros.
   Opaque CorrectDecoder.
-  pose proof composeChecksum_format_correct.
-  eapply H4 with (P := P).
-  - intros; rewrite !mappend_measure.
-    simpl; rewrite (H0 _ _ _ _ H6).
-    simpl; rewrite (H1 _ _ _ _ H7).
-    erewrite <- H4; eauto; try omega.
-    unfold format_checksum.
-    rewrite length_encode_word'.
-    simpl; omega.
-  - unfold IPChecksum_Valid in *; intros; simpl.
-    rewrite ByteString2ListOfChar_Over.
-    * rewrite ByteString2ListOfChar_Over in H9.
-      eauto.
-      simpl.
-      apply H0 in H7.
-      pose proof (H2 data).
-      rewrite <- H7 in H10.
-      rewrite !ByteString_enqueue_ByteString_padding_eq.
-      rewrite padding_eq_mod_8, H10.
-      pose proof (H3 data).
-      unfold format_checksum.
-      rewrite encode_word'_padding.
-      rewrite <- (H1 _ _ _ _ H8) in H11.
-      rewrite padding_eq_mod_8, H11.
-      reflexivity.
-    * rewrite !ByteString_enqueue_ByteString_padding_eq.
-      apply H0 in H7.
-      pose proof (H2 data).
-      rewrite <- H7 in H10.
-      rewrite padding_eq_mod_8, H10.
-      pose proof (H3 data).
-      unfold format_checksum.
-      rewrite encode_word'_padding.
-      rewrite <- (H1 _ _ _ _ H8) in H11.
-      rewrite padding_eq_mod_8, H11.
-      reflexivity.
-Qed. *)
-Admitted.
+  replace ((fun (v : ByteString) (env : CacheDecode) =>
+     if
+      weqb
+        (onesComplement
+           (wzero 8
+            :: (protoCode
+                :: to_list srcAddr ++
+                   to_list destAddr ++ to_list (splitLength udpLength) ++ ByteString2ListOfChar (formated_measure v) v)%list))
+        (wones 16)
+     then decodeA v env
+     else None)) with
+      ((fun (v : ByteString) (env : CacheDecode) =>
+          if weq
+        (onesComplement
+           (wzero 8
+            :: (protoCode ::
+                          to_list srcAddr ++
+                   to_list destAddr ++ to_list (splitLength udpLength) ++ ByteString2ListOfChar (formated_measure v) v)%list))
+        (wones 16)
+          then decodeA v env
+          else None)).
+  eapply (composeChecksum_format_correct
+                A _ _ _ 16 (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode)
+   (fun n v =>
+                weq
+        (onesComplement
+           (wzero 8
+            :: (protoCode
+                :: to_list srcAddr ++
+                to_list destAddr ++ to_list (splitLength udpLength)
+               ++ ByteString2ListOfChar n v)%list))
+        (wones 16))).
+  apply H.
+  intros.
+  simpl in H2.
+  simpl.
+  unfold monoid; rewrite <- (H2 _ _ _ _ b' _ b'' ext H4 H5 H6).
+  rewrite !length_ByteString_enqueue_ByteString.
+  erewrite len_format_A_OK by eauto.
+  erewrite (len_format_B_OK _ _ _ _ H5).
+  rewrite <- plus_assoc; f_equal; rewrite plus_comm; f_equal.
+  unfold format_checksum; rewrite length_encode_word'; reflexivity.
+  eapply H3.
+  intros.
+  unfold Pseudo_Checksum_Valid in *.
+  revert H7.
+  rewrite !ByteString2ListOfChar_Over; eauto.
+  simpl; rewrite padding_eq_mod_8.
+  rewrite !length_ByteString_enqueue_ByteString.
+  rewrite Nat.add_mod by omega.
+  apply len_format_A_OK in H5.
+  apply len_format_B_OK in H6.
+  rewrite H5, H0, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by omega.
+  rewrite H6, H1, <- plus_n_O, NPeano.Nat.mod_mod by omega.
+  unfold format_checksum; rewrite length_encode_word'; reflexivity.
+  simpl; rewrite padding_eq_mod_8.
+  rewrite !length_ByteString_enqueue_ByteString.
+  rewrite Nat.add_mod by omega.
+  apply len_format_A_OK in H5.
+  apply len_format_B_OK in H6.
+  rewrite H5, H0, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by omega.
+  rewrite H6, H1, <- plus_n_O, NPeano.Nat.mod_mod by omega.
+  unfold format_checksum; rewrite length_encode_word'; reflexivity.
+  repeat (apply functional_extensionality; intros).
+  find_if_inside.
+  eapply weqb_true_iff in e; rewrite e; eauto.
+  destruct (weqb
+      (onesComplement
+         (wzero 8
+          :: (protoCode
+              :: to_list srcAddr ++
+                 to_list destAddr ++ to_list (splitLength udpLength) ++ ByteString2ListOfChar (formated_measure x) x)%list))
+      (wones 16)) eqn: ?; eauto.
+  eapply weqb_true_iff in Heqb; congruence.
+Qed.
 
 Fixpoint aligned_Pseudo_checksum
          (srcAddr : ByteBuffer.t 4)
@@ -429,29 +532,3 @@ Proof.
   intros v; pattern sz, v.
   apply Vector.caseS; reflexivity.
 Qed.
-
-Lemma CorrectAlignedDecoderForUDPChecksumThenC {A}
-      (srcAddr : Vector.t (word 8) 4)
-      (destAddr : Vector.t (word 8) 4)
-      (udpLength : word 16)
-      protoCode
-      predicate
-      (format_A format_B : FormatM A ByteString)
-      (len_format_A : A -> nat)
-      (len_format_A_OK : forall a' b ctx ctx',
-          computes_to (format_A a' ctx) (b, ctx')
-          -> length_ByteString b = len_format_A a')
-  : CorrectAlignedDecoderFor
-      predicate
-      (format_A ++ format_unused_word 16 ++ format_B)%format
-    -> CorrectAlignedDecoderFor
-         predicate
-         (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
-Proof.
-  intros H; destruct H as [ ? [ [? ?] [ ? ?] ] ]; simpl in *.
-  eexists (fun sz v =>
-             if weqb (pseudoHeader_checksum' srcAddr destAddr udpLength protoCode v) (wones 16)
-             then x sz v
-             else ThrowAlignedDecodeM v).
-  admit.
-Defined.
