@@ -34,15 +34,6 @@ Open Scope Tuple_scope.
 Opaque pow2. (* Don't want to be evaluating this. *)
 Opaque natToWord. (* Or this. *)
 
-Ltac apply_compose :=
-  intros;
-  match goal with
-    H : cache_inv_Property ?P ?P_inv |- _ =>
-    first [eapply (compose_format_correct_no_dep _ H); clear H
-          | eapply (compose_format_correct H); clear H
-          ]
-  end.
-
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
 

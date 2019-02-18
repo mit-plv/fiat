@@ -32,20 +32,6 @@ Require Import
         Fiat.Narcissus.Common.Sig
         Fiat.Narcissus.Automation.NormalizeFormats.
 
-Ltac apply_compose :=
-  intros;
-  match goal with
-    H : cache_inv_Property ?P ?P_inv |- _ =>
-    first [eapply (compose_format_correct_no_dep _ H); clear H
-          | eapply (compose_unused_correct _ _ H); clear H
-          | eapply (compose_format_correct H); clear H
-          | eapply (composeIf_format_correct H); clear H;
-            [ |
-              | solve [intros; intuition (eauto with bin_split_hints) ]
-              | solve [intros; intuition (eauto with bin_split_hints) ] ]
-          ]
-  end.
-
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
 

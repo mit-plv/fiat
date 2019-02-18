@@ -68,18 +68,94 @@ Proof.
   eapply refineEquiv_bind; [ apply H | reflexivity ].
 Qed.
 
+Lemma Compose_decode_correct
+      {A A' C B}
+      {cache : Cache}
+      {P  : CacheDecode -> Prop}
+      {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
+      (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P))
+      (monoid : Monoid B)
+      (proj' : A -> A')
+      (proj : A -> C)
+      (predicate : A -> Prop)
+      (consistency_predicate : A' -> A -> Prop)
+      (predicate' : A -> Prop)
+      (format1 : A -> CacheFormat -> Comp (B * CacheFormat))
+      (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
+      (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
+      (consistency_predicate_OK :
+         forall (data : A) (a' : A'),
+           consistency_predicate a' data ->
+           forall data' b env xenv,
+             computes_to (format1 data' env) (b, xenv)
+             -> consistency_predicate a' data'
+             -> computes_to (format1 data env) (b, xenv))
+      (consistency_predicate_refl :
+         forall a, consistency_predicate (proj' a) a)
+      (decode1_pf :
+         cache_inv_Property P P_inv1
+         -> CorrectDecoder
+              monoid predicate'
+              proj'
+              format1 decode1 P)
+      (pred_pf : forall data, predicate data -> predicate' data)
+      (decode2 : A' -> B -> CacheDecode -> option (C * B * CacheDecode))
+      (decode2_pf : forall a' : A',
+          cache_inv_Property P P_inv2 ->
+          CorrectDecoder monoid
+                         (fun data => predicate data
+                                      /\ consistency_predicate a' data)
+                         proj
+                         format2
+                         (decode2 a') P)
+  : CorrectDecoder
+      monoid
+      (fun a => predicate a)
+      proj
+      (fun (data : A) (ctx : CacheFormat) =>
+         compose _ (format1 data) (format2 data)  ctx
+      )%comp
+      (fun (bin : B) (env : CacheDecode) =>
+         `(proj, rest, env') <- decode1 bin env;
+           decode2 proj rest env') P.
+Proof.
+  unfold cache_inv_Property in *; split.
+  { intros env env' xenv data bin ext ? env_pm pred_pm com_pf.
+    unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
+      destruct v0.
+    destruct (proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend b0 ext) env_OK env_pm (pred_pf _ pred_pm) com_pf); intuition; simpl in *; injections; eauto.
+    setoid_rewrite <- mappend_assoc; rewrite H2.
+    simpl.
+    destruct (proj1 (decode2_pf (proj' data) H1)
+                    _ _ _ _ _ ext H4 H (conj pred_pm (consistency_predicate_refl _)) com_pf');
+      intuition; simpl in *; injections.
+    eauto. }
+  { intros.
+    destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
+      simpl in *; try discriminate.
+    generalize Heqo; intros Heqo'.
+    eapply (proj2 (decode1_pf (proj1 P_inv_pf))) in Heqo; eauto.
+    destruct Heqo as [? [? [? [? [? [? [? [? ?] ] ] ] ] ] ] ].
+    eapply (proj2 (decode2_pf a (proj2 P_inv_pf))) in H2; eauto.
+    destruct H2 as [? ?]; destruct_ex; split_and; subst.
+    setoid_rewrite mappend_assoc.
+    split; eauto.
+    eexists x2, _, _; repeat split; eauto.
+    repeat computes_to_econstructor; simpl; eauto.
+  }
+Qed.
+
 Lemma compose_format_correct
-      {A A' B}
+      {A A' C B}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P))
       (monoid : Monoid B)
       (project : A -> A')
+      (project2 : A -> C)
       (predicate : A -> Prop)
       (predicate' : A' -> Prop)
-      (predicate_rest' : A -> B -> Prop)
-      (predicate_rest : A' -> B -> Prop)
       (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
       (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
@@ -87,31 +163,22 @@ Lemma compose_format_correct
          cache_inv_Property P P_inv1
          -> CorrectDecoder
               monoid predicate'
-              predicate_rest
+              id
               format1 decode1 P)
       (pred_pf : forall data, predicate data -> predicate' (project data))
-      (predicate_rest_impl :
-         forall a' b
-                a ce ce' ce'' b' b'',
-           computes_to (format1 a' ce) (b', ce')
-           -> project a = a'
-           -> predicate a
-           -> computes_to (format2 a ce') (b'', ce'')
-           -> predicate_rest' a b
-           -> predicate_rest a' (mappend b'' b))
-      (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
+      (decode2 : A' -> B -> CacheDecode -> option (C * B * CacheDecode))
       (decode2_pf : forall proj,
           predicate' proj ->
           cache_inv_Property P P_inv2 ->
           CorrectDecoder monoid
                                   (fun data => predicate data /\ project data = proj)
-                                  predicate_rest'
+                                  project2
                                   format2
                                   (decode2 proj) P)
   : CorrectDecoder
       monoid
       (fun a => predicate a)
-      predicate_rest'
+      project2
       (fun (data : A) (ctx : CacheFormat) =>
          compose _ (format1 (project data)) (format2 data)  ctx
       )%comp
@@ -119,86 +186,13 @@ Lemma compose_format_correct
          `(proj, rest, env') <- decode1 bin env;
            decode2 proj rest env') P.
 Proof.
-  unfold cache_inv_Property in *; split.
-  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
-    unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
-      destruct v0.
-    destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend b0 ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
-    setoid_rewrite <- mappend_assoc; rewrite H2.
-    simpl.
-    destruct (fun H'' => proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H1)
-                               _ _ _ _ _ ext H4 H (conj pred_pm (eq_refl _)) H'' com_pf');
-      intuition; simpl in *; injections.
-    eauto. }
-  { intros.
-    destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
-      simpl in *; try discriminate.
-    eapply (proj2 (decode1_pf (proj1 P_inv_pf))) in Heqo; eauto.
-    destruct Heqo as [? [? [? [? [? [? ?] ] ] ] ] ].
-    eapply (proj2 (decode2_pf a H5 (proj2 P_inv_pf))) in H2; eauto.
-    destruct H2 as [? ?]; destruct_ex; intuition; subst.
-    eexists; eexists; repeat split.
-    repeat computes_to_econstructor; eauto.
-    simpl; rewrite mappend_assoc; reflexivity.
-    eassumption.
-    eassumption.
-  }
-Qed.
-
-Lemma compose_format_correct_simpl
-      {A A' B}
-      {cache : Cache}
-      {monoid : Monoid B}
-      (project : A -> A')
-      (format1 : FormatM A' B)
-      (format2 : FormatM A B)
-      (decode1 : DecodeM (A' * B) B)
-      (*oblivious_decoder : forall bs data env bs' env',
-          decode1 bs env = Some (data, bs', env') ->
-          forall bs'', decode1 (mappend bs bs'') env = Some (data, mappend bs' bs'', env')*)
-      (decode1_pf : CorrectDecoder_simpl
-                      (fun data_rest env binxenv =>
-                         exists bin', fst binxenv = mappend bin' (snd data_rest) /\
-                                      format1 (fst data_rest) env (bin', snd binxenv))
-                      decode1)
-      (decode2 : A' -> B -> CacheDecode -> option (A * CacheDecode))
-      (decode2_pf : forall proj,
-          CorrectDecoder_simpl (RestrictFormat format2 (fun data => project data = proj))
-                               (decode2 proj))
-  : CorrectDecoder_simpl
-      (fun (data : A) (ctx : CacheFormat) =>
-         compose _ (format1 (project data)) (format2 data) ctx
-      )%comp
-      (fun (bin : B) (env : CacheDecode) =>
-         `(proj, env') <- decode1 bin env;
-           decode2 (fst proj) (snd proj) env').
-Proof.
-  split.
-  { intros; unfold compose, Bind2 in *; computes_to_inv;
-      destruct v; destruct v0; simpl in *; injections.
-    destruct decode1_pf.
-    destruct (H1 _ _ c (project data, b0) (mappend b b0) H) as [? [? ?] ].
-    apply unfold_computes.
-    rewrite unfold_computes in H0; simpl; eauto.
-    specialize (decode2_pf (project data)); destruct decode2_pf.
-    destruct (H5 c x xenv data b0 H4) as [? [? ?] ].
-    unfold RestrictFormat; rewrite unfold_computes; intuition.
-    rewrite H3; simpl; rewrite H7; eauto. }
-  { intros.
-    destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
-      simpl in *; try discriminate.
-    eapply (proj2 decode1_pf) in Heqo; eauto.
-    destruct Heqo as [? [? ?] ].
-    rewrite unfold_computes in H1; intuition; simpl in *;
-      destruct_ex; intuition; subst.
-    eapply (proj2 (decode2_pf _)) in H0; eauto.
-    destruct H0 as [? ?]; destruct_ex; intuition; subst.
-    unfold RestrictFormat in H1; rewrite unfold_computes in H1; intuition.
-    rewrite H5.
-    unfold compose; eexists; intuition eauto.
-    repeat first [computes_to_econstructor
-                  | apply unfold_computes; eauto ]. }
-Qed.
+  eapply Compose_decode_correct with
+      (consistency_predicate := fun proj data => project data = proj)
+      (proj' := project);
+    try eassumption; eauto.
+  - intros; congruence.
+  - intros.
+    revert decode1_pf; clear.
 
 (* For decoding fixed fields that do no depend on the object *)
 (* being formatd, e.g. version numbers in an IP packet. This *)
@@ -210,22 +204,22 @@ Qed.
 (* decoding and comparing. *)
 
 Lemma compose_format_correct_no_dep
-      {A A' B}
+      {A C B}
       (* Need decideable equality on the type of the fixed field. *)
-      (A'_eq_dec : Query_eq A')
+      (C_eq_dec : Query_eq C)
       {cache : Cache}
       {P  : CacheDecode -> Prop}
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P))
       (monoid : Monoid B)
-      (a' : A')
+      (a' : C)
       (predicate : A -> Prop)
-      (predicate' : A' -> Prop)
+      (predicate' : C -> Prop)
       (predicate_rest' : A -> B -> Prop)
-      (predicate_rest : A' -> B -> Prop)
-      (format1 : A' -> CacheFormat -> Comp (B * CacheFormat))
+      (predicate_rest : C -> B -> Prop)
+      (format1 : C -> CacheFormat -> Comp (B * CacheFormat))
       (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
-      (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
+      (decode1 : B -> CacheDecode -> option (C * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
          -> CorrectDecoder monoid predicate' predicate_rest

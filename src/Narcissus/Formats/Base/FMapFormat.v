@@ -198,5 +198,31 @@ Proof.
      unfold Basics.compose; congruence.
 Qed.
 
+Lemma projection_decode_correct {A A' B}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid B}
+      (project : A -> A')
+      (predicate : A -> Prop)
+      (predicate' : A' -> Prop)
+      (pred_pf : forall a, predicate a -> predicate' (project a ))
+      (format_A' : A' -> CacheFormat -> Comp (B * CacheFormat))
+      (decode_A' : B -> CacheDecode -> option (A' * B * CacheDecode))
+      (decode_A'_OK : CorrectDecoder monoid predicate' id format_A' decode_A' P)
+  : CorrectDecoder monoid predicate project (Projection_Format format_A' project) decode_A' P.
+Proof.
+  unfold CorrectDecoder, Projection_Format, Compose_Format; split; intros.
+  { rewrite @unfold_computes in H1; destruct_ex; intuition.
+    apply proj1 in decode_A'_OK; eapply decode_A'_OK with (ext := ext) in H2; eauto.
+    subst; unfold id in *; eauto.
+    subst; eauto. }
+  { apply proj2 in decode_A'_OK; eapply decode_A'_OK in H1;
+      clear decode_A'_OK; eauto.
+    split_and; destruct_ex; split; eauto.
+    eexists _, _, _; intuition eauto.
+    rewrite unfold_computes; eexists _; intuition eauto.
+    unfold id in *.
+Admitted.
+
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
 Notation "P ∩ format" := (Restrict_Format P format) (at level 55) : format_scope.
