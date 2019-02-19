@@ -27,23 +27,6 @@ Section LaxTerminalFormat.
     : EncodeM (S * T) T :=
     fun st env => Some (snd st, env).
 
-  Lemma CorrectDecoder_LaxTerminal
-        (s : S)
-        (Singleton_Format : forall s' env tenv',
-            LaxTerminal_Format s' env ∋ tenv' ->
-            s = fst s')
-    : CorrectDecoder_simpl LaxTerminal_Format (LaxTerminal_Decode s).
-  Proof.
-    unfold CorrectDecoder_simpl, LaxTerminal_Decode, LaxTerminal_Format in *; split; intros.
-    { computes_to_inv; injections; subst.
-      destruct data; eexists; simpl; intuition eauto.
-      erewrite Singleton_Format with (s' := (s0, t)) (env := xenv); eauto.
-    }
-    { injections.
-      eexists env; intuition eauto.
-    }
-  Qed.
-
   Lemma CorrectEncoder_LaxTerminal
     : CorrectEncoder LaxTerminal_Format LaxTerminal_Encode.
   Proof.

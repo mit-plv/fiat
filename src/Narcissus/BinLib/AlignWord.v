@@ -2,7 +2,6 @@ Require Import
         Coq.Logic.Eqdep_dec
         Fiat.Computation
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.EnumOpt

@@ -62,10 +62,9 @@ Definition IPv4_Packet_Format : FormatM IPv4_Packet ByteString :=
                ++ format_word ◦ FragmentOffset
                ++ format_word ◦ TTL
                ++ format_enum ProtocolTypeCodes ◦ Protocol)%format
-                                                           ThenChecksum IPChecksum_Valid OfSize 16
-                                                           ThenCarryOn (format_word ◦ SourceAddress
-                                                                                    ++ format_word ◦ DestAddress
-                                                                                    ++ format_list format_word ◦ Options)%format.
+ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn (format_word ◦ SourceAddress
+               ++ format_word ◦ DestAddress
+               ++ format_list format_word ◦ Options)%format.
 
 Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
   lt (|ipv4.(Options)|) 11 /\

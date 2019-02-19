@@ -393,8 +393,8 @@ Lemma compose_PseudoChecksum_format_correct {A}
            8 * formated_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext)) ->
     forall decodeA : _ -> CacheDecode -> option (A * _ * CacheDecode),
       (cache_inv_Property P P_inv ->
-       CorrectDecoder monoid predicate (fun _ _ => True) (format_A ++ format_unused_word 16 ++ format_B)%format decodeA P) ->
-      CorrectDecoder monoid predicate (fun _ _ => True)
+       CorrectDecoder monoid predicate predicate eq (format_A ++ format_unused_word 16 ++ format_B)%format decodeA P (format_A ++ format_unused_word 16 ++ format_B)%format) ->
+      CorrectDecoder monoid predicate predicate eq
                      (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B)
                      (fun (v : ByteString) (env : CacheDecode) =>
                         if weqb (onesComplement (wzero 8 :: protoCode ::
@@ -402,7 +402,8 @@ Lemma compose_PseudoChecksum_format_correct {A}
                                                        ++(ByteString2ListOfChar (8 * (formated_measure v)) v))%list) (wones 16)
                         then
                           decodeA v env
-                        else None) P.
+                        else None) P
+                     (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
 Proof.
   intros.
   Opaque CorrectDecoder.

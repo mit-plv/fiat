@@ -33,22 +33,25 @@ Section Ascii.
           (P_OK : forall b cd, P cd -> P (addD cd b))
     :
       CorrectDecoder monoid (fun n => True)
-                              (fun _ _ => True)
-                              format_ascii decode_ascii P.
+                     (fun n => True)
+                     eq
+                     format_ascii decode_ascii P
+                     format_ascii.
   Proof.
     unfold decode_ascii; split.
     {
-      intros env env' xenv c c' ext env_OK Eeq Ppred Ppred_rest Penc.
-      destruct (proj1 (Word_decode_correct (sz := 8) P_OK) _ _ _ _ _ ext env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
+      intros env env' xenv c c' ext env_OK Eeq Ppred Penc.
+      destruct (proj1 (Word_decode_correct (sz := 8) P_OK) _ _ _ _ _ ext env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
       rewrite H; simpl.
-      eexists; intuition eauto.
+      eexists _, _; intuition eauto.
+      rewrite <- H0.
       repeat f_equal.
       rewrite wordToN_nat. rewrite NToWord_nat.
       destruct (wordToNat_natToWord' 8 (BinNat.N.to_nat (N_of_ascii c))).
-      assert (x0 = 0).
-      { destruct x0; eauto; exfalso.
+      assert (x1 = 0).
+      { destruct x1; eauto; exfalso.
         remember (wordToNat (natToWord 8 (BinNat.N.to_nat (N_of_ascii c)))) as xx; clear Heqxx.
-        replace (xx + S x0 * pow2 8) with (256 + (xx + x0 * 256)) in H1.
+        replace (xx + S x1 * pow2 8) with (256 + (xx + x1 * 256)) in H1.
         assert (BinNat.N.to_nat (N_of_ascii c) < 256).
         assert (N.lt (N_of_ascii c) 256).
         clear H. induction c; repeat (match goal with
@@ -58,7 +61,8 @@ Section Ascii.
         apply Nomega.Nlt_out. eauto.
         omega. change (pow2 8) with 256. omega.
       }
-      subst. rewrite <- plus_n_O in H1. rewrite H1. clear H1.
+      unfold id in *; subst.
+      rewrite <- plus_n_O in H1. rewrite H1. clear H1.
       rewrite Nnat.N2Nat.id. rewrite ascii_N_embedding. eauto.
     }
     { intros env xenv xenv' n n' ext Eeq OK_env' Penc.
@@ -75,7 +79,7 @@ Section Ascii.
       rewrite Nnat.Nat2N.id.
       rewrite natToWord_wordToNat; eauto.
       rewrite wordToN_nat.
-      pose proof (wordToNat_bound w).
+      unfold id in *;   pose proof (wordToNat_bound w).
       simpl in H2.
       eapply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id.

@@ -50,18 +50,20 @@ Section String.
       CorrectDecoder
         monoid
         (fun ls => length ls = sz)
-        (fun _ _ => True)
-        format_string (decode_string sz) P.
+        (fun ls => length ls = sz)
+        eq
+        format_string (decode_string sz) P
+        format_string.
   Proof.
     split.
-    { intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.
+    { intros env env' xenv l l' ext ? Eeq Ppred Penc.
       subst.
       generalize dependent env.
       revert env' xenv l' env_OK.
       induction l.
       { intros.
         inversion Penc; subst; clear Penc.
-        rewrite mempty_left; eexists; intuition eauto.
+        rewrite mempty_left; eexists _, _; intuition eauto.
         apply add_correct; eauto.
       }
       { intros.
@@ -69,17 +71,18 @@ Section String.
         unfold Bind2 in *; computes_to_inv; subst.
         injection Penc''; intros; subst.
         destruct v; destruct v0.
-        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
-      simpl. rewrite <- mappend_assoc, H; simpl.
-      destruct (IHl _ _ _ xenv_OK _ H0 Penc') as [? [? ?] ].
-      rewrite H1; simpl; eexists; eauto.
+        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
+      simpl. rewrite <- mappend_assoc, H; simpl; split_and; subst.
+      destruct (IHl _ _ _ H3 _ H2 Penc') as [? [? ?] ].
+      split_and; subst. setoid_rewrite H1; simpl; eexists; eauto.
       }
     }
     { induction sz; simpl; intros.
-      { injections; repeat eexists; eauto using mempty_left.
+      { split; eauto;
+          injections; repeat eexists; simpl; eauto using mempty_left.
         apply add_correct; eauto.
       }
-      { destruct (decode_ascii bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+      { destruct (decode_ascii t env') as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         destruct (decode_string sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
@@ -88,7 +91,7 @@ Section String.
             eapply IHsz in Heqo0; eauto; destruct Heqo0;
               destruct_ex; intuition; subst.
         simpl.
-        eexists; eexists; intuition eauto.
+        eexists _, _; intuition eauto.
         computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
         rewrite mappend_assoc; reflexivity.

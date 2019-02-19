@@ -77,49 +77,53 @@ Section SumType.
                                            Comp (B * CacheFormat)) types)
           (decoders : ilist (B := fun T => B -> CacheDecode -> option (T * B * CacheDecode)) types)
           (invariants : forall idx, Vector.nth types idx -> Prop)
-          (invariants_rest : forall idx, Vector.nth types idx -> B -> Prop)
           (cache_invariants : forall idx, (CacheDecode -> Prop) -> Prop)
           (formatrs_decoders_correct : forall idx,
               cache_inv_Property P (cache_invariants idx)
               -> CorrectDecoder
                 monoid
                 (fun st => invariants idx st)
-                (invariants_rest idx)
+                (fun st => invariants idx st)
+                eq
                 (ith formatrs idx)
                 (ith decoders idx)
-                P)
+                P (ith formatrs idx))
           idx
     :
       cache_inv_Property P (fun P => forall idx, cache_invariants idx P)
       -> CorrectDecoder monoid (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
-                                 (fun st b => invariants_rest _ (SumType_proj _ st) b)
-                          (format_SumType types formatrs)
-                          (decode_SumType types decoders idx)
-                          P.
+                        (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
+                        eq
+                        (format_SumType types formatrs)
+                        (decode_SumType types decoders idx)
+                        P
+                        (format_SumType types formatrs).
   Proof.
     split;
-      revert types formatrs decoders invariants invariants_rest formatrs_decoders_correct;
+      revert types formatrs decoders invariants formatrs_decoders_correct;
       unfold CorrectDecoder, format_SumType, decode_SumType.
     { intros; intuition.
+      unfold id in *;
       eapply (proj1 (formatrs_decoders_correct _ (H _))) in H2; eauto;
         destruct_ex; intuition.
       subst; setoid_rewrite H2; simpl.
-      eexists; intuition eauto.
+      eexists _, _; intuition eauto.
       repeat f_equal.
-      rewrite inj_SumType_proj_inverse; reflexivity.
+      unfold id; rewrite inj_SumType_proj_inverse; reflexivity.
     }
     { intros.
-      destruct (ith decoders idx bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
+      destruct (ith decoders idx t env') as [ [ [? ?] ? ] | ] eqn : ? ;
         simpl in *; try discriminate; injections.
       eapply (proj2 (formatrs_decoders_correct idx (H _))) in Heqo;
         eauto; destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst.
-      exists x; exists x0; intuition;
+      eexists _, _; intuition eauto; unfold id in *; eauto;
         try rewrite index_SumType_inj_inverse; eauto.
-      - pattern (SumType_index types (inj_SumType types idx n)),
+      - unfold id; pattern (SumType_index types (inj_SumType types idx n)),
         (SumType_proj types (inj_SumType types idx n)).
         eapply SumType_proj_inj; eauto.
-      - pattern (SumType_index types (inj_SumType types idx n)),
-        (SumType_proj types (inj_SumType types idx n)).
+      - unfold id;
+          pattern (SumType_index types (inj_SumType types idx n)),
+          (SumType_proj types (inj_SumType types idx n)).
         eapply SumType_proj_inj; eauto.
     }
   Qed.
@@ -131,7 +135,6 @@ Section SumType.
                                            Comp (B * CacheFormat)) types)
           (decoders : ilist (B := fun T => B -> CacheDecode -> option (T * B * CacheDecode)) types)
           (invariants : ilist (B := fun T => Ensemble T) types)
-          (invariants_rest : ilist (B := fun T => T -> B -> Prop) types)
           (cache_invariants : Vector.t (Ensemble (CacheDecode -> Prop)) m)
           (formatrs_decoders_correct :
              Iterate_Ensemble_BoundedIndex (fun idx =>
@@ -139,18 +142,23 @@ Section SumType.
               -> CorrectDecoder
                 monoid
                 (ith invariants idx)
-                (ith invariants_rest idx)
+                (ith invariants idx)
+                eq
                 (ith formatrs idx)
                 (ith decoders idx)
-                P))
+                P
+                (ith formatrs idx)))
           idx
     :
       cache_inv_Property P (fun P => Iterate_Ensemble_BoundedIndex (fun idx => Vector.nth cache_invariants idx P))
-      -> CorrectDecoder monoid (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
-                                 (fun st b => (ith invariants_rest) _ (SumType_proj _ st) b)
+      -> CorrectDecoder monoid
+                        (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
+                        (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
+                        eq
                           (format_SumType types formatrs)
                           (decode_SumType types decoders idx)
-                          P.
+                          P
+                          (format_SumType types formatrs).
   Proof.
     intros; eapply SumType_decode_correct'; eauto.
     intros.

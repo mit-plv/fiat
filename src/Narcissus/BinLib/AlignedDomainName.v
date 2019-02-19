@@ -32,7 +32,7 @@ Require Import
         Bedrock.Word.
 
 Section AlignedDomainName.
-
+(*
   Import Vectors.VectorDef.VectorNotations.
 
   Arguments natToWord : simpl never.
@@ -1051,6 +1051,6 @@ Section AlignedDomainName.
     end.
     rewrite H; reflexivity.
     eauto.
-  Qed. *)
+  Qed. *) *)
 
 End AlignedDomainName.

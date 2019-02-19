@@ -661,30 +661,33 @@ Section AlignedDecodeM.
     intros; destruct cond; simpl; eauto using AlignedDecode_Throw.
   Qed.
 
-  Definition CorrectAlignedDecoder {A : Type}
-             (predicate : A -> Prop)
-             (format : FormatM A ByteString)
-             (decoder : forall sz, AlignedDecodeM A sz)
+  Definition CorrectAlignedDecoder {S : Type}
+             (predicate : S -> Prop)
+             (format : FormatM S ByteString)
+             (decoder : forall sz, AlignedDecodeM S sz)
     := {decodePlusCacheInv : _ &
                              (exists P_inv : (CacheDecode -> Prop) -> Prop,
                                  (cache_inv_Property (snd decodePlusCacheInv) P_inv ->
-                                  CorrectDecoder _ predicate (fun (_ : A) (_ : _) => True) format (fst decodePlusCacheInv) (snd decodePlusCacheInv)) /\
+                                  CorrectDecoder _ predicate predicate eq format (fst decodePlusCacheInv) (snd decodePlusCacheInv) format) /\
                                  cache_inv_Property (snd decodePlusCacheInv) P_inv)
                              /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder}.
 
-  Definition CorrectAlignedDecoderFor {A : Type}
-             (predicate : A -> Prop)
-             (format : FormatM A ByteString)
-    := {decoder : forall sz, AlignedDecodeM A sz &
+  Definition CorrectAlignedDecoderFor
+             {S : Type}
+             (predicate : S -> Prop)
+             (format : FormatM S ByteString)
+    := {decoder : forall sz, AlignedDecodeM S sz &
                              {decodePlusCacheInv : _ &
                                                    (exists P_inv : (CacheDecode -> Prop) -> Prop,
                                                        (cache_inv_Property (snd decodePlusCacheInv) P_inv ->
-                                                        CorrectDecoder _ predicate (fun (_ : A) (_ : _) => True) format (fst decodePlusCacheInv) (snd decodePlusCacheInv)) /\
+                                                        CorrectDecoder _ predicate predicate eq format (fst decodePlusCacheInv) (snd decodePlusCacheInv) format) /\
                                                        cache_inv_Property (snd decodePlusCacheInv) P_inv)
                                                    /\  DecodeMEquivAlignedDecodeM (fst decodePlusCacheInv) decoder} }.
 
-  Lemma Refine_CorrectAlignedDecoderFormat {A: Type}
-    : forall (Invariant : A -> Prop) (FormatSpec FormatSpec'  : FormatM A ByteString),
+  Lemma Refine_CorrectAlignedDecoderFormat
+        {S}
+    : forall (Invariant : S -> Prop)
+             (FormatSpec FormatSpec'  : FormatM S ByteString),
       EquivFormat FormatSpec FormatSpec'
       -> CorrectAlignedDecoderFor Invariant FormatSpec
       -> CorrectAlignedDecoderFor Invariant FormatSpec'.
@@ -693,31 +696,35 @@ Section AlignedDecodeM.
     exists (projT1 X), (projT1 (projT2 X)).
     pose proof (projT2 (projT2 X)).
     abstract (split_and; destruct_ex; intuition eauto;
-              eexists; split; try solve [eapply Specs.format_decode_correct_refineEquiv; eapply EquivFormat_sym; eassumption]; eauto).
+              eexists; split; eauto;
+    intros; eapply Specs.format_decode_correct_alt;
+      try first [unfold flip; reflexivity
+                | eapply EquivFormat_sym; eassumption];
+      eauto).
   Defined.
 
   Lemma Start_CorrectAlignedDecoderFor
-        {A : Type}
+        {S : Type}
         Invariant
         FormatSpec
-        (decoder decoder_opt : DecodeM (A * _) ByteString)
-        (decoderM : forall sz, AlignedDecodeM A sz)
+        (decoder decoder_opt : DecodeM (S * _) ByteString)
+        (decoderM : forall sz, AlignedDecodeM S sz)
         (cache_inv : CacheDecode -> Prop)
         (P_inv : (CacheDecode -> Prop) -> Prop)
         (decoder_OK :
            cache_inv_Property cache_inv P_inv
-           -> CorrectDecoder (A := A) _ Invariant (fun _ _ => True)
-                             FormatSpec decoder cache_inv)
+           -> CorrectDecoder (S := S) _ Invariant Invariant eq
+                             FormatSpec decoder cache_inv FormatSpec)
         (cache_inv_OK : cache_inv_Property cache_inv P_inv)
         (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)
         (monadized_decoder : DecodeMEquivAlignedDecodeM decoder_opt decoderM)
-    : @CorrectAlignedDecoderFor A Invariant FormatSpec.
+    : @CorrectAlignedDecoderFor S Invariant FormatSpec.
   Proof.
     exists decoderM.
     exists (decoder_opt, cache_inv); split. exists P_inv; split; simpl; eauto.
     unfold CorrectDecoder in *; intuition; intros.
-    - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4 H5).
-      rewrite decoder_opt_OK in H6; eauto.
+    - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4 ).
+      rewrite decoder_opt_OK in H5; eauto.
     - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
     - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
     - apply monadized_decoder.

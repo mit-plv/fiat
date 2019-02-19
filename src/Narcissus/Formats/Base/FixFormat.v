@@ -59,88 +59,88 @@ Section FixFormat.
       format s env ∋ tenv'
        /\ P (fst tenv').
 
-  Lemma CorrectDecoder_Fix'
-        (decode_body : DecodeM S T -> DecodeM S T)
-        (format_body : FormatM S T -> FormatM S T)
-        (format_body_OK : Frame.monotonic_function (format_body : funType [S; CacheFormat] (T * CacheFormat) ->
-                                                                  funType [S; CacheFormat] (T * CacheFormat)))
-        (bound : T -> nat)
-        (decode_body_correct :
-           forall n,
-             (CorrectDecoder_simpl
-                (Compose_Target (fun t => bound t < n)  (Fix_Format format_body))
-                (FueledFix' decode_body n)) ->
-             CorrectDecoder_simpl
-               (Compose_Target (fun t => bound t < Datatypes.S n)
-                            (format_body (Fix_Format format_body)))
-               (decode_body (FueledFix' decode_body n)))
-    : forall n,
-      CorrectDecoder_simpl
-        (Compose_Target (fun t => bound t < n) (Fix_Format format_body))
-        (FueledFix' decode_body n).
-  Proof.
-    induction n; simpl; intros.
-    - split; unfold Compose_Target; intros.
-      + rewrite @unfold_computes in H0; omega.
-      + discriminate.
-    - split; unfold Compose_Target in *; intros.
-      + rewrite @unfold_computes in H0; split_and.
-        apply_in_hyp (unroll_LeastFixedPoint format_body_OK).
-        eapply decode_body_correct; eauto.
-        apply unfold_computes; intuition eauto.
-      + eapply decode_body_correct in H0; eauto.
-        destruct_ex; split_and.
-        eexists; intuition eauto.
-        apply unfold_computes.
-        rewrite @unfold_computes in H1.
-        intuition.
-        eapply (unroll_LeastFixedPoint' format_body_OK).
-        apply unfold_computes; eauto.
-  Qed.
+  (* Lemma CorrectDecoder_Fix' *)
+  (*       (decode_body : DecodeM S T -> DecodeM S T) *)
+  (*       (format_body : FormatM S T -> FormatM S T) *)
+  (*       (format_body_OK : Frame.monotonic_function (format_body : funType [S; CacheFormat] (T * CacheFormat) -> *)
+  (*                                                                 funType [S; CacheFormat] (T * CacheFormat))) *)
+  (*       (bound : T -> nat) *)
+  (*       (decode_body_correct : *)
+  (*          forall n, *)
+  (*            (CorrectDecoder_simpl *)
+  (*               (Compose_Target (fun t => bound t < n)  (Fix_Format format_body)) *)
+  (*               (FueledFix' decode_body n)) -> *)
+  (*            CorrectDecoder_simpl *)
+  (*              (Compose_Target (fun t => bound t < Datatypes.S n) *)
+  (*                           (format_body (Fix_Format format_body))) *)
+  (*              (decode_body (FueledFix' decode_body n))) *)
+  (*   : forall n, *)
+  (*     CorrectDecoder_simpl *)
+  (*       (Compose_Target (fun t => bound t < n) (Fix_Format format_body)) *)
+  (*       (FueledFix' decode_body n). *)
+  (* Proof. *)
+  (*   induction n; simpl; intros. *)
+  (*   - split; unfold Compose_Target; intros. *)
+  (*     + rewrite @unfold_computes in H0; omega. *)
+  (*     + discriminate. *)
+  (*   - split; unfold Compose_Target in *; intros. *)
+  (*     + rewrite @unfold_computes in H0; split_and. *)
+  (*       apply_in_hyp (unroll_LeastFixedPoint format_body_OK). *)
+  (*       eapply decode_body_correct; eauto. *)
+  (*       apply unfold_computes; intuition eauto. *)
+  (*     + eapply decode_body_correct in H0; eauto. *)
+  (*       destruct_ex; split_and. *)
+  (*       eexists; intuition eauto. *)
+  (*       apply unfold_computes. *)
+  (*       rewrite @unfold_computes in H1. *)
+  (*       intuition. *)
+  (*       eapply (unroll_LeastFixedPoint' format_body_OK). *)
+  (*       apply unfold_computes; eauto. *)
+  (* Qed. *)
 
-  Lemma CorrectDecoder_Fix
-        {monoid : Monoid T}
-        (decode_body : DecodeM S T -> DecodeM S T)
-        (format_body : FormatM S T -> FormatM S T)
-        (format_body_OK : Frame.monotonic_function (format_body : funType [S; CacheFormat] (T * CacheFormat) ->
-                                                                  funType [S; CacheFormat] (T * CacheFormat)))
-        (decode_body_correct :
-           forall n,
-             (CorrectDecoder_simpl
-                (Compose_Target (fun t => bin_measure t < n)
-                             (Fix_Format format_body))
-                (FueledFix' decode_body n)) ->
-             CorrectDecoder_simpl
-               (Compose_Target (fun t => bin_measure t < Datatypes.S n)
-                            (format_body (Fix_Format format_body)))
-               (decode_body (FueledFix' decode_body n)))
-        (decode_body_continuous :
-           forall decode,
-             (forall t env s env',
-                 decode t env = Some (s, env') ->
-                 decode_body decode t env = Some (s, env')) ->
-             forall t env s env',
-               decode_body decode t env = Some (s, env') ->
-               decode_body (decode_body decode) t env = Some (s, env'))
-    : CorrectDecoder_simpl
-        (Fix_Format format_body)
-        (Fix_Decode decode_body).
-  Proof.
-    split; intros.
-    - destruct (CorrectDecoder_Fix'
-                  decode_body format_body format_body_OK bin_measure
-                  decode_body_correct (Datatypes.S (bin_measure bin))) as [? _]; eauto.
-      eapply H1 in H;
-        try solve [unfold Compose_Target; apply unfold_computes; split; eauto].
-      destruct_ex; split_and;  eexists; intuition eauto.
-    - destruct (CorrectDecoder_Fix'
-                  decode_body format_body format_body_OK bin_measure
-                  decode_body_correct (Datatypes.S (bin_measure bin))) as [_ ?]; eauto.
-      eapply H1 in H;
-        try solve [simpl; unfold Fix_Decode in H0; eauto].
-      destruct_ex; split_and;  eexists; intuition eauto.
-      unfold Compose_Target in H2; rewrite @unfold_computes in H2; intuition.
-  Qed.
+  (* Lemma CorrectDecoder_Fix *)
+  (*       {monoid : Monoid T} *)
+  (*       (decode_body : DecodeM S T -> DecodeM S T) *)
+  (*       (format_body : FormatM S T -> FormatM S T) *)
+  (*       (format_body_OK : Frame.monotonic_function (format_body : funType [S; CacheFormat] (T * CacheFormat) -> *)
+  (*                                                                 funType [S; CacheFormat] (T * CacheFormat))) *)
+  (*       (decode_body_correct : *)
+  (*          forall n, *)
+  (*            (CorrectDecoder_simpl *)
+  (*               (Compose_Target (fun t => bin_measure t < n) *)
+  (*                            (Fix_Format format_body)) *)
+  (*               (FueledFix' decode_body n)) -> *)
+  (*            CorrectDecoder_simpl *)
+  (*              (Compose_Target (fun t => bin_measure t < Datatypes.S n) *)
+  (*                           (format_body (Fix_Format format_body))) *)
+  (*              (decode_body (FueledFix' decode_body n))) *)
+  (*       (decode_body_continuous : *)
+  (*          forall decode, *)
+  (*            (forall t env s env', *)
+  (*                decode t env = Some (s, env') -> *)
+  (*                decode_body decode t env = Some (s, env')) -> *)
+  (*            forall t env s env', *)
+  (*              decode_body decode t env = Some (s, env') -> *)
+  (*              decode_body (decode_body decode) t env = Some (s, env')) *)
+  (*   : CorrectDecoder_simpl *)
+  (*       (Fix_Format format_body) *)
+  (*       (Fix_Decode decode_body). *)
+  (* Proof. *)
+  (*   split; intros. *)
+  (*   - destruct (CorrectDecoder_Fix' *)
+  (*                 decode_body format_body format_body_OK bin_measure *)
+  (*                 decode_body_correct (Datatypes.S (bin_measure bin))) as [? _]; eauto. *)
+  (*     eapply H1 in H; *)
+  (*       try solve [unfold Compose_Target; apply unfold_computes; split; eauto]. *)
+  (*     destruct_ex; split_and;  eexists; intuition eauto. *)
+  (*   - destruct (CorrectDecoder_Fix' *)
+  (*                 decode_body format_body format_body_OK bin_measure *)
+  (*                 decode_body_correct (Datatypes.S (bin_measure bin))) as [_ ?]; eauto. *)
+  (*     eapply H1 in H; *)
+  (*       try solve [simpl; unfold Fix_Decode in H0; eauto]. *)
+  (*     destruct_ex; split_and;  eexists; intuition eauto. *)
+  (*     unfold Compose_Target in H2; rewrite @unfold_computes in H2; intuition. *)
+  (* Qed. *)
 
   Definition Fix_Encode
              (measure : S -> nat)

@@ -16,7 +16,6 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.WordOpt

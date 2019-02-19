@@ -967,14 +967,15 @@ Lemma compose_IPChecksum_format_correct
              len_format1 a + len_format2 a + 16 = formatd_A_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decodeA : B -> CacheDecode -> option (A * B * CacheDecode),
         (cache_inv_Property P P_inv ->
-         CorrectDecoder monoid predicate predicate_rest (format1 ++ format_unused_word 16 ++ format2)%format decodeA P) ->
-        CorrectDecoder monoid predicate predicate_rest
+         CorrectDecoder monoid predicate predicate eq (format1 ++ format_unused_word 16 ++ format2)%format decodeA P (format1 ++ format_unused_word 16 ++ format2)%format) ->
+        CorrectDecoder monoid predicate predicate eq
                        (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
                        (fun (bin : B) (env : CacheDecode) =>
                           if checksum_Valid_dec (formatd_A_measure bin) bin
                           then
                             decodeA bin env
-                          else None) P.
+                          else None) P
+                       (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2).
 Proof.
   intros.
   eapply composeChecksum_format_correct; eauto.

@@ -13,29 +13,30 @@ Definition empty_Format
            {cache : Cache}
   : FormatM S T := fun s ce => ret (mempty, ce).
 
-Lemma CorrectDecoderEmpty {A B}
+Lemma CorrectDecoderEmpty {S T}
   : forall (cache : Cache)
-           (monoid : Monoid B)
-           (predicate : A -> Prop)
-           (rest_predicate : A -> B -> Prop)
+           (monoid : Monoid T)
+           (Source_Predicate : S -> Prop)
            (decode_inv : CacheDecode -> Prop)
-           (a : A)
+           (s : S)
            (b : bool),
-    (forall a', predicate a' -> a' = a)
-    -> decides b (predicate a)
+    (forall s', Source_Predicate s' -> s' = s)
+    -> decides b (Source_Predicate s)
     -> CorrectDecoder
          monoid
-         predicate
-         rest_predicate
+         Source_Predicate
+         Source_Predicate
+         eq
          empty_Format
-         (fun b' ctxD => if b then Some (a, b', ctxD) else None)
-         decode_inv.
+         (fun t' ctxD => if b then Some (s, t', ctxD) else None)
+         decode_inv
+         empty_Format.
 Proof.
   unfold CorrectDecoder, empty_Format; split; intros.
-  -  eexists env'; pose proof (H _ H2); subst; find_if_inside;
+  -  eexists s, env'; pose proof (H _ H2); subst; find_if_inside;
       simpl in *; intuition eauto; computes_to_inv; injections.
-    rewrite mempty_left; eauto.
-    eassumption.
+     rewrite mempty_left; eauto.
+     eassumption.
   - find_if_inside; injections; try discriminate;
       simpl in *; intuition eauto.
     eexists; eexists; intuition eauto.

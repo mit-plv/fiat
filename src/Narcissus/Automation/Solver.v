@@ -124,7 +124,7 @@ Lemma IsProj_eq {S S'}
       {f : S -> S'}
       {s : S}
       {s' : S'}
-      (H : IsProj f s s') : f s = s'.
+      (H : IsProj f s' s) : f s = s'.
 Proof.
   apply H.
 Qed.
@@ -552,10 +552,6 @@ Ltac solve_side_condition :=
   (* Try to discharge a side condition of one of the base rules *)
   match goal with
   | |- NoDupVector _ => Discharge_NoDupVector
-  | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
-    intros; apply Vector_predicate_rest_True
-  | |- context[FixList_predicate_rest (fun _ _ => True) _ _ _] =>
-    intros; eapply FixedList_predicate_rest_True
   | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
     let a'' := fresh in
     intro a''; intros; repeat instantiate (1 := fun _ _ => True);
@@ -628,7 +624,7 @@ Ltac apply_rules :=
     intros; revert H; eapply bool_decode_correct
 
   | |- context [CorrectDecoder _ _ _ (Option.format_option _ _) _ _] =>
-    intros; eapply Option.option_format_correct';
+    intros; eapply Option.option_format_correct;
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]
@@ -898,7 +894,6 @@ Hint Extern 4 => eapply (proj2 (NPeano.Nat.lt_add_lt_sub_l _ _ _)).
 Hint Extern 4 => eapply Option_predicate_True : data_inv_hints.
 Hint Extern 4 => eapply decides_Option_eq_None : data_inv_hints.
 Hint Resolve lt_1_pow2_16 : data_inv_hints.
-Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
 
 Hint Resolve whd_word_1_refl' : decide_data_invariant_db.
 Hint Resolve decides_length_firstn_skipn_app'' : decide_data_invariant_db.
@@ -931,25 +926,11 @@ Ltac synthesize_decoder :=
   [ repeat apply_rules
   | cbv beta; synthesize_cache_invariant
   | cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl].
-(*
-Ltac synthesize_decoder_ext
-     monoid
-     decode_step'
-     determineHooks
-     synthesize_cache_invariant' :=
-  (* Combines tactics into one-liner. *)
-  start_synthesizing_decoder;
-  [ normalize_format;
-    repeat first [decode_step' idtac | decode_step determineHooks]
-  | cbv beta; synthesize_cache_invariant' idtac
-  | cbv beta; optimize_decoder_impl ]. *)
 
 Global Instance : DecideableEnsembles.Query_eq () :=
   {| A_eq_dec a a' := match a, a' with (), () => left (eq_refl _) end |}.
 
 (* Older tactics follow, leaving in for now for backwards compatibility. *)
-
-
 
 Ltac enum_part eq_dec :=
   simpl;
@@ -975,46 +956,3 @@ Ltac idtac' :=
   match goal with
   | |- _ => idtac (* I actually need this idtac for some unknown reason *)
   end.
-
-(* Definition FixInt_eq_dec (size : nat) (n m : {n | (N.lt n (exp2 size))%N }) : {n = m} + {~ n = m}.
-  refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);
-    destruct n; destruct m; try congruence; simpl in *; rewrite <- sig_equivalence; eauto.
-Defined.
-
-Ltac solve_enum :=
-  let h := fresh in
-  intros h; destruct h;
-  [ idtac'; enum_part FixInt_eq_dec ..
-  | idtac'; enum_finish ].
-
-Ltac solve_done :=
-  intros ? ? ? ? data ? ? ? ?;
-         instantiate (1:=fun _ b e => (_, b, e));
-  intros; destruct data; simpl in *; repeat match goal with
-                                            | H : (_, _) = (_, _) |- _ => inversion H; subst; clear H
-                                            | H : _ /\ _ |- _ => inversion H; subst; clear H
-                                            end; intuition eauto; fail 0.
-
-Ltac solve_predicate :=
- unfold IList_predicate, FixList_predicate;
-  intuition eauto; instantiate (1:=fun _ => True); solve_predicate.
-
-Ltac eauto_typeclass :=
-  match goal with
-  | |- context [ Bool_format ] => eapply Bool_format_correct
-  | |- context [ Char_format ] => eapply Char_format_correct
-  | |- context [ FixInt_format ] => eapply FixInt_format_correct
-  | |- context [ FixList_format _ ] => eapply FixList_format_correct
-  | |- context [ IList_format _ ] => eapply IList_format_correct
-                                            (*| |- context [ SteppingList_format _ _ _ ] => eapply SteppingList_format_correct *)
-  end; eauto.
-
-Ltac solve_decoder :=
-  match goal with
-  | |- _ => solve [ eauto_typeclass; solve_decoder ]
-  | |- _ => solve [ eapply Enum_format_correct; solve_enum ]
-  | |- _ => solve [ solve_done ]
-  | |- _ => eapply compose_format_correct; [ solve_decoder | solve_predicate | intro; solve_decoder ]
-  end.
-
- *)

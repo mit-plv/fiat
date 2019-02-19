@@ -101,29 +101,6 @@ Proof.
   destruct c; simpl; eauto.
 Qed.
 
-Add Parametric Morphism
-    A B
-    (cache : Cache)
-    (monoid : Monoid B)
-    (predicate : A -> Prop)
-    rest_predicate
-    (decode : B -> CacheDecode -> option (A * B * CacheDecode))
-    (decode_inv : CacheDecode -> Prop)
-  : (fun format =>
-       @CorrectDecoder A B cache monoid predicate
-                       rest_predicate format decode decode_inv)
-    with signature (EquivFormat --> impl)
-      as format_decode_correct_refineEquiv.
-Proof.
-  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder;
-    intuition eauto; intros.
-  - eapply H1; eauto; apply H; eauto.
-  - eapply H2; eauto.
-  - destruct (H2 _ _ _ _ _ _ H0 H3 H4) as [ ? [? [? ?] ] ];
-      intuition.
-    repeat eexists; intuition eauto; apply H; eauto.
-Qed.
-
 Lemma EquivFormat_Projection_Format_Empty_Format
       {S S' T : Type}
       {monoid : Monoid T}

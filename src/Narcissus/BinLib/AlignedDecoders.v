@@ -19,7 +19,6 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedString
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.WordOpt
@@ -1958,7 +1957,7 @@ Section AlignedDecoders.
   Proof.
     unfold decode_enum, Aligned_decode_enum.
     intros; eapply DecodeMEquivAlignedDecodeM_trans.
-    eapply Bind_DecodeMEquivAlignedDecodeM; 
+    eapply Bind_DecodeMEquivAlignedDecodeM;
       [ eapply AlignedDecodeNCharM with (m := sz); intros; eauto | ].
     2: { simpl; intros.
          unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.

@@ -109,24 +109,25 @@ Section Enum.
           (tb_OK : NoDupVector tb)
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : CorrectDecoder monoid (fun _ => True) (fun _ _ => True) format_enum decode_enum P.
+    : CorrectDecoder monoid (fun _ => True)
+                     (fun _ => True) eq format_enum decode_enum P
+                     format_enum.
   Proof.
     split; unfold format_enum, decode_enum.
-    { intros env env' xenv c c' ext ? Eeq Ppred Ppred_rest Penc.
-      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I I Penc) as [? [? ?] ].
-      rewrite H; simpl.
+    { intros env env' xenv c c' ext ? Eeq Ppred Penc.
+      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I Penc) as [? [? ?] ].
+      split_and.
+      rewrite H0; simpl.
+      unfold id in *.
       apply (word_indexed_correct _ c) in tb_OK.
       subst; simpl in *.
       destruct (word_indexed (nth tb c) tb);
         intros; simpl in *.
       + eexists; intuition eauto.
-        repeat f_equal.
-        simpl in H; subst.
-        reflexivity.
       + intuition.
     }
     { intros.
-      destruct (decode_word bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+      destruct (decode_word t env') as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate.
       destruct (word_indexed w tb) eqn: ? ;
         simpl in *; try discriminate; injections.
@@ -137,21 +138,22 @@ Section Enum.
       unfold format_word; repeat eexists; eauto.
       repeat f_equal.
       revert Heqo0; clear.
+      unfold id.
       remember (S len) as n'; clear len Heqn'.
-      revert w tb; induction data.
+      revert w tb; induction v.
       - intros w tb; pattern n, tb;
           eapply Vector.caseS; simpl.
         intros; destruct (weqb w h) eqn: ?.
         eapply weqb_true_iff; eauto.
         destruct ( word_indexed w t); try discriminate.
       - intros w tb.
-        revert w data IHdata.
+        revert w v IHv.
         pattern n, tb; eapply Vector.rectS; simpl; intros.
-        inversion data.
+        inversion v.
         intros; destruct (weqb w a) eqn: ?.
         discriminate.
         destruct (word_indexed w v) eqn : ? ; try discriminate.
-        eapply IHdata.
+        eapply IHv.
         rewrite Heqo.
         f_equal.
         eapply Fin.FS_inj.

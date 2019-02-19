@@ -50,32 +50,37 @@ Section String.
       CorrectDecoder
         monoid
         (fun ls => length ls = sz)
-        (fun _ _ => True)
-        format_string (decode_string sz) P.
+        (fun ls => length ls = sz)
+        eq
+        format_string (decode_string sz) P
+        format_string.
   Proof.
     split.
-    { intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.
+    { intros env env' xenv l l' ext ? Eeq Ppred Penc.
       subst.
       generalize dependent env.
       revert env' xenv l' env_OK.
       induction l.
       { intros.
         inversion Penc; subst; clear Penc.
-        rewrite mempty_left; eexists; intuition eauto.  }
+        rewrite mempty_left; eexists _, _; intuition eauto.  }
       { intros.
         simpl in *.
         unfold Bind2 in *; computes_to_inv; subst.
         injection Penc''; intros; subst.
         destruct v; destruct v0.
-        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
+        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
       simpl. rewrite <- mappend_assoc, H; simpl.
-      destruct (IHl _ _ _ xenv_OK _ H0 Penc') as [? [? ?] ].
-      rewrite H1; simpl; eexists; eauto.
+      split_and; subst.
+      destruct (IHl _ _ _ H3 _ H2 Penc') as [? [? ?] ].
+      split_and; unfold id in *.
+      rewrite H1; simpl; eexists _, _;
+        subst; intuition eauto.
       }
     }
     { induction sz; simpl; intros.
-      { injections; repeat eexists; eauto using mempty_left. }
-      { destruct (decode_ascii bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+      { simpl; injections; repeat eexists; simpl; eauto using mempty_left. }
+      { destruct (decode_ascii t env') as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         destruct (decode_string sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
@@ -83,9 +88,9 @@ Section String.
           destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst;
             eapply IHsz in Heqo0; eauto; destruct Heqo0 as [? [? ?] ];
               destruct_ex; intuition; subst.
-        simpl.
-        eexists; eexists; intuition eauto.
-        computes_to_econstructor; eauto.
+        unfold id in *; simpl.
+        eexists _, _; simpl; intuition eauto.
+        simpl; computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
         rewrite mappend_assoc; reflexivity.
       }
@@ -120,32 +125,36 @@ Section String.
       CorrectDecoder
         monoid
         (fun s => forall s1 s2, s <> s1 ++ String term_char s2)%string
-        (fun _ _ => True)
+        (fun s => forall s1 s2, s <> s1 ++ String term_char s2)%string
+        eq
         (format_string_with_term_char term_char)
-        (decode_string_with_term_char term_char) P.
+        (decode_string_with_term_char term_char) P
+        (format_string_with_term_char term_char).
   Proof.
     split.
-    { intros env env' xenv s s' ext ? Eeq Ppred Ppred_rest Penc.
+    { intros env env' xenv s s' ext ? Eeq Ppred Penc.
       subst.
       generalize dependent env.
       revert env' xenv s' env_OK.
       induction s.
-      { intros.
+      { unfold id in *; intros.
         unfold format_string_with_term_char in Penc.
         unfold decode_string_with_term_char.
         simpl in Penc; unfold Bind2 in *; computes_to_inv; subst; simpl in *.
         rewrite mempty_right in Penc''; inversion Penc''; subst.
         destruct v; simpl in *.
         eapply Ascii_decode_correct in Penc; eauto.
-        destruct Penc; intuition.
-        eexists; rewrite Init.Wf.Fix_eq.
+        unfold id in *.
+        destruct_ex; split_and.
+        eexists _, _; rewrite Init.Wf.Fix_eq.
         eapply Decode_w_Measure_lt_eq in H0; destruct_ex.
         rewrite H0; simpl.
-        destruct (ascii_dec term_char term_char); simpl; try congruence.
+        subst; destruct (ascii_dec x x); simpl; try congruence.
         eauto.
-        intros.
+        intros.        
         repeat (apply functional_extensionality; intros; f_equal).
-        rewrite H1; reflexivity.
+        rewrite H2.
+        eauto.
       }
       { intros.
         unfold format_string_with_term_char in Penc;
@@ -154,27 +163,29 @@ Section String.
         unfold Bind2 in *; computes_to_inv; subst.
         injection Penc''; intros; subst.
         destruct v; destruct v0.
-        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
+        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
       simpl.
       unfold format_string_with_term_char in IHs.
       simpl in Penc'; eapply IHs in Penc'.
       destruct Penc'; intuition.
-      eexists; rewrite Init.Wf.Fix_eq.
+      subst.
+      destruct_ex; split_and.
+      eexists _, _; rewrite Init.Wf.Fix_eq.
       eapply Decode_w_Measure_lt_eq in H; destruct_ex.
       rewrite <- mappend_assoc, H; simpl.
-      destruct (ascii_dec a term_char); simpl.
+      destruct (ascii_dec x term_char); simpl.
       - elimtype False.
         subst; eapply (Ppred "")%string; simpl; reflexivity.
       - intuition.
-        unfold decode_string_with_term_char in H2.
-        rewrite H2; simpl; eauto.
-        eauto.
+        unfold decode_string_with_term_char in H1.
+        rewrite H1; simpl; subst; eauto.
+        subst; eauto.
         eauto.
       - intros; repeat (apply functional_extensionality; intros; f_equal).
-        rewrite H3; reflexivity.
-      - unfold not; intros; eapply (Ppred (String a s1) s2); simpl; congruence.
-      - eauto.
-      - eauto.
+        rewrite H5; reflexivity.
+      - unfold id in *; unfold not; intros; eapply (Ppred (String a s1) s2); simpl; congruence.
+      - intuition eauto.
+      - intuition eauto.
       }
     }
     { unfold decode_string_with_term_char, format_string_with_term_char;
@@ -210,7 +221,7 @@ Section String.
           computes_to_econstructor; eauto.
           computes_to_econstructor; eauto.
           simpl; rewrite mappend_assoc; eauto.
-          destruct s1; simpl in *; injections; intros; congruence.
+          unfold id in *; destruct s1; simpl in *; injections; intros; congruence.
           simpl; eauto.
           simpl; eauto.
       - eapply Decode_w_Measure_lt_eq' in Heqo; rewrite Heqo in H2;

@@ -35,35 +35,6 @@ Section ComposeFormat.
     : EncodeM S T :=
     fun s => Ifopt f' s as s' Then encode s' Else fun _ => None.
 
-  Lemma CorrectDecoder_Compose
-        (format : FormatM S' T)
-        (decode : DecodeM S' T)
-        (f : S -> S' -> Prop) (* Transformation Relation *)
-        (g : S' -> S) (* Transformation Function *)
-        (format_decode_corect : CorrectDecoder_simpl format decode)
-        (g_inverts_f : forall s s' env benv,
-            format s' env benv -> f s s' -> g s' = s)
-        (g_OK : forall s, f (g s) s)
-    : CorrectDecoder_simpl (Compose_Format format f) (Compose_Decode decode g).
-  Proof.
-    unfold CorrectDecoder_simpl, Compose_Decode, Compose_Format in *; split; intros.
-    { rewrite @unfold_computes in H0.
-      destruct_ex; intuition.
-      rewrite @unfold_computes in H3.
-      pose proof (g_inverts_f  _ _ _ _ H3 H4).
-      rewrite <- unfold_computes in H3.
-      eapply H1 in H3; destruct_ex; intuition eauto.
-      eexists; rewrite H5; simpl; intuition eauto.
-      subst; eauto.
-    }
-    { apply_in_hyp DecodeBindOpt_inv; destruct_ex; intuition.
-      eapply H2 in H3; eauto; injections.
-      destruct_ex; eexists; intuition eauto.
-      apply unfold_computes.
-      eexists; intuition eauto.
-    }
-  Qed.
-
   Lemma CorrectEncoder_Compose
         (format : FormatM S' T)
         (encode : EncodeM S' T)
@@ -198,31 +169,49 @@ Proof.
      unfold Basics.compose; congruence.
 Qed.
 
-Lemma projection_decode_correct {A A' B}
+Lemma Compose_decode_correct {S V T}
       {cache : Cache}
       {P : CacheDecode -> Prop}
-      {monoid : Monoid B}
-      (project : A -> A')
-      (predicate : A -> Prop)
-      (predicate' : A' -> Prop)
-      (pred_pf : forall a, predicate a -> predicate' (project a ))
-      (format_A' : A' -> CacheFormat -> Comp (B * CacheFormat))
-      (decode_A' : B -> CacheDecode -> option (A' * B * CacheDecode))
-      (decode_A'_OK : CorrectDecoder monoid predicate' id format_A' decode_A' P)
-  : CorrectDecoder monoid predicate project (Projection_Format format_A' project) decode_A' P.
+      {monoid : Monoid T}
+      (view : S -> V -> Prop)
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (View_Predicate_OK : forall s v, view s v -> Source_Predicate s -> View_Predicate v)
+      (format : FormatM V T)
+      (view_format : FormatM V T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate eq format decode_V P
+      view_format)
+  : CorrectDecoder monoid Source_Predicate View_Predicate view
+                   (Compose_Format format view) decode_V P view_format.
 Proof.
   unfold CorrectDecoder, Projection_Format, Compose_Format; split; intros.
   { rewrite @unfold_computes in H1; destruct_ex; intuition.
-    apply proj1 in decode_A'_OK; eapply decode_A'_OK with (ext := ext) in H2; eauto.
-    subst; unfold id in *; eauto.
-    subst; eauto. }
-  { apply proj2 in decode_A'_OK; eapply decode_A'_OK in H1;
-      clear decode_A'_OK; eauto.
-    split_and; destruct_ex; split; eauto.
-    eexists _, _, _; intuition eauto.
-    rewrite unfold_computes; eexists _; intuition eauto.
-    unfold id in *.
-Admitted.
+    apply proj1 in decode_V_OK; eapply decode_V_OK with (ext := ext) in H2; eauto.
+    destruct_ex; intuition; subst; eauto.
+    eexists _, _; intuition eauto. }
+  { apply proj2 in decode_V_OK; eapply decode_V_OK in H1;
+      clear decode_V_OK; eauto. }
+Qed.
+
+Lemma projection_decode_correct {S V T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (project : S -> V)
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (View_Predicate_OK : forall (s : S), Source_Predicate s -> View_Predicate (project s))
+      (format : FormatM V T)
+      (view_format : FormatM V T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate eq format decode_V P view_format)
+  : CorrectDecoder monoid Source_Predicate View_Predicate (fun s v => project s = v)
+                   (Projection_Format format project) decode_V P view_format.
+Proof.
+  eapply Compose_decode_correct; intros; eauto.
+  subst; eauto.
+Qed.
 
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
 Notation "P ∩ format" := (Restrict_Format P format) (at level 55) : format_scope.

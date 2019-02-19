@@ -23,7 +23,6 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedSumType
         Fiat.Narcissus.BinLib.AlignedDomainName
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.WordOpt
