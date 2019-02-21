@@ -178,33 +178,6 @@ Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
 Proof.
   synthesize_aligned_decoder.
-  
-  match goal with
-  | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _) _ _ _ =>
-    first [
-        eapply (format_const_sequence_correct H) with (monoid := mnd);
-        clear H; idtac
-      | eapply (format_sequence_correct H) with (monoid := mnd);
-        clear H; idtac
-      ]
-  end.
-  intros.
-  match goal with 
-  | |- context [CorrectDecoder _ _ _ _ (Option.format_option _ _) _ _ _] =>
-    intros; eapply Option.option_format_correct;
-      [ match goal with
-          H : cache_inv_Property _ _ |- _ => eexact H
-        end | .. ]
-  end.
-  intros; apply_rules.
-  intros.
-  Opaque CorrectDecoder.
-  eapply Compose_decode_correct.
-  
-  eapply unused_word_decode_correct.
-  
-  eapply
   Grab Existential Variables.
   eauto.
   eauto.

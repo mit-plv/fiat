@@ -698,8 +698,9 @@ Section AlignedDecodeM.
     abstract (split_and; destruct_ex; intuition eauto;
               eexists; split; eauto;
     intros; eapply Specs.format_decode_correct_alt;
-      try first [unfold flip; reflexivity
-                | eapply EquivFormat_sym; eassumption];
+    try first [unfold flip, impl, pointwise_relation; reflexivity
+              | unfold flip, impl, pointwise_relation; solve [eauto]
+              | eapply EquivFormat_sym; eassumption];
       eauto).
   Defined.
 

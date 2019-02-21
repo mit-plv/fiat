@@ -2010,7 +2010,7 @@ Section AlignedDecoders.
           end
           Else
           match decode_None v idx env with
-          | Some (a, b, c) => Some ((None, b), c)
+          | Some (a, b, c) => Some ((None , b), c)
           | None => None
           end).
 
@@ -2026,7 +2026,7 @@ Section AlignedDecoders.
       -> (DecodeMEquivAlignedDecodeM decode_None aligned_decode_None)
       -> (forall s_opt, DecodeMEquivAlignedDecodeM (t s_opt) (@t' s_opt))
       -> DecodeMEquivAlignedDecodeM
-           (fun v cd => `(a, b0, cd') <- Option.option_decode decode_Some decode_None b' v cd ;
+           (fun v cd => `(a, b0, cd') <- Option.option_decode _ decode_Some decode_None b' v cd ;
                           t a b0 cd')
            (fun numBytes => a <- aligned_option_decode aligned_decode_Some aligned_decode_None b';
                               t' a)%AlignedDecodeM.

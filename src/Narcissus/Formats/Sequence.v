@@ -264,7 +264,7 @@ Proof.
   eauto.
   eapply format_decode_correct_alt_Proper; eauto; try reflexivity.
   - unfold flip, pointwise_relation; intuition.
-  - unfold flip, pointwise_relation; intuition.
+  - unfold flip, pointwise_relation, impl; intuition.
   - unfold flip, EquivFormat; reflexivity.
   - unfold flip, EquivFormat; reflexivity.
 Qed.

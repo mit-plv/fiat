@@ -359,12 +359,37 @@ Theorem unused_word_decode_correct
                    (fun _ => True)
                    (fun s v => True)
                    (format_unused_word (sz := sz))
-                   (decode_word (sz := sz)) P
-                   (format_word (sz := sz)).
+                   (decode_unused_word (sz := sz)) P
+                   (format_unused_word (sz := sz)).
 Proof.
-  eapply (Compose_decode_correct (V := word sz)
-                                 (S := S));
-    eauto using Word_decode_correct; eauto.
+  eapply format_decode_correct_alt.
+  7: { 
+    eapply injection_decode_correct with (inj := fun _ => ()).
+    eapply Compose_decode_correct with
+        (view := (fun _ : S => {_ : word sz | True}%comp)).
+    2: eapply encode_Word_decode_correct.
+    2: eapply P_OK.
+    simpl; intros; eauto.
+    instantiate (1 := fun _ _ => True); eauto.
+    instantiate (1 := fun _ => True); eauto.
+    intros.
+    simpl in H.
+    instantiate (1 := fun _ env t => _ env t).
+    shelve.
+  }
+  - instantiate (1 := fun _ => True);
+      unfold flip, pointwise_relation; intuition.
+  -  unfold flip, pointwise_relation; intuition.
+  -  unfold flip, pointwise_relation; intuition.
+  -  unfold flip, pointwise_relation, EquivFormat; intuition.
+  - unfold flip, pointwise_relation; intuition.
+  - unfold flip, pointwise_relation, EquivFormat; intuition.
+    Grab Existential Variables.
+    simpl; intros.
+    apply unfold_computes.
+    unfold format_unused_word, Compose_Format; eexists v; eauto.
+    unfold format_word, serialize, encode_word in *; intuition eauto.
+    apply unfold_computes; eauto.
 Qed.
 
 Arguments format_unused_word sz {_ _ _ _ _ _}.

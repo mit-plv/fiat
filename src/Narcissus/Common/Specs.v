@@ -584,7 +584,7 @@ Add Parametric Morphism
        @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
                                 view format decode decode_inv)
     with signature (pointwise_relation _ iff
-                                       --> pointwise_relation _ iff
+                                       --> pointwise_relation _ (flip impl)
                                        --> pointwise_relation _ (pointwise_relation _ iff)
                                        --> EquivFormat
                                        --> pointwise_relation _ (pointwise_relation _ eq)
@@ -606,7 +606,6 @@ Proof.
     split_and; destruct_ex; split_and; subst.
     eexists _, _; intuition eauto.
     eapply H4; eauto.
-    eapply H0; eassumption.
 Qed.
 
 Add Parametric Morphism

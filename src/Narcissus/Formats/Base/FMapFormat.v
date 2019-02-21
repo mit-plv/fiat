@@ -213,5 +213,45 @@ Proof.
   subst; eauto.
 Qed.
 
+Lemma injection_decode_correct {S V V' T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (inj : V -> V')
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (View'_Predicate : V' -> Prop)
+      (format : FormatM S T)
+      (view : S -> V -> Prop)
+      (view' : S -> V' -> Prop)
+      (view_format : FormatM V T)
+      (view'_format : FormatM V' T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid Source_Predicate View_Predicate
+                                    view format decode_V P view_format)
+      (view'_OK : forall s v, view s v -> view' s (inj v))
+      (View'_Predicate_OK : forall v, View_Predicate v
+                                      -> View'_Predicate (inj v))
+      (view'_format_OK : forall v env t,
+          computes_to (view_format v env) t
+          -> computes_to (view'_format (inj v) env) t)
+  : CorrectDecoder monoid Source_Predicate View'_Predicate
+                   view'
+                   format (Compose_Decode decode_V (fun s => (inj (fst s), snd s)))
+                   P view'_format.
+Proof.
+  unfold CorrectDecoder, Projection_Format, Compose_Decode; split; intros.
+  { apply proj1 in decode_V_OK; eapply decode_V_OK with (ext := ext) in H1; eauto.
+    destruct_ex; intuition; subst; eauto.
+    eexists _, _; intuition eauto; rewrite H2; simpl; eauto.
+  }
+  { destruct (decode_V t env') as [ [ [? ?] ?] |] eqn: ? ;
+      simpl in *; try discriminate; injections.
+    apply proj2 in decode_V_OK;
+      eapply decode_V_OK in Heqo; eauto.
+    intuition; destruct_ex; split_and; eexists _, _; intuition eauto.
+  }
+Qed.
+
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
 Notation "P ∩ format" := (Restrict_Format P format) (at level 55) : format_scope.
