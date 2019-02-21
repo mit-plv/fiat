@@ -340,7 +340,7 @@ Section AlignWord.
                 Ifopt (word_indexed w1 tb) as idx Then k idx w2 b cd Else None).
     unfold decode_word; repeat setoid_rewrite If_Opt_Then_Else_DecodeBindOpt; simpl.
     destruct (decode_word' sz b) as [ [? ?] | ] eqn: ?; simpl; eauto.
-    destruct (word_indexed w tb) as [ | [? ?] ] eqn: ?; simpl; eauto.
+    destruct (word_indexed w tb) as [ ? | ] eqn: ?; simpl; eauto.
     destruct (decode_word' sz' b0) as [ [? ?] | ] eqn: ?; simpl; eauto.
   Qed.
 

@@ -573,13 +573,13 @@ Ltac apply_rules :=
   (* Processes the goal by either: *)
   (* Unfolding an identifier *)
   match goal with
-  | |- CorrectDecoder _ _ _ ?H _ _ =>
+  | |- CorrectDecoder _ _ _ _ ?H _ _ _ =>
     progress unfold H
   (* Finishing a derivation *)
-  | |- context [CorrectDecoder _ _ _ empty_Format _ _] => FinishDecoder
+  | |- context [CorrectDecoder _ _ _ _ empty_Format _ _ _] => FinishDecoder
   (* Or applying one of our other decoder rules *)
   | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ (_ ◦ _ ++ _) _ _ =>
+    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _) _ _ _ =>
     first [
         eapply (format_const_sequence_correct H) with (monoid := mnd);
         clear H;
@@ -593,13 +593,13 @@ Ltac apply_rules :=
         | intros ]
       ]
   | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ (_ ++ _) _ _ =>
+    |- CorrectDecoder ?mnd _ _ _ (_ ++ _) _ _ _ =>
     eapply (format_unused_sequence_correct H) with (monoid := mnd);
     clear H;
     [ intros; solve [repeat apply_rules]
     | solve [ solve_side_condition ]
     | intros ]
-  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ (Either _ Or _)%format _ _ =>
+  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ _ (Either _ Or _)%format _ _ _ =>
     eapply (composeIf_format_correct H); clear H;
     [ intros
     | intros
@@ -609,34 +609,35 @@ Ltac apply_rules :=
   (* Here is the hook for new decoder rules *)
   | |- _ => new_decoder_rules
 
-  | |- context [CorrectDecoder ?mnd _ _ (format_Vector _) _ _] =>
+  | |- context [CorrectDecoder ?mnd _ _ _ (format_Vector _) _ _ _] =>
     intros; eapply (@Vector_decode_correct _ _ _ mnd)
   | H : cache_inv_Property _ _
-    |- context [CorrectDecoder _ _ _ format_word _ _] =>
+    |- context [CorrectDecoder _ _ _ _ format_word _ _ _] =>
     intros; revert H; eapply Word_decode_correct
   | H : cache_inv_Property _ _
-    |- context [CorrectDecoder _ _ _ (format_nat _) _ _] =>
+    |- context [CorrectDecoder _ _ _ _ (format_nat _) _ _ _] =>
     intros; revert H; eapply Nat_decode_correct
-  | |- context [CorrectDecoder _ _ _ (format_list _) _ _] => intros; apply FixList_decode_correct
+  | |- context [CorrectDecoder _ _ _ _ (format_list _) _ _ _] =>
+    intros; apply FixList_decode_correct
 
   | H : cache_inv_Property _ _
-    |- context [CorrectDecoder _ _ _ (format_bool) _ _] =>
+    |- context [CorrectDecoder _ _ _ _ (format_bool) _ _ _] =>
     intros; revert H; eapply bool_decode_correct
 
-  | |- context [CorrectDecoder _ _ _ (Option.format_option _ _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ _ (Option.format_option _ _) _ _ _] =>
     intros; eapply Option.option_format_correct;
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]
 
   | H : cache_inv_Property _ _
-    |- context [CorrectDecoder _ _ _ (format_enum ?tb) _ _] =>
+    |- context [CorrectDecoder _  _ _ _ (format_enum ?tb) _ _ _] =>
     eapply (fun NoDup => @Enum_decode_correct _ _ _ _ _ _ _ tb NoDup _ H);
     solve_side_condition
 
-  | |- context[CorrectDecoder _ _ _ StringOpt.format_string _ _ ] =>
+  | |- context[CorrectDecoder _ _ _ _ StringOpt.format_string _ _ _ ] =>
     eapply StringOpt.String_decode_correct
-  | |- context [CorrectDecoder _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
+  | |- context [CorrectDecoder _ _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _ _] =>
     let cache_inv_H := fresh in
     intros cache_inv_H;
     first

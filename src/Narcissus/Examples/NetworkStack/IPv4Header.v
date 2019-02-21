@@ -207,7 +207,7 @@ Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_2.
 Ltac new_decoder_rules ::=
   match goal with
   | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
+    |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
     eapply compose_IPChecksum_format_correct with (format1 := fmt1);
       [ exact H
       | repeat calculate_length_ByteString
@@ -222,7 +222,12 @@ Ltac new_decoder_rules ::=
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
 Proof.
-  synthesize_aligned_decoder.
+  start_synthesizing_decoder.
+  NormalizeFormats.normalize_format.
+  repeat apply_rules.
+  cbv beta; synthesize_cache_invariant.
+  cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
+  cbv beta; align_decoders.
 Defined.
 
 Print Assumptions IPv4_Packet_Header_decoder.

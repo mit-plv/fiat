@@ -25,13 +25,15 @@ Lemma sequence_Compose_format_decode_correct'
       (view : S -> V1 -> Prop)
       (Source_Predicate : S -> Prop)
       (View_Predicate1  : V1 -> Prop)
-      (View_Predicate_OK : forall s v, Source_Predicate s ->
-                                       view s v ->
-                                       View_Predicate1 v)
       (format1 : FormatM V1 T)
       (format2 : FormatM S T )
       (decode1 : DecodeM (V1 * T) T)
-      (decode_1_OK : CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (decode_1_OK :
+         cache_inv_Property P P_inv1
+         -> CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (View_Predicate_OK : forall s v, Source_Predicate s ->
+                                       view s v ->
+                                       View_Predicate1 v)
       (decode2 : V1 -> DecodeM (S * T) T)
       (decode2_pf : forall v1 : V1,
           cache_inv_Property P P_inv2 ->
@@ -79,11 +81,13 @@ Lemma sequence_Compose_format_decode_correct
       (view : S -> V1 -> Prop)
       (Source_Predicate : S -> Prop)
       (View_Predicate1  : V1 -> Prop)
-      (View_Predicate_OK : forall s v, Source_Predicate s -> view s v -> View_Predicate1 v)
       (format1 : FormatM V1 T)
       (format2 : FormatM S T )
       (decode1 : DecodeM (V1 * T) T)
-      (decode_1_OK : CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (decode_1_OK :
+         cache_inv_Property P P_inv1
+         -> CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (View_Predicate_OK : forall s v, Source_Predicate s -> view s v -> View_Predicate1 v)
       (decode2 : V1 -> DecodeM (S * T) T)
       (decode2_pf : forall v1 : V1,
           cache_inv_Property P P_inv2 ->
@@ -118,18 +122,18 @@ Proof.
   - apply proj1 in Pair_Decode_OK.
     eapply Pair_Decode_OK with (ext := ext) in H1; eauto.
     destruct_ex; split_and.
-    unfold sequence_Decode' in H2.
-    unfold sequence_Decode.
-    destruct (decode1 (mappend t ext) env') as [ [ [? ?] ?] | ].
+    unfold sequence_Decode', sequence_Decode, DecodeBindOpt2, BindOpt in *.
+    destruct (decode1 (mappend t ext) env') as [ [ [? ?] ?] | ]; simpl in *.
     destruct (decode2 v t0 c) as [ [ [? ?] ?] | ]; injections; simpl in *.
     unfold IsProj in *; eexists _, _; intuition eauto.
     discriminate.
     discriminate.
   - apply proj2 in Pair_Decode_OK.
-    unfold sequence_Decode, sequence_Decode in *|-*.
-    destruct (decode1 t env') as [ [ [? ?] ?] | ] eqn: ?; try discriminate.
+    unfold sequence_Decode', sequence_Decode, DecodeBindOpt2, BindOpt in *.
+    destruct (decode1 t env') as [ [ [? ?] ?] | ] eqn: ?; try discriminate; simpl in *.
     assert (sequence_Decode' decode1 decode2 t env' = Some ((v0, v), t', xenv'))
-      by (unfold sequence_Decode'; rewrite Heqo, H1; eauto).
+      by (unfold sequence_Decode', DecodeBindOpt2, BindOpt; simpl;
+          rewrite Heqo; simpl; rewrite H1; eauto).
     eapply Pair_Decode_OK in H2; eauto.
     intuition eauto.
     clear Pair_Decode_OK.
@@ -154,11 +158,13 @@ Lemma format_sequence_correct
       (f : S -> V1)
       (Source_Predicate : S -> Prop)
       (View_Predicate1  : V1 -> Prop)
-      (View_Predicate_OK : forall s, Source_Predicate s -> View_Predicate1 (f s))
       (format1 : FormatM V1 T)
       (format2 : FormatM S T )
       (decode1 : DecodeM (V1 * T) T)
-      (decode_1_OK : CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (decode_1_OK :
+         cache_inv_Property P P_inv1
+         -> CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (View_Predicate_OK : forall s, Source_Predicate s -> View_Predicate1 (f s))
       (decode2 : V1 -> DecodeM (S * T) T)
       (decode2_pf : forall v1 : V1,
           cache_inv_Property P P_inv2 ->
@@ -194,11 +200,13 @@ Lemma format_const_sequence_correct
       (Source_Predicate : S -> Prop)
       (View_Predicate1  : V1 -> Prop)
       (v1_OK : View_Predicate1 v1)
-      (View_Predicate_OK : forall s, Source_Predicate s -> View_Predicate1 (f s))
       (format1 : FormatM V1 T)
       (format2 : FormatM S T )
       (decode1 : DecodeM (V1 * T) T)
-      (decode_1_OK : CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (decode_1_OK :
+         cache_inv_Property P P_inv1
+         -> CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (View_Predicate_OK : forall s, Source_Predicate s -> View_Predicate1 (f s))
       (decode2 : DecodeM (S * T) T)
       (decode2_pf :
          forall v0 : V1,
@@ -227,14 +235,15 @@ Lemma format_unused_sequence_correct
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P))
       (monoid : Monoid T)
-      (view : S -> V1 -> Prop)
       (Source_Predicate : S -> Prop)
       (View_Predicate1  : V1 -> Prop)
-      (View_Predicate_OK : forall v, View_Predicate1 v)
       (format1 : FormatM V1 T)
       (format2 : FormatM S T )
       (decode1 : DecodeM (V1 * T) T)
-      (decode_1_OK : CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (decode_1_OK :
+         cache_inv_Property P P_inv1
+         -> CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
+      (View_Predicate_OK : forall v, View_Predicate1 v)
       (decode2 : DecodeM (S * T) T)
       (decode2_pf :
           cache_inv_Property P P_inv2 ->

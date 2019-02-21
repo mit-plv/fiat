@@ -153,7 +153,7 @@ Ltac new_decoder_rules ::=
   match goal with
   | |- _ => intros; eapply unused_word_decode_correct; eauto
   | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
+    |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
       eapply compose_PseudoChecksum_format_correct;
     [ repeat calculate_length_ByteString
       | repeat calculate_length_ByteString
@@ -163,7 +163,7 @@ Ltac new_decoder_rules ::=
       | apply TCP_Packet_Header_Len_OK
       | intros; NormalizeFormats.normalize_format ]
   | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ format_bytebuffer _ _ =>
+    |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
     intros; eapply @ByteBuffer_decode_correct;
     first [exact H | solve [intros; intuition eauto] ]
   end.
@@ -178,6 +178,33 @@ Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
 Proof.
   synthesize_aligned_decoder.
+  
+  match goal with
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _) _ _ _ =>
+    first [
+        eapply (format_const_sequence_correct H) with (monoid := mnd);
+        clear H; idtac
+      | eapply (format_sequence_correct H) with (monoid := mnd);
+        clear H; idtac
+      ]
+  end.
+  intros.
+  match goal with 
+  | |- context [CorrectDecoder _ _ _ _ (Option.format_option _ _) _ _ _] =>
+    intros; eapply Option.option_format_correct;
+      [ match goal with
+          H : cache_inv_Property _ _ |- _ => eexact H
+        end | .. ]
+  end.
+  intros; apply_rules.
+  intros.
+  Opaque CorrectDecoder.
+  eapply Compose_decode_correct.
+  
+  eapply unused_word_decode_correct.
+  
+  eapply
   Grab Existential Variables.
   eauto.
   eauto.

@@ -138,10 +138,27 @@ Ltac normalize_step BitStringT :=
          | eapply EquivFormat_Projection_Format_Empty_Format
          | unfold EquivFormat; intros; reflexivity]; intros).
 
+Add Parametric Morphism
+    S T
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (decode : DecodeM (S * T) T)
+    (decode_inv : CacheDecode -> Prop)
+  : (fun format =>
+       @CorrectDecoder S T cache S monoid Source_Predicate Source_Predicate
+                                eq format decode decode_inv format)
+    with signature (EquivFormat --> impl)
+      as format_decode_correct_refineEquiv.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity.
+Qed.
+
 Ltac normalize_format :=
   (* Normalize formats by performing algebraic simplification. *)
   match goal with
-  | |- CorrectDecoder ?monoid _ _ _ _ _ =>
+  | |- CorrectDecoder ?monoid _ _ _ _ _ _ _ =>
     intros; eapply format_decode_correct_refineEquiv; unfold flip;
     repeat (normalize_step monoid)
   end.

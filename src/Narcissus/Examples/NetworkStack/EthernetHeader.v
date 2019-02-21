@@ -228,7 +228,6 @@ Section EthernetPacketDecoder.
   Hint Extern 4 => eapply aligned_v1042_test_OK_1.
   Hint Extern 4 => eapply aligned_v1042_test_OK_2.
 
-
   Definition EthernetHeader_decoder
     : CorrectAlignedDecoderFor ethernet_Header_OK EthernetHeader_Format.
   Proof.

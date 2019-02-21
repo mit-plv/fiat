@@ -128,7 +128,7 @@ Section ByteBufferFormat.
       apply inj_pair2_eq_dec in H4; try decide equality; subst.
       eapply (fun H' H'' => proj2 (Vector_decode_correct (fun _ => True)
                                                          format_word decode_word P H' H'')) in H';
-        try eassumption; destruct H' as [? [? [? [? [? [? ?] ] ] ] ] ]; subst; intuition eauto.
+        try eassumption; destruct H'; destruct_ex; split_and; subst; intuition eauto.
       unfold id in *; subst; eexists _, _; simpl; intuition eauto.
       apply Word_decode_correct; eauto.
     }

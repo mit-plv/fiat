@@ -33,6 +33,7 @@ Open Scope Tuple_scope.
 
 Opaque pow2. (* Don't want to be evaluating this. *)
 Opaque natToWord. (* Or this. *)
+Opaque weqb. (* Or this. *)
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.

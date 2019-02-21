@@ -278,13 +278,16 @@ Module Sensor6.
               Some (Humidity (split2 2 14 w), rest, ctx')
             else None).
 
+  Transparent weqb.
+  
   Lemma dec_readingCorrect
-    : CorrectDecoder _ (fun _ => True) (fun _ _ => True) format_reading dec_reading (fun _ => True).
+    : CorrectDecoder _ (fun _ => True) (fun _ => True) eq format_reading dec_reading (fun _ => True)
+                     format_reading.
   Proof.
     unfold format_reading, dec_reading; split; intros.
-    - destruct data; eapply encode_Word_decode_correct in H2; eauto;
-        destruct_ex; intuition; try rewrite H3; simpl;
-          eexists; rewrite split2_combine; eauto.
+    - destruct s; eapply encode_Word_decode_correct in H1; unfold cache_inv_Property; eauto;
+        destruct_ex; split_and; try rewrite H2; simpl; subst;
+          eexists _, _; simpl; rewrite split2_combine; eauto.
     - eapply DecodeBindOpt2_inv in H1; destruct_ex; intuition.
       destruct (weqb (split1 2 14 x) WO~0~0) eqn:? .
       + destruct (shatter_word_S x) as [? [x' ?] ];
@@ -303,6 +306,7 @@ Module Sensor6.
           unfold cache_inv_Property; intuition eauto.
   Qed.
 
+  Opaque weqb.
   Record sensor_msg :=
     { stationID: word 8; data: list reading }.
 
@@ -325,4 +329,5 @@ Module Sensor6.
 
   Let encode := encoder_impl enc_dec.
   Let decode := decoder_impl enc_dec.
+
 End Sensor6.

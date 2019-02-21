@@ -78,7 +78,7 @@ Ltac synthesize_aligned_decoder :=
           |
           | ];
           [ cbv beta; synthesize_cache_invariant
-          | cbv beta; unfold decode_nat; optimize_decoder_impl
+          | cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl
           | cbv beta; align_decoders]
         | start_synthesizing_decoder;
           [ NormalizeFormats.normalize_format; repeat apply_rules

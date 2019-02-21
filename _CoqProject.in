@@ -180,7 +180,6 @@ src/Narcissus/Examples/ByteAlignedExample.v
 src/Narcissus/Examples/ICMP_Packet.v
 src/Narcissus/Examples/README.v
 src/Narcissus/Examples/TutorialPrelude.v
-src/Narcissus/Examples/BRASS/Telemetry.v
 src/Narcissus/Examples/DNS/DNSPacket.v
 src/Narcissus/Examples/DNS/DnsOpt.v
 src/Narcissus/Examples/DNS/RRecordTypes.v
