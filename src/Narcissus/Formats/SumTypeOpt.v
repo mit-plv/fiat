@@ -110,6 +110,7 @@ Section SumType.
       eexists _, _; intuition eauto.
       repeat f_equal.
       unfold id; rewrite inj_SumType_proj_inverse; reflexivity.
+      unfold id; rewrite inj_SumType_proj_inverse; eauto.
     }
     { intros.
       destruct (ith decoders idx t env') as [ [ [? ?] ? ] | ] eqn : ? ;

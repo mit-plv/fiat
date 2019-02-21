@@ -74,9 +74,17 @@ Proof.
       revert H; pattern x; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl.
       constructor; intros; [ | constructor; eauto].
     - erewrite ICompb_OKT; eauto.
-      simpl; eapply decodeT_pf; intuition eauto.
+      eapply (decodeT_pf (proj1 P_inv_pf)) with (ext := ext) in H; eauto.
+      destruct_ex; split_and.
+      simpl; eexists _, _; intuition eauto.
+      unfold composeIf, Union_Format.
+      apply unfold_computes; eexists Fin.F1; simpl; eauto.
     - intros; erewrite ICompb_OKE; eauto.
-      simpl; eapply decodeE_pf; intuition eauto.
+      eapply (decodeE_pf (proj2 P_inv_pf)) with (ext := ext) in H; eauto.
+      destruct_ex; split_and.
+      simpl; eexists _, _; intuition eauto.
+      unfold composeIf, Union_Format.
+      apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
   }
   { intros.
     destruct (ICompb t) eqn : IComp_v ; simpl in *.
@@ -88,6 +96,115 @@ Proof.
       destruct_ex; intuition; eexists _, _;
         unfold composeIf; intuition eauto.
       unfold Union_Format; apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
+  }
+Qed.
+
+Lemma composeIf_format_correct'
+      {S V T}
+      {cache : Cache}
+      {P  : CacheDecode -> Prop}
+      {P_invT P_invE P_invS: (CacheDecode -> Prop) -> Prop}
+      (P_inv_pf : cache_inv_Property P (fun P => P_invT P /\ P_invE P /\ P_invS P))
+      (monoid : Monoid T)
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (view : S -> V -> Prop)
+      (formatT formatE : FormatM S T)
+      (decodeT decodeE : DecodeM (V * T) T)
+      (decodeB : DecodeM (bool * T) T)
+      (view_formatT view_formatE : FormatM V T)
+      (decodeT_pf :
+         cache_inv_Property P P_invT
+         -> CorrectDecoder
+              monoid
+              Source_Predicate
+              View_Predicate
+              view
+              formatT decodeT P
+              view_formatT)
+      (decodeE_pf :
+         cache_inv_Property P P_invE
+         -> CorrectDecoder
+              monoid Source_Predicate
+              View_Predicate
+              view
+              formatE decodeE P
+              view_formatE)
+      (decodeB_pf :
+         cache_inv_Property P P_invS
+         -> CorrectDecoder
+              monoid
+              Source_Predicate
+              (fun bs => True)
+              (fun s bs => True)
+              (composeIf formatT formatE)
+              decodeB P
+              (fun bs env t => (forall s, (formatT s env t -> bs = true)
+                                          /\ (formatE s env t -> bs = false))))
+  : CorrectDecoder
+      monoid
+      Source_Predicate
+      View_Predicate
+      view
+      (composeIf formatT formatE)
+      (fun (t : T) (env : CacheDecode) =>
+         `(b, _, _) <- decodeB t env;
+           If b Then decodeT t env
+              Else decodeE t env
+      ) P
+      (composeIf view_formatT view_formatE).
+Proof.
+  unfold cache_inv_Property in *; split.
+  { intros env env' xenv data bin ext ? env_pm pred_pm com_pf.
+    generalize com_pf; intro.
+    eapply decodeB_pf with (ext := ext) in com_pf; intuition eauto.
+    destruct_ex; split_and.
+    rewrite unfold_computes in H7.
+    unfold composeIf, Union_Format, Bind2 in com_pf0.
+    rewrite unfold_computes in com_pf0; destruct_ex.
+    specialize (H7 data); split_and.
+    rewrite H6.
+    revert H9; pattern x1; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl.
+    constructor; intros; [ | constructor; eauto].
+    - generalize (H11 H9); intros; subst.
+      eapply H0 in H9.
+      destruct_ex; split_and.
+      rewrite H9; eexists _, _; intuition eauto.
+      unfold composeIf, Union_Format; apply unfold_computes;
+        exists Fin.F1; simpl; eauto.
+      eauto.
+      eauto.
+      eauto.
+    - intros; generalize (H12 H9); intros; subst.
+      eapply H3 in H9.
+      destruct_ex; split_and.
+      rewrite H9; eexists _, _; intuition eauto.
+      unfold composeIf, Union_Format; apply unfold_computes;
+        exists (Fin.FS Fin.F1); simpl; eauto.
+      eauto.
+      eauto.
+      eauto.
+  } 
+  { intros.
+    destruct (decodeB t env') as [ [ [? ?] ? ] | ] eqn: ? ;
+      simpl in *; try discriminate.
+    destruct b; simpl in *.
+    - eapply decodeT_pf in H1. 
+      split_and; destruct_ex; intuition eauto; subst.
+      eexists _, _; intuition eauto.
+      unfold composeIf, Union_Format; apply unfold_computes;
+        exists Fin.F1; simpl; eauto.
+      intuition.
+      eauto.
+      intuition.
+    - eapply decodeE_pf in H1. 
+      split_and; destruct_ex; intuition eauto; subst.
+      eexists _, _; intuition eauto.
+      unfold composeIf, Union_Format; apply unfold_computes;
+        exists (Fin.FS Fin.F1); simpl; eauto.
+      intuition.
+      eauto.
+      intuition.
   }
 Qed.
 

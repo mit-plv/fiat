@@ -50,17 +50,22 @@ Section Nat.
     { intros env xenv xenv' n n' ext ? Eeq Ppred Penc.
       destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
       - rewrite H; simpl; eexists _, _; intuition eauto.
+        rewrite <- H0.
+        rewrite wordToNat_natToWord_idempotent; eauto.
+        rewrite <- Npow2_nat in Ppred.
+        rewrite <- (Nnat.Nat2N.id n) in Ppred.
+        apply Nomega.Nlt_in in Ppred; eauto.
         repeat f_equal.
         destruct (wordToNat_natToWord' sz n).
         assert (x1 = 0).
         { destruct x1; eauto.
-          rewrite <- H1 in Ppred. exfalso. simpl in Ppred.
+          rewrite <- H3 in Ppred. exfalso. simpl in Ppred.
           clear - Ppred.
           replace (wordToNat (natToWord sz n) + (pow2 sz + x1 * pow2 sz)) with
           (pow2 sz + (wordToNat (natToWord sz n) + x1 * pow2 sz)) in Ppred by omega.
           remember (wordToNat (natToWord sz n) + x1 * pow2 sz) as n'; clear Heqn'.
           unfold id in *; omega. }
-        rewrite H4 in H1. simpl in H1. rewrite <- plus_n_O in H1.
+        rewrite H5 in H3. simpl in H3. rewrite <- plus_n_O in H3.
         congruence.
         }
     { intros env xenv xenv' n n' ext Eeq OK_env Penc.

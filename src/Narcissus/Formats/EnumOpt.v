@@ -118,12 +118,11 @@ Section Enum.
       destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I Penc) as [? [? ?] ].
       split_and.
       rewrite H0; simpl.
-      unfold id in *.
       apply (word_indexed_correct _ c) in tb_OK.
       subst; simpl in *.
-      destruct (word_indexed (nth tb c) tb);
-        intros; simpl in *.
-      + eexists; intuition eauto.
+      destruct (word_indexed (nth tb c) tb) eqn: ?;
+        intros; simpl in *; subst.
+      + eexists _, _; intuition eauto.
       + intuition.
     }
     { intros.

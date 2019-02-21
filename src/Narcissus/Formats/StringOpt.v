@@ -63,7 +63,9 @@ Section String.
       induction l.
       { intros.
         inversion Penc; subst; clear Penc.
-        rewrite mempty_left; eexists _, _; intuition eauto.  }
+        rewrite mempty_left; eexists _, _; intuition eauto.
+        simpl; eauto.
+      }
       { intros.
         simpl in *.
         unfold Bind2 in *; computes_to_inv; subst.
@@ -72,10 +74,11 @@ Section String.
         destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
       simpl. rewrite <- mappend_assoc, H; simpl.
       split_and; subst.
-      destruct (IHl _ _ _ H3 _ H2 Penc') as [? [? ?] ].
+      destruct (IHl _ _ _ H4 _ H1 Penc') as [? [? ?] ].
       split_and; unfold id in *.
-      rewrite H1; simpl; eexists _, _;
+      rewrite H3; simpl; eexists _, _;
         subst; intuition eauto.
+      simpl; unfold Bind2; eauto.
       }
     }
     { induction sz; simpl; intros.
@@ -150,10 +153,14 @@ Section String.
         eapply Decode_w_Measure_lt_eq in H0; destruct_ex.
         rewrite H0; simpl.
         subst; destruct (ascii_dec x x); simpl; try congruence.
-        eauto.
-        intros.        
+        intuition eauto.
+        unfold format_string_with_term_char; simpl; unfold Bind2;
+          repeat computes_to_econstructor; eauto.
+        simpl;rewrite mempty_right; eauto.
+        simpl.
+        intros.
         repeat (apply functional_extensionality; intros; f_equal).
-        rewrite H2.
+        rewrite H3.
         eauto.
       }
       { intros.
@@ -179,10 +186,13 @@ Section String.
       - intuition.
         unfold decode_string_with_term_char in H1.
         rewrite H1; simpl; subst; eauto.
+        unfold format_string_with_term_char; simpl; unfold Bind2;
+          computes_to_econstructor; eauto.
+        subst; computes_to_econstructor; eauto.
         subst; eauto.
         eauto.
       - intros; repeat (apply functional_extensionality; intros; f_equal).
-        rewrite H5; reflexivity.
+        rewrite H7; reflexivity.
       - unfold id in *; unfold not; intros; eapply (Ppred (String a s1) s2); simpl; congruence.
       - intuition eauto.
       - intuition eauto.

@@ -35,7 +35,7 @@ Section Bool.
       erewrite dequeue_mappend_opt;
       try apply dequeue_head_opt.
       rewrite mempty_left.
-      injections; eexists _, _; split; eauto using add_correct.
+      injections; eexists _, _; split; intuition eauto using add_correct.
     - intros;
         destruct (dequeue_opt t) as [ [? ?] | ] eqn: ? ;
         simpl in *; try discriminate; injections; intuition.

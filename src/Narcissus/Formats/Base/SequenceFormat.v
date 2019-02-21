@@ -130,7 +130,6 @@ Section SequenceFormat.
       (view_format3_OK : forall v1 t1 env1 xenv1 v2 t2 xenv2,
           view_format1 v1 env1 (t1, xenv1)
           -> view_format2 v1 v2 xenv1 (t2, xenv2)
-          -> View_Predicate2 v1 v2
           -> View_Predicate1 v1
           -> view_format3 (v1, v2) env1 (mappend t1 t2, xenv2))
     : CorrectDecoder
@@ -150,15 +149,18 @@ Proof.
     destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (mappend t1 ext) env_OK env_pm H com_pf); eauto; destruct_ex; split_and; simpl in *; injections; eauto.
     unfold sequence_Decode', DecodeBindOpt2, BindOpt.
     setoid_rewrite <- mappend_assoc; rewrite H0.
-    pose proof (proj2 (decode1_pf H2) _ _ _ _ _ _ env_pm env_OK H0);
+    pose proof (proj2 (decode1_pf H3) _ _ _ _ _ _ env_pm env_OK H0);
       split_and; destruct_ex; split_and.
-    destruct (fun H => proj1 (decode2_pf x H4 H8)
-                             _ _ _ _ _ ext H3 H1 H com_pf').
+    destruct (fun H => proj1 (decode2_pf x H5 H9)
+                             _ _ _ _ _ ext H4 H2 H com_pf').
     split; try eassumption.
     eauto.
     destruct_ex; split_and.
     simpl.
-    rewrite H11; eexists _, _; simpl; eauto.
+    rewrite H12; eexists _, _; simpl; intuition eauto.
+    apply unfold_computes.
+    rewrite unfold_computes in H1.
+    eapply view_format3_OK; eauto.
   }
   { intros ? ? ? ? t; intros.
     unfold sequence_Decode', DecodeBindOpt2, BindOpt in H1.

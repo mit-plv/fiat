@@ -481,29 +481,6 @@ Proof.
     f_equal; eauto.
 Qed.
 
-(*Lemma monoid_dequeue_word_inj
-  : forall sz (w w' : ByteString) p,
-    WordOpt.monoid_dequeue_word sz w = Some p
-    -> WordOpt.monoid_dequeue_word sz w' = Some p
-    -> w = w'.
-Proof.
-  induction sz; simpl; intros.
-  - injections; eauto.
-  - destruct (ByteString_dequeue w) as [ [? ?] | ] eqn : ? ;
-      destruct (ByteString_dequeue w') as [ [? ?] | ] eqn : ?;
-                                                              try discriminate.
-    simpl in *.
-    destruct (WordOpt.monoid_dequeue_word sz b0) as [ [? ?] | ] eqn : ? ;
-      destruct (WordOpt.monoid_dequeue_word sz b2) as [ [? ?] | ]  eqn : ? ;
-      try discriminate.
-    destruct p as [? ?].
-    injection H; injection H0; intros; subst.
-    eapply ByteString_dequeue_opt_inj; eauto.
-    apply SW_word_inj in H4; simpl in *; injections.
-    apply SW_word_inj' in H1; subst.
-    replace b0 with b2; eauto.
-Qed. *)
-
 Definition IPChecksum_ByteAligned (b : ByteString) :=
   padding b = 0 /\ exists n, numBytes b = 2 * n.
 
@@ -549,58 +526,6 @@ Proof.
   simpl plus.
   rewrite Mult.mult_comm, NPeano.Nat.mod_mul; eauto.
 Qed.
-
-(*Lemma IPchecksum_Valid_OK' :
-  forall (b b' ext : ByteString),
-    IPChecksum_ByteAligned b  (* Should be able to elide this assumption. *)
-    -> IPChecksum_ByteAligned b'
-    -> IPChecksum_Valid
-         (bin_measure (mappend (mappend b (IPChecksum b b')) b'))
-         (mappend (mappend (mappend b (IPChecksum b b')) b') ext).
-Proof.
-  simpl; intros.
-  destruct H0; destruct H.
-  unfold IPChecksum, IPChecksum_Valid.
-  pose proof mappend_assoc as H'; simpl in H'; rewrite H'.
-  rewrite ByteString2ListOfChar_Over with (ext := ext); try eassumption.
-  rewrite !ByteString_monoid_eq_app; try eassumption.
-  pose proof ByteString2ListOfChar_eq' as H''; simpl in H''.
-  rewrite H''.
-  unfold byteString at 1.
-  unfold byteString at 1.
-  unfold byteString at 1.
-  rewrite onesComplement_commute; eauto.
-  rewrite app_assoc.
-  rewrite H''.
-  unfold byteString at 5.
-  rewrite onesComplement_commute with (b := byteString b); eauto.
-  rewrite H; find_if_inside; try congruence.
-  simpl; rewrite app_nil_r.
-  apply onesComplement_onesComplement.
-  destruct_ex; eexists (x + x0); rewrite app_length; rewrite H1, H2; omega.
-  reflexivity.
-  rewrite H; find_if_inside; try congruence.
-  rewrite !app_length.
-  simpl; destruct_ex; exists (x0 + 1).
-  rewrite H2, even_IPChecksum; omega.
-  reflexivity.
-  find_if_inside.
-  reflexivity.
-  congruence.
-  rewrite H; find_if_inside; try congruence.
-  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
-  rewrite encode_word'_padding; reflexivity.
-  rewrite H; find_if_inside; try congruence.
-  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
-  rewrite mappend_padding_eq; rewrite H.
-  rewrite encode_word'_padding; reflexivity.
-  rewrite H; find_if_inside; try congruence.
-  pose proof mempty_right as H''; simpl in H''; rewrite H''; eauto.
-  rewrite mappend_padding_eq.
-  rewrite mappend_padding_eq; rewrite H.
-  rewrite encode_word'_padding.
-  rewrite H0; reflexivity.
-Qed. *)
 
 Lemma normalize_formatr_term {A}
   : forall (formatr formatr' : A -> CacheFormat -> Comp (_ * CacheFormat))
@@ -663,25 +588,6 @@ Qed.
 
 Transparent pow2.
 Arguments pow2 : simpl never.
-
-(*Lemma computes_to_composeChecksum_decode_unused_word
-  : forall sz checksum (w : word sz) ctx ctx'' rest rest' b,
-    computes_to ((((encode_word w) ThenC rest')
-                    ThenChecksum checksum OfSize sz ThenCarryOn rest) ctx) (b, ctx'')
-    -> exists b' b'' ctx' ctx''' ,
-      computes_to (rest' ctx') (b', ctx''')
-      /\ computes_to (rest ctx''') (b'', ctx'')
-      /\ forall ext, decode_unused_word' sz (mappend b ext) = Some ((), mappend (mappend b' (mappend (checksum sz (mappend (encode_word' _ w) b') b'') b'')) ext).
-Proof.
-  unfold composeChecksum, compose, Bind2, encode_word; intros; computes_to_inv; injections.
-  destruct v0; destruct v2; simpl in *; do 4 eexists;
-    repeat split; eauto.
-  unfold decode_unused_word'.
-  intros.
-  rewrite <- !ByteString_mappend_assoc.
-  pose proof monoid_pop_encode_word' as H''; simpl in H'';
-    intros; rewrite H''; reflexivity.
-Qed. *)
 
 Lemma computes_to_compose_proj_decode_word {S}
   : forall s sz (f : S -> word sz) (ctx ctx'' : CacheFormat)

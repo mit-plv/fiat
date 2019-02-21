@@ -75,7 +75,8 @@ Section Vector.
         simpl in *.
         simpl in *; intuition; computes_to_inv;
           injections; simpl; rewrite mempty_left; eauto.
-        eexists _, _; eauto.
+        eexists _, _; intuition eauto.
+        computes_to_econstructor.
       }
       { intros; simpl in *.
         assert (A_predicate h) by (eapply Ppred; econstructor).
@@ -86,10 +87,11 @@ Section Vector.
         setoid_rewrite <- mappend_assoc; setoid_rewrite H0;
           simpl.
         split_and; subst.
-        destruct (IHl (fun x H => Ppred x (Vector.In_cons_tl _ _ _ H)) b0 xenv _  H4 c) as [? [? ?] ];
+        destruct (IHl (fun x H => Ppred x (Vector.In_cons_tl _ _ _ H)) b0 xenv _  H5 c) as [? [? ?] ];
           intuition eauto.
-        setoid_rewrite H2; simpl.
-        eexists _, _; intuition; congruence.
+        setoid_rewrite H4; simpl.
+        eexists _, _; intuition; try congruence.
+        simpl; unfold Bind2; eauto.
       }
     }
     { induction sz; simpl; intros.

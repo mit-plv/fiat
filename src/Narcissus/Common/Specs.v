@@ -54,6 +54,7 @@ Section Specifications.
         exists v xenv',
           decode (mappend t ext) env' = Some (v, ext, xenv')
           /\ view s v
+          /\ (view_format v env ∋ (t, xenv))
           /\ Equiv xenv xenv' /\ decode_inv xenv') /\
     (forall (env : CacheFormat) (env' xenv' : CacheDecode) (v : V) (t t' : T),
         Equiv env env' ->
@@ -148,8 +149,9 @@ Section Specifications.
        CorrectDecoder monoid Source_Predicate Source_Predicate eq format decode decode_inv format).
   Proof.
     unfold CorrectDecoder_id, CorrectDecoder; intuition eauto.
-    - eapply H0 in H3; destruct_ex; split_and; eauto.
-      rewrite H4; eexists _, _; intuition eauto.
+    - generalize H3; intro;
+        eapply H0 in H3; destruct_ex; split_and; eauto.
+      rewrite H5; eexists _, _; intuition eauto.
     - eapply H0 in H3; destruct_ex; split_and; eauto.
       rewrite H3; eexists _; subst; intuition eauto.
   Qed.
@@ -596,9 +598,10 @@ Proof.
   intuition eauto; intros.
   - setoid_rewrite H3.
     setoid_rewrite H1.
-    eapply H6; eauto.
+    admit.
+(*    eapply H6; eauto.
     eapply H; eauto.
-    eapply H2; eauto.
+    eapply H2; eauto. *)
   - eapply H7; eauto.
     rewrite <- H3; eauto.
   - rewrite H3 in H9.

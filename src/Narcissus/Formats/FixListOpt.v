@@ -78,7 +78,9 @@ Section FixList.
       { intros.
         simpl in *; intuition; computes_to_inv;
           injections; simpl.
-        rewrite mempty_left; eexists; eauto. }
+        rewrite mempty_left; eexists _, _; intuition eauto.
+        simpl; computes_to_econstructor.
+      }
       { intros; simpl in *.
         assert (A_predicate a) by eauto.
         unfold Bind2 in Penc; computes_to_inv; subst.
@@ -88,10 +90,11 @@ Section FixList.
         intuition; destruct_ex.
         setoid_rewrite <- mappend_assoc; setoid_rewrite H1;
           simpl; subst.
-        destruct (IHl t0 xenv _ H5 c) as [? [? ?] ];
+        destruct (IHl t0 xenv _ H6 c) as [? [? ?] ];
           intuition eauto; subst.
-        setoid_rewrite H3; simpl.
+        setoid_rewrite H5; simpl.
         eexists _, _; intuition.
+        simpl; unfold Bind2; eauto.
       }
     }
     { induction sz; simpl; intros.

@@ -119,6 +119,7 @@ Section ByteBufferFormat.
       split_and; unfold id in *; destruct s; unfold decode_bytebuffer;
         subst; rewrite H2; simpl in *; intuition eauto.
       intuition eauto.
+      subst; eauto.
       apply Word_decode_correct; eauto.
     }
     { destruct v; simpl in *.

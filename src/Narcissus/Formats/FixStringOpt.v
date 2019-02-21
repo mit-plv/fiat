@@ -64,6 +64,7 @@ Section String.
       { intros.
         inversion Penc; subst; clear Penc.
         rewrite mempty_left; eexists _, _; intuition eauto.
+        simpl; eauto.
         apply add_correct; eauto.
       }
       { intros.
@@ -73,8 +74,11 @@ Section String.
         destruct v; destruct v0.
         destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (mappend b0 ext) env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
       simpl. rewrite <- mappend_assoc, H; simpl; split_and; subst.
-      destruct (IHl _ _ _ H3 _ H2 Penc') as [? [? ?] ].
-      split_and; subst. setoid_rewrite H1; simpl; eexists; eauto.
+      destruct (IHl _ _ _ H4 _ H1 Penc') as [? [? ?] ].
+      split_and; subst.
+      setoid_rewrite H3; simpl; eexists _, _;
+        intuition eauto.
+      simpl; unfold Bind2; eauto.
       }
     }
     { induction sz; simpl; intros.

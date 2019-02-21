@@ -192,7 +192,7 @@ Section Word.
       computes_to_inv; injections.
       generalize dependent sz.
       intros; rewrite decode_encode_word'; simpl.
-      eexists _, _; split; eauto using add_correct.
+      eexists _, _; split; intuition eauto using add_correct.
     - intros.
       destruct (decode_word' sz t)
         as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
@@ -363,7 +363,7 @@ Theorem unused_word_decode_correct
                    (format_unused_word (sz := sz)).
 Proof.
   eapply format_decode_correct_alt.
-  7: { 
+  7: {
     eapply injection_decode_correct with (inj := fun _ => ()).
     eapply Compose_decode_correct with
         (view := (fun _ : S => {_ : word sz | True}%comp)).

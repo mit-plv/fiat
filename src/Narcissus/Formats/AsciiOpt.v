@@ -45,13 +45,19 @@ Section Ascii.
       rewrite H; simpl.
       eexists _, _; intuition eauto.
       rewrite <- H0.
-      repeat f_equal.
+      rewrite NToWord_nat, wordToN_nat, wordToNat_natToWord_idempotent,
+      Nnat.N2Nat.id, ascii_N_embedding; eauto.
+      rewrite Nnat.N2Nat.id.
+      destruct c; simpl.
+      abstract (eapply Nomega.Nlt_in; 
+                repeat find_if_inside; compute; omega).
+      rewrite <- H0.
       rewrite wordToN_nat. rewrite NToWord_nat.
       destruct (wordToNat_natToWord' 8 (BinNat.N.to_nat (N_of_ascii c))).
       assert (x1 = 0).
       { destruct x1; eauto; exfalso.
         remember (wordToNat (natToWord 8 (BinNat.N.to_nat (N_of_ascii c)))) as xx; clear Heqxx.
-        replace (xx + S x1 * pow2 8) with (256 + (xx + x1 * 256)) in H1.
+        replace (xx + S x1 * pow2 8) with (256 + (xx + x1 * 256)) in H3.
         assert (BinNat.N.to_nat (N_of_ascii c) < 256).
         assert (N.lt (N_of_ascii c) 256).
         clear H. induction c; repeat (match goal with
@@ -62,7 +68,7 @@ Section Ascii.
         omega. change (pow2 8) with 256. omega.
       }
       unfold id in *; subst.
-      rewrite <- plus_n_O in H1. rewrite H1. clear H1.
+      rewrite <- plus_n_O in H3. rewrite H3. clear H3.
       rewrite Nnat.N2Nat.id. rewrite ascii_N_embedding. eauto.
     }
     { intros env xenv xenv' n n' ext Eeq OK_env' Penc.

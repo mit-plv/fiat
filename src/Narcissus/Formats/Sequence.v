@@ -126,6 +126,11 @@ Proof.
     destruct (decode1 (mappend t ext) env') as [ [ [? ?] ?] | ]; simpl in *.
     destruct (decode2 v t0 c) as [ [ [? ?] ?] | ]; injections; simpl in *.
     unfold IsProj in *; eexists _, _; intuition eauto.
+    unfold Compose_Format, sequence_Format, ComposeOpt.compose, Bind2 in *.
+    computes_to_inv; computes_to_econstructor.
+    apply unfold_computes; simpl; eauto.
+    computes_to_econstructor; eauto.
+    rewrite H3''; eauto.
     discriminate.
     discriminate.
   - apply proj2 in Pair_Decode_OK.
