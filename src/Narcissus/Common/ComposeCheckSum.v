@@ -169,33 +169,27 @@ Section Checksum.
         intuition.
     }
   Qed.
-(*
-(cache_inv_Property P P_inv ->
-          CorrectDecoder monoid predicate (fun _ => True) (fun _ _ => True)
-                         (format1 ++ format_unused_word 16 ++ format2)%format
-                         decode_measure P
-                         (fun n env t =>
-                            forall a,
-                              (format1 ++ format_unused_word 16 ++ format2)%format a env t ->
-                              (len_format1 a + len_format2 a + 16
-                               = n)))
-
-  Lemma composeChecksum_format_correct
+      
+  Lemma composeChecksum_format_correct'
         {P  : CacheDecode -> Prop}
-        {P_inv : (CacheDecode -> Prop) -> Prop}
+        {P_inv P_invM : (CacheDecode -> Prop) -> Prop}
         (decodeChecksum := decode_unused_word (sz := checksum_sz))
         (P_inv_pf :
-           cache_inv_Property P (fun P => P_inv P))
+           cache_inv_Property P (fun P => P_inv P /\ P_invM P))
         (predicate : A -> Prop)
         (format1 format2 : A -> CacheFormat -> Comp (B * CacheFormat))
-        (formatd_A_measure : B -> nat)
-        (formatd_A_measure_OK :
-           forall a ctx ctx' ctx'' b b' b'' ext,
-             computes_to (format1 a ctx) (b, ctx')
-             -> computes_to (format2 a (addE ctx' checksum_sz)) (b'', ctx'')
-             -> predicate a
-             -> bin_measure (mappend b (mappend (format_checksum b') b''))
-                = formatd_A_measure (mappend (mappend b (mappend (format_checksum b') b'')) ext))
+        (decode_measure : DecodeM (nat * B) B)
+        (decode_measure_OK
+           : cache_inv_Property P P_invM ->
+             CorrectDecoder monoid predicate (fun _ => True) (fun _ _ => True)
+                            (composeChecksum format1 format2)
+                            decode_measure P
+                            (fun n env t =>
+                               forall a t1 t2 (w : word checksum_sz),
+                                 format1 a env t1
+                                 -> format2 a (addE (snd t1) checksum_sz) t2
+                                 -> bin_measure (fst t1) + (bin_measure (format_checksum w)
+                                    + bin_measure (fst t2)) = n))
         (decodeA : B -> CacheDecode -> option (A * B * CacheDecode))
         (decodeA_pf :
            cache_inv_Property P P_inv
@@ -220,7 +214,8 @@ Section Checksum.
         eq
         (composeChecksum format1 format2)
         (fun (bin : B) (env : CacheDecode) =>
-           if checksum_Valid_dec (formatd_A_measure bin) bin then
+           `(n, _, _) <- decode_measure bin env;
+           if checksum_Valid_dec n bin then
              decodeA bin env
            else None)
         P
@@ -228,6 +223,11 @@ Section Checksum.
   Proof.
     unfold cache_inv_Property in *; split.
     { intros env env' xenv data bin ext ? env_pm pred_pm com_pf.
+      specialize (decode_measure_OK (proj2 P_inv_pf)); apply proj1 in decode_measure_OK.
+      generalize com_pf; intro; eapply decode_measure_OK in com_pf0.
+      destruct_ex; split_and.
+      setoid_rewrite H0; simpl.
+      generalize com_pf; intro.
       unfold composeChecksum, Bind2 in com_pf; computes_to_inv; destruct v;
         destruct v0.
       simpl in *.
@@ -244,38 +244,42 @@ Section Checksum.
             unfold format_unused_word, Compose_Format.
             eexists _; split; eauto;
               repeat computes_to_econstructor.
-            apply unfold_computes; eauto.
           + eapply refineEquiv_bind2_bind.
             computes_to_econstructor; eauto.
             eapply refineEquiv_bind2_unit.
             simpl; rewrite com_pf'''; eauto. }
-        eapply H in H0; destruct_ex; split_and.
-        rewrite H1; eexists _, _; intuition eauto.
-        subst.
-        unfold composeChecksum; computes_to_econstructor; eauto.
-        computes_to_econstructor; eauto.
-        computes_to_econstructor; eauto.
-        simpl; rewrite <- com_pf'''; computes_to_econstructor.
+        eapply H6 in H7; destruct_ex; split_and.
+        rewrite H8; eexists _, _; intuition eauto.
+        subst. eauto.
         eauto.
         eauto.
         eauto.
       - destruct n.
         injections.
-        erewrite <- formatd_A_measure_OK; eauto.
+        rewrite unfold_computes in H1.
+        specialize (H1 _ _ _ v1 com_pf com_pf'); simpl in H1.
+        rewrite <- H1.
+        repeat setoid_rewrite mappend_measure in com_pf''.
+        eauto.
+      - auto.
+      - auto.
+      - auto.
     }
     { intros.
+      destruct (decode_measure t env') as [ [ [? ?] ?] | ] eqn: ? ; 
+        simpl in *; try discriminate.
       find_if_inside; try discriminate.
       - eapply decodeA_pf in H1; intuition eauto.
-        destruct H3 as [? [? [? [? [? ?] ] ] ] ].
+        destruct H5 as [? [? [? [? [? ?] ] ] ] ].
         subst.
-        unfold sequence_Format, compose, Bind2 in H3.
+        unfold sequence_Format, compose, Bind2 in H5.
         computes_to_inv; subst.
         destruct v0; destruct v2; destruct v3; simpl in *.
         unfold composeChecksum, Bind2.
-        unfold format_unused_word, Compose_Format in H3'.
-        apply (proj1 (unfold_computes _ _)) in H3'; simpl in H3'.
+        unfold format_unused_word, Compose_Format in H5'.
+        apply (proj1 (unfold_computes _ _)) in H5'; simpl in H5'.
         destruct_ex; intuition.
-        unfold format_word in H7; computes_to_inv; injections.
+        unfold format_word in H10; computes_to_inv; injections.
         eexists _, _; split.
         computes_to_econstructor; eauto.
         computes_to_econstructor; simpl; eauto.
@@ -285,11 +289,19 @@ Section Checksum.
         eassumption.
         eassumption.
         eassumption.
-        erewrite formatd_A_measure_OK; eauto.
-        computes_to_econstructor.
-        intuition.
+        2: computes_to_econstructor.
+        2: intuition.
+        eapply H6 in Heqo; eauto.
+        split_and; destruct_ex; split_and.
+        rewrite unfold_computes in H12.
+        specialize (H12 _ _ _ x1 H5 H5''0).
+        simpl in H12.
+        repeat setoid_rewrite mappend_measure.
+        rewrite H12.
+        unfold format_checksum.
+        eapply c0.
     }
-  Qed. *)
+  Qed. 
 
 End Checksum.
 

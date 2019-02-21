@@ -920,6 +920,110 @@ Proof.
       reflexivity.
 Qed.
 
+(* A (hopefully) more convenient IP_Checksum lemma *)
+Lemma compose_IPChecksum_format_correct'
+  : forall (A : Type)
+           (B := ByteString)
+           (trans : Monoid B := monoid)
+           (trans_opt : QueueMonoidOpt trans bool :=
+              ByteString_QueueMonoidOpt)
+           (calculate_checksum := IPChecksum)
+           (checksum_Valid := IPChecksum_Valid)
+           (checksum_Valid_dec := IPChecksum_Valid_dec)
+           (P : CacheDecode -> Prop)
+           (P_inv : (CacheDecode -> Prop) -> Prop)
+           (P_invM : (CacheDecode -> Prop) -> Prop)
+           (decodeChecksum := decode_IPChecksum),
+    cache_inv_Property P (fun P => P_inv P /\ P_invM P) ->
+    forall (predicate : A -> Prop)
+           (format1 : A -> CacheFormat -> Comp (B * CacheFormat))
+           (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
+           (decode_measure : DecodeM (nat * B) B)
+           (len_format1 : A -> nat)
+           (len_format2 : A -> nat),
+      (forall a' b ctx ctx',
+          computes_to (format1 a' ctx) (b, ctx')
+          -> length_ByteString b = len_format1 a')
+      -> (forall a b ctx ctx',
+             computes_to (format2 a ctx) (b, ctx')
+             -> length_ByteString b = len_format2 a)
+      -> (forall a, NPeano.modulo (len_format1 a) 8 = 0)
+      -> (forall a, NPeano.modulo (len_format2 a) 8 = 0)
+      -> (cache_inv_Property P P_invM ->
+          CorrectDecoder monoid predicate (fun _ => True) (fun _ _ => True)
+                         (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
+                            decode_measure P
+                            (fun n env t =>
+                               forall a t1 t2,
+                                 format1 a env t1
+                                 -> format2 a (addE (snd t1) 16) t2
+                                 -> bin_measure (fst t1) + 16 + bin_measure (fst t2) = n))
+      -> forall decodeA : B -> CacheDecode -> option (A * B * CacheDecode),
+        (cache_inv_Property P P_inv ->
+         CorrectDecoder monoid predicate predicate eq (format1 ++ format_unused_word 16 ++ format2)%format decodeA P (format1 ++ format_unused_word 16 ++ format2)%format) ->
+        CorrectDecoder monoid predicate predicate eq
+                       (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
+                       (fun (bin : B) (env : CacheDecode) =>
+                          `(n, _, _) <- decode_measure bin env;
+                            if checksum_Valid_dec n bin then
+                              decodeA bin env
+                            else None) P
+                       (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2).
+Proof.
+  intros.
+  eapply composeChecksum_format_correct'; eauto.
+  - intros.
+    unfold format_checksum; simpl.
+    eapply format_decode_correct_alt.
+    7: eapply H4; eauto.
+    + reflexivity.
+    + reflexivity.
+    + reflexivity.
+    + unfold flip, EquivFormat; reflexivity.
+    + unfold flip, pointwise_relation; reflexivity.
+    + unfold flip, EquivFormat; intros.
+      pose proof length_encode_word'; simpl in H7; simpl.
+      unfold refineEquiv, refine; split; intros.
+      * apply unfold_computes; intros; rewrite H7.
+        rewrite unfold_computes in H8.
+        specialize (H8 _ _ _ H9 H10).
+        rewrite <- H8; simpl.
+        rewrite <- plus_assoc; reflexivity.
+      * apply unfold_computes; intros; rewrite unfold_computes in H8.
+        specialize (H8 _ _ _ (wzero _) H9 H10).
+        rewrite H7 in H8.
+        simpl in H8.
+        rewrite <- H8; simpl.
+        rewrite <- plus_assoc; reflexivity.
+  - unfold IPChecksum_Valid in *; intros; simpl.
+    rewrite ByteString2ListOfChar_Over.
+    * rewrite ByteString2ListOfChar_Over in H9.
+      eauto.
+      simpl.
+      apply H0 in H7.
+      pose proof (H2 data).
+      rewrite <- H7 in H10.
+      rewrite !ByteString_enqueue_ByteString_padding_eq.
+      rewrite padding_eq_mod_8, H10.
+      pose proof (H3 data).
+      unfold format_checksum.
+      rewrite encode_word'_padding.
+      rewrite <- (H1 _ _ _ _ H8) in H11.
+      rewrite padding_eq_mod_8, H11.
+      reflexivity.
+    * rewrite !ByteString_enqueue_ByteString_padding_eq.
+      apply H0 in H7.
+      pose proof (H2 data).
+      rewrite <- H7 in H10.
+      rewrite padding_eq_mod_8, H10.
+      pose proof (H3 data).
+      unfold format_checksum.
+      rewrite encode_word'_padding.
+      rewrite <- (H1 _ _ _ _ H8) in H11.
+      rewrite padding_eq_mod_8, H11.
+      reflexivity.
+Qed.
+
 Lemma build_aligned_ByteString_nil
   :   build_aligned_ByteString [] = ByteString_id.
 Proof.
