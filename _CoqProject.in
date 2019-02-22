@@ -150,10 +150,12 @@ src/Narcissus/BinLib.v
 src/Narcissus/Formats.v
 src/Narcissus/Automation/AlignedAutomation.v
 src/Narcissus/Automation/CacheEncoders.v
+src/Narcissus/Automation/Common.v
+src/Narcissus/Automation/Decision.v
 src/Narcissus/Automation/NormalizeFormats.v
 src/Narcissus/Automation/Solver.v
-src/Narcissus/Automation/SolverOpt.v
 src/Narcissus/Automation/Solver_8_5.v
+src/Narcissus/Automation/SynthesizeDecoder.v
 src/Narcissus/BinLib/AlignWord.v
 src/Narcissus/BinLib/AlignedByteBuffer.v
 src/Narcissus/BinLib/AlignedByteString.v
