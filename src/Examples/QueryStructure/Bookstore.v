@@ -39,6 +39,13 @@ Definition BookStoreSchema :=
                       sDATE :: nat> ]
     enforcing [attribute sISBN for sORDERS references sBOOKS].
 
+Definition TablesAndColumns (qs: QueryStructureSchema) :=
+  Vector.fold_right2
+    (fun table colnames acc => (table, colnames) :: acc) [] _
+    (QSschemaNames qs) (Vector.map (fun sch => Vector.to_list (schemaHeadingNames sch)) (QSschemaSchemas qs)).
+
+Eval compute in (TablesAndColumns BookStoreSchema).
+
 (* Aliases for the tuples contained in Books and Orders, respectively. *)
 Definition Book := TupleDef BookStoreSchema sBOOKS.
 Definition Order := TupleDef BookStoreSchema sORDERS.
