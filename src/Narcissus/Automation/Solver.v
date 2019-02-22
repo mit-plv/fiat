@@ -931,6 +931,33 @@ Ltac synthesize_decoder :=
 Global Instance : DecideableEnsembles.Query_eq () :=
   {| A_eq_dec a a' := match a, a' with (), () => left (eq_refl _) end |}.
 
+Opaque pow2. (* Don't want to be evaluating this. *)
+Opaque natToWord. (* Or this. *)
+Opaque weqb. (* Or this. *)
+
+Ltac makeEvar T k :=
+  let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+
+Ltac shelve_inv :=
+  let H' := fresh in
+  let data := fresh in
+  intros data H';
+  repeat destruct H';
+  match goal with
+  | H : ?P data |- ?P_inv' =>
+    is_evar P;
+    let P_inv' := (eval pattern data in P_inv') in
+    let P_inv := match P_inv' with ?P_inv data => P_inv end in
+    let new_P_T := type of P in
+    makeEvar new_P_T
+             ltac:(fun new_P =>
+                     unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
+  end.
+
+Ltac solve_data_inv :=
+    first [ simpl; intros; exact I
+| shelve_inv ].
+
 (* Older tactics follow, leaving in for now for backwards compatibility. *)
 
 Ltac enum_part eq_dec :=
