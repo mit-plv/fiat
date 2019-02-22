@@ -305,16 +305,16 @@ let corebench_main () =
   (* benchmark bparams bdata store; *)
 
   let benchmarks = [
-      Bench.Test.create ~name:"Adding books" (fun () ->
+      Bench.Test.create ~name:"[bookstore_repl.ml] Adding books" (fun () ->
           store := add_books_store; bench_add_books bparams bdata store);
 
-      Bench.Test.create ~name:"Placing orders" (fun () ->
+      Bench.Test.create ~name:"[bookstore_repl.ml] Placing orders" (fun () ->
           store := place_orders_store; bench_place_orders bparams bdata store);
 
-      Bench.Test.create ~name:"Getting titles" (fun () ->
+      Bench.Test.create ~name:"[bookstore_repl.ml] Getting titles" (fun () ->
           store := get_titles_store; bench_get_titles bparams bdata store);
 
-      Bench.Test.create ~name:"Counting orders" (fun () ->
+      Bench.Test.create ~name:"[bookstore_repl.ml] Counting orders" (fun () ->
           store := count_orders_store; bench_count_orders bparams bdata store);
     ] in
 
