@@ -200,21 +200,19 @@ Lemma format_const_sequence_correct
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
       (P_inv_pf : cache_inv_Property P (fun P => P_inv1 P /\ P_inv2 P))
       (monoid : Monoid T)
-      (f : S -> V1)
       (v1 : V1)
       (Source_Predicate : S -> Prop)
       (View_Predicate1  : V1 -> Prop)
-      (v1_OK : View_Predicate1 v1)
       (format1 : FormatM V1 T)
       (format2 : FormatM S T )
       (decode1 : DecodeM (V1 * T) T)
       (decode_1_OK :
          cache_inv_Property P P_inv1
          -> CorrectDecoder monoid View_Predicate1 View_Predicate1 eq format1 decode1 P format1)
-      (View_Predicate_OK : forall s, Source_Predicate s -> View_Predicate1 (f s))
+      (v1_OK : View_Predicate1 v1)
       (decode2 : DecodeM (S * T) T)
       (decode2_pf :
-         forall v0 : V1,
+         forall v0,
            cache_inv_Property P P_inv2 ->
            View_Predicate1 v0 ->
            CorrectDecoder monoid (fun s : S => Source_Predicate s /\ v1 = v0) (fun s : S => Source_Predicate s /\ v1 = v0) eq format2

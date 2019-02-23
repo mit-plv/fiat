@@ -204,7 +204,7 @@ Arguments andb : simpl never.
 Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_1.
 Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_2.
 
-Ltac new_decoder_rules ::=
+Ltac apply_new_combinator_rule ::=
   match goal with
   | H : cache_inv_Property ?mnd _
     |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
@@ -215,19 +215,14 @@ Ltac new_decoder_rules ::=
       | solve_mod_8
       | solve_mod_8
       | eapply IPv4_Packet_Header_Len_OK; eauto
-      | intros; NormalizeFormats.normalize_format]
+      | intros; NormalizeFormats.normalize_format; apply_rules]
     end.
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
 Proof.
-  start_synthesizing_decoder.
-  NormalizeFormats.normalize_format.
-  repeat apply_rules.
-  cbv beta; synthesize_cache_invariant.
-  cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
-  cbv beta; align_decoders.
+  synthesize_aligned_decoder.
 Defined.
 
 Print Assumptions IPv4_Packet_Header_decoder.
@@ -240,7 +235,8 @@ Definition IPv4_decoder_impl {sz} v :=
 
 Section BP.
   Local Opaque ByteBuffer.of_vector.
-
+  Local Transparent weqb.
+  Local Transparent natToWord.
   (* Some example uses of the encoder and decoder functions. *)
   (* A binary version of a packet, sourced directly from the web. *)
   Definition bin_pkt : ByteBuffer.t _ :=
@@ -277,7 +273,8 @@ Definition bad_pkt :=
 
 Eval vm_compute in (IPv4_decoder_impl bin_pkt).
 
-Transparent natToWord.
+Local Transparent natToWord.
+Local Transparent weqb.
 (* This should succeed, *)
 Eval compute in
     Ifopt (IPv4_encoder_impl (initialize_Aligned_ByteString 100) pkt)

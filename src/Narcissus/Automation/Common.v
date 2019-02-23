@@ -9,8 +9,62 @@ Require Import
         Fiat.Common.IterateBoundedIndex
         Fiat.Computation.
 
+(* Friendlier evar tactic *)
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+
+Ltac sequence_two_tactics tac tac1 tac2 :=
+  makeEvar
+    bool
+    ltac:(fun b =>
+            tac;
+            [(* b is evar iff tac1 solves the first subgoal*)
+              first [tac1; unify b true
+                    | unify b true]
+            (* If [tac1] solved the goal, move on to the next subgoal *)
+            | first [ is_evar b; unify b false; tac2
+                    | unify b false ]]).
+
+Ltac sequence_three_tactics tac tac1 tac2 tac3 :=
+  makeEvar
+    bool
+    ltac:(fun b1 =>
+  makeEvar
+    bool
+    ltac:(fun b2 =>
+            tac;
+            [(* b is evar iff tac1 solves the first subgoal*)
+              first [tac1; unify b1 true
+                    | unify b1 true; unify b2 true; fail]
+            (* If [tac1] solved the goal, move on to the next subgoal *)
+            | first [ is_evar b1; unify b1 false; tac2; unify b2 true
+                    | unify b1 false; unify b2 true; fail ]
+            (* If [tac2] solved the goal, move on to the next subgoal *)
+            | first [ is_evar b2; unify b2 false; tac3
+                    | unify b2 false ]])).
+
+Ltac sequence_four_tactics tac tac1 tac2 tac3 tac4 :=
+  makeEvar
+    bool
+    ltac:(fun b1 =>
+  makeEvar
+    bool
+    ltac:(fun b2 =>
+  makeEvar
+    bool
+    ltac:(fun b3 =>
+            tac;
+            [(* b is evar iff tac1 solves the first subgoal*)
+              first [tac1; unify b1 true
+                    | unify b1 true]
+            (* If [tac1] solved the goal, move on to the next subgoal *)
+            | first [ is_evar b1; unify b1 false; tac2; unify b2 true
+                    | unify b2 true ]
+            (* If [tac2] solved the goal, move on to the next subgoal *)
+            | first [ is_evar b2; unify b2 false; tac3; unify b3 true
+                    | unify b3 true ]
+            | first [ is_evar b3; unify b3 false; tac4
+                    | idtac ]]))).
 
 Ltac build_ilist_evar :=
   match goal with

@@ -149,9 +149,17 @@ Qed.
 Definition aligned_TCP_Packet_checksum {sz} :=
   @aligned_Pseudo_checksum srcAddr destAddr tcpLength (natToWord 8 6) sz.
 
-Ltac new_decoder_rules ::=
+Ltac apply_new_base_rule ::=
   match goal with
   | |- _ => intros; eapply unused_word_decode_correct; eauto
+  | H : cache_inv_Property ?mnd _
+    |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
+    intros; eapply @ByteBuffer_decode_correct;
+    first [exact H | solve [intros; intuition eauto] ]
+  end.
+
+Ltac apply_new_combinator_rule ::=
+  match goal with
   | H : cache_inv_Property ?mnd _
     |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
       eapply compose_PseudoChecksum_format_correct;
@@ -161,11 +169,7 @@ Ltac new_decoder_rules ::=
       | solve_mod_8
       | solve_mod_8
       | apply TCP_Packet_Header_Len_OK
-      | intros; NormalizeFormats.normalize_format ]
-  | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
-    intros; eapply @ByteBuffer_decode_correct;
-    first [exact H | solve [intros; intuition eauto] ]
+      | intros; NormalizeFormats.normalize_format; apply_rules ]
   end.
 
 Hint Extern 4 => intros; eapply (aligned_Pseudo_checksum_OK_1
@@ -189,6 +193,9 @@ Definition TCP_decoder_impl {sz} v :=
 End TCPPacketDecoder.
 
 Print TCP_decoder_impl.
+
+Local Transparent weqb.
+Local Transparent natToWord.
 
 Definition tcp_decode_input :=
   Vector.map

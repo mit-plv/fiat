@@ -128,8 +128,6 @@ Section UDP_Decoder.
     intros; omega.
   Qed.
 
-  Opaque pow2.
-
   Definition aligned_UDP_Packet_encoded_measure
              {sz} (ipv4_b : ByteBuffer.t sz)
      :=
@@ -149,7 +147,7 @@ Section UDP_Decoder.
 
   Arguments GetCurrentBytes : simpl never.
 
-  Ltac new_decoder_rules ::=
+  Ltac apply_new_combinator_rule ::=
     match goal with
     | |- _ => intros; eapply unused_word_decode_correct; eauto
     | H : cache_inv_Property ?mnd _
@@ -161,7 +159,7 @@ Section UDP_Decoder.
       | solve_mod_8
       | solve_mod_8
       | apply UDP_Packet_Header_Len_OK
-      | intros; NormalizeFormats.normalize_format ]
+      | intros; NormalizeFormats.normalize_format; apply_rules ]
     | H : cache_inv_Property ?mnd _
       |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
       intros; eapply @ByteBuffer_decode_correct;

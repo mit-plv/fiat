@@ -76,6 +76,118 @@ End Sensor1.
 
 (** Our next enhancement is to introduce a version number field in our packet, and to tag each measurement with a `kind`, `"TEMPERATURE"` or `"HUMIDITY"`.  To save space, we allocate 2 bits for the `kind` tag, and 14 bits to the actual measurement. **)
 
+(* The rules for higher-order types (lists, sums, sequences. *)
+Ltac apply_combinator_rule apply_rules ::=
+  first [
+  match goal with
+
+  (* Options *)
+  | H : cache_inv_Property _ _
+    |- context [CorrectDecoder _ _ _ _ (Option.format_option _ _) _ _ _] =>
+    intros;
+    sequence_two_tactics
+      ltac:(eapply (Option.option_format_correct _ H))
+      ltac:(apply_rules)
+      ltac:(apply_rules)
+
+    (* Vector *)
+  | H : cache_inv_Property _ _
+    |- context [CorrectDecoder ?mnd _ _ _ (format_Vector _) _ _ _] =>
+    intros; eapply (@Vector_decode_correct _ _ _ mnd);
+    apply_rules
+
+  | |- context [CorrectDecoder _ _ _ _ (format_list _) _ _ _] =>
+    intros; apply FixList_decode_correct;
+    apply_rules
+
+  | |- context [CorrectDecoder _ _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _ _] =>
+    let cache_inv_H := fresh in
+    intros cache_inv_H;
+    first
+      [let types' := (eval unfold types in types) in
+       ilist_of_evar
+         (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache))
+         types'
+         ltac:(fun formatrs' =>
+                 ilist_of_evar
+                   (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache)) types'
+         ltac:(fun decoders' =>
+                 ilist_of_evar
+                   (fun T : Type => Ensembles.Ensemble T) types'
+         ltac:(fun invariants' =>
+                 ilist_of_evar
+                   (fun T : Type => T -> B -> Prop) types'
+         ltac:(fun invariants_rest' =>
+                 Vector_of_evar n (Ensembles.Ensemble (CacheDecode -> Prop))
+         ltac:(fun cache_invariants' =>
+                 eapply (SumType_decode_correct (m := n) types) with
+                   (formatrs := formatrs')
+                   (decoders := decoders')
+                   (invariants := invariants')
+                   (invariants_rest := invariants_rest')
+                   (cache_invariants :=  cache_invariants')
+              ))))); apply_rules
+      | ilist_of_evar
+          (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache)) types
+          ltac:(fun formatrs' =>
+                  ilist_of_evar
+                    (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache)) types
+                   ltac:(fun decoders' =>
+                           ilist_of_evar
+                             (fun T : Type => Ensembles.Ensemble T) types
+                   ltac:(fun invariants' =>
+                           ilist_of_evar
+                             (fun T : Type => T -> B -> Prop) types
+                   ltac:(fun invariants_rest' =>
+                           Vector_of_evar n
+                              (Ensembles.Ensemble (CacheDecode -> Prop))
+                   ltac:(fun cache_invariants' =>
+                           eapply (SumType_decode_correct (m := n) types) with
+                             (formatrs := formatrs')
+                             (decoders := decoders')
+                             (invariants := invariants')
+                             (invariants_rest := invariants_rest')
+                             (cache_invariants :=  cache_invariants'))))))
+      ];
+    [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros); try exact I;
+      apply_rules
+    | apply cache_inv_H ]
+  end
+    | match goal with
+(* Or applying one of our sequencing rules *)
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _)%format _ _ _ =>
+    first [
+        sequence_three_tactics
+          ltac: (eapply (format_sequence_correct H) with (monoid := mnd))
+          ltac:(clear H; intros; apply_rules)
+          ltac:(clear H; solve [ solve_side_condition ])
+          ltac:(intros; apply_rules)
+      ]
+
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ _ (_ ++ _)%format _ _ _ =>
+    sequence_three_tactics
+          ltac:(eapply (format_unused_sequence_correct H) with (monoid := mnd))
+          ltac:(clear H; intros; apply_rules)
+          ltac:(clear H; solve [ solve_side_condition ])
+          ltac:(intros; apply_rules)
+
+  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ _ (Either _ Or _)%format _ _ _ =>
+    sequence_four_tactics
+      ltac:(eapply (composeIf_format_correct H); clear H; intros)
+      ltac:(apply_rules)
+      ltac:(apply_rules)
+      ltac:(solve [intros; intuition (eauto with bin_split_hints)])
+      ltac:(solve [intros; intuition (eauto with bin_split_hints) ])
+      end
+    | match goal with
+  (* Here is the hook for new decoder rules *)
+  | |- _ => apply_new_combinator_rule
+
+  end].
+
+
 Module Sensor2.
 
   Let kind :=
@@ -95,7 +207,9 @@ Module Sensor2.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. Defined.
+  Proof.
+    derive_encoder_decoder_pair.
+  Defined.
 
   Let encode := encoder_impl enc_dec.
   (* (stationID ▹ SetCurrentByte ≫
@@ -146,7 +260,58 @@ Module Sensor3.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. all:simpl. Abort.
+  Proof.
+    econstructor.
+    synthesize_aligned_encoder.
+    start_synthesizing_decoder.
+    NormalizeFormats.normalize_format.
+    eapply (format_sequence_correct H); clear H; intros.
+    apply_rules.
+    solve_side_condition.
+    eapply (format_unused_sequence_correct H); clear H; intros.
+    apply_rules.
+    solve_side_condition.
+    eapply (format_sequence_correct H); clear H; intros.
+    apply_rules.
+    solve_side_condition.
+    eapply (format_sequence_correct H).
+    clear H; intros; apply_rules.
+    clear H.
+    first
+      [ simpl; intros; exact I
+  | let src := fresh in
+    let src_Pred := fresh in
+    intros src src_Pred; decompose_source_predicate; subst_projections; unfold Basics.compose ].
+    intuition.
+    info_eauto with data_inv_hints.
+
+    solve_data_inv .
+    match goal with
+      solve_data_inv
+  | |- NoDupVector _ => Discharge_NoDupVector
+  | |- context [ fun st b' => ilist.ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b' ] =>
+        let a'' := fresh in
+        intro a''; intros; repeat instantiate ( 1 := (fun _ _ => True) ); repeat destruct a'' as [?| a'']; auto
+  | _ => solve [ solve_data_inv ]
+  | _ => solve [ intros; instantiate ( 1 := (fun _ _ => True) ); exact I ]
+  end.
+    match goal with
+        | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _)%format _ _ _ =>
+    first [
+        sequence_three_tactics
+          ltac: (eapply (format_sequence_correct H) with (monoid := mnd))
+          ltac:(clear H; intros; apply_rules)
+          ltac:(clear H; solve [ solve_side_condition ])
+          ltac:(clear H; intros)
+      ]
+    end.
+
+    apply_rules.
+
+    synthesize_aligned_decoder.
+    derive_encoder_decoder_pair.
+    all:simpl. Abort.
 End Sensor3.
 
 (** The derivation fails, leaving multiple Coq goals unsolved.  The most relevant is equivalent to the following:
@@ -279,7 +444,7 @@ Module Sensor6.
             else None).
 
   Transparent weqb.
-  
+
   Lemma dec_readingCorrect
     : CorrectDecoder _ (fun _ => True) (fun _ => True) eq format_reading dec_reading (fun _ => True)
                      format_reading.
@@ -322,10 +487,12 @@ Module Sensor6.
       length (msg.(data)) < pow2 8.
 
   Ltac new_encoder_rules ::= apply enc_readingCorrect.
-  Ltac new_decoder_rules ::= apply dec_readingCorrect.
+  Ltac apply_new_base_rule ::= apply dec_readingCorrect.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. Defined.
+  Proof. derive_encoder_decoder_pair.
+
+  Defined.
 
   Let encode := encoder_impl enc_dec.
   Let decode := decoder_impl enc_dec.

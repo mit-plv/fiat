@@ -144,3 +144,9 @@ Ltac FinishDecoder :=
          eapply CorrectDecoderEmpty;
          [ build_fully_determined_type idtac
          | decide_data_invariant ] ].
+
+Ltac extract_view :=
+  match goal with
+  (* Finishing a derivation *)
+  | |- context [CorrectDecoder _ _ _ _ empty_Format _ _ _] => FinishDecoder
+  end.

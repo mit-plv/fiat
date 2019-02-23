@@ -33,6 +33,7 @@ Require Import
         Fiat.Narcissus.Automation.Common
         Fiat.Narcissus.Automation.ExtractData.
 
+
 Ltac shelve_inv :=
   let H' := fresh in
   let data := fresh in
@@ -77,77 +78,71 @@ Ltac solve_side_condition :=
   | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
   end.
 
-(* Redefine this tactic to implement new decoder rules*)
-Ltac new_decoder_rules := fail.
+(* Redefine this tactic to implement new base rules*)
+Ltac apply_new_base_rule := fail.
 
-Ltac apply_rules :=
-  (* Processes the goal by either: *)
-  (* Unfolding an identifier *)
+(* Apply rules for *)
+Ltac apply_base_rule :=
   match goal with
-  | |- CorrectDecoder _ _ _ _ ?H _ _ _ =>
-    progress unfold H
-  (* Finishing a derivation *)
-  | |- context [CorrectDecoder _ _ _ _ empty_Format _ _ _] => FinishDecoder
-  (* Or applying one of our other decoder rules *)
-  | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _) _ _ _ =>
-    first [
-        eapply (format_const_sequence_correct H) with (monoid := mnd);
-        clear H;
-        [ intros; solve [repeat apply_rules]
-        | solve [ solve_side_condition ]
-        | intros ]
-      | eapply (format_sequence_correct H) with (monoid := mnd);
-        clear H;
-        [ intros; solve [repeat apply_rules]
-        | solve [ solve_side_condition ]
-        | intros ]
-      ]
-  | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ _ (_ ++ _) _ _ _ =>
-    eapply (format_unused_sequence_correct H) with (monoid := mnd);
-    clear H;
-    [ intros; solve [repeat apply_rules]
-    | solve [ solve_side_condition ]
-    | intros ]
-  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ _ (Either _ Or _)%format _ _ _ =>
-    eapply (composeIf_format_correct H); clear H;
-    [ intros
-    | intros
-    | solve [intros; intuition (eauto with bin_split_hints) ]
-    | solve [intros; intuition (eauto with bin_split_hints) ] ]
 
-  (* Here is the hook for new decoder rules *)
-  | |- _ => new_decoder_rules
-
-  | |- context [CorrectDecoder ?mnd _ _ _ (format_Vector _) _ _ _] =>
-    intros; eapply (@Vector_decode_correct _ _ _ mnd)
+  (* Word *)
   | H : cache_inv_Property _ _
     |- context [CorrectDecoder _ _ _ _ format_word _ _ _] =>
-    intros; revert H; eapply Word_decode_correct
+    intros; eapply (Word_decode_correct H)
+
+  (* Natural Numbers *)
   | H : cache_inv_Property _ _
     |- context [CorrectDecoder _ _ _ _ (format_nat _) _ _ _] =>
     intros; revert H; eapply Nat_decode_correct
-  | |- context [CorrectDecoder _ _ _ _ (format_list _) _ _ _] =>
-    intros; apply FixList_decode_correct
 
+  (* Booleans *)
   | H : cache_inv_Property _ _
     |- context [CorrectDecoder _ _ _ _ (format_bool) _ _ _] =>
     intros; revert H; eapply bool_decode_correct
 
-  | |- context [CorrectDecoder _ _ _ _ (Option.format_option _ _) _ _ _] =>
-    intros; eapply Option.option_format_correct;
-    [ match goal with
-        H : cache_inv_Property _ _ |- _ => eexact H
-      end | .. ]
+  (* Strings *)
+  | H : cache_inv_Property _ _
+  |- context[CorrectDecoder _ _ _ _ StringOpt.format_string _ _ _ ] =>
+    eapply StringOpt.String_decode_correct
 
+  (* Enumerated Types *)
   | H : cache_inv_Property _ _
     |- context [CorrectDecoder _  _ _ _ (format_enum ?tb) _ _ _] =>
+    intros;
     eapply (fun NoDup => @Enum_decode_correct _ _ _ _ _ _ _ tb NoDup _ H);
     solve_side_condition
 
-  | |- context[CorrectDecoder _ _ _ _ StringOpt.format_string _ _ _ ] =>
-    eapply StringOpt.String_decode_correct
+  (* Hook for new base rules. *)
+  | |- _ => apply_new_base_rule
+  end.
+
+(* Redefine this tactic to implement new combinator rules*)
+Ltac apply_new_combinator_rule := fail.
+
+(* The rules for higher-order types (lists, sums, sequences. *)
+Ltac apply_combinator_rule apply_rules :=
+  first [
+  match goal with
+
+  (* Options *)
+  | H : cache_inv_Property _ _
+    |- context [CorrectDecoder _ _ _ _ (Option.format_option _ _) _ _ _] =>
+    intros;
+    sequence_two_tactics
+      ltac:(eapply (Option.option_format_correct _ H))
+      ltac:(apply_rules)
+      ltac:(apply_rules)
+
+    (* Vector *)
+  | H : cache_inv_Property _ _
+    |- context [CorrectDecoder ?mnd _ _ _ (format_Vector _) _ _ _] =>
+    intros; eapply (@Vector_decode_correct _ _ _ mnd);
+    apply_rules
+
+  | |- context [CorrectDecoder _ _ _ _ (format_list _) _ _ _] =>
+    intros; apply FixList_decode_correct;
+    apply_rules
+
   | |- context [CorrectDecoder _ _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _ _] =>
     let cache_inv_H := fresh in
     intros cache_inv_H;
@@ -158,55 +153,79 @@ Ltac apply_rules :=
          types'
          ltac:(fun formatrs' =>
                  ilist_of_evar
-                   (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-                   types'
+                   (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache)) types'
+         ltac:(fun decoders' =>
+                 ilist_of_evar
+                   (fun T : Type => Ensembles.Ensemble T) types'
+         ltac:(fun invariants' =>
+                 ilist_of_evar
+                   (fun T : Type => T -> B -> Prop) types'
+         ltac:(fun invariants_rest' =>
+                 Vector_of_evar n (Ensembles.Ensemble (CacheDecode -> Prop))
+         ltac:(fun cache_invariants' =>
+                 eapply (SumType_decode_correct (m := n) types) with
+                   (formatrs := formatrs')
+                   (decoders := decoders')
+                   (invariants := invariants')
+                   (invariants_rest := invariants_rest')
+                   (cache_invariants :=  cache_invariants')
+              ))))); apply_rules
+      | ilist_of_evar
+          (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache)) types
+          ltac:(fun formatrs' =>
+                  ilist_of_evar
+                    (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache)) types
                    ltac:(fun decoders' =>
                            ilist_of_evar
-                             (fun T : Type => Ensembles.Ensemble T)
-                             types'
-                             ltac:(fun invariants' =>
-                                     ilist_of_evar
-                                       (fun T : Type => T -> B -> Prop)
-                                       types'
-                                       ltac:(fun invariants_rest' =>
-                                               Vector_of_evar
-                                                 n
-                                                 (Ensembles.Ensemble (CacheDecode -> Prop))
-                                                 ltac:(fun cache_invariants' =>
-                                                         eapply (SumType_decode_correct (m := n) types) with
-                                                           (formatrs := formatrs')
-                                                           (decoders := decoders')
-                                                           (invariants := invariants')
-                                                           (invariants_rest := invariants_rest')
-                                                           (cache_invariants :=  cache_invariants')
-              )))))
-      |          ilist_of_evar
-                   (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache))
-                   types
-                   ltac:(fun formatrs' =>
+                             (fun T : Type => Ensembles.Ensemble T) types
+                   ltac:(fun invariants' =>
                            ilist_of_evar
-                             (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-                             types
-                             ltac:(fun decoders' =>
-                                     ilist_of_evar
-                                       (fun T : Type => Ensembles.Ensemble T)
-                                       types
-                                       ltac:(fun invariants' =>
-                                               ilist_of_evar
-                                                 (fun T : Type => T -> B -> Prop)
-                                                 types
-                                                 ltac:(fun invariants_rest' =>
-                                                         Vector_of_evar
-                                                           n
-                                                           (Ensembles.Ensemble (CacheDecode -> Prop))
-                                                           ltac:(fun cache_invariants' =>
-                                                                   eapply (SumType_decode_correct (m := n) types) with
-                                                                     (formatrs := formatrs')
-                                                                     (decoders := decoders')
-                                                                     (invariants := invariants')
-                                                                     (invariants_rest := invariants_rest')
-                                                                     (cache_invariants :=  cache_invariants'))))))
+                             (fun T : Type => T -> B -> Prop) types
+                   ltac:(fun invariants_rest' =>
+                           Vector_of_evar n
+                              (Ensembles.Ensemble (CacheDecode -> Prop))
+                   ltac:(fun cache_invariants' =>
+                           eapply (SumType_decode_correct (m := n) types) with
+                             (formatrs := formatrs')
+                             (decoders := decoders')
+                             (invariants := invariants')
+                             (invariants_rest := invariants_rest')
+                             (cache_invariants :=  cache_invariants'))))))
       ];
-    [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros); try exact I
+    [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros); try exact I;
+      apply_rules
     | apply cache_inv_H ]
-  end.
+  end
+    | match goal with
+(* Or applying one of our sequencing rules *)
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _)%format _ _ _ =>
+    first [
+        sequence_three_tactics
+          ltac:(eapply (format_sequence_correct H) with (monoid := mnd))
+          ltac:(clear H; intros; apply_rules)
+          ltac:(clear H; solve [ solve_side_condition ])
+          ltac:(clear H; intros; apply_rules)
+      ]
+
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ _ (_ ++ _)%format _ _ _ =>
+    sequence_three_tactics
+      ltac:(eapply (format_unused_sequence_correct H) with (monoid := mnd))
+          ltac:(clear H; intros; apply_rules)
+          ltac:(clear H; solve [ solve_side_condition ])
+          ltac:(clear H; intros; apply_rules)
+
+  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ _ (Either _ Or _)%format _ _ _ =>
+    sequence_four_tactics
+      ltac:(eapply (composeIf_format_correct H); clear H; intros)
+      ltac:(apply_rules)
+      ltac:(apply_rules)
+      ltac:(solve [intros; intuition (eauto with bin_split_hints)])
+      ltac:(solve [intros; intuition (eauto with bin_split_hints) ])
+      end
+    | match goal with
+  (* Here is the hook for new decoder rules *)
+  | |- _ => apply_new_combinator_rule
+
+  end].

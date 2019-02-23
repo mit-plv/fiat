@@ -152,6 +152,7 @@ src/Narcissus/Automation/AlignedAutomation.v
 src/Narcissus/Automation/CacheEncoders.v
 src/Narcissus/Automation/Common.v
 src/Narcissus/Automation/Decision.v
+src/Narcissus/Automation/ExtractData.v
 src/Narcissus/Automation/NormalizeFormats.v
 src/Narcissus/Automation/Solver.v
 src/Narcissus/Automation/Solver_8_5.v

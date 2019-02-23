@@ -72,19 +72,12 @@ Ltac align_decoders_step :=
 Ltac align_decoders := repeat align_decoders_step.
 
 Ltac synthesize_aligned_decoder :=
-  first [ start_synthesizing_decoder;
-          [ NormalizeFormats.normalize_format; repeat apply_rules
-          |
-          |
-          | ];
-          [ cbv beta; synthesize_cache_invariant
-          | cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl
-          | cbv beta; align_decoders]
-        | start_synthesizing_decoder;
-          [ NormalizeFormats.normalize_format; repeat apply_rules
-          |
-          |
-          | ] ].
+  sequence_four_tactics
+    ltac:(start_synthesizing_decoder)
+           ltac:(NormalizeFormats.normalize_format; apply_rules)
+                  ltac:(cbv beta; synthesize_cache_invariant)
+                         ltac:(cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl)
+          ltac:(cbv beta; align_decoders).
 
 Lemma length_encode_word' sz :
   forall (w : word sz) (b : ByteString),
@@ -505,3 +498,5 @@ Ltac align_encoder_step :=
 Ltac synthesize_aligned_encoder :=
   start_synthesizing_encoder;
   repeat align_encoder_step.
+
+Global Opaque weqb.

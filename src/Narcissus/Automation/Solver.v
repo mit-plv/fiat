@@ -35,6 +35,7 @@ Require Export
         Fiat.Narcissus.Automation.Common
         Fiat.Narcissus.Automation.NormalizeFormats
         Fiat.Narcissus.Automation.Decision
+        Fiat.Narcissus.Automation.ExtractData
         Fiat.Narcissus.Automation.SynthesizeDecoder.
 
 Ltac start_synthesizing_decoder :=
@@ -198,19 +199,25 @@ Ltac optimize_decoder_impl :=
             | eapply optimize_under_if; simpl; intros]);
   higher_order_reflexivity.
 
+Ltac apply_rules :=
+  first [ extract_view
+        | apply_base_rule
+        | apply_combinator_rule apply_rules
+        | idtac ].
+
 Ltac synthesize_decoder :=
   (* Combines tactics into one-liner. *)
   start_synthesizing_decoder;
-  [ repeat apply_rules
+  [ apply_rules
   | cbv beta; synthesize_cache_invariant
   | cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl].
 
 Global Instance : DecideableEnsembles.Query_eq () :=
   {| A_eq_dec a a' := match a, a' with (), () => left (eq_refl _) end |}.
 
-Opaque pow2. (* Don't want to be evaluating this. *)
-Opaque natToWord. (* Or this. *)
-Opaque weqb. (* Or this. *)
+Global Opaque pow2. (* Don't want to be evaluating this. *)
+Global Opaque natToWord. (* Or this. *)
+Global Opaque weqb. (* Or this. *)
 
 (* Older tactics follow, leaving in for now for backwards compatibility. *)
 

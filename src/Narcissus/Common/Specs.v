@@ -598,10 +598,14 @@ Proof.
   intuition eauto; intros.
   - setoid_rewrite H3.
     setoid_rewrite H1.
-    admit.
-(*    eapply H6; eauto.
+    eapply H2 in H9.
+    eapply H6 in H9.
+    destruct_ex; split_and;
+      eexists _, _; intuition eauto.
+    eapply H4; eauto.
+    eauto.
+    eauto.
     eapply H; eauto.
-    eapply H2; eauto. *)
   - eapply H7; eauto.
     rewrite <- H3; eauto.
   - rewrite H3 in H9.
@@ -609,6 +613,27 @@ Proof.
     split_and; destruct_ex; split_and; subst.
     eexists _, _; intuition eauto.
     eapply H4; eauto.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (decode_inv : CacheDecode -> Prop)
+    View_Predicate
+    view
+    format
+    decode
+    view_format
+  : (fun Source_Predicate  =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                       view format decode decode_inv view_format)
+    with signature (pointwise_relation _ impl
+                                       --> impl)
+      as weaken_source_pred.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder; intros.
+  intuition eauto; intros.
 Qed.
 
 Add Parametric Morphism
