@@ -261,55 +261,6 @@ Module Sensor3.
 
   Let enc_dec : EncoderDecoderPair format invariant.
   Proof.
-    econstructor.
-    synthesize_aligned_encoder.
-    start_synthesizing_decoder.
-    NormalizeFormats.normalize_format.
-    eapply (format_sequence_correct H); clear H; intros.
-    apply_rules.
-    solve_side_condition.
-    eapply (format_unused_sequence_correct H); clear H; intros.
-    apply_rules.
-    solve_side_condition.
-    eapply (format_sequence_correct H); clear H; intros.
-    apply_rules.
-    solve_side_condition.
-    eapply (format_sequence_correct H).
-    clear H; intros; apply_rules.
-    clear H.
-    first
-      [ simpl; intros; exact I
-  | let src := fresh in
-    let src_Pred := fresh in
-    intros src src_Pred; decompose_source_predicate; subst_projections; unfold Basics.compose ].
-    intuition.
-    info_eauto with data_inv_hints.
-
-    solve_data_inv .
-    match goal with
-      solve_data_inv
-  | |- NoDupVector _ => Discharge_NoDupVector
-  | |- context [ fun st b' => ilist.ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b' ] =>
-        let a'' := fresh in
-        intro a''; intros; repeat instantiate ( 1 := (fun _ _ => True) ); repeat destruct a'' as [?| a'']; auto
-  | _ => solve [ solve_data_inv ]
-  | _ => solve [ intros; instantiate ( 1 := (fun _ _ => True) ); exact I ]
-  end.
-    match goal with
-        | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _)%format _ _ _ =>
-    first [
-        sequence_three_tactics
-          ltac: (eapply (format_sequence_correct H) with (monoid := mnd))
-          ltac:(clear H; intros; apply_rules)
-          ltac:(clear H; solve [ solve_side_condition ])
-          ltac:(clear H; intros)
-      ]
-    end.
-
-    apply_rules.
-
-    synthesize_aligned_decoder.
     derive_encoder_decoder_pair.
     all:simpl. Abort.
 End Sensor3.

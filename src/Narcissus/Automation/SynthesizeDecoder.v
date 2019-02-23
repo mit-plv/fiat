@@ -63,7 +63,7 @@ Ltac solve_data_inv :=
       productive. We do not rewrite in the goal to avoid touching any
        evars. *)
     subst_projections; unfold Basics.compose;
-    solve [intuition eauto with data_inv_hints]
+    solve [intuition eauto 3 with data_inv_hints]
     | shelve_inv ].
 
 Ltac solve_side_condition :=
