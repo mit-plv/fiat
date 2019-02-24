@@ -400,33 +400,28 @@ Module Sensor6.
     : CorrectDecoder _ (fun _ => True) (fun _ => True) eq format_reading dec_reading (fun _ => True)
                      format_reading.
   Proof.
-    eapply format_decode_correct_refineEquiv
+    eapply format_decode_correct_EquivFormatAndView
         with (fun m => format_word (match m with
                                  | Temperature t => Word.combine WO~0~0 t
                                  | Humidity h => Word.combine WO~0~1 h
                                  end)); eauto.
-    unfold flip, EquivFormat, format_reading. intros.
-    destruct s; reflexivity.
-    apply_bijection_rule'; intuition eauto.
+    unfold flip, EquivFormat, format_reading. intros; destruct s; reflexivity.
+
+    apply_bijection_rule' with (fun w =>
+                                  if weqb (split1 2 14 w) WO~0~0
+                                  then Some (Temperature (split2 2 14 w))
+                                  else (if weqb (split1 2 14 w) WO~0~1 then
+                                          Some (Humidity (split2 2 14 w))
+                                        else None));
+      intuition eauto.
     - apply Word_decode_correct. unfold cache_inv_Property; intuition eauto.
-    - intros.
-      instantiate (1:=fun w =>
-                        if weqb (split1 2 14 w) WO~0~0
-                        then Some (Temperature (split2 2 14 w))
-                        else (if weqb (split1 2 14 w) WO~0~1 then
-                                Some (Humidity (split2 2 14 w))
-                              else None)).
-      destruct s; simpl; rewrite split2_combine; auto.
-    - cbn in H. destruct weqb eqn:?; injections. apply weqb_true_iff in Heqb.
+    - destruct s; simpl; rewrite split2_combine; auto.
+    - destruct weqb eqn:?; injections. apply weqb_true_iff in Heqb.
       rewrite <- Heqb. apply Word.combine_split.
       destruct (weqb _ WO~0~1) eqn:?; try discriminate; injections. apply weqb_true_iff in Heqb0.
       rewrite <- Heqb0. apply Word.combine_split.
     - intuition eauto.
-    - derive_decoder_equiv.
-      repeat match goal with
-             | |- context[if ?x then _ else _] =>
-               destruct x eqn:?; cbn; destruct_pairs; intuition eauto
-             end; easy.
+    - derive_decoder_equiv; easy.
   Qed.
 
   Opaque weqb.

@@ -356,6 +356,18 @@ Proof.
     intuition eauto; injections; f_equal; intuition eauto.
 Qed.
 
+(* Do we have something similar already? *)
+Ltac derive_decoder_equiv :=
+  unfold flip, pointwise_relation,
+  Compose_Decode, Compose_Decode', DecodeBindOpt2, DecodeBindOpt, BindOpt;
+  intros; try reflexivity;
+  let tac x := (destruct x eqn:?; cbn; destruct_pairs; intuition eauto) in
+  repeat match goal with
+         | |- context[If_Opt_Then_Else ?x _ _] => tac x
+         | |- context[If_Then_Else ?x _ _] => tac x
+         | |- context[if ?x then _ else _] => tac x
+         end.
+
 Ltac _apply_bijection_rule tac :=
     match goal with
     | |- CorrectDecoder _ _ _ _ ?f ?d _ ?f =>
@@ -365,30 +377,25 @@ Ltac _apply_bijection_rule tac :=
     | |- CorrectDecoder _ _ _ _ ?f _ _ ?f =>
       match f with
       | Projection_Format _ _ => idtac
-      | _ =>
-        eapply format_decode_correct_refineEquiv;
-          [solve [apply EquivFormat_sym; apply EquivFormat_Projection_Format] |];
-          eapply format_decode_correct_EquivViewFormat;
-          [solve [apply EquivFormat_sym; apply EquivFormat_Projection_Format] |]
+      | _ => eapply format_decode_correct_EquivFormatAndView;
+            [solve [apply EquivFormat_sym; apply EquivFormat_Projection_Format] |]
       end;
         tac ||
             (eapply format_decode_correct_EquivDecoder;
              [| tac]; cycle 1)
     end.
 
+Ltac apply_bijection_rule :=
+  _apply_bijection_rule ltac:(eapply bijection_decode_correct).
 
-Ltac apply_bijection_rule' := _apply_bijection_rule ltac:(eapply bijection_decode_correct').
-Ltac apply_bijection_rule := _apply_bijection_rule ltac:(eapply bijection_decode_correct).
+Tactic Notation "apply_bijection_rule" "with" uconstr(t) :=
+  _apply_bijection_rule ltac:(eapply bijection_decode_correct with (inj:=t)).
 
-(* Do we have something similar already? *)
-Ltac derive_decoder_equiv :=
-    unfold flip, pointwise_relation,
-    Compose_Decode, Compose_Decode', DecodeBindOpt2, DecodeBindOpt, BindOpt;
-      intros; try reflexivity;
-    repeat match goal with
-           | |- context[If_Opt_Then_Else ?x _ _] =>
-             destruct x eqn:?; cbn; destruct_pairs; intuition eauto
-           end.
+Ltac apply_bijection_rule' :=
+  _apply_bijection_rule ltac:(eapply bijection_decode_correct').
+
+Tactic Notation "apply_bijection_rule'" "with" uconstr(t) :=
+  _apply_bijection_rule ltac:(eapply bijection_decode_correct' with (inj:=t)).
 
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
 Notation "P ∩ format" := (Restrict_Format P format) (at level 55) : format_scope.

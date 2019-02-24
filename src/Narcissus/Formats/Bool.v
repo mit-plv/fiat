@@ -31,20 +31,15 @@ Section Bool.
                      eq
                      format_bool decode_bool P format_bool.
   Proof.
-    assert (EquivFormat format_bool (fun b => format_word (WS b WO))). {
-      unfold EquivFormat. reflexivity.
-    }
-    eapply format_decode_correct_refineEquiv; eauto.
-    eapply format_decode_correct_EquivViewFormat; eauto.
-    apply_bijection_rule;
+    eapply format_decode_correct_EquivFormatAndView with (fun b => format_word (WS b WO)).
+    unfold flip, EquivFormat. reflexivity.
+
+    apply_bijection_rule with (whd (sz:=_));
       intuition eauto using Word_decode_correct.
-    instantiate (1:=whd (sz:=_)).
-    reflexivity.
     dependent destruction v.
     dependent destruction v. reflexivity.
 
-    unfold decode_word, decode_word'.
-    derive_decoder_equiv.
+    unfold decode_word, decode_word'; derive_decoder_equiv.
   Qed.
 
 End Bool.

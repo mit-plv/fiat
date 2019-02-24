@@ -139,14 +139,13 @@ Section Enum.
                      (fun _ => True) eq format_enum decode_enum P
                      format_enum.
   Proof.
-    apply_bijection_rule';
+    apply_bijection_rule' with (fun w => word_indexed w tb);
       intuition eauto using Word_decode_correct.
     eapply word_indexed_correct in tb_OK.
-    destruct word_indexed eqn:?; intuition eauto.
-    subst. rewrite <- Heqo. higher_order_reflexivity.
+    destruct word_indexed eqn:?; subst; intuition eauto.
     symmetry. eauto using word_indexed_correct'.
-    derive_decoder_equiv;
-      rewrite Heqo0; intuition eauto.
+
+    derive_decoder_equiv; rewrite Heqo0; intuition eauto.
   Qed.
 End Enum.
 

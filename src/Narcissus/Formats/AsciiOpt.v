@@ -39,11 +39,9 @@ Section Ascii.
                      format_ascii decode_ascii P
                      format_ascii.
   Proof.
-    apply_bijection_rule;
+    apply_bijection_rule with (fun n => ascii_of_N (wordToN n));
       intuition eauto using Word_decode_correct.
 
-    instantiate (1:=fun n => ascii_of_N (wordToN n)).
-    simpl.
     rewrite NToWord_nat, wordToN_nat, wordToNat_natToWord_idempotent,
       Nnat.N2Nat.id, ascii_N_embedding; eauto.
     rewrite Nnat.N2Nat.id.
@@ -53,7 +51,6 @@ Section Ascii.
                          | B : bool |- _ => destruct B
                          end); simpl; unfold N.lt; eauto.
     eauto.
-    simpl.
     rewrite N_ascii_embedding, NToWord_nat, wordToN_nat, Nnat.Nat2N.id, natToWord_wordToNat; eauto.
     rewrite wordToN_nat. eapply Nomega.Nlt_in.
     rewrite Nnat.Nat2N.id. apply wordToNat_bound.

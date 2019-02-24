@@ -1,7 +1,6 @@
 Require Import
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.BaseFormats
-        Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.WordOpt.
 Require Import
         Coq.omega.Omega
@@ -49,6 +48,7 @@ Section Nat.
       intuition eauto using Word_decode_correct, wordToNat_bound, natToWord_wordToNat.
     apply wordToNat_natToWord_idempotent.
     apply Nomega.Nlt_in. rewrite Npow2_nat. rewrite Nnat.Nat2N.id. auto.
+
     derive_decoder_equiv.
   Qed.
 End Nat.
