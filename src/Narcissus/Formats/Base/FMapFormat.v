@@ -28,6 +28,12 @@ Section ComposeFormat.
     : DecodeM S T  :=
     fun b env => `(s, env') <- decode b env; Some (g s, env').
 
+  Definition Compose_Decode' {S' : Type}
+             (decode : DecodeM S' T)
+             (g : S' -> option S) (* Transformation Function *)
+    : DecodeM S T  :=
+    fun b env => `(s', env') <- decode b env; match g s' with Some s => Some (s, env') | None => None end.
+
   Definition Compose_Encode
              {S' : Type}
              (encode : EncodeM S' T)
@@ -213,6 +219,51 @@ Proof.
   subst; eauto.
 Qed.
 
+Lemma injection_decode_correct' {S V V' T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (inj : V -> option V')
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (View'_Predicate : V' -> Prop)
+      (format : FormatM S T)
+      (view : S -> V -> Prop)
+      (view' : S -> V' -> Prop)
+      (view_format : FormatM V T)
+      (view'_format : FormatM V' T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid Source_Predicate View_Predicate
+                                    view format decode_V P view_format)
+      (view'_OK : forall s v, Source_Predicate s -> view s v -> exists v', inj v = Some v' /\ view' s v')
+      (View'_Predicate_OK : forall v, View_Predicate v
+                                 -> forall v', inj v = Some v' -> View'_Predicate v')
+      (view'_format_OK : forall v env t,
+          computes_to (view_format v env) t
+          -> forall v', inj v = Some v' -> computes_to (view'_format v' env) t)
+  : CorrectDecoder monoid Source_Predicate View'_Predicate
+                   view'
+                   format (Compose_Decode' decode_V (fun s => match inj (fst s) with
+                                                           | Some s' => Some (s', snd s)
+                                                           | None => None
+                                                           end))
+                   P view'_format.
+Proof.
+  unfold CorrectDecoder, Projection_Format, Compose_Decode'; split; intros.
+  { apply proj1 in decode_V_OK; eapply decode_V_OK with (ext := ext) in H1; eauto.
+    destruct_ex; intuition; subst; eauto.
+    destruct (view'_OK s x); eauto. intuition.
+    eexists _, _; intuition eauto; rewrite H2; simpl; eauto.
+    rewrite H7; auto.
+  }
+  { destruct (decode_V t env') as [ [ [? ?] ?] |] eqn: ? ;
+      simpl in *; try discriminate; destruct inj eqn:?; try discriminate; injections.
+    apply proj2 in decode_V_OK;
+      eapply decode_V_OK in Heqo; eauto.
+    intuition; destruct_ex; split_and; eexists _, _; intuition eauto.
+  }
+Qed.
+
 Lemma injection_decode_correct {S V V' T}
       {cache : Cache}
       {P : CacheDecode -> Prop}
@@ -240,17 +291,42 @@ Lemma injection_decode_correct {S V V' T}
                    format (Compose_Decode decode_V (fun s => (inj (fst s), snd s)))
                    P view'_format.
 Proof.
-  unfold CorrectDecoder, Projection_Format, Compose_Decode; split; intros.
-  { apply proj1 in decode_V_OK; eapply decode_V_OK with (ext := ext) in H1; eauto.
-    destruct_ex; intuition; subst; eauto.
-    eexists _, _; intuition eauto; rewrite H2; simpl; eauto.
-  }
-  { destruct (decode_V t env') as [ [ [? ?] ?] |] eqn: ? ;
-      simpl in *; try discriminate; injections.
-    apply proj2 in decode_V_OK;
-      eapply decode_V_OK in Heqo; eauto.
-    intuition; destruct_ex; split_and; eexists _, _; intuition eauto.
-  }
+  eapply (injection_decode_correct' (fun v => Some (inj v)));
+    intuition eauto; injections; intuition eauto.
+Qed.
+
+Lemma bijection_decode_correct' {S V T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (proj : S -> V)
+      (inj : V -> option S)
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (view_format : FormatM V T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate
+                                    eq view_format decode_V P view_format)
+      (view_OK : forall s, Source_Predicate s -> inj (proj s) = Some s)
+      (view_OK' : forall v s, inj v = Some s -> proj s = v)
+      (View_Predicate_OK : forall s, Source_Predicate s -> View_Predicate (proj s))
+      (View_Predicate_OK' : forall v s, View_Predicate v -> inj v = Some s -> Source_Predicate s)
+  : CorrectDecoder monoid Source_Predicate Source_Predicate
+                   eq
+                   (Projection_Format view_format proj)
+                   (Compose_Decode' decode_V (fun s => match inj (fst s) with
+                                                    | Some s' => Some (s', snd s)
+                                                    | None => None
+                                                    end))
+                   P
+                   (Projection_Format view_format proj).
+Proof.
+  eapply injection_decode_correct'.
+  - apply projection_decode_correct; eauto.
+  - simpl; intros. subst. eexists. intuition eauto.
+  - eauto.
+  - intros. apply (EquivFormat_sym (EquivFormat_Projection_Format _ _)).
+    erewrite view_OK'; eauto.
 Qed.
 
 Lemma bijection_decode_correct {S V T}
@@ -276,12 +352,8 @@ Lemma bijection_decode_correct {S V T}
                    P
                    (Projection_Format view_format proj).
 Proof.
-  eapply injection_decode_correct.
-  - apply projection_decode_correct; eauto.
-  - simpl; intros. subst. symmetry. eauto.
-  - eauto.
-  - intros. apply (EquivFormat_sym (EquivFormat_Projection_Format _ _)).
-    rewrite view_OK'. auto.
+  eapply (bijection_decode_correct' _ (fun v => Some (inj v)));
+    intuition eauto; injections; f_equal; intuition eauto.
 Qed.
 
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
