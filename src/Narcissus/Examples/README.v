@@ -400,26 +400,33 @@ Module Sensor6.
     : CorrectDecoder _ (fun _ => True) (fun _ => True) eq format_reading dec_reading (fun _ => True)
                      format_reading.
   Proof.
-    unfold format_reading, dec_reading; split; intros.
-    - destruct s; eapply encode_Word_decode_correct in H1; unfold cache_inv_Property; eauto;
-        destruct_ex; split_and; try rewrite H2; simpl; subst;
-          eexists _, _; simpl; rewrite split2_combine; eauto.
-    - eapply DecodeBindOpt2_inv in H1; destruct_ex; intuition.
-      destruct (weqb (split1 2 14 x) WO~0~0) eqn:? .
-      + destruct (shatter_word_S x) as [? [x' ?] ];
-          destruct (shatter_word_S x') as [? [x'' ?] ];
-          subst; apply weqb_true_iff in Heqb; injections;
-            unfold split2; simpl.
-        eapply (@encode_Word_decode_correct _ _ _ _ _ _ (fun _ => True)) in H2;
-          unfold cache_inv_Property; intuition eauto.
-      + destruct (weqb (split1 2 14 x) WO~0~1) eqn:? ; try discriminate;
-          destruct (shatter_word_S x) as [? [x' ?] ];
-          destruct (shatter_word_S x') as [? [x'' ?] ];
-          subst.
-        apply weqb_true_iff in Heqb0; injections;
-          unfold split2; simpl;
-            eapply (@encode_Word_decode_correct _ _ _ _ _ _ (fun _ => True)) in H2;
-          unfold cache_inv_Property; intuition eauto.
+    eapply format_decode_correct_refineEquiv
+        with (fun m => format_word (match m with
+                                 | Temperature t => Word.combine WO~0~0 t
+                                 | Humidity h => Word.combine WO~0~1 h
+                                 end)); eauto.
+    unfold flip, EquivFormat, format_reading. intros.
+    destruct s; reflexivity.
+    apply_bijection_rule'; intuition eauto.
+    - apply Word_decode_correct. unfold cache_inv_Property; intuition eauto.
+    - intros.
+      instantiate (1:=fun w =>
+                        if weqb (split1 2 14 w) WO~0~0
+                        then Some (Temperature (split2 2 14 w))
+                        else (if weqb (split1 2 14 w) WO~0~1 then
+                                Some (Humidity (split2 2 14 w))
+                              else None)).
+      destruct s; simpl; rewrite split2_combine; auto.
+    - cbn in H. destruct weqb eqn:?; injections. apply weqb_true_iff in Heqb.
+      rewrite <- Heqb. apply Word.combine_split.
+      destruct (weqb _ WO~0~1) eqn:?; try discriminate; injections. apply weqb_true_iff in Heqb0.
+      rewrite <- Heqb0. apply Word.combine_split.
+    - intuition eauto.
+    - derive_decoder_equiv.
+      repeat match goal with
+             | |- context[if ?x then _ else _] =>
+               destruct x eqn:?; cbn; destruct_pairs; intuition eauto
+             end; easy.
   Qed.
 
   Opaque weqb.

@@ -356,5 +356,39 @@ Proof.
     intuition eauto; injections; f_equal; intuition eauto.
 Qed.
 
+Ltac _apply_bijection_rule tac :=
+    match goal with
+    | |- CorrectDecoder _ _ _ _ ?f ?d _ ?f =>
+      try unfold f; try unfold d
+    end;
+    match goal with
+    | |- CorrectDecoder _ _ _ _ ?f _ _ ?f =>
+      match f with
+      | Projection_Format _ _ => idtac
+      | _ =>
+        eapply format_decode_correct_refineEquiv;
+          [solve [apply EquivFormat_sym; apply EquivFormat_Projection_Format] |];
+          eapply format_decode_correct_EquivViewFormat;
+          [solve [apply EquivFormat_sym; apply EquivFormat_Projection_Format] |]
+      end;
+        tac ||
+            (eapply format_decode_correct_EquivDecoder;
+             [| tac]; cycle 1)
+    end.
+
+
+Ltac apply_bijection_rule' := _apply_bijection_rule ltac:(eapply bijection_decode_correct').
+Ltac apply_bijection_rule := _apply_bijection_rule ltac:(eapply bijection_decode_correct).
+
+(* Do we have something similar already? *)
+Ltac derive_decoder_equiv :=
+    unfold flip, pointwise_relation,
+    Compose_Decode, Compose_Decode', DecodeBindOpt2, DecodeBindOpt, BindOpt;
+      intros; try reflexivity;
+    repeat match goal with
+           | |- context[If_Opt_Then_Else ?x _ _] =>
+             destruct x eqn:?; cbn; destruct_pairs; intuition eauto
+           end.
+
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
 Notation "P ∩ format" := (Restrict_Format P format) (at level 55) : format_scope.

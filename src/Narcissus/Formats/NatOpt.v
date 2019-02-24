@@ -45,38 +45,10 @@ Section Nat.
                      eq format_nat decode_nat P
                      format_nat.
   Proof.
-    unfold CorrectDecoder, format_nat, decode_nat.
-    split.
-    { intros env xenv xenv' n n' ext ? Eeq Ppred Penc.
-      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I Penc) as [? [? [? xenv_OK] ] ].
-      - rewrite H; simpl; eexists _, _; intuition eauto.
-        rewrite <- H0.
-        rewrite wordToNat_natToWord_idempotent; eauto.
-        rewrite <- Npow2_nat in Ppred.
-        rewrite <- (Nnat.Nat2N.id n) in Ppred.
-        apply Nomega.Nlt_in in Ppred; eauto.
-        repeat f_equal.
-        destruct (wordToNat_natToWord' sz n).
-        assert (x1 = 0).
-        { destruct x1; eauto.
-          rewrite <- H3 in Ppred. exfalso. simpl in Ppred.
-          clear - Ppred.
-          replace (wordToNat (natToWord sz n) + (pow2 sz + x1 * pow2 sz)) with
-          (pow2 sz + (wordToNat (natToWord sz n) + x1 * pow2 sz)) in Ppred by omega.
-          remember (wordToNat (natToWord sz n) + x1 * pow2 sz) as n'; clear Heqn'.
-          unfold id in *; omega. }
-        rewrite H5 in H3. simpl in H3. rewrite <- plus_n_O in H3.
-        congruence.
-        }
-    { intros env xenv xenv' n n' ext Eeq OK_env Penc.
-      destruct (decode_word n' xenv) as [ [ [? ? ] ? ] | ] eqn: ? ;
-        simpl in *; try discriminate.
-      injections.
-      eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
-        destruct Heqo; destruct_ex; intuition; subst; eauto.
-      unfold format_word in *; computes_to_inv; injections.
-      eexists _, _; rewrite natToWord_wordToNat; intuition eauto.
-      apply wordToNat_bound.
-    }
+    apply_bijection_rule;
+      intuition eauto using Word_decode_correct, wordToNat_bound, natToWord_wordToNat.
+    apply wordToNat_natToWord_idempotent.
+    apply Nomega.Nlt_in. rewrite Npow2_nat. rewrite Nnat.Nat2N.id. auto.
+    derive_decoder_equiv.
   Qed.
 End Nat.
