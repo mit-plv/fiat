@@ -46,7 +46,7 @@ Section UDP_Decoder.
     : FormatM UDP_Packet ByteString :=
     (format_word ◦ SourcePort
      ++ format_word ◦ DestPort
-     ++ format_nat 16 ◦ (Basics.compose (plus 8) (Basics.compose (projT1 (P := ByteBuffer.t)) Payload)))
+     ++ format_nat 16 ◦ (plus 8) ◦ projT1 (P := ByteBuffer.t) ◦ Payload)
     ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength (natToWord 8 17)) OfSize 16
     ThenCarryOn (format_bytebuffer ◦ Payload).
 
@@ -57,7 +57,9 @@ Section UDP_Decoder.
 
   Ltac new_encoder_rules ::=
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
-    [ | | intros; calculate_length_ByteString'].
+    [ normalize_encoder_format
+    | normalize_encoder_format
+    | intros; calculate_length_ByteString'].
 
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition UDP_encoder :
@@ -85,8 +87,9 @@ Section UDP_Decoder.
 
   Lemma UDP_Packet_Header_Len_OK
     : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
-      (format_word ◦ SourcePort ++ format_word ◦ DestPort ++ format_nat 16 ◦ Init.Nat.add 8 ∘ (projT1 (P:=ByteBuffer.t) ∘ Payload)) a
-                                                                                                                                    ctx ∋ (b, ctx') ->
+      (format_word ◦ SourcePort ++
+        format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload) a ctx ∋
+       (b, ctx') ->
       (format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') ->
       UDP_Packet_OK a ->
       (fun _ : UDP_Packet => 16 + (16 + 16)) a + (fun a' : UDP_Packet => 8 * projT1 (Payload a')) a + 16 =
@@ -110,6 +113,8 @@ Section UDP_Decoder.
       let H' := fresh in
       destruct H as [? [? [? H'] ] ]; rewrite H'.
     unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
+    eapply EquivFormat_Projection_Format in H.
+    eapply EquivFormat_Projection_Format in H.
     eapply computes_to_proj_decode_nat in H;
       rewrite H.
     unfold fst.
@@ -147,9 +152,17 @@ Section UDP_Decoder.
 
   Arguments GetCurrentBytes : simpl never.
 
-  Ltac apply_new_combinator_rule ::=
+  Ltac apply_new_base_rule ::=
     match goal with
     | |- _ => intros; eapply unused_word_decode_correct; eauto
+    | H : cache_inv_Property ?mnd _
+      |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
+      intros; eapply @ByteBuffer_decode_correct;
+      first [exact H | solve [intros; intuition eauto] ]
+    end.
+
+  Ltac apply_new_combinator_rule ::=
+    match goal with
     | H : cache_inv_Property ?mnd _
       |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
       eapply compose_PseudoChecksum_format_correct;
@@ -160,10 +173,6 @@ Section UDP_Decoder.
       | solve_mod_8
       | apply UDP_Packet_Header_Len_OK
       | intros; NormalizeFormats.normalize_format; apply_rules ]
-    | H : cache_inv_Property ?mnd _
-      |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
-      intros; eapply @ByteBuffer_decode_correct;
-      first [exact H | solve [intros; intuition eauto] ]
   end.
 
   Hint Extern 4 => intros; eapply (aligned_Pseudo_checksum_OK_1

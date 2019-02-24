@@ -56,11 +56,11 @@ Section EthernetPacketDecoder.
     format_Vector format_word ◦ Destination
    ++ format_Vector format_word ◦ Source
    ++ Either
-   format_nat 16 ◦ (fun _ => packet_len)
-   ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-   ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-   ++ format_word ◦ (fun _ => WO~1~1~0~0~0~0~0~0)
-   ++ format_word ◦ (fun _ => wzero 24)
+   format_nat 16 ◦ constant packet_len
+   ++ format_word ◦ constant WO~0~1~0~1~0~1~0~1
+   ++ format_word ◦ constant WO~0~1~0~1~0~1~0~1
+   ++ format_word ◦ constant WO~1~1~0~0~0~0~0~0
+   ++ format_word ◦ constant wzero 24
    ++ format_enum EtherTypeCodes ◦ EthType
    Or format_enum EtherTypeCodes ◦ EthType.
 
@@ -85,11 +85,11 @@ Section EthernetPacketDecoder.
 
   Lemma v1042_OKT
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
-      ((   format_nat 16 ◦ (fun _ => packet_len)
-        ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-        ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-        ++ format_word ◦ (fun _ => WO~1~1~0~0~0~0~0~0)
-        ++ format_word ◦ (fun _ => wzero 24)
+      ((   format_nat 16 ◦ constant packet_len
+        ++ format_word ◦ constant WO~0~1~0~1~0~1~0~1
+        ++ format_word ◦ constant WO~0~1~0~1~0~1~0~1
+        ++ format_word ◦ constant WO~1~1~0~0~0~0~0~0
+        ++ format_word ◦ constant (wzero 24)
         ++ format_enum EtherTypeCodes ◦ EthType
         ++ empty_Format ) data env) ↝ (bin, xenv)
       -> v1042_test (mappend bin ext) = true.

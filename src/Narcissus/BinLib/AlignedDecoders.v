@@ -20,7 +20,6 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
-        Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.StringOpt
@@ -323,6 +322,7 @@ Section AlignedDecoders.
         f_equiv; apply FMapFormat.EquivFormat_Projection_Format.
       + unfold AlignedEncodeVector.
         eapply CorrectAlignedEncoder_morphism.
+        apply EquivFormat_reflexive.
         2: eapply CorrectAlignedEncoderForThenC.
         2: eapply CorrectAlignedEncoderProjection; eauto.
         2: eapply CorrectAlignedEncoderProjection; eauto.
@@ -1520,13 +1520,6 @@ Section AlignedDecoders.
     destruct ab; reflexivity.
   Qed.
 
-  Ltac rewrite_DecodeOpt2_fmap :=
-    set_refine_evar;
-    progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
-    ?DecodeOpt2_fmap_if_bool;
-    subst_refine_evar.
-
-
   Lemma Ifopt_Ifopt {A A' B}
     : forall (a_opt : option A)
              (t : A -> option A')
@@ -2095,55 +2088,3 @@ Section AlignedDecoders.
   Qed.
 
 End AlignedDecoders.
-
-Ltac encoder_reflexivity :=
-  match goal with
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d ?e ?f), ?store' ?a ?b ?c ?d ?e ?f)) =>
-    let encoder'' := (eval pattern a, b, c, d, e, f in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c, d, e, f in store) in
-    let store'' := (match store'' with ?store _ _ _ _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d ?e), ?store' ?a ?b ?c ?d ?e)) =>
-    let encoder'' := (eval pattern a, b, c, d, e in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c, d, e in store) in
-    let store'' := (match store'' with ?store _ _ _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d), ?store' ?a ?b ?c ?d)) =>
-    let encoder'' := (eval pattern a, b, c, d in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c, d in store) in
-    let store'' := (match store'' with ?store _ _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c), ?store' ?a ?b ?c)) =>
-    let encoder'' := (eval pattern a, b, c in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c in store) in
-    let store'' := (match store'' with ?store _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b), ?store' ?a ?b)) =>
-    let encoder'' := (eval pattern a, b in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ => encoder end) in
-    let store'' := (eval pattern a, b in store) in
-    let store'' := (match store'' with ?store _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?p), ?store' ?p)) =>
-    let encoder'' := (eval pattern p in encoder) in
-    let encoder'' := (match encoder'' with ?encoder p => encoder end) in
-    let store'' := (eval pattern p in store) in
-    let store'' := (match store'' with ?store p => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  end.

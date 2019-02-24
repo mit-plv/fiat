@@ -577,6 +577,15 @@ Proof.
     eapply H.
 Qed.
 
+Lemma EquivFormat_reflexive
+      {S T : Type} {cache : Cache}
+  : forall (format : FormatM S T),
+    EquivFormat format format.
+Proof.
+  unfold EquivFormat; intros.
+  reflexivity.
+Qed.
+
 Add Parametric Morphism
     S T V
     (cache : Cache)
@@ -1033,3 +1042,6 @@ Qed.
 
 Notation "a ∋ b" := (@computes_to _ a b) (at level 65) : format_scope.
 Notation "a ∌ b" := (~ @computes_to _ a b) (at level 65) : format_scope.
+
+(* Nicer notation for formating constants *)
+Notation "'constant' n" := (fun _ => n) (at level 20) : format_scope.

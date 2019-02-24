@@ -367,8 +367,8 @@ Proof.
     eapply injection_decode_correct with (inj := fun _ => ()).
     eapply Compose_decode_correct with
         (view := (fun _ : S => {_ : word sz | True}%comp)).
-    2: eapply encode_Word_decode_correct.
-    2: eapply P_OK.
+    eapply encode_Word_decode_correct.
+    eapply P_OK.
     simpl; intros; eauto.
     instantiate (1 := fun _ _ => True); eauto.
     instantiate (1 := fun _ => True); eauto.

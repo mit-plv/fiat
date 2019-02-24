@@ -271,3 +271,15 @@ Proof.
   - unfold flip, EquivFormat; reflexivity.
   - unfold flip, EquivFormat; reflexivity.
 Qed.
+
+Lemma refine_sequence_Format
+      {cache : Cache}
+      {S T : Type}
+      {monoid : Monoid T}
+      (format1 format2 : FormatM S T)
+  : forall s env,
+    refineEquiv ((format1 ++ format2) s env)
+                ((fun (s : S) => (ComposeOpt.compose _ (format1 s) (format2 s))) s env).
+Proof.
+  reflexivity.
+Qed.

@@ -523,13 +523,15 @@ Qed.
 Lemma CorrectAlignedEncoder_morphism
       {S : Type}
       {cache : Cache}
-  : forall format (encode encode': forall sz : nat, AlignedEncodeM sz),
+  : forall format format' (encode encode': forall sz : nat, AlignedEncodeM sz),
+    (EquivFormat format' format) ->
     (forall sz v idx w c, encode' sz v idx w c = encode sz v idx w c) ->
     CorrectAlignedEncoder (S := S) format encode ->
-    CorrectAlignedEncoder (S := S) format encode'.
+    CorrectAlignedEncoder (S := S) format' encode'.
 Proof.
   unfold CorrectAlignedEncoder; intros.
   destruct X as [? [? ?] ]; eexists; intuition eauto.
+  eapply H1 in H2; rewrite <- H2; eapply H.
   eauto using EncodeMEquivAlignedEncodeM_morphism.
 Qed.
 

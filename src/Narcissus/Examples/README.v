@@ -20,7 +20,7 @@ Module Sensor0.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. Defined.
+  Proof. derive_encoder_decoder_pair.  Defined.
 
   Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
@@ -77,117 +77,6 @@ End Sensor1.
 (** Our next enhancement is to introduce a version number field in our packet, and to tag each measurement with a `kind`, `"TEMPERATURE"` or `"HUMIDITY"`.  To save space, we allocate 2 bits for the `kind` tag, and 14 bits to the actual measurement. **)
 
 (* The rules for higher-order types (lists, sums, sequences. *)
-Ltac apply_combinator_rule apply_rules ::=
-  first [
-  match goal with
-
-  (* Options *)
-  | H : cache_inv_Property _ _
-    |- context [CorrectDecoder _ _ _ _ (Option.format_option _ _) _ _ _] =>
-    intros;
-    sequence_two_tactics
-      ltac:(eapply (Option.option_format_correct _ H))
-      ltac:(apply_rules)
-      ltac:(apply_rules)
-
-    (* Vector *)
-  | H : cache_inv_Property _ _
-    |- context [CorrectDecoder ?mnd _ _ _ (format_Vector _) _ _ _] =>
-    intros; eapply (@Vector_decode_correct _ _ _ mnd);
-    apply_rules
-
-  | |- context [CorrectDecoder _ _ _ _ (format_list _) _ _ _] =>
-    intros; apply FixList_decode_correct;
-    apply_rules
-
-  | |- context [CorrectDecoder _ _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _ _] =>
-    let cache_inv_H := fresh in
-    intros cache_inv_H;
-    first
-      [let types' := (eval unfold types in types) in
-       ilist_of_evar
-         (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache))
-         types'
-         ltac:(fun formatrs' =>
-                 ilist_of_evar
-                   (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache)) types'
-         ltac:(fun decoders' =>
-                 ilist_of_evar
-                   (fun T : Type => Ensembles.Ensemble T) types'
-         ltac:(fun invariants' =>
-                 ilist_of_evar
-                   (fun T : Type => T -> B -> Prop) types'
-         ltac:(fun invariants_rest' =>
-                 Vector_of_evar n (Ensembles.Ensemble (CacheDecode -> Prop))
-         ltac:(fun cache_invariants' =>
-                 eapply (SumType_decode_correct (m := n) types) with
-                   (formatrs := formatrs')
-                   (decoders := decoders')
-                   (invariants := invariants')
-                   (invariants_rest := invariants_rest')
-                   (cache_invariants :=  cache_invariants')
-              ))))); apply_rules
-      | ilist_of_evar
-          (fun T : Type => T -> @CacheFormat cache -> Comp (B * @CacheFormat cache)) types
-          ltac:(fun formatrs' =>
-                  ilist_of_evar
-                    (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache)) types
-                   ltac:(fun decoders' =>
-                           ilist_of_evar
-                             (fun T : Type => Ensembles.Ensemble T) types
-                   ltac:(fun invariants' =>
-                           ilist_of_evar
-                             (fun T : Type => T -> B -> Prop) types
-                   ltac:(fun invariants_rest' =>
-                           Vector_of_evar n
-                              (Ensembles.Ensemble (CacheDecode -> Prop))
-                   ltac:(fun cache_invariants' =>
-                           eapply (SumType_decode_correct (m := n) types) with
-                             (formatrs := formatrs')
-                             (decoders := decoders')
-                             (invariants := invariants')
-                             (invariants_rest := invariants_rest')
-                             (cache_invariants :=  cache_invariants'))))))
-      ];
-    [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros); try exact I;
-      apply_rules
-    | apply cache_inv_H ]
-  end
-    | match goal with
-(* Or applying one of our sequencing rules *)
-  | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ _ (_ ◦ _ ++ _)%format _ _ _ =>
-    first [
-        sequence_three_tactics
-          ltac: (eapply (format_sequence_correct H) with (monoid := mnd))
-          ltac:(clear H; intros; apply_rules)
-          ltac:(clear H; solve [ solve_side_condition ])
-          ltac:(intros; apply_rules)
-      ]
-
-  | H : cache_inv_Property ?P ?P_inv
-    |- CorrectDecoder ?mnd _ _ _ (_ ++ _)%format _ _ _ =>
-    sequence_three_tactics
-          ltac:(eapply (format_unused_sequence_correct H) with (monoid := mnd))
-          ltac:(clear H; intros; apply_rules)
-          ltac:(clear H; solve [ solve_side_condition ])
-          ltac:(intros; apply_rules)
-
-  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ _ (Either _ Or _)%format _ _ _ =>
-    sequence_four_tactics
-      ltac:(eapply (composeIf_format_correct H); clear H; intros)
-      ltac:(apply_rules)
-      ltac:(apply_rules)
-      ltac:(solve [intros; intuition (eauto with bin_split_hints)])
-      ltac:(solve [intros; intuition (eauto with bin_split_hints) ])
-      end
-    | match goal with
-  (* Here is the hook for new decoder rules *)
-  | |- _ => apply_new_combinator_rule
-
-  end].
-
-
 Module Sensor2.
 
   Let kind :=
@@ -199,9 +88,9 @@ Module Sensor2.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_enum [WO~0~0; WO~0~1] ◦ (Basics.compose fst data)
-    ++ format_word ◦ (Basics.compose snd data).
+    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_enum [WO~0~0; WO~0~1] ◦ fst ◦ data
+    ++ format_word ◦ snd ◦ data.
 
   Let invariant (msg: sensor_msg) :=
     True.
@@ -242,7 +131,7 @@ Module Sensor2.
   else fail)) v 0 tt *)
 End Sensor2.
 
-(** The use of `format_const` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
+(** The use of `format_word ◦ constant _` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
 
 (** We use the next iteration to illustrate data dependencies and input restrictions.  To do so, we replace our single data point with a list of measurements (for conciseness, we remove tags and use 16-bit words).  We start as before, but we quickly run into an issue : **)
 
@@ -253,7 +142,7 @@ Module Sensor3.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_list format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
@@ -262,14 +151,18 @@ Module Sensor3.
   Let enc_dec : EncoderDecoderPair format invariant.
   Proof.
     derive_encoder_decoder_pair.
-    all:simpl. Abort.
+    last_failing_goal.
+    all:simpl.
+  Abort.
 End Sensor3.
 
 (** The derivation fails, leaving multiple Coq goals unsolved.  The most relevant is equivalent to the following:
 
 <<
-forall msg : sensor_msg,
+forall (msg : sensor_msg)
+       (w : word 16),
   stationID msg = sid ->
+  w = WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0 ->
   length msg.(data) = ?Goal
 >>
 
@@ -285,7 +178,7 @@ Module Sensor4.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_nat 8 ◦ length ◦ data
     ++ format_list format_word ◦ data.
 
@@ -293,14 +186,17 @@ Module Sensor4.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. all:simpl. Abort.
+  Proof. derive_encoder_decoder_pair.
+         last_failing_goal.
+         all:simpl.
+  Abort.
 End Sensor4.
 
 (** Again, decoder generation fails and spills out an unsolvable goal:
 
 <<
 forall data : sensor_msg,
-  invariant data /\ stationID data = proj ->
+  invariant data /\ stationID data = proj /\ ->
   length data.(data) < pow2 16
 >>
 
@@ -314,8 +210,8 @@ Module Sensor5.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 8 ◦ (Basics.compose length data)
+    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_nat 8 ◦ length ◦ data
     ++ format_list format_word ◦ data.
 
   Let invariant :=
@@ -414,7 +310,7 @@ Module Sensor6.
                                           Some (Humidity (split2 2 14 w))
                                         else None));
       intuition eauto.
-    - apply Word_decode_correct. unfold cache_inv_Property; intuition eauto.
+    - apply Word_decode_correct. try apply unfold_cache_inv_Property; intuition eauto.
     - destruct s; simpl; rewrite split2_combine; auto.
     - destruct weqb eqn:?; injections. apply weqb_true_iff in Heqb.
       rewrite <- Heqb. apply Word.combine_split.
@@ -431,8 +327,8 @@ Module Sensor6.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 8 ◦ (Basics.compose length data)
+    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_nat 8 ◦ length ◦ data
     ++ format_list format_reading ◦ data.
 
   Let invariant :=
@@ -444,7 +340,6 @@ Module Sensor6.
 
   Let enc_dec : EncoderDecoderPair format invariant.
   Proof. derive_encoder_decoder_pair.
-
   Defined.
 
   Let encode := encoder_impl enc_dec.

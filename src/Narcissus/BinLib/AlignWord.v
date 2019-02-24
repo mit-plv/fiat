@@ -5,6 +5,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.EnumOpt
+        Fiat.Narcissus.Formats.Sequence
         Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.BinLib.AlignedEncodeMonad.
 
@@ -1128,33 +1129,6 @@ Section AlignEncodeWord.
     rewrite unfold_computes; eauto.
   Qed.
 
-  Lemma refine_Projection_Format
-        {S S' T : Type}
-        (f : S -> S')
-        (format : FormatM S' T)
-    : forall s env,
-      refineEquiv (Projection_Format format f s env)
-             (format (f s) env).
-  Proof.
-    unfold Projection_Format, Compose_Format; intros; split.
-    - intros v Comp_v.
-      apply unfold_computes; eexists; intuition eauto.
-    - intros v Comp_v.
-      rewrite unfold_computes in Comp_v; destruct_ex; intuition eauto.
-      subst; eauto.
-  Qed.
-
-  Lemma refine_sequence_Format
-        {S T : Type}
-        {monoid : Monoid T}
-        (format1 format2 : FormatM S T)
-    : forall s env,
-      refineEquiv ((format1 ++ format2) s env)
-                  ((fun (s : S) => (format1 s ThenC format2 s)) s env).
-  Proof.
-    reflexivity.
-  Qed.
-
   Lemma CorrectAlignedEncoderForProjection_Format
         {S S'}
         (f : S -> S')
@@ -1461,7 +1435,8 @@ Section AlignEncodeWord.
         (format_word (monoidUnit := ByteString_QueueMonoidOpt))
         (fun n => @SetCurrentBytes n sz).
   Proof.
-    apply CorrectAlignedEncoder_morphism with (encode := (fun n => @SetCurrentBytes' n sz)).
+    eapply CorrectAlignedEncoder_morphism with (encode := (fun n => @SetCurrentBytes' n sz)).
+    apply EquivFormat_reflexive.
     auto using SetCurrentBytes_SetCurrentBytes'.
     unfold CorrectAlignedEncoder.
     induction sz; simpl; intros.

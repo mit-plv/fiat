@@ -109,11 +109,21 @@ Ltac subst_pow2 :=
 Hint Extern 4 => subst_pow2 : data_inv_hints.
 Hint Extern 4 => omega : data_inv_hints.
 
+Lemma unfold_cache_inv_Property :
+  forall (store : Cache)
+         (P : CacheDecode -> Prop)
+         (P_inv : (CacheDecode -> Prop) -> Prop),
+    P_inv P -> cache_inv_Property P P_inv.
+Proof.
+  unfold cache_inv_Property; intuition.
+Qed.
+
 Ltac synthesize_cache_invariant :=
   (* Synthesize an invariant satisfying the derived constraints *)
   (* on the cache. *)
   solve [repeat (instantiate (1 := fun _ => True));
-         unfold cache_inv_Property; intuition].
+         repeat first [apply unfold_cache_inv_Property
+                      | intuition] ].
 
 Lemma optimize_under_if {A B}
   : forall (a a' : A) (f : {a = a'} + {a <> a'}) (t t' e e' : B),
@@ -204,6 +214,42 @@ Ltac apply_rules :=
         | apply_base_rule
         | apply_combinator_rule apply_rules
         | idtac ].
+
+(* This variant of apply_rules returns the last unsolved goal, instead of stopping at
+   the topmost failing sequence. It is meant to help pinpoint which
+   specific format / invariant the derivation got stuck on.
+ *)
+Ltac last_failing_goal :=
+  first [ extract_view
+        | apply_base_rule
+        | apply_combinator_rule'
+            continue_on_fail
+
+            continue_on_fail_1
+            continue_on_fail
+
+            continue_on_fail_2
+            continue_on_fail_1
+            continue_on_fail
+
+            apply_rules
+        | idtac].
+
+Ltac run_one_step :=
+  first [ extract_view
+        | apply_base_rule
+        | apply_combinator_rule'
+            continue_on_fail
+
+            continue_on_fail_1
+            continue_on_fail
+
+            continue_on_fail_2
+            continue_on_fail_1
+            continue_on_fail
+
+            idtac
+        | idtac].
 
 Ltac synthesize_decoder :=
   (* Combines tactics into one-liner. *)
