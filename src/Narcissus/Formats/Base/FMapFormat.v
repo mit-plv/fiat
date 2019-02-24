@@ -229,7 +229,7 @@ Lemma injection_decode_correct {S V V' T}
       (decode_V : DecodeM (V * T) T)
       (decode_V_OK : CorrectDecoder monoid Source_Predicate View_Predicate
                                     view format decode_V P view_format)
-      (view'_OK : forall s v, view s v -> view' s (inj v))
+      (view'_OK : forall s v, Source_Predicate s -> view s v -> view' s (inj v))
       (View'_Predicate_OK : forall v, View_Predicate v
                                       -> View'_Predicate (inj v))
       (view'_format_OK : forall v env t,
@@ -251,6 +251,37 @@ Proof.
       eapply decode_V_OK in Heqo; eauto.
     intuition; destruct_ex; split_and; eexists _, _; intuition eauto.
   }
+Qed.
+
+Lemma bijection_decode_correct {S V T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (proj : S -> V)
+      (inj : V -> S)
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (view_format : FormatM V T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate
+                                    eq view_format decode_V P view_format)
+      (view_OK : forall s, Source_Predicate s -> inj (proj s) = s)
+      (view_OK' : forall v, proj (inj v) = v)
+      (View_Predicate_OK : forall s, Source_Predicate s -> View_Predicate (proj s))
+      (View_Predicate_OK' : forall v, View_Predicate v -> Source_Predicate (inj v))
+  : CorrectDecoder monoid Source_Predicate Source_Predicate
+                   eq
+                   (Projection_Format view_format proj)
+                   (Compose_Decode decode_V (fun s => (inj (fst s), snd s)))
+                   P
+                   (Projection_Format view_format proj).
+Proof.
+  eapply injection_decode_correct.
+  - apply projection_decode_correct; eauto.
+  - simpl; intros. subst. symmetry. eauto.
+  - eauto.
+  - intros. apply (EquivFormat_sym (EquivFormat_Projection_Format _ _)).
+    rewrite view_OK'. auto.
 Qed.
 
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
