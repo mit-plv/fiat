@@ -9,4 +9,5 @@ Require Export
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.IPChecksum
         Fiat.Narcissus.Formats.WordOpt
-        Fiat.Narcissus.Formats.NatOpt.
+        Fiat.Narcissus.Formats.NatOpt
+        Fiat.Narcissus.Formats.Option.

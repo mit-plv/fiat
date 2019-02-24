@@ -244,6 +244,7 @@ Section AlignedList.
       + reflexivity.
       + unfold format_bytebuffer in *; simpl in *; apply refine_under_bind; intros.
         unfold Bind2; rewrite IHt; reflexivity.
+    - apply EquivFormat_reflexive.
     - intros ? ? ? [n t]; revert sz v idx; induction t.
       + simpl; intros.
         unfold buffer_blit_buffer.

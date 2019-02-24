@@ -68,7 +68,9 @@ Section TCPPacketDecoder.
           ++ format_bool ◦ NS
           ++ format_bool ◦ CWR
           ++ format_bool ◦ ECE
-          ++ format_bool ◦ (Basics.compose (fun urg_opt => Ifopt urg_opt as urg Then true Else false) UrgentPointer)
+          (*++ format_option (format_bool ◦ constant true) (format_bool ◦ constant false) ◦ UrgentPointer *)
+
+          ++ format_bool ◦ (fun urg_opt => Ifopt urg_opt as urg Then true Else false) ◦ UrgentPointer
           ++ format_bool ◦ ACK
           ++ format_bool ◦ PSH
           ++ format_bool ◦ RST
@@ -76,7 +78,7 @@ Section TCPPacketDecoder.
           ++ format_bool ◦ FIN
           ++ format_word ◦ WindowSize)
           ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr tcpLength (natToWord 8 6)) OfSize 16
-          ThenCarryOn (Option.format_option format_word (@format_unused_word 16 _ _ _ _ _ _) ◦ UrgentPointer
+          ThenCarryOn (format_option format_word (@format_unused_word 16 _ _ _ _ _ _) ◦ UrgentPointer
                                             ++ format_list format_word ◦ Options
                                             ++ format_bytebuffer ◦ Payload).
 
@@ -94,7 +96,9 @@ Section TCPPacketDecoder.
 
   Ltac new_encoder_rules ::=
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
-    [ | | intros; calculate_length_ByteString'].
+    [ normalize_encoder_format
+    | normalize_encoder_format
+    | intros; calculate_length_ByteString'].
 
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition TCP_encoder :
@@ -127,11 +131,12 @@ Lemma TCP_Packet_Header_Len_OK
    format_bool ◦ NS ++
    format_bool ◦ CWR ++
    format_bool ◦ ECE ++
-   format_bool ◦ (fun urg_opt : option (word 16) => Ifopt urg_opt as _ Then true Else false) ∘ UrgentPointer ++
+   (*format_option (format_bool ◦ constant true) (format_bool ◦ constant false) ◦ UrgentPointer ++ *)
+   format_bool ◦ (fun urg_opt => Ifopt urg_opt as urg Then true Else false) ◦ UrgentPointer ++
    format_bool ◦ ACK ++
    format_bool ◦ PSH ++ format_bool ◦ RST ++ format_bool ◦ SYN ++ format_bool ◦ FIN ++ format_word ◦ WindowSize) a ctx ∋
   (b, ctx') ->
-  (Option.format_option format_word (format_unused_word 16) ◦ UrgentPointer ++
+  (format_option format_word (format_unused_word 16) ◦ UrgentPointer ++
    format_list format_word ◦ Options ++ format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') ->
   TCP_Packet_OK a ->
   (fun _ : TCP_Packet => 16 + (16 + (32 + (32 + (4 + (3 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + 16))))))))))))))) a +
@@ -176,6 +181,43 @@ Hint Extern 4 => intros; eapply (aligned_Pseudo_checksum_OK_1
                                    _ _ _ _
                                    (fun sz v => TCP_Length (build_aligned_ByteString v))).
 Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
+
+(*Lemma constant_decode_correct {S V T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (format : FormatM V T)
+      (view_format : FormatM V T)
+      (decode_V : DecodeM (V * T) T)
+      (const_v : V)
+      (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate eq format decode_V P
+                                    view_format)
+      (const_v_OK : View_Predicate const_v)
+  : CorrectDecoder monoid Source_Predicate (fun v' => const_v = v') (fun _ _ => True)
+                   (Projection_Format format (constant const_v)) decode_V P view_format.
+Proof.
+  eapply injection_decode_correct.
+
+  eapply projection_decode_correct; eauto.
+Qed. *)
+
+Ltac run_one_step :=
+  first [ extract_view
+        | apply_base_rule
+        | apply_combinator_rule'
+            continue_on_fail
+
+            continue_on_fail_1
+            continue_on_fail
+
+            continue_on_fail_2
+            continue_on_fail_1
+            continue_on_fail
+
+            idtac
+        | idtac].
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition TCP_Packet_Header_decoder

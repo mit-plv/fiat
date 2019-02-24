@@ -120,7 +120,17 @@ Ltac apply_base_rule :=
 Ltac apply_new_combinator_rule := fail.
 
 (* The rules for higher-order types (lists, sums, sequences. *)
-Ltac apply_combinator_rule apply_rules :=
+Ltac apply_combinator_rule'
+     option_fail_Some_format
+
+     sequence_fail_first_format
+     sequence_fail_invariant
+
+     union_on_fail_first_format
+     union_on_fail_second_format
+     union_on_fail_first_check
+
+     apply_rules :=
   first [
   match goal with
 
@@ -132,6 +142,7 @@ Ltac apply_combinator_rule apply_rules :=
       ltac:(eapply (Option.option_format_correct _ H))
       ltac:(apply_rules)
       ltac:(apply_rules)
+      option_fail_Some_format
 
     (* Vector *)
   | H : cache_inv_Property _ _
@@ -206,6 +217,8 @@ Ltac apply_combinator_rule apply_rules :=
           ltac:(clear H; intros; apply_rules)
           ltac:(clear H; solve [ solve_side_condition ])
           ltac:(clear H; intros; apply_rules)
+          sequence_fail_first_format
+          sequence_fail_invariant
       ]
 
   | H : cache_inv_Property ?P ?P_inv
@@ -215,6 +228,8 @@ Ltac apply_combinator_rule apply_rules :=
           ltac:(clear H; intros; apply_rules)
           ltac:(clear H; solve [ solve_side_condition ])
           ltac:(clear H; intros; apply_rules)
+          sequence_fail_first_format
+          sequence_fail_invariant
 
   | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ _ (Either _ Or _)%format _ _ _ =>
     sequence_four_tactics
@@ -223,9 +238,25 @@ Ltac apply_combinator_rule apply_rules :=
       ltac:(apply_rules)
       ltac:(solve [intros; intuition (eauto with bin_split_hints)])
       ltac:(solve [intros; intuition (eauto with bin_split_hints) ])
+     union_on_fail_first_format
+     union_on_fail_second_format
+     union_on_fail_first_check
       end
     | match goal with
   (* Here is the hook for new decoder rules *)
   | |- _ => apply_new_combinator_rule
 
-  end].
+      end].
+
+Ltac apply_combinator_rule apply_rules :=
+  apply_combinator_rule'
+    continue_on_fail
+
+    halt_on_fail_1
+    halt_on_fail
+
+    continue_on_fail_2
+    continue_on_fail_1
+    continue_on_fail
+
+    apply_rules.

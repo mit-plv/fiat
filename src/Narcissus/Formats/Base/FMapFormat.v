@@ -176,12 +176,12 @@ Lemma Compose_decode_correct {S V T}
       (view : S -> V -> Prop)
       (Source_Predicate : S -> Prop)
       (View_Predicate : V -> Prop)
-      (View_Predicate_OK : forall s v, view s v -> Source_Predicate s -> View_Predicate v)
       (format : FormatM V T)
       (view_format : FormatM V T)
       (decode_V : DecodeM (V * T) T)
       (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate eq format decode_V P
-      view_format)
+                                    view_format)
+      (View_Predicate_OK : forall s v, view s v -> Source_Predicate s -> View_Predicate v)
   : CorrectDecoder monoid Source_Predicate View_Predicate view
                    (Compose_Format format view) decode_V P view_format.
 Proof.
@@ -201,11 +201,11 @@ Lemma projection_decode_correct {S V T}
       (project : S -> V)
       (Source_Predicate : S -> Prop)
       (View_Predicate : V -> Prop)
-      (View_Predicate_OK : forall (s : S), Source_Predicate s -> View_Predicate (project s))
       (format : FormatM V T)
       (view_format : FormatM V T)
       (decode_V : DecodeM (V * T) T)
       (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate eq format decode_V P view_format)
+      (View_Predicate_OK : forall (s : S), Source_Predicate s -> View_Predicate (project s))
   : CorrectDecoder monoid Source_Predicate View_Predicate (fun s v => project s = v)
                    (Projection_Format format project) decode_V P view_format.
 Proof.
@@ -251,6 +251,43 @@ Proof.
       eapply decode_V_OK in Heqo; eauto.
     intuition; destruct_ex; split_and; eexists _, _; intuition eauto.
   }
+Qed.
+
+Lemma constant_decode_correct {S V T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (view : S -> V -> Prop)
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (format : FormatM V T)
+      (view_format : FormatM V T)
+      (decode_V : DecodeM (V * T) T)
+      (const_v : V)
+      (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate eq format decode_V P
+                                    view_format)
+      (const_v_OK : View_Predicate const_v)
+  : CorrectDecoder monoid Source_Predicate View_Predicate (fun _ v' => const_v = v')
+                   (Projection_Format format (constant const_v)) decode_V P view_format.
+Proof.
+  eapply projection_decode_correct; eauto.
+Qed.
+
+Lemma refine_Projection_Format
+      {cache : Cache}
+      {S S' T : Type}
+      (f : S -> S')
+      (format : FormatM S' T)
+  : forall s env,
+    refineEquiv (Projection_Format format f s env)
+                (format (f s) env).
+Proof.
+  unfold Projection_Format, Compose_Format; intros; split.
+  - intros v Comp_v.
+    apply unfold_computes; eexists; intuition eauto.
+  - intros v Comp_v.
+    rewrite unfold_computes in Comp_v; destruct_ex; intuition eauto.
+    subst; eauto.
 Qed.
 
 Notation "format ◦ f" := (Projection_Format format f) (at level 55) : format_scope.
