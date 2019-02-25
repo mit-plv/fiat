@@ -238,9 +238,9 @@ Ltac apply_combinator_rule'
       ltac:(apply_rules)
       ltac:(solve [intros; intuition (eauto with bin_split_hints)])
       ltac:(solve [intros; intuition (eauto with bin_split_hints) ])
-     union_on_fail_first_format
-     union_on_fail_second_format
-     union_on_fail_first_check
+             union_on_fail_first_format
+             union_on_fail_second_format
+             union_on_fail_first_check
       end
     | match goal with
   (* Here is the hook for new decoder rules *)
@@ -257,6 +257,6 @@ Ltac apply_combinator_rule apply_rules :=
 
     continue_on_fail_2
     continue_on_fail_1
-    continue_on_fail
+    halt_on_fail
 
     apply_rules.

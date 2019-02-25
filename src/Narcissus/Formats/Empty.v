@@ -13,7 +13,43 @@ Definition empty_Format
            {cache : Cache}
   : FormatM S T := fun s ce => ret (mempty, ce).
 
-Lemma CorrectDecoderEmpty {S T}
+Lemma ExtractViewFrom {S V T}
+  : forall (cache : Cache)
+           (monoid : Monoid T)
+           (Source_Predicate : S -> Prop)
+           (View_Predicate : V -> Prop)
+           (view : S -> V -> Prop)
+           (View_Format : FormatM V T)
+           (decode_inv : CacheDecode -> Prop)
+           (v : V)
+           (v_OK : View_Predicate v),
+    (forall s', Source_Predicate s' ->
+                view s' v)
+    -> (forall env,
+           View_Format v env ∋ (mempty, env))
+    -> CorrectDecoder
+         monoid
+         Source_Predicate
+         View_Predicate
+         view
+         empty_Format
+         (fun t' ctxD => Some (v, t', ctxD))
+         decode_inv
+         View_Format.
+Proof.
+  unfold CorrectDecoder; split; intros.
+  -  eexists v, env'; pose proof (H _ H2); subst.
+     unfold empty_Format in H3; computes_to_inv;
+       injections.
+     intuition eauto.
+     rewrite mempty_left; eauto.
+  - injections.
+    intuition eauto.
+    eexists mempty, _; intuition eauto.
+    rewrite mempty_left; reflexivity.
+Qed.
+
+Corollary CorrectDecoderEmpty {S T}
   : forall (cache : Cache)
            (monoid : Monoid T)
            (Source_Predicate : S -> Prop)
@@ -32,13 +68,11 @@ Lemma CorrectDecoderEmpty {S T}
          decode_inv
          empty_Format.
 Proof.
-  unfold CorrectDecoder, empty_Format; split; intros.
-  -  eexists s, env'; pose proof (H _ H2); subst; find_if_inside;
-      simpl in *; intuition eauto; computes_to_inv; injections.
-     rewrite mempty_left; eauto.
-     eassumption.
-  - find_if_inside; injections; try discriminate;
-      simpl in *; intuition eauto.
-    eexists; eexists; intuition eauto.
-    rewrite mempty_left; reflexivity.
+  intros.
+  find_if_inside.
+  - eapply ExtractViewFrom; eauto; unfold empty_Format; eauto.
+  - unfold CorrectDecoder, empty_Format; split; intros.
+    + elimtype False; eapply H0.
+      rewrite <- (H _ H2); eassumption.
+    + discriminate.
 Qed.

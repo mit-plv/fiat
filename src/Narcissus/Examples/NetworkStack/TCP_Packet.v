@@ -120,7 +120,7 @@ Arguments andb : simpl never.
 
 Arguments GetCurrentBytes : simpl never.
 
-Lemma TCP_Packet_Header_Len_OK
+(*Lemma TCP_Packet_Header_Len_OK
       : forall (a : TCP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
   (format_word ◦ SourcePort ++
    format_word ◦ DestPort ++
@@ -149,7 +149,7 @@ Proof.
   intros.
   unfold TCP_Length; rewrite (proj2 H1).
   omega.
-Qed.
+Qed. *)
 
 Definition aligned_TCP_Packet_checksum {sz} :=
   @aligned_Pseudo_checksum srcAddr destAddr tcpLength (natToWord 8 6) sz.
@@ -163,67 +163,44 @@ Ltac apply_new_base_rule ::=
     first [exact H | solve [intros; intuition eauto] ]
   end.
 
+Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_1.
+Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
+
 Ltac apply_new_combinator_rule ::=
   match goal with
   | H : cache_inv_Property ?mnd _
     |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
-      eapply compose_PseudoChecksum_format_correct;
+      eapply compose_PseudoChecksum_format_correct';
     [ repeat calculate_length_ByteString
       | repeat calculate_length_ByteString
       | exact H
       | solve_mod_8
       | solve_mod_8
-      | apply TCP_Packet_Header_Len_OK
+      |
       | intros; NormalizeFormats.normalize_format; apply_rules ]
   end.
-
-Hint Extern 4 => intros; eapply (aligned_Pseudo_checksum_OK_1
-                                   _ _ _ _
-                                   (fun sz v => TCP_Length (build_aligned_ByteString v))).
-Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
-
-(*Lemma constant_decode_correct {S V T}
-      {cache : Cache}
-      {P : CacheDecode -> Prop}
-      {monoid : Monoid T}
-      (Source_Predicate : S -> Prop)
-      (View_Predicate : V -> Prop)
-      (format : FormatM V T)
-      (view_format : FormatM V T)
-      (decode_V : DecodeM (V * T) T)
-      (const_v : V)
-      (decode_V_OK : CorrectDecoder monoid View_Predicate View_Predicate eq format decode_V P
-                                    view_format)
-      (const_v_OK : View_Predicate const_v)
-  : CorrectDecoder monoid Source_Predicate (fun v' => const_v = v') (fun _ _ => True)
-                   (Projection_Format format (constant const_v)) decode_V P view_format.
-Proof.
-  eapply injection_decode_correct.
-
-  eapply projection_decode_correct; eauto.
-Qed. *)
-
-Ltac run_one_step :=
-  first [ extract_view
-        | apply_base_rule
-        | apply_combinator_rule'
-            continue_on_fail
-
-            continue_on_fail_1
-            continue_on_fail
-
-            continue_on_fail_2
-            continue_on_fail_1
-            continue_on_fail
-
-            idtac
-        | idtac].
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
 Proof.
   synthesize_aligned_decoder.
+  intros.
+  split.
+  eapply ExtractViewFrom; eauto; intros.
+  apply unfold_computes; intros.
+  unfold TCP_Packet_OK in H1; split_and.
+  instantiate (1 := wordToNat tcpLength); rewrite H5.
+  omega.
+  intros.
+  eexists _, _, _; split_and.
+  split.
+  rewrite mempty_left; eauto.
+  computes_to_econstructor.
+  apply sequence_mempty in H1; eauto.
+  synthesize_cache_invariant.
+  cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
+  repeat align_decoders.
   Grab Existential Variables.
   eauto.
   eauto.

@@ -202,7 +202,7 @@ Ltac optimize_decoder_impl :=
           try rewrite !Bool.andb_true_r;
           try rewrite !Bool.andb_true_l;
           try rewrite !optimize_if_bind2;
-          try rewrite !optimize_if_bind2_bool;
+          try rewrite !optimize_if_bind2_bool; simpl;
           first [
               apply DecodeBindOpt2_under_bind; simpl; intros
             | eapply optimize_under_if_bool; simpl; intros

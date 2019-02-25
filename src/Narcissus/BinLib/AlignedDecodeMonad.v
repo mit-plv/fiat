@@ -128,12 +128,12 @@ Section AlignedDecodeM.
     : AlignedDecodeM char n :=
     fun v idx c => Ifopt (nth_opt v idx) as b Then Some (b, S idx, addD c 8) Else None.
 
-  Definition GetByteAt (* Gets the current byte at the specified index and updates the
-                          current index to the following byte. *)
+  Definition GetByteAt (* Gets the byte at the specified index, but leaves
+                          the current index and state unchanged. *)
              {n : nat}
              (idx : nat)
     : AlignedDecodeM char n :=
-    fun v _ c => Ifopt (nth_opt v idx) as b Then Some (b, S idx, addD c 8) Else None.
+    fun v idx' c => Ifopt (nth_opt v idx) as b Then Some (b, idx', c) Else None.
 
   Definition SkipCurrentByte (* Gets the current byte and increments the current index. *)
              {n : nat}
@@ -175,6 +175,21 @@ Section AlignedDecodeM.
                 GetCurrentByte
                 (fun w => BindAlignedDecodeM
                             (GetCurrentBytes m')
+                            (fun w' =>  ReturnAlignedDecodeM (
+                                             eq_rect _ _ (Core.append_word w' w) _ (plus_comm_transparent (m' * 8) 8))))
+    end.
+
+    Fixpoint GetBytesAt (* Gets the current byte and increments the current index. *)
+             {n : nat}
+             (idx : nat)
+             (m : nat)
+    : AlignedDecodeM (word (m * 8)) n :=
+    match m return AlignedDecodeM (word (m * 8)) n with
+    | 0 => ReturnAlignedDecodeM WO
+    | S m' => BindAlignedDecodeM
+                (GetByteAt idx)
+                (fun w => BindAlignedDecodeM
+                            (GetBytesAt (S idx) m')
                             (fun w' =>  ReturnAlignedDecodeM (
                                              eq_rect _ _ (Core.append_word w' w) _ (plus_comm_transparent (m' * 8) 8))))
     end.

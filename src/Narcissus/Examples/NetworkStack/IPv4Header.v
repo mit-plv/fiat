@@ -90,62 +90,11 @@ Definition IPv4_encoder_impl {sz} v r :=
   Eval simpl in (projT1 IPv4_encoder sz v 0 r tt).
 Print IPv4_encoder_impl.
 
-Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
-  : nat :=
-  match decode_word' 8 ipv4_b with
-  | Some (w, b') => wordToNat (split1 4 4 w)
-  | None => 0
-  end * 32.
-
-Lemma IPv4_Packet_Header_Len_OK
-  : forall ip4 ctx ctx' ctx'' c b b'' ext,
-    (   format_word ◦ (fun _ => natToWord 4 4)
-                     ++ format_nat 4 ◦ (plus 5) ◦ @length _ ◦ Options
-                    ++ format_unused_word 8 (* TOS Field! *)
-                    ++ format_word ◦ TotalLength
-                    ++ format_word ◦ ID
-                    ++ format_unused_word 1 (* Unused flag! *)
-                    ++ format_bool ◦ DF
-                    ++ format_bool ◦ MF
-                    ++ format_word ◦ FragmentOffset
-                    ++ format_word ◦ TTL
-                    ++ format_enum ProtocolTypeCodes ◦ Protocol)%format
-                                                                ip4 ctx ∋ (b, ctx') ->
-    (   format_word ◦ SourceAddress
-                    ++ format_word ◦ DestAddress
-                    ++ format_list format_word ◦ Options)%format ip4 ctx' ∋ (b'', ctx'') ->
-    IPv4_Packet_OK ip4 ->
-    (fun _ => 128) ip4 + (fun a => 16 + |ip4.(Options)| * 32) ip4 + 16
-    = IPv4_Packet_encoded_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext).
-Proof.
-  intros; simpl.
-  pose proof mappend_assoc as H''; simpl in H'';
-    rewrite <- !H''.
-  unfold IPv4_Packet_encoded_measure.
-  unfold sequence_Format at 1 in H.
-  eapply computes_to_compose_proj_decode_word in H;
-    let H' := fresh in
-    destruct H as [? [? [? H'] ] ].
-  unfold sequence_Format at 1 in H.
-  unfold ComposeOpt.compose, Bind2 in H.
-  computes_to_inv.
-  apply EquivFormat_Projection_Format in H.
-  apply EquivFormat_Projection_Format in H.
-  apply EquivFormat_Projection_Format in H.
-  admit.
-  (*split_and; destruct_ex; split_and.
-  unfold format_nat, format_word in H; computes_to_inv.
-  rewrite (decode_word_plus' 4 4).
-  rewrite H; simpl; rewrite H3; simpl.
-  rewrite Core.split1_append_word.
-  rewrite wordToNat_natToWord_idempotent;
-    unfold Basics.compose; try omega.
-  unfold IPv4_Packet_OK in H1.
-  eapply Nomega.Nlt_in.
-  rewrite Nnat.Nat2N.id.
-  unfold Npow2; simpl.
-  unfold Pos.to_nat; simpl; intuition. *)
-Qed.
+Definition IPv4_Packet_encoded_measure
+  : DecodeM (nat * ByteString) ByteString :=
+  fun t env =>
+    `(w, _, _) <- decode_word t env;
+      Some (wordToNat (split1 4 4 w) * 32, t, env).
 
 Definition aligned_IPv4_Packet_encoded_measure
            {sz} (ipv4_b : ByteBuffer.t sz)
@@ -166,7 +115,7 @@ Fixpoint aligned_IPv4_Packet_Checksum {sz}
        end
      end.
 
-Lemma aligned_IPv4_Packet_encoded_measure_OK_1 {sz}
+(*Lemma aligned_IPv4_Packet_encoded_measure_OK_1 {sz}
   : forall (v : t Core.char sz),
     (if
         IPChecksum_Valid_dec (IPv4_Packet_encoded_measure (build_aligned_ByteString v)) (build_aligned_ByteString v)
@@ -202,33 +151,45 @@ Lemma aligned_IPv4_Packet_encoded_measure_OK_2 {sz}
 Proof.
   intros v; pattern sz, v.
   apply Vector.caseS; reflexivity.
-Qed.
+Qed. *)
 
 Arguments andb : simpl never.
 
-Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_1.
-Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_2.
+(*Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_1.
+Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_2. *)
 
 Ltac apply_new_combinator_rule ::=
   match goal with
   | H : cache_inv_Property ?mnd _
     |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
-    eapply compose_IPChecksum_format_correct with (format1 := fmt1);
-      [ exact H
-      | repeat calculate_length_ByteString
-      | repeat calculate_length_ByteString
-      | solve_mod_8
-      | solve_mod_8
-      | eapply IPv4_Packet_Header_Len_OK; eauto
-      | intros; NormalizeFormats.normalize_format; apply_rules]
-    end.
+    eapply compose_IPChecksum_format_correct' with (format1 := fmt1)
+  end.
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
 Proof.
   synthesize_aligned_decoder.
-Defined.
+  exact H.
+  repeat calculate_length_ByteString.
+  repeat calculate_length_ByteString.
+  solve_mod_8.
+  solve_mod_8.
+  intros. split.
+  instantiate (3 := (format_word ◦ constant natToWord 4 4
+                      ++
+                      ((format_nat 4 ◦ Init.Nat.add 5) ◦ Datatypes.length (A:=word 32)) ◦ Options)%format).
+    2: { admit.
+      }
+    instantiate (2 := IPv4_Packet_encoded_measure).
+    2: intros; NormalizeFormats.normalize_format; apply_rules.
+    2: synthesize_cache_invariant.
+    admit.
+    unfold IPv4_Packet_encoded_measure.
+    cbv beta; unfold decode_nat, sequence_Decode.
+    optimize_decoder_impl.
+  Admitted.
+(* Defined. *)
 
 Print Assumptions IPv4_Packet_Header_decoder.
 

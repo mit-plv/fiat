@@ -1,3 +1,6 @@
+Require Import
+        Fiat.Narcissus.Common.Specs.
+
 Require Export
         Fiat.Narcissus.Formats.Base.SequenceFormat
         Fiat.Narcissus.Formats.Base.FMapFormat
@@ -6,3 +9,75 @@ Require Export
         Fiat.Narcissus.Formats.Base.FixFormat
         Fiat.Narcissus.Formats.Base.EnqueueFormat
         Fiat.Narcissus.Formats.Base.UnionFormat.
+
+(* Aliases of Correct Decoder for deriving partial views of data. *)
+Definition CorrectRefinedDecoder
+           {S T : Type}
+           {store : Cache}
+           {V : Type}
+           (monoid : Monoid T)
+           (Source_Predicate : S -> Prop)
+           (View_Predicate : V -> Prop)
+           (view : S -> V -> Prop)
+           (format subformat : FormatM S T)
+           (decode : T -> CacheDecode -> option (V * T * CacheDecode))
+           (decode_inv : CacheDecode -> Prop)
+           (view_format : V -> CacheFormat -> Comp (T * CacheFormat)) :=
+  CorrectDecoder monoid Source_Predicate View_Predicate view
+                 subformat decode decode_inv view_format
+  /\ forall s t env env',
+    format s env ∋ (t, env') ->
+    exists t1 t2 env'',
+      t = mappend t1 t2
+      /\ subformat s env ∋ (t1, env'').
+
+Lemma  CorrectRefinedDecoder_decode_partial
+       {S T : Type}
+       {store : Cache}
+       {V : Type}
+       (monoid' : Monoid T)
+       (Source_Predicate : S -> Prop)
+       (View_Predicate : V -> Prop)
+       (view : S -> V -> Prop)
+       (format subformat : FormatM S T)
+       (decode : T -> CacheDecode -> option (V * T * CacheDecode))
+       (decode_inv : CacheDecode -> Prop)
+       (view_format : V -> CacheFormat -> Comp (T * CacheFormat))
+  : CorrectRefinedDecoder monoid' Source_Predicate View_Predicate view
+                          format subformat decode decode_inv view_format
+    -> forall s t env env',
+      format s env ∋ (t, env') ->
+      exists t1 t2 env'',
+        t = mappend t1 t2 /\
+        subformat s env ∋ (t1, env'').
+Proof.
+  intro.
+  eapply H; eauto.
+  (* apply proj2 in H. *)
+  (* eapply H. *)
+  (* eapply H in H0. *)
+
+  (* intros [? [? ?] ] * ?. *)
+  (* eapply H0 in H1. *)
+  (* unfold sequence_Format, ComposeOpt.compose, Bind2 in H1. *)
+  (* computes_to_inv; destruct v; destruct v0; simpl in *; eauto. *)
+  (* injections. *)
+  (* eexists _, _, _; intuition eauto. *)
+Qed.
+
+Lemma  CorrectRefinedDecoder_decode_impl
+       {S T : Type}
+       {store : Cache}
+       (monoid' : Monoid T)
+       (Source_Predicate : S -> Prop)
+       (format : FormatM S T)
+       (decode : T -> CacheDecode -> option (S * T * CacheDecode))
+       (decode_inv : CacheDecode -> Prop)
+  : CorrectRefinedDecoder monoid' Source_Predicate Source_Predicate eq
+                          format format decode decode_inv format
+    -> CorrectDecoder monoid' Source_Predicate Source_Predicate eq
+                      format decode decode_inv format.
+Proof.
+  intros; destruct H as [? ?].
+  eauto.
+Qed.

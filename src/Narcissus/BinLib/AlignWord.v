@@ -1444,7 +1444,9 @@ Section AlignEncodeWord.
       shatter_word s; unfold format_word; simpl.
       unfold format_word; rewrite addE_0; higher_order_reflexivity.
       + eapply CorrectAlignedEncoderForDoneC.
-    - eapply (CorrectAlignedEncoderForFormatNChar' addE_addE_plus (fun sz' => @SetCurrentBytes' sz' sz));
+    - eapply (CorrectAlignedEncoderForFormatNChar'
+                addE_addE_plus
+                (fun sz' => @SetCurrentBytes' sz' sz));
         eauto.
   Qed.
 

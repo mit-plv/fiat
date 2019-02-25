@@ -935,8 +935,9 @@ Lemma compose_IPChecksum_format_correct'
            (decodeChecksum := decode_IPChecksum),
     cache_inv_Property P (fun P => P_inv P /\ P_invM P) ->
     forall (predicate : A -> Prop)
-           (format1 : A -> CacheFormat -> Comp (B * CacheFormat))
-           (format2 : A -> CacheFormat -> Comp (B * CacheFormat))
+           (format1 : FormatM A B)
+           (format2 : FormatM A B)
+           (subformat : FormatM A B)
            (decode_measure : DecodeM (nat * B) B)
            (len_format1 : A -> nat)
            (len_format2 : A -> nat),
@@ -949,14 +950,15 @@ Lemma compose_IPChecksum_format_correct'
       -> (forall a, NPeano.modulo (len_format1 a) 8 = 0)
       -> (forall a, NPeano.modulo (len_format2 a) 8 = 0)
       -> (cache_inv_Property P P_invM ->
-          CorrectDecoder monoid predicate (fun _ => True) (fun _ _ => True)
-                         (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
+          CorrectRefinedDecoder monoid predicate (fun _ => True) (fun _ _ => True)
+                                (format1 ++ format_unused_word 16 ++ format2)%format
+                                subformat
                             decode_measure P
                             (fun n env t =>
-                               forall a t1 t2,
-                                 format1 a env t1
+                               forall a t1 t2 (w : word 16),                                                     predicate a
+                                 -> format1 a env t1
                                  -> format2 a (addE (snd t1) 16) t2
-                                 -> bin_measure (fst t1) + 16 + bin_measure (fst t2) = n))
+                                 -> len_format1 a + 16 + len_format2 a = n * 8))
       -> forall decodeA : B -> CacheDecode -> option (A * B * CacheDecode),
         (cache_inv_Property P P_inv ->
          CorrectDecoder monoid predicate predicate eq (format1 ++ format_unused_word 16 ++ format2)%format decodeA P (format1 ++ format_unused_word 16 ++ format2)%format) ->
@@ -964,63 +966,63 @@ Lemma compose_IPChecksum_format_correct'
                        (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2)
                        (fun (bin : B) (env : CacheDecode) =>
                           `(n, _, _) <- decode_measure bin env;
-                            if checksum_Valid_dec n bin then
+                            if checksum_Valid_dec (n * 8) bin then
                               decodeA bin env
                             else None) P
                        (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2).
 Proof.
   intros.
-  eapply composeChecksum_format_correct'; eauto.
-  - intros.
-    unfold format_checksum; simpl.
-    eapply format_decode_correct_alt.
-    7: eapply H4; eauto.
-    + reflexivity.
-    + reflexivity.
-    + reflexivity.
-    + unfold flip, EquivFormat; reflexivity.
-    + unfold flip, pointwise_relation; reflexivity.
-    + unfold flip, EquivFormat; intros.
-      pose proof length_encode_word'; simpl in H7; simpl.
-      unfold refineEquiv, refine; split; intros.
-      * apply unfold_computes; intros; rewrite H7.
-        rewrite unfold_computes in H8.
-        specialize (H8 _ _ _ H9 H10).
-        rewrite <- H8; simpl.
-        rewrite <- plus_assoc; reflexivity.
-      * apply unfold_computes; intros; rewrite unfold_computes in H8.
-        specialize (H8 _ _ _ (wzero _) H9 H10).
-        rewrite H7 in H8.
-        simpl in H8.
-        rewrite <- H8; simpl.
-        rewrite <- plus_assoc; reflexivity.
-  - unfold IPChecksum_Valid in *; intros; simpl.
-    rewrite ByteString2ListOfChar_Over.
-    * rewrite ByteString2ListOfChar_Over in H9.
-      eauto.
-      simpl.
-      apply H0 in H7.
-      pose proof (H2 data).
-      rewrite <- H7 in H10.
-      rewrite !ByteString_enqueue_ByteString_padding_eq.
-      rewrite padding_eq_mod_8, H10.
-      pose proof (H3 data).
-      unfold format_checksum.
-      rewrite encode_word'_padding.
-      rewrite <- (H1 _ _ _ _ H8) in H11.
-      rewrite padding_eq_mod_8, H11.
-      reflexivity.
-    * rewrite !ByteString_enqueue_ByteString_padding_eq.
-      apply H0 in H7.
-      pose proof (H2 data).
-      rewrite <- H7 in H10.
-      rewrite padding_eq_mod_8, H10.
-      pose proof (H3 data).
-      unfold format_checksum.
-      rewrite encode_word'_padding.
-      rewrite <- (H1 _ _ _ _ H8) in H11.
-      rewrite padding_eq_mod_8, H11.
-      reflexivity.
+  eapply format_decode_correct_alt.
+  7: { eapply (composeChecksum_format_correct'
+                 A _ monoid _ 16 IPChecksum_Valid); try eassumption.
+       - intros.
+         specialize (H4 (proj2 H)); destruct H4 as [H4 H4'].
+         split; eauto.
+         eapply injection_decode_correct with (inj := fun n => mult n 8).
+         + eapply H4.
+         + eauto.
+         + eauto.
+         + simpl; intros.
+           rewrite -> unfold_computes in *.
+           intros; erewrite <- H7; eauto.
+           destruct t1; destruct t2; simpl in *.
+           rewrite <- unfold_computes in H9, H10.
+           rewrite (H1 _ _ _ _ H10).
+           rewrite (H0 _ _ _ _ H9).
+           unfold format_checksum; rewrite length_encode_word', measure_mempty;
+             omega.
+       - unfold IPChecksum_Valid in *; intros; simpl.
+         rewrite ByteString2ListOfChar_Over.
+         * rewrite ByteString2ListOfChar_Over in H9.
+           eauto.
+           simpl.
+           apply H0 in H7.
+           pose proof (H2 data).
+           rewrite <- H7 in H10.
+           rewrite !ByteString_enqueue_ByteString_padding_eq.
+           rewrite padding_eq_mod_8, H10.
+           pose proof (H3 data).
+           unfold format_checksum.
+           rewrite encode_word'_padding.
+           rewrite <- (H1 _ _ _ _ H8) in H11.
+           rewrite padding_eq_mod_8, H11.
+           reflexivity.
+         * rewrite !ByteString_enqueue_ByteString_padding_eq.
+           apply H0 in H7.
+           pose proof (H2 data).
+           rewrite <- H7 in H10.
+           rewrite padding_eq_mod_8, H10.
+           pose proof (H3 data).
+           unfold format_checksum.
+           rewrite encode_word'_padding.
+           rewrite <- (H1 _ _ _ _ H8) in H11.
+           rewrite padding_eq_mod_8, H11.
+           reflexivity. }
+  all: try unfold flip, pointwise_relation, impl;
+    intuition eauto using EquivFormat_reflexive.
+  instantiate (1 := IPChecksum_Valid_dec).
+  unfold Compose_Decode.
+  destruct (decode_measure a a0) as [ [ [? ?] ? ] | ]; simpl; eauto.
 Qed.
 
 Lemma build_aligned_ByteString_nil

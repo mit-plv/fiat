@@ -77,13 +77,36 @@ Section EthernetPacketDecoder.
 
   Definition ethernet_Header_OK (e : EthernetHeader) := True.
 
-  Definition v1042_test (b : ByteString) : bool :=
-    match monoid_get_word 16 b with
-    | Some w => if wlt_dec w (natToWord 16 1501) then true else false
-    | _ => false
-    end.
+  Definition v1042_test : DecodeM (bool * ByteString) ByteString :=
+    fun t env =>
+    `(w, t', env') <- decode_word t env;
+      if (wlt_dec w (natToWord 16 1501) : bool) then
+         Some (true, t', env') else Some (false, t', env').
 
-  Lemma v1042_OKT
+  Lemma derive_distinguishing_word SourcePred
+    : forall P P_inv,
+      cache_inv_Property P P_inv ->
+    CorrectDecoder ByteStringQueueMonoid
+                   SourcePred
+    (constant True) (constant (constant True))
+    (Either format_nat 16 ◦ constant packet_len ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~1~1~0~0~0~0~0~0 ++
+            format_word ◦ constant wzero 24 ++ format_enum EtherTypeCodes ◦ EthType ++ empty_Format
+     Or format_enum EtherTypeCodes ◦ EthType ++ empty_Format) v1042_test P
+    (fun (bs : bool) (env : CacheFormat) (t : ByteString * CacheFormat) =>
+     forall s : EthernetHeader,
+     ((format_nat 16 ◦ constant packet_len ++
+       format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+       format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+       format_word ◦ constant WO~1~1~0~0~0~0~0~0 ++
+       format_word ◦ constant wzero 24 ++ format_enum EtherTypeCodes ◦ EthType ++ empty_Format) s env t ->
+      bs = true) /\ ((format_enum EtherTypeCodes ◦ EthType ++ empty_Format) s env t -> bs = false)).
+  Proof.
+  Admitted.
+
+  (*Lemma v1042_OKT
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
       ((   format_nat 16 ◦ constant packet_len
         ++ format_word ◦ constant WO~0~1~0~1~0~1~0~1
@@ -116,7 +139,7 @@ Section EthernetPacketDecoder.
     reflexivity.
   Qed.
 
-  Hint Extern 4 => eapply v1042_OKT : bin_split_hints.
+  (*Hint Extern 4 => eapply v1042_OKT : bin_split_hints. *)
 
     Lemma v1042_OKE
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
@@ -138,9 +161,9 @@ Section EthernetPacketDecoder.
     end.
     eapply forall_Vector_P; repeat econstructor;
       unfold wlt; compute; intros; discriminate.
-  Qed.
+  Qed. *)
 
-  Hint Extern 4 => eapply v1042_OKE : bin_split_hints.
+  (*Hint Extern 4 => eapply v1042_OKE : bin_split_hints. *)
 
   Lemma valid_packet_len_OK_good_Len
     : lt packet_len (pow2 16).
@@ -154,7 +177,7 @@ Section EthernetPacketDecoder.
 
   Hint Extern 4 => eapply valid_packet_len_OK_good_Len : data_inv_hints.
 
-  Definition aligned_v1042_test
+  (*Definition aligned_v1042_test
         {sz : nat}
         (v : t Core.char sz)
         (idx : nat)
@@ -226,13 +249,82 @@ Section EthernetPacketDecoder.
   Qed.
 
   Hint Extern 4 => eapply aligned_v1042_test_OK_1.
-  Hint Extern 4 => eapply aligned_v1042_test_OK_2.
+  Hint Extern 4 => eapply aligned_v1042_test_OK_2. *)
+
+  Create HintDb bin_split_hints.
+
+Ltac apply_combinator_rule apply_rules ::=
+  apply_combinator_rule'
+    continue_on_fail
+
+    halt_on_fail_1
+    halt_on_fail
+
+    continue_on_fail_2
+    continue_on_fail_1
+    halt_on_fail
+
+    apply_rules.
 
   Definition EthernetHeader_decoder
     : CorrectAlignedDecoderFor ethernet_Header_OK EthernetHeader_Format.
   Proof.
     synthesize_aligned_decoder.
-  Defined.
+    eapply composeIf_format_correct'; intros.
+    apply H; intros.
+    apply_rules.
+    apply_rules.
+    eapply derive_distinguishing_word.
+    exact H2.
+    synthesize_cache_invariant.
+    unfold v1042_test.
+    cbv beta; unfold decode_nat, sequence_Decode.
+    optimize_decoder_impl.
+    cbv beta; simpl; align_decoders.
+  Admitted.
+  (*cbv beta; simpl; align_decoders.
+    eapply @AlignedDecodeBind2CharM
+    ; intros; eauto.
+
+first
+  [ eapply @AlignedDecodeNatM; intros
+  | eapply @AlignedDecodeByteBufferM; intros; eauto
+  | eapply @AlignedDecodeBind2CharM; intros; eauto
+  | eapply @AlignedDecodeBindCharM; intros; eauto
+  | eapply @AlignedDecodeBind3CharM; intros; eauto
+  | eapply @AlignedDecodeBind4CharM; intros; eauto
+  | eapply @AlignedDecodeBindEnum; intros; eauto
+  | let H' := fresh in
+    pose proof (fun C D => @AlignedDecodeBindEnumM _ _ C D 2) as H'; simpl in H'; eapply H'; eauto; intros
+  | eapply @AlignedDecodeBindUnused2CharM; simpl; eauto; eapply DecodeMEquivAlignedDecodeM_trans;
+     [  | intros; reflexivity |  ]
+  | eapply @AlignedDecodeBindUnusedCharM; simpl; eauto; eapply DecodeMEquivAlignedDecodeM_trans;
+     [  | intros; reflexivity |  ]
+  | eapply @AlignedDecodeListM; intros; eauto
+  | eapply @AlignedDecodeCharM; intros; eauto
+  | eapply (fun H H' => AlignedDecodeNCharM H H'); eauto; simpl; intros
+  | eapply (fun H H' => AlignedDecodeNCharM H H'); eauto; simpl; intros
+  | eapply (AlignedDecodeNUnusedCharM _ _); eauto; simpl; intros
+  | eapply @AlignedDecode_shift_if_Sumb
+  | eapply @AlignedDecode_shift_if_bool
+  | eapply @Return_DecodeMEquivAlignedDecodeM
+  | eapply @AlignedDecode_Sumb
+  | eapply AlignedDecode_ifopt; intros
+  | let H := fresh in
+    pose proof @AlignedDecode_if_Sumb_dep as H; eapply H; clear H; [ solve [ eauto ] | solve [ eauto ] |  |  ]
+  | eapply @AlignedDecode_ifb
+  | eapply @AlignedDecode_ifb_both
+  | eapply @AlignedDecode_ifb_dep; [ solve [ eauto ] | solve [ eauto ] |  |  ]
+  | eapply @AlignedDecodeBindOption; intros; eauto
+  | eapply @AlignedDecode_Throw
+  | intros; higher_order_reflexivity
+  | eapply @AlignedDecode_CollapseEnumWord
+  | eapply @AlignedDecode_CollapseWord'; eauto
+     using decode_word_eq_decode_unused_word, decode_word_eq_decode_bool, decode_word_eq_decode_nat,
+       decode_word_eq_decode_word ].
+
+
+  Defined. *)
 
   (* Step Four: Extract the decoder function, and have /it/ start decoding
      at the start of the provided ByteString [v]. *)
