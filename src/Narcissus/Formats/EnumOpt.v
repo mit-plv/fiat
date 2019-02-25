@@ -2,6 +2,7 @@ Require Import
         Fiat.Common.BoundedLookup.
 Require Import
         Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.Formats.WordOpt.
 Require Import
         Coq.Vectors.Vector
@@ -105,6 +106,31 @@ Section Enum.
           f_equal; apply Fin.FS_inj; congruence.
   Qed.
 
+  Lemma word_indexed_correct':
+    forall n (v : Fin.t n) (w : word sz) (t : t (word sz) n),
+      word_indexed w t = Some v -> w = nth t v.
+  Proof.
+    clear.
+    induction v.
+    - intros w tb; pattern n, tb;
+        eapply Vector.caseS; simpl.
+      intros; destruct (weqb w h) eqn: ?.
+      eapply weqb_true_iff; eauto.
+      destruct ( word_indexed w t); try discriminate.
+    - intros w tb.
+      revert w v IHv.
+      pattern n, tb; eapply Vector.rectS; simpl; intros.
+      inversion v.
+      intros; destruct (weqb w a) eqn: ?.
+      discriminate.
+      destruct (word_indexed w v) eqn : ? ; try discriminate.
+      eapply IHv.
+      rewrite Heqo.
+      f_equal.
+      eapply Fin.FS_inj.
+      congruence.
+  Qed.
+
   Theorem Enum_decode_correct
           (tb_OK : NoDupVector tb)
           {P : CacheDecode -> Prop}
@@ -113,52 +139,13 @@ Section Enum.
                      (fun _ => True) eq format_enum decode_enum P
                      format_enum.
   Proof.
-    split; unfold format_enum, decode_enum.
-    { intros env env' xenv c c' ext ? Eeq Ppred Penc.
-      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I Penc) as [? [? ?] ].
-      split_and.
-      rewrite H0; simpl.
-      apply (word_indexed_correct _ c) in tb_OK.
-      subst; simpl in *.
-      destruct (word_indexed (nth tb c) tb) eqn: ?;
-        intros; simpl in *; subst.
-      + eexists _, _; intuition eauto.
-      + intuition.
-    }
-    { intros.
-      destruct (decode_word t env') as [ [ [? ?] ?] | ] eqn: ? ;
-          simpl in *; try discriminate.
-      destruct (word_indexed w tb) eqn: ? ;
-        simpl in *; try discriminate; injections.
-      eapply (proj2 (Word_decode_correct P_OK)) in Heqo; eauto;
-        destruct Heqo; destruct_ex; intuition; subst.
-      simpl.
-      unfold format_word in *; computes_to_inv; injections.
-      unfold format_word; repeat eexists; eauto.
-      repeat f_equal.
-      revert Heqo0; clear.
-      unfold id.
-      remember (S len) as n'; clear len Heqn'.
-      revert w tb; induction v.
-      - intros w tb; pattern n, tb;
-          eapply Vector.caseS; simpl.
-        intros; destruct (weqb w h) eqn: ?.
-        eapply weqb_true_iff; eauto.
-        destruct ( word_indexed w t); try discriminate.
-      - intros w tb.
-        revert w v IHv.
-        pattern n, tb; eapply Vector.rectS; simpl; intros.
-        inversion v.
-        intros; destruct (weqb w a) eqn: ?.
-        discriminate.
-        destruct (word_indexed w v) eqn : ? ; try discriminate.
-        eapply IHv.
-        rewrite Heqo.
-        f_equal.
-        eapply Fin.FS_inj.
-        revert Heqo0.
-        congruence.
-    }
+    apply_bijection_rule' with (fun w => word_indexed w tb);
+      intuition eauto using Word_decode_correct.
+    eapply word_indexed_correct in tb_OK.
+    destruct word_indexed eqn:?; subst; intuition eauto.
+    symmetry. eauto using word_indexed_correct'.
+
+    derive_decoder_equiv; rewrite Heqo0; intuition eauto.
   Qed.
 End Enum.
 

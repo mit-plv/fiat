@@ -688,6 +688,47 @@ Proof.
   unfold flip, EquivFormat; intros; reflexivity.
 Qed.
 
+Add Parametric Morphism
+    S T
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (View_Predicate : S -> Prop)
+    view
+    (decode : T -> CacheDecode -> option (S * T * CacheDecode))
+    (decode_inv : CacheDecode -> Prop)
+  : (fun format =>
+       @CorrectDecoder S T cache S monoid Source_Predicate View_Predicate
+                                view format decode decode_inv format)
+    with signature (EquivFormat --> impl)
+      as format_decode_correct_EquivFormatAndView.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (View_Predicate : V -> Prop)
+    format
+    view
+    (decode_inv : CacheDecode -> Prop)
+    view_format
+  : (fun decode =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv view_format)
+    with signature (pointwise_relation _ (pointwise_relation _ eq)
+                                       --> impl)
+      as format_decode_correct_EquivDecoder.
+Proof.
+  unfold impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity;
+    unfold flip, EquivFormat; reflexivity.
+Qed.
+
 Section DecodeWMeasure.
   Context {S : Type}. (* s type *)
   Context {T : Type}. (* t type *)
