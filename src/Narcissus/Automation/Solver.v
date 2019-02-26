@@ -129,7 +129,7 @@ Lemma optimize_under_if {A B}
   : forall (a a' : A) (f : {a = a'} + {a <> a'}) (t t' e e' : B),
     t = t'
     -> e = e'
-    -> (if f then t else e) = if f then t' else e.
+    -> (if f then t else e) = if f then t' else e'.
 Proof.
   destruct f; congruence.
 Qed.
@@ -138,7 +138,7 @@ Lemma optimize_under_if_bool {B}
   : forall (c : bool) (t t' e e' : B),
     t = t'
     -> e = e'
-    -> (if c then t else e) = if c then t' else e.
+    -> (if c then t else e) = if c then t' else e'.
 Proof.
   destruct c; congruence.
 Qed.
@@ -178,6 +178,39 @@ Lemma plus_minus : forall m n n',
   intros; omega.
 Qed.
 
+Lemma optimize_if_bind2_opt {A A' B C D}
+  : forall (d_opt : option D)
+           (t : D -> option (A * B * C))
+           (e : option (A * B * C))
+           (k : A -> B -> C -> option (A' * B * C)),
+    (`(a, b, env) <- (If_Opt_Then_Else d_opt t e); k a b env) =
+    If_Opt_Then_Else d_opt (fun d => `(a, b, env) <- t d; k a b env) (`(a, b, env) <- e; k a b env).
+Proof.
+  destruct d_opt; simpl; intros; congruence.
+Qed.
+
+Lemma optimize_under_if_opt {B D}
+  : forall (d_opt : option D) (t t' : D -> B) (e e' : B),
+    (forall d, t d = t' d)
+    -> e = e'
+    -> If_Opt_Then_Else d_opt t e = If_Opt_Then_Else d_opt t' e'.
+Proof.
+  destruct d_opt; simpl; congruence.
+Qed.
+
+Lemma DecodeBindOpt2_under_bind':
+  forall (S T V D E : Type) (a_opt : option (S * T * D)) (f f' : S -> T -> D -> option (V * E * D)),
+    (forall (a : S) (b : T) (d : D),
+        a_opt = Some (a, b, d)
+        -> f a b d = f' a b d)
+    -> (`(a, b, env) <- a_opt;
+          f a b env) = (`(a, b, env) <- a_opt;
+                          f' a b env).
+Proof.
+  unfold DecodeBindOpt2; intros.
+    destruct a_opt as [ [ [? ?] ?] | ]; simpl in *; eauto.
+Qed.
+
 Hint Extern 4 => eapply plus_minus.
 Hint Extern 4 => eapply (proj2 (NPeano.Nat.lt_add_lt_sub_l _ _ _)).
 Hint Extern 4 => eapply Option_predicate_True : data_inv_hints.
@@ -199,12 +232,20 @@ Ltac optimize_decoder_impl :=
   (* Perform algebraic simplification of the decoder implementation. *)
   simpl; intros;
   repeat (try rewrite !DecodeBindOpt2_assoc;
-          try rewrite !Bool.andb_true_r;
-          try rewrite !Bool.andb_true_l;
-          try rewrite !optimize_if_bind2;
-          try rewrite !optimize_if_bind2_bool; simpl;
-          first [
-              apply DecodeBindOpt2_under_bind; simpl; intros
+            try rewrite !Bool.andb_true_r;
+            try rewrite !Bool.andb_true_l;
+            try rewrite !optimize_if_bind2;
+            try rewrite !optimize_if_bind2_opt;
+            try rewrite !optimize_if_bind2_bool; simpl;
+            first [
+                match goal with
+                | H : decode_word ?t ?env = Some ?b
+                  |- (`(_, _, _) <- decode_enum _ ?t ?env; _) = _ =>
+                  unfold decode_enum at 1; setoid_rewrite H; simpl
+                | H : ?a = Some ?b |- (`(_, _, _) <- ?a; _) = _ => setoid_rewrite H; simpl
+                end
+            | apply DecodeBindOpt2_under_bind'; simpl; intros
+            | eapply optimize_under_if_opt; simpl; intros
             | eapply optimize_under_if_bool; simpl; intros
             | eapply optimize_under_if; simpl; intros]);
   higher_order_reflexivity.

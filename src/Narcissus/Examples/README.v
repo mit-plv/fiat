@@ -96,9 +96,7 @@ Module Sensor2.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof.
-    derive_encoder_decoder_pair.
-  Defined.
+  Proof. derive_encoder_decoder_pair.  Defined.
 
   Let encode := encoder_impl enc_dec.
   (* (stationID ▹ SetCurrentByte ≫

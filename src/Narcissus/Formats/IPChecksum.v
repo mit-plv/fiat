@@ -919,6 +919,99 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma injection_decode_correct' {S V V' T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (inj : V -> option V')
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (View'_Predicate : V' -> Prop)
+      (format : FormatM S T)
+      (view : S -> V -> Prop)
+      (view' : S -> V' -> Prop)
+      (view_format : FormatM V T)
+      (view'_format : FormatM V' T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid Source_Predicate View_Predicate
+                                    view format decode_V P view_format)
+      (view'_OK : forall s v, Source_Predicate s -> view s v -> exists v', inj v = Some v' /\ view' s v')
+      (View'_Predicate_OK : forall v, View_Predicate v
+                                 -> forall v', inj v = Some v' -> View'_Predicate v')
+      (view'_format_OK : forall v env t env' xenv' t',
+          Equiv env env' ->
+          P env' ->
+          Equiv (snd t) xenv' ->
+          decode_V (mappend (fst t) t') env' = Some (v, t', xenv') ->
+          computes_to (view_format v env) t ->
+          View_Predicate v
+          -> forall v', inj v = Some v' -> computes_to (view'_format v' env) t )
+  : CorrectDecoder monoid Source_Predicate View'_Predicate
+                   view'
+                   format (Compose_Decode' decode_V (fun s => match inj (fst s) with
+                                                           | Some s' => Some (s', snd s)
+                                                           | None => None
+                                                           end))
+                   P view'_format.
+Proof.
+  unfold CorrectDecoder, Projection_Format, Compose_Decode'; split; intros.
+  { pose proof (proj2 decode_V_OK) as H'.
+    apply proj1 in decode_V_OK; eapply decode_V_OK with (ext := ext) in H1; eauto.
+    destruct_ex; intuition; subst; eauto.
+    destruct (view'_OK s x); eauto. intuition.
+    eexists _, _; intuition eauto. rewrite H2; simpl; eauto.
+    rewrite H7; auto.
+    eapply view'_format_OK; eauto.
+    eapply H' in H2; eauto.
+    split_and; destruct_ex; split_and; eauto.
+  }
+  { destruct (decode_V t env') as [ [ [? ?] ?] |] eqn: ? ;
+      simpl in *; try discriminate; destruct inj eqn:?; try discriminate; injections.
+    generalize Heqo; intros.
+    apply proj2 in decode_V_OK;
+      eapply decode_V_OK in Heqo; eauto.
+    intuition; destruct_ex; split_and; eexists _, _; intuition eauto.
+    subst.
+    eapply view'_format_OK; eauto.
+  }
+Qed.
+
+Lemma injection_decode_correct {S V V' T}
+      {cache : Cache}
+      {P : CacheDecode -> Prop}
+      {monoid : Monoid T}
+      (inj : V -> V')
+      (Source_Predicate : S -> Prop)
+      (View_Predicate : V -> Prop)
+      (View'_Predicate : V' -> Prop)
+      (format : FormatM S T)
+      (view : S -> V -> Prop)
+      (view' : S -> V' -> Prop)
+      (view_format : FormatM V T)
+      (view'_format : FormatM V' T)
+      (decode_V : DecodeM (V * T) T)
+      (decode_V_OK : CorrectDecoder monoid Source_Predicate View_Predicate
+                                    view format decode_V P view_format)
+      (view'_OK : forall s v, Source_Predicate s -> view s v -> view' s (inj v))
+      (View'_Predicate_OK : forall v, View_Predicate v
+                                      -> View'_Predicate (inj v))
+      (view'_format_OK : forall v env t env' xenv' t',
+          Equiv env env' ->
+          P env' ->
+          Equiv (snd t) xenv' ->
+          decode_V (mappend (fst t) t') env' = Some (v, t', xenv') ->
+          computes_to (view_format v env) t
+          -> View_Predicate v
+          -> computes_to (view'_format (inj v) env) t )
+  : CorrectDecoder monoid Source_Predicate View'_Predicate
+                   view'
+                   format (Compose_Decode decode_V (fun s => (inj (fst s), snd s)))
+                   P view'_format.
+Proof.
+  eapply (injection_decode_correct' (fun v => Some (inj v)));
+    intuition eauto; injections; intuition eauto.
+Qed.
+
 (* A (hopefully) more convenient IP_Checksum lemma *)
 Lemma compose_IPChecksum_format_correct'
   : forall (A : Type)
@@ -938,9 +1031,11 @@ Lemma compose_IPChecksum_format_correct'
            (format1 : FormatM A B)
            (format2 : FormatM A B)
            (subformat : FormatM A B)
+           (format_measure : FormatM nat B)
            (decode_measure : DecodeM (nat * B) B)
            (len_format1 : A -> nat)
-           (len_format2 : A -> nat),
+           (len_format2 : A -> nat)
+           View_Predicate,
       (forall a' b ctx ctx',
           computes_to (format1 a' ctx) (b, ctx')
           -> length_ByteString b = len_format1 a')
@@ -950,15 +1045,12 @@ Lemma compose_IPChecksum_format_correct'
       -> (forall a, NPeano.modulo (len_format1 a) 8 = 0)
       -> (forall a, NPeano.modulo (len_format2 a) 8 = 0)
       -> (cache_inv_Property P P_invM ->
-          CorrectRefinedDecoder monoid predicate (fun _ => True) (fun _ _ => True)
+          CorrectRefinedDecoder monoid predicate View_Predicate
+                                (fun a n => len_format1 a + 16 + len_format2 a = n * 8)
                                 (format1 ++ format_unused_word 16 ++ format2)%format
                                 subformat
-                            decode_measure P
-                            (fun n env t =>
-                               forall a t1 t2 (w : word 16),                                                     predicate a
-                                 -> format1 a env t1
-                                 -> format2 a (addE (snd t1) 16) t2
-                                 -> len_format1 a + 16 + len_format2 a = n * 8))
+                                decode_measure P
+                                format_measure)
       -> forall decodeA : B -> CacheDecode -> option (A * B * CacheDecode),
         (cache_inv_Property P P_inv ->
          CorrectDecoder monoid predicate predicate eq (format1 ++ format_unused_word 16 ++ format2)%format decodeA P (format1 ++ format_unused_word 16 ++ format2)%format) ->
@@ -979,18 +1071,30 @@ Proof.
          specialize (H4 (proj2 H)); destruct H4 as [H4 H4'].
          split; eauto.
          eapply injection_decode_correct with (inj := fun n => mult n 8).
-         + eapply H4.
-         + eauto.
-         + eauto.
-         + simpl; intros.
-           rewrite -> unfold_computes in *.
-           intros; erewrite <- H7; eauto.
-           destruct t1; destruct t2; simpl in *.
-           rewrite <- unfold_computes in H9, H10.
-           rewrite (H1 _ _ _ _ H10).
-           rewrite (H0 _ _ _ _ H9).
-           unfold format_checksum; rewrite length_encode_word', measure_mempty;
-             omega.
+         eapply H4.
+         + intros.
+           instantiate (1 := fun a n => len_format1 a + 16 + len_format2 a = n).
+           eapply H8.
+         + intros; instantiate (1 := fun v => View_Predicate (Nat.div v 8)).
+           cbv beta.
+           rewrite Nat.div_mul; eauto.
+         + intros; apply unfold_computes; intros.
+           split.
+           2: rewrite unfold_computes in H11; intuition.
+           intros.
+           rewrite unfold_computes in H11; intuition.
+           destruct t1; destruct t2; simpl fst in *; simpl snd in *.
+           erewrite H0; eauto.
+           2: apply unfold_computes; eapply H14.
+           unfold format_checksum; rewrite length_encode_word', measure_mempty.
+           simpl bin_measure; rewrite (H1 _ _ _ _ H15).
+           assert ((format1 ++ format_unused_word 16 ++ format2)%format a env ∋ (mappend b (mappend (encode_word' 16 (wzero _) mempty) b0), c0)).
+           admit.
+           eapply H4' in H11; destruct_ex.
+           destruct H11.
+           rewrite unfold_computes in H19.
+           erewrite <- H17; eauto.
+           omega.
        - unfold IPChecksum_Valid in *; intros; simpl.
          rewrite ByteString2ListOfChar_Over.
          * rewrite ByteString2ListOfChar_Over in H9.

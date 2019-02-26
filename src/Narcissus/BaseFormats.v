@@ -24,12 +24,16 @@ Definition CorrectRefinedDecoder
            (decode_inv : CacheDecode -> Prop)
            (view_format : V -> CacheFormat -> Comp (T * CacheFormat)) :=
   CorrectDecoder monoid Source_Predicate View_Predicate view
-                 subformat decode decode_inv view_format
-  /\ forall s t env env',
+                 subformat decode decode_inv
+                 (fun v env t => view_format v env t
+                                 /\ forall s t,
+                      Source_Predicate s ->
+                      subformat s env t -> view s v)
+  /\ (forall s t env env',
     format s env ∋ (t, env') ->
     exists t1 t2 env'',
       t = mappend t1 t2
-      /\ subformat s env ∋ (t1, env'').
+      /\ subformat s env ∋ (t1, env'')).
 
 Lemma  CorrectRefinedDecoder_decode_partial
        {S T : Type}
@@ -65,7 +69,7 @@ Proof.
   (* eexists _, _, _; intuition eauto. *)
 Qed.
 
-Lemma  CorrectRefinedDecoder_decode_impl
+Lemma CorrectRefinedDecoder_decode_impl
        {S T : Type}
        {store : Cache}
        (monoid' : Monoid T)
@@ -79,5 +83,33 @@ Lemma  CorrectRefinedDecoder_decode_impl
                       format decode decode_inv format.
 Proof.
   intros; destruct H as [? ?].
-  eauto.
+  eapply weaken_view_pred.
+  intros; subst; eauto.
+  2: apply H.
+  intros.
+  simpl in H2; intuition eauto.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (View_Predicate : V -> Prop)
+    (view : S -> V -> Prop)
+    (decode : DecodeM (V * T) T)
+    (decode_inv : CacheDecode -> Prop)
+    (subformat : FormatM S T)
+    (view_format : FormatM V T)
+  : (fun format =>
+       @CorrectRefinedDecoder S T cache V monoid Source_Predicate View_Predicate
+                       view format subformat decode decode_inv view_format)
+    with signature (EquivFormat --> impl)
+      as format_decode_refined_correct_refineEquiv.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation; intros.
+  split.
+  - eapply H0.
+  - intros; eapply H in H1.
+    eapply H0 in H1; eauto.
 Qed.

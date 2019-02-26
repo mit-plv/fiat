@@ -557,20 +557,18 @@ Lemma compose_PseudoChecksum_format_correct' {A}
       (len_format_B_OK : forall a' b ctx ctx',
           computes_to (format_B a' ctx) (b, ctx')
           -> length_ByteString b = len_format_B a')
+      View_Predicate
+      format_measure
   : cache_inv_Property P (fun P => P_inv P /\ P_invM P) ->
     (forall a, NPeano.modulo (len_format_A a) 8 = 0)
     -> (forall a, NPeano.modulo (len_format_B a) 8 = 0)
     -> (cache_inv_Property P P_invM ->
-        CorrectRefinedDecoder monoid predicate (fun _ => True) (fun _ _ => True)
-                              (format_A ++ format_unused_word 16 ++ format_B)%format
-                              subformat
-                            decode_measure P
-                            (fun n env t =>
-                               forall a t1 t2 (w : word 16),
-                                 predicate a
-                                 -> format_A a env t1
-                                 -> format_B a (addE (snd t1) 16) t2
-                                 -> len_format_A a + 16 + len_format_B a = n * 8 )) ->
+          CorrectRefinedDecoder monoid predicate View_Predicate
+                                (fun a n => len_format_A a + 16 + len_format_B a = n * 8)
+                                (format_A ++ format_unused_word 16 ++ format_B)%format
+                                subformat
+                                decode_measure P
+                                format_measure) ->
     forall decodeA : _ -> CacheDecode -> option (A * _ * CacheDecode),
       (cache_inv_Property P P_inv ->
        CorrectDecoder monoid predicate predicate eq (format_A ++ format_unused_word 16 ++ format_B)%format decodeA P (format_A ++ format_unused_word 16 ++ format_B)%format) ->
@@ -592,22 +590,46 @@ Proof.
   7: {
     eapply (composeChecksum_format_correct'
               A _ monoid _ 16 (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode)); try eassumption.
-    intros.
-    specialize (H2 (proj2 H)); destruct H2 as [H2 H2'].
-    split; eauto.
-    eapply injection_decode_correct with (inj := fun n => mult n 8).
-    eapply H2.
-    all: eauto.
-    simpl; intros.
-    rewrite -> unfold_computes in *.
-    intros; erewrite <- H5; eauto.
-    destruct t1; destruct t2; simpl in *.
-    rewrite <- unfold_computes in H7, H8.
-    rewrite (len_format_B_OK _ _ _ _ H8).
-    rewrite (len_format_A_OK _ _ _ _ H7).
-    unfold format_checksum; rewrite length_encode_word', measure_mempty;
-      omega.
-    eapply Pseudo_Checksum_Valid_bounded; eauto. }
+    - intros.
+      specialize (H2 H4); destruct H2 as [H2 H2'].
+      split; eauto.
+      eapply injection_decode_correct with (inj := fun n => mult n 8).
+      eapply H2.
+      + intros.
+        instantiate (1 := fun a n => len_format_A a + 16 + len_format_B a = n).
+        eapply H6.
+      + intros; instantiate (1 := fun v => View_Predicate (Nat.div v 8)).
+        cbv beta.
+        rewrite Nat.div_mul; eauto.
+      + intros; apply unfold_computes; intros.
+        split.
+        2: rewrite unfold_computes in H5; intuition.
+        intros.
+        rewrite unfold_computes in H5; intuition.
+        destruct t1; destruct t2; simpl fst in *; simpl snd in *.
+        erewrite len_format_A_OK; eauto.
+        2: apply unfold_computes; eauto.
+        unfold format_checksum; rewrite length_encode_word', measure_mempty.
+        simpl bin_measure; rewrite (len_format_B_OK _ _ _ _ H8).
+        assert ((format_A ++ format_unused_word 16 ++ format_B)%format a env ∋ (mappend b (mappend (encode_word' 16 (wzero _) mempty) b0), c0)).
+        { apply unfold_computes in H7.
+          apply unfold_computes in H8.
+          unfold sequence_Format, ComposeOpt.compose, Bind2; computes_to_econstructor; eauto.
+          computes_to_econstructor; eauto.
+          computes_to_econstructor; eauto.
+          unfold format_unused_word, Compose_Format; apply unfold_computes.
+          simpl; eexists (wzero 16); split.
+          unfold format_word; computes_to_econstructor.
+          apply unfold_computes; eauto.
+          computes_to_econstructor; eauto.
+          computes_to_econstructor; eauto.
+        }
+        eapply H2' in H5; destruct_ex.
+        destruct H5.
+        rewrite unfold_computes in H11.
+        erewrite <- H10; eauto.
+        omega.
+       - eapply Pseudo_Checksum_Valid_bounded; eauto. }
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.
   instantiate (1 := fun (n : nat) a =>

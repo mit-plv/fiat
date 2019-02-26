@@ -110,6 +110,7 @@ Lemma composeIf_format_correct'
       (View_Predicate : V -> Prop)
       (view : S -> V -> Prop)
       (formatT formatE : FormatM S T)
+      (subformat : FormatM S T)
       (decodeT decodeE : DecodeM (V * T) T)
       (decodeB : DecodeM (bool * T) T)
       (view_formatT view_formatE : FormatM V T)
@@ -132,15 +133,16 @@ Lemma composeIf_format_correct'
               view_formatE)
       (decodeB_pf :
          cache_inv_Property P P_invS
-         -> CorrectDecoder
+         -> CorrectRefinedDecoder
               monoid
               Source_Predicate
               (fun bs => True)
               (fun s bs => True)
               (composeIf formatT formatE)
+              subformat
               decodeB P
-              (fun bs env t => (forall s, (formatT s env t -> bs = true)
-                                          /\ (formatE s env t -> bs = false))))
+              (fun bs env t => (forall s t' env', (formatT s env (mappend (fst t) t', env') -> bs = true)
+                                               /\ (formatE s env (mappend (fst t) t', env') -> bs = false))))
   : CorrectDecoder
       monoid
       Source_Predicate
@@ -157,39 +159,56 @@ Proof.
   unfold cache_inv_Property in *; split.
   { intros env env' xenv data bin ext ? env_pm pred_pm com_pf.
     generalize com_pf; intro.
-    eapply decodeB_pf with (ext := ext) in com_pf; intuition eauto.
-    destruct_ex; split_and.
-    rewrite unfold_computes in H7.
+    subst.
     unfold composeIf, Union_Format, Bind2 in com_pf0.
     rewrite unfold_computes in com_pf0; destruct_ex.
-    specialize (H7 data); split_and.
-    rewrite H6.
-    revert H9; pattern x1; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl.
+    revert H; pattern x; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl.
     constructor; intros; [ | constructor; eauto].
-    - generalize (H11 H9); intros; subst.
-      eapply H0 in H9.
-      destruct_ex; split_and.
-      rewrite H9; eexists _, _; intuition eauto.
-      unfold composeIf, Union_Format; apply unfold_computes;
-        exists Fin.F1; simpl; eauto.
+    -  eapply CorrectRefinedDecoder_decode_partial in com_pf; eauto;
+         destruct_ex; split_and; intros.
+       2: eapply decodeB_pf; eauto.
+       subst.
+       eapply decodeB_pf in H2; eauto.
+       destruct_ex; split_and.
+       rewrite <- mappend_assoc.
+       rewrite H2; simpl.
+       rewrite unfold_computes in H3.
+       rewrite (proj1 (proj1 H3 _ _ _) H); simpl.
+       eapply decodeT_pf in H;
+         destruct_ex; split_and.
+       rewrite mappend_assoc.
+       rewrite H7; eexists _, _; intuition eauto.
+       unfold composeIf, Union_Format; apply unfold_computes;
+         exists Fin.F1; simpl; eauto.
       eauto.
       eauto.
       eauto.
-    - intros; generalize (H12 H9); intros; subst.
-      eapply H3 in H9.
-      destruct_ex; split_and.
-      rewrite H9; eexists _, _; intuition eauto.
-      unfold composeIf, Union_Format; apply unfold_computes;
-        exists (Fin.FS Fin.F1); simpl; eauto.
+      eauto.
+    - eapply CorrectRefinedDecoder_decode_partial in com_pf; eauto;
+         destruct_ex; split_and; intros.
+      2: eapply decodeB_pf; eauto.
+       subst.
+       eapply decodeB_pf in H1; eauto.
+       destruct_ex; split_and.
+       rewrite <- mappend_assoc.
+       rewrite H1; simpl.
+       rewrite unfold_computes in H5.
+       rewrite (proj2 (proj1 H5 _ _ _) H2); simpl.
+       eapply decodeE_pf in H2; destruct_ex; split_and.
+       rewrite mappend_assoc.
+       rewrite H7; eexists _, _; intuition eauto.
+       unfold composeIf, Union_Format; apply unfold_computes;
+         exists (Fin.FS Fin.F1); simpl; eauto.
       eauto.
       eauto.
       eauto.
-  } 
+      eauto.
+  }
   { intros.
     destruct (decodeB t env') as [ [ [? ?] ? ] | ] eqn: ? ;
       simpl in *; try discriminate.
     destruct b; simpl in *.
-    - eapply decodeT_pf in H1. 
+    - eapply decodeT_pf in H1.
       split_and; destruct_ex; intuition eauto; subst.
       eexists _, _; intuition eauto.
       unfold composeIf, Union_Format; apply unfold_computes;
@@ -197,7 +216,7 @@ Proof.
       intuition.
       eauto.
       intuition.
-    - eapply decodeE_pf in H1. 
+    - eapply decodeE_pf in H1.
       split_and; destruct_ex; intuition eauto; subst.
       eexists _, _; intuition eauto.
       unfold composeIf, Union_Format; apply unfold_computes;

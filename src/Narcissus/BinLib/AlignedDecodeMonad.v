@@ -569,6 +569,12 @@ Section AlignedDecodeM.
       rewrite <- H4; reflexivity.
   Qed.
 
+  (*Lemma DecodeMEquivAlignedDecodeM_Duplicate
+    : DecodeMEquivAlignedDecodeM (fun t env => Some (t, t, env))
+                                 (fun numBytes t =>
+                                    ReturnAlignedDecodeM (build_aligned_ByteString t) t).
+  Proof. *)
+
   Lemma AlignedDecode_assoc {A B C : Type}
         (decode_A : DecodeM (A * ByteString) ByteString)
         (decode_B : A -> DecodeM (B * ByteString) ByteString)
@@ -747,6 +753,21 @@ Section AlignedDecodeM.
   Defined.
 
 End AlignedDecodeM.
+
+Lemma AlignedDecodeBindDuplicate {A C : Type}
+      {cache : Cache}
+      (decode_A : DecodeM (A * ByteString) ByteString)
+      (t : ByteString -> A -> DecodeM (C * ByteString) ByteString)
+      (t' : forall {sz'}, ByteBuffer.t sz' -> forall {numBytes}, AlignedDecodeM C numBytes)
+  : (forall {sz} (v0 : ByteBuffer.t sz),
+        DecodeMEquivAlignedDecodeM (fun v cd => `(a, t', cd') <- decode_A v cd;
+                                                  t (build_aligned_ByteString v0) a t' cd')
+                                   (@t' _ v0))
+    -> DecodeMEquivAlignedDecodeM (fun v cd => `(a, t', cd') <- decode_A v cd;
+                                                 t v a t' cd')
+                                  (fun numBytes v0 => (@t' _ v0 _ v0)).
+Proof.
+Admitted.
 
 Delimit Scope AlignedDecodeM_scope with AlignedDecodeM.
 Notation "x <- y ; z" := (BindAlignedDecodeM y (fun x => z)) : AlignedDecodeM_scope.

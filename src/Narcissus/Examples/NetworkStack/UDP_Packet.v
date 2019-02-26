@@ -73,160 +73,34 @@ Section UDP_Decoder.
   Definition UDP_encoder_impl r {sz} v :=
     Eval simpl in (projT1 UDP_encoder sz v 0 r tt).
 
-  Definition UDP_Packet_format_measure
-    : DecodeM (nat * ByteString) ByteString :=
-    fun t env =>
+  Lemma UDP_Packet_measure_decode_OK
+    : forall P P_inv,
+      {subformat : _ &
+                   cache_inv_Property P P_inv ->
+  CorrectRefinedDecoder monoid UDP_Packet_OK (constant True) (constant (constant True))
+    ((format_word ◦ SourcePort ++
+      format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload) ++
+                                                                                                         format_unused_word 16 ++ format_bytebuffer ◦ Payload)
+    subformat
+    (* format_word ◦ SourcePort ++
+                format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload)*)
+    (fun t env =>
       `(_, t', env') <- decode_word (sz := 16) t env;
       `(_, t', env') <- decode_word (sz := 16) t' env';
-      decode_nat 16 t' env'.
-
-  Lemma UDP_Packet_Header_Len_OK
-    : forall P P_inv,
-      cache_inv_Property P P_inv ->
-      CorrectDecoder monoid UDP_Packet_OK (constant True) (constant (constant True))
-    (format_word ◦ SourcePort ++
-     format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload
-     ThenChecksum Pseudo_Checksum_Valid srcAddr destAddr udpLength (natToWord 8 17) OfSize 16
-     ThenCarryOn format_bytebuffer ◦ Payload) UDP_Packet_format_measure P
+      decode_nat 16 t' env')
+    P
     (fun (n : nat) (env : CacheFormat) =>
      constant (forall (a : UDP_Packet) (t1 t2 : ByteString * CacheFormat),
                word 16 ->
+               UDP_Packet_OK a ->
                (format_word ◦ SourcePort ++
-                format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload)
-                 a env t1 ->
+                format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload) a env t1 ->
                (format_bytebuffer ◦ Payload) a (addE (snd t1) 16) t2 ->
-               bin_measure (fst t1) + 16 + bin_measure (fst t2) = n * 8)).
+               (constant (16 + (16 + 16))) a + 16 + (fun a' : UDP_Packet => 8 * projT1 (Payload a')) a = n * 8))}.
   Proof.
   Admitted.
     (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
-
-  (*Lemma UDP_Packet_Header_Len_OK
-    : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
-      (format_word ◦ SourcePort ++
-        format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload) a ctx ∋
-       (b, ctx') ->
-      (format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') ->
-      UDP_Packet_OK a ->
-      (fun _ : UDP_Packet => 16 + (16 + 16)) a + (fun a' : UDP_Packet => 8 * projT1 (Payload a')) a + 16 =
-      8 * UDP_Packet_format_measure
-        (mappend
-           (mappend b
-                    (mappend (format_checksum ByteString AlignedByteString.ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
-  Proof.
-    intros; simpl.
-    clear H0.
-    pose proof mappend_assoc as H''; simpl in H'';
-      rewrite <- !H''.
-    unfold UDP_Packet_format_measure.
-    unfold sequence_Format at 1 in H.
-    eapply computes_to_compose_proj_decode_unused_word in H;
-      let H' := fresh in
-      destruct H as [? [? [? H'] ] ]; rewrite H'.
-    unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
-    unfold sequence_Format at 1 in H.
-    eapply computes_to_compose_proj_decode_unused_word in H;
-      let H' := fresh in
-      destruct H as [? [? [? H'] ] ]; rewrite H'.
-    unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
-    eapply EquivFormat_Projection_Format in H.
-    eapply EquivFormat_Projection_Format in H.
-    eapply computes_to_proj_decode_nat in H;
-      rewrite H.
-    unfold fst.
-    rewrite wordToNat_natToWord_idempotent; try reflexivity.
-    rewrite !Plus.plus_assoc.
-    clear; unfold Basics.compose; simpl.
-    destruct (Payload a); simpl; omega.
-    rewrite <- BinNat.N.compare_lt_iff.
-    rewrite Nnat.N2Nat.inj_compare.
-    rewrite Nnat.Nat2N.id.
-    rewrite <- Compare_dec.nat_compare_lt.
-    rewrite Npow2_nat.
-    unfold Basics.compose.
-    unfold UDP_Packet_OK in H1.
-    revert H1; destruct (Payload a); simpl projT1.
-    intros; omega.
-  Qed. *)
-
-  (* Definition UDP_Packet_format_measure (udp_b : ByteString) *)
-  (*   : nat := *)
-  (*   match (`(u, b') <- decode_unused_word' 16 udp_b; *)
-  (*            `(u, b') <- decode_unused_word' 16 b'; *)
-  (*            decode_word' 16 b') with *)
-  (*   | Some n => wordToNat (fst n) *)
-  (*   | None => 0 *)
-  (*   end. *)
-
-  (* (* Step Two and a Half: Add some simple facts about correct packets *)
-  (*  for the decoder automation. *) *)
-
-  (* Lemma UDP_Packet_Header_Len_OK *)
-  (*   : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString), *)
-  (*     (format_word ◦ SourcePort ++ *)
-  (*       format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload) a ctx ∋ *)
-  (*      (b, ctx') -> *)
-  (*     (format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') -> *)
-  (*     UDP_Packet_OK a -> *)
-  (*     (fun _ : UDP_Packet => 16 + (16 + 16)) a + (fun a' : UDP_Packet => 8 * projT1 (Payload a')) a + 16 = *)
-  (*     8 * UDP_Packet_format_measure *)
-  (*       (mappend *)
-  (*          (mappend b *)
-  (*                   (mappend (format_checksum ByteString AlignedByteString.ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c) b'')) ext). *)
-  (* Proof. *)
-  (*   intros; simpl. *)
-  (*   clear H0. *)
-  (*   pose proof mappend_assoc as H''; simpl in H''; *)
-  (*     rewrite <- !H''. *)
-  (*   unfold UDP_Packet_format_measure. *)
-  (*   unfold sequence_Format at 1 in H. *)
-  (*   eapply computes_to_compose_proj_decode_unused_word in H; *)
-  (*     let H' := fresh in *)
-  (*     destruct H as [? [? [? H'] ] ]; rewrite H'. *)
-  (*   unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else. *)
-  (*   unfold sequence_Format at 1 in H. *)
-  (*   eapply computes_to_compose_proj_decode_unused_word in H; *)
-  (*     let H' := fresh in *)
-  (*     destruct H as [? [? [? H'] ] ]; rewrite H'. *)
-  (*   unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else. *)
-  (*   eapply EquivFormat_Projection_Format in H. *)
-  (*   eapply EquivFormat_Projection_Format in H. *)
-  (*   eapply computes_to_proj_decode_nat in H; *)
-  (*     rewrite H. *)
-  (*   unfold fst. *)
-  (*   rewrite wordToNat_natToWord_idempotent; try reflexivity. *)
-  (*   rewrite !Plus.plus_assoc. *)
-  (*   clear; unfold Basics.compose; simpl. *)
-  (*   destruct (Payload a); simpl; omega. *)
-  (*   rewrite <- BinNat.N.compare_lt_iff. *)
-  (*   rewrite Nnat.N2Nat.inj_compare. *)
-  (*   rewrite Nnat.Nat2N.id. *)
-  (*   rewrite <- Compare_dec.nat_compare_lt. *)
-  (*   rewrite Npow2_nat. *)
-  (*   unfold Basics.compose. *)
-  (*   unfold UDP_Packet_OK in H1. *)
-  (*   revert H1; destruct (Payload a); simpl projT1. *)
-  (*   intros; omega. *)
-  (* Qed. *)
-
-  Definition aligned_UDP_Packet_encoded_measure
-             {sz} (ipv4_b : ByteBuffer.t sz)
-     :=
-    match nth_opt ipv4_b 4, nth_opt ipv4_b 5 with
-    | Some n, Some m => Vector.cons _ n _ (Vector.cons _ m _ (Vector.nil _))
-    | _, _ => Vector.cons _ (wzero _) _ (Vector.cons _ (wzero _) _ (Vector.nil _))
-    end.
-
-  Definition aligned_UDP_Packet_encoded_Len
-             {sz} (v : ByteBuffer.t sz)
-    : nat :=
-    wordToNat (Word.combine (Vector.hd (aligned_UDP_Packet_encoded_measure v))
-                            (Vector.hd (Vector.tl (aligned_UDP_Packet_encoded_measure v)))).
-
-  Definition aligned_UDP_Packet_checksum {sz} :=
-    @aligned_Pseudo_checksum srcAddr destAddr udpLength (natToWord 8 17) sz.
-
-  Arguments GetCurrentBytes : simpl never.
 
   Ltac apply_new_base_rule ::=
     match goal with
@@ -246,7 +120,7 @@ Section UDP_Decoder.
       | exact H
       | solve_mod_8
       | solve_mod_8
-      |
+      | eapply (projT2 (UDP_Packet_measure_decode_OK _ _))
       | intros; NormalizeFormats.normalize_format; apply_rules ]
   end.
 
@@ -258,25 +132,7 @@ Section UDP_Decoder.
     : CorrectAlignedDecoderFor UDP_Packet_OK UDP_Packet_Format.
   Proof.
     synthesize_aligned_decoder.
-    intros.
-    simpl.
-    split.
-    instantiate (3 := format_word ◦ SourcePort ++
-                format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload).
-    2: {
-      intros.
-      unfold sequence_Format at 1, ComposeOpt.compose, Bind2 in H1;
-        computes_to_inv; injections.
-      destruct v.
-      eexists _, _, _; split; eauto.
-      }
-    instantiate (2 := UDP_Packet_format_measure).
-    2: synthesize_cache_invariant.
-    admit.
-    unfold UDP_Packet_format_measure.
-    cbv beta; unfold decode_nat, sequence_Decode.
-    optimize_decoder_impl.
-  Admitted.
+  Defined.
 
   (* Step Four: Extract the decoder function, and have /it/ start decoding
    at the start of the provided ByteString [v]. *)

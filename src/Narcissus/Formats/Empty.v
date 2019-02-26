@@ -76,3 +76,37 @@ Proof.
       rewrite <- (H _ H2); eassumption.
     + discriminate.
 Qed.
+
+Lemma ExtractViewFromRefined {S V T}
+  : forall (cache : Cache)
+           (monoid : Monoid T)
+           (Source_Predicate : S -> Prop)
+           (View_Predicate : V -> Prop)
+           (view : S -> V -> Prop)
+           (format : FormatM S T)
+           (decode_inv : CacheDecode -> Prop)
+           (v : V)
+           (v_OK : View_Predicate v),
+    (forall s', Source_Predicate s' ->
+                view s' v)
+    -> CorrectRefinedDecoder
+         monoid
+         Source_Predicate
+         View_Predicate
+         view
+         format
+         empty_Format
+         (fun t' ctxD => Some (v, t', ctxD))
+         decode_inv
+         empty_Format.
+Proof.
+  intros; split.
+  - eapply ExtractViewFrom; eauto.
+    intros; apply unfold_computes; intros.
+    intuition.
+    unfold empty_Format; apply unfold_computes; eauto.
+  - intros.
+    eexists mempty, t, env; split.
+    + rewrite mempty_left; reflexivity.
+    + computes_to_econstructor.
+Qed.

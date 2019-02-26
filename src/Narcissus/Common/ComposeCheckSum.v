@@ -180,18 +180,21 @@ Section Checksum.
         (format1 format2 : FormatM A B)
         (subformat : FormatM A B)
         (decode_measure : DecodeM (nat * B) B)
+        view
+        View_Predicate
         (decode_measure_OK
            : cache_inv_Property P P_invM ->
-             CorrectRefinedDecoder monoid predicate (fun _ => True) (fun _ _ => True)
+             CorrectRefinedDecoder monoid predicate View_Predicate view
                                    (format1 ++ format_unused_word checksum_sz ++ format2)
                                    subformat
                             decode_measure P
                             (fun n env t =>
-                               forall a t1 t2 (w : word checksum_sz),                                                     predicate a
+                               forall a t1 t2 (w : word checksum_sz),
+                                 predicate a
                                  -> format1 a env t1
                                  -> format2 a (addE (snd t1) checksum_sz) t2
                                  -> bin_measure (fst t1) + (bin_measure (format_checksum w)
-                                    + bin_measure (fst t2)) = n))
+                                                            + bin_measure (fst t2)) = n))
         (decodeA : B -> CacheDecode -> option (A * B * CacheDecode))
         (decodeA_pf :
            cache_inv_Property P P_inv
@@ -261,8 +264,8 @@ Section Checksum.
           computes_to_inv; destruct v; destruct v0; injections.
         simpl in com_pf''.
         rewrite unfold_computes in H3.
-        specialize (H3 _ _ _ v1 pred_pm com_pf com_pf'); simpl in H3.
-        rewrite <- H3.
+        specialize (proj1 H3 _ _ _ v1 pred_pm com_pf com_pf'); simpl in H3.
+        intros; rewrite <- H5.
         repeat setoid_rewrite mappend_measure in com_pf''.
         rewrite mappend_assoc, <- H7.
         eauto. }
@@ -295,10 +298,10 @@ Section Checksum.
         eapply H6 in Heqo; eauto.
         split_and; destruct_ex; split_and.
         rewrite unfold_computes in H12.
-        specialize (H12 _ _ _ x1 H8 H5 H5''0).
-        simpl in H12.
+        specialize (proj1 H12 _ _ _ x1 H8 H5 H5''0); intro.
+        simpl in H14.
         repeat setoid_rewrite mappend_measure.
-        rewrite H12.
+        rewrite H14.
         unfold format_checksum.
         eapply c0.
     }

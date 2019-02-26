@@ -729,6 +729,77 @@ Proof.
     unfold flip, EquivFormat; reflexivity.
 Qed.
 
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (decode_inv : CacheDecode -> Prop)
+  : (fun Source_Predicate View_Predicate view format decode =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv)
+    with signature (pointwise_relation _ iff
+                                       --> pointwise_relation _ (flip impl)
+                                       --> pointwise_relation _ (pointwise_relation _ (flip impl))
+                                       --> EquivFormat
+                                       --> pointwise_relation _ (pointwise_relation _ eq)
+                                       --> EquivFormat
+                                       --> impl)
+      as format_decode_correct_alt'.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder; intros.
+  intuition eauto; intros.
+  - setoid_rewrite H3.
+    eapply H2 in H9.
+    eapply H6 in H9.
+    destruct_ex; split_and;
+      eexists _, _; intuition eauto.
+    eapply H4; eauto.
+    eauto.
+    eauto.
+    eapply H; eauto.
+  - eapply H7; eauto.
+    rewrite <- H3; eauto.
+  - rewrite H3 in H9.
+    eapply H7 in H8; eauto.
+    split_and; destruct_ex; split_and; subst.
+    eexists _, _; intuition eauto.
+    eapply H4; eauto.
+Qed.
+
+Lemma weaken_view_pred
+      S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (decode_inv : CacheDecode -> Prop)
+    (View_Predicate : V -> Prop)
+    (view : S -> V -> Prop)
+    (format : FormatM S T)
+    decode
+    (Source_Predicate : S -> Prop)
+    (View_Predicate_OK : forall s v,
+        Source_Predicate s ->
+        view s v ->
+        View_Predicate v)
+  : forall x y : V -> CacheFormat -> T * CacheFormat -> Prop,
+    (forall (a : V) (a0 : CacheFormat) (a1 : T * CacheFormat),
+        View_Predicate a -> x a a0 a1 -> y a a0 a1) ->
+  CorrectDecoder monoid Source_Predicate View_Predicate view format decode decode_inv x ->
+  CorrectDecoder monoid Source_Predicate View_Predicate view format decode decode_inv y.
+Proof.
+  Local Transparent CorrectDecoder.
+  unfold CorrectDecoder.
+  intuition eauto; intros.
+  - eapply H1 in H4.
+    destruct_ex; split_and.
+    rewrite H5; eexists _, _; intuition eauto.
+    apply unfold_computes; eapply H; eauto.
+    all: eauto.
+  - eapply H2 in H4; intuition eauto.
+  - eapply H2 in H4; intuition eauto.
+    destruct_ex; split_and; subst; eexists _, _; intuition eauto.
+    apply unfold_computes; eapply H; eauto.
+Qed.
+
 Section DecodeWMeasure.
   Context {S : Type}. (* s type *)
   Context {T : Type}. (* t type *)

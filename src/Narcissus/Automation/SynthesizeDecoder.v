@@ -120,6 +120,7 @@ Ltac apply_base_rule :=
 Ltac apply_new_combinator_rule := fail.
 
 (* The rules for higher-order types (lists, sums, sequences. *)
+
 Ltac apply_combinator_rule'
      option_fail_Some_format
 
@@ -231,16 +232,18 @@ Ltac apply_combinator_rule'
           sequence_fail_first_format
           sequence_fail_invariant
 
-  | H : cache_inv_Property ?P ?P_inv |- CorrectDecoder ?mnd _ _ _ (Either _ Or _)%format _ _ _ =>
+  | H : cache_inv_Property ?mnd _
+    |- CorrectDecoder _ _ _ _ (Either ?fmt1 Or ?format2) _ _ _ =>
     sequence_four_tactics
-      ltac:(eapply (composeIf_format_correct H); clear H; intros)
-      ltac:(apply_rules)
-      ltac:(apply_rules)
-      ltac:(solve [intros; intuition (eauto with bin_split_hints)])
-      ltac:(solve [intros; intuition (eauto with bin_split_hints) ])
+      ltac:(eapply composeIf_format_correct')
+      ltac:(apply H; intros)
+      ltac:(intros; apply_rules)
+      ltac:(intros; apply_rules)
+      ltac:(intros; apply_rules)
              union_on_fail_first_format
              union_on_fail_second_format
              union_on_fail_first_check
+
       end
     | match goal with
   (* Here is the hook for new decoder rules *)

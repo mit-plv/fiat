@@ -24,7 +24,8 @@ Ltac start_synthesizing_decoder :=
 
 Ltac align_decoders_step :=
   first [
-      eapply @AlignedDecodeNatM; intros
+      eapply @AlignedDecodeBindDuplicate; intros
+    | eapply @AlignedDecodeNatM; intros
     | eapply @AlignedDecodeByteBufferM; intros; eauto
     | eapply @AlignedDecodeBind2CharM; intros; eauto
     | eapply @AlignedDecodeBindCharM; intros; eauto
@@ -52,6 +53,12 @@ Ltac align_decoders_step :=
     | eapply @Return_DecodeMEquivAlignedDecodeM
     | eapply @AlignedDecode_Sumb
     | eapply AlignedDecode_ifopt; intros
+    | match goal with
+      |- DecodeMEquivAlignedDecodeM (fun b c => If_Opt_Then_Else _ _ _) _ =>
+      eapply DecodeMEquivAlignedDecodeM_trans;
+        [ eapply AlignedDecode_ifopt | intros; reflexivity | intros; higher_order_reflexivity ];
+        intros
+    end
     | let H := fresh in pose proof @AlignedDecode_if_Sumb_dep as H;
                         eapply H; clear H;
                         [ solve [eauto] | solve [eauto] | | ]
@@ -76,7 +83,8 @@ Ltac synthesize_aligned_decoder :=
     ltac:(start_synthesizing_decoder)
            ltac:(NormalizeFormats.normalize_format; apply_rules)
                   ltac:(cbv beta; synthesize_cache_invariant)
-                         ltac:(cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl)
+                         ltac:(cbv beta; unfold decode_nat, sequence_Decode;
+                               optimize_decoder_impl)
                                 ltac:(cbv beta; align_decoders)
     continue_on_fail_2
     continue_on_fail_1
@@ -554,9 +562,11 @@ Ltac synthesize_aligned_encoder :=
   normalize_encoder_format;
   repeat align_encoder_step.
 
-Global Opaque weqb.
+
 Global Opaque cache_inv_Property.
 Global Opaque CorrectDecoder.
+Arguments word_indexed : simpl never.
+Arguments weqb : simpl never.
 
 Ltac encoder_reflexivity :=
   match goal with
