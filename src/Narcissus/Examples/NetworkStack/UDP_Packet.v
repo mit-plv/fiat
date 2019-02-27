@@ -73,32 +73,6 @@ Section UDP_Decoder.
   Definition UDP_encoder_impl r {sz} v :=
     Eval simpl in (projT1 UDP_encoder sz v 0 r tt).
 
-  Lemma UDP_Packet_measure_decode_OK
-    : forall P P_inv,
-      {subformat : _ &
-                   cache_inv_Property P P_inv ->
-  CorrectRefinedDecoder monoid UDP_Packet_OK (constant True) (constant (constant True))
-    ((format_word ◦ SourcePort ++
-      format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload) ++
-                                                                                                         format_unused_word 16 ++ format_bytebuffer ◦ Payload)
-    subformat
-    (* format_word ◦ SourcePort ++
-                format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload)*)
-    (fun t env =>
-      `(_, t', env') <- decode_word (sz := 16) t env;
-      `(_, t', env') <- decode_word (sz := 16) t' env';
-      decode_nat 16 t' env')
-    P
-    (fun (n : nat) (env : CacheFormat) =>
-     constant (forall (a : UDP_Packet) (t1 t2 : ByteString * CacheFormat),
-               word 16 ->
-               UDP_Packet_OK a ->
-               (format_word ◦ SourcePort ++
-                format_word ◦ DestPort ++ ((format_nat 16 ◦ Init.Nat.add 8) ◦ projT1 (P:=ByteBuffer.t)) ◦ Payload) a env t1 ->
-               (format_bytebuffer ◦ Payload) a (addE (snd t1) 16) t2 ->
-               (constant (16 + (16 + 16))) a + 16 + (fun a' : UDP_Packet => 8 * projT1 (Payload a')) a = n * 8))}.
-  Proof.
-  Admitted.
     (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
@@ -120,7 +94,7 @@ Section UDP_Decoder.
       | exact H
       | solve_mod_8
       | solve_mod_8
-      | eapply (projT2 (UDP_Packet_measure_decode_OK _ _))
+      |
       | intros; NormalizeFormats.normalize_format; apply_rules ]
   end.
 
@@ -132,6 +106,39 @@ Section UDP_Decoder.
     : CorrectAlignedDecoderFor UDP_Packet_OK UDP_Packet_Format.
   Proof.
     synthesize_aligned_decoder.
+    { intros; split.
+      match goal with
+      | |- CorrectRefinedDecoder ?monoid _ _ _ _ _ _ _ _ =>
+        intros; eapply format_decode_refined_correct_refineEquiv; unfold flip;
+          repeat (normalize_step monoid)
+      end.
+      eapply format_sequence_refined_correct.
+      apply H0.
+      intros; apply_rules.
+      solve_data_inv.
+      intros.
+      eapply format_sequence_refined_correct.
+      apply H1.
+      intros; apply_rules.
+      intros; split_and; simpl; eauto.
+      intros.
+      eapply format_sequence_refined_correct.
+      apply H3.
+      intros; apply_rules.
+      intros; split_and; simpl; eauto.
+      intros.
+      intros; eapply ExtractViewFromRefined with (View_Predicate := fun _ => True); eauto.
+      intros; intuition.
+      unfold Basics.compose, IsProj in *.
+      instantiate (1 := v2).
+      unfold UDP_Packet_OK in *; subst.
+      rewrite Nat.mul_add_distr_r.
+      unfold mult at 2; simpl; rewrite mult_comm.
+      reflexivity.
+      solve_Prefix_Format. }
+    synthesize_cache_invariant.
+    cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
+    align_decoders.
   Defined.
 
   (* Step Four: Extract the decoder function, and have /it/ start decoding

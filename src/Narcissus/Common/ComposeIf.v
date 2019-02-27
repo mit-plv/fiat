@@ -143,7 +143,8 @@ Lemma composeIf_format_correct'
               decodeB P
               (fun bs env t => (forall s t' env', Source_Predicate s ->
                                           (formatT s env (mappend (fst t) t', env') -> bs = true)
-                                          /\ (formatE s env (mappend (fst t) t', env') -> bs = false))))
+                                          /\ (formatE s env (mappend (fst t) t', env') -> bs = false)))
+           /\ Prefix_Format _ (composeIf formatT formatE) subformat)
   : CorrectDecoder
       monoid
       Source_Predicate
@@ -165,11 +166,10 @@ Proof.
     rewrite unfold_computes in com_pf0; destruct_ex.
     revert H; pattern x; apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl.
     constructor; intros; [ | constructor; eauto].
-    -  eapply CorrectRefinedDecoder_decode_partial in com_pf; eauto;
+    -  eapply (proj2 (decodeB_pf (proj2 (proj2 P_inv_pf)))) in com_pf; eauto;
          destruct_ex; split_and; intros.
-       2: eapply decodeB_pf; eauto.
        subst.
-       eapply decodeB_pf in H2; eauto.
+       eapply H0 in H2; eauto.
        destruct_ex; split_and.
        rewrite <- mappend_assoc.
        rewrite H2; simpl.
@@ -178,18 +178,17 @@ Proof.
        eapply decodeT_pf in H;
          destruct_ex; split_and.
        rewrite mappend_assoc.
-       rewrite H7; eexists _, _; intuition eauto.
+       rewrite H9; eexists _, _; intuition eauto.
        unfold composeIf, Union_Format; apply unfold_computes;
          exists Fin.F1; simpl; eauto.
       eauto.
       eauto.
       eauto.
       eauto.
-    - eapply CorrectRefinedDecoder_decode_partial in com_pf; eauto;
+    - eapply (proj2 (decodeB_pf (proj2 (proj2 P_inv_pf)))) in com_pf; eauto;
          destruct_ex; split_and; intros.
-      2: eapply decodeB_pf; eauto.
        subst.
-       eapply decodeB_pf in H1; eauto.
+       eapply H in H1; eauto.
        destruct_ex; split_and.
        rewrite <- mappend_assoc.
        rewrite H1; simpl.
@@ -197,7 +196,7 @@ Proof.
        rewrite (proj2 (proj1 H5 _ _ _ pred_pm) H2); simpl.
        eapply decodeE_pf in H2; destruct_ex; split_and.
        rewrite mappend_assoc.
-       rewrite H7; eexists _, _; intuition eauto.
+       rewrite H9; eexists _, _; intuition eauto.
        unfold composeIf, Union_Format; apply unfold_computes;
          exists (Fin.FS Fin.F1); simpl; eauto.
       eauto.

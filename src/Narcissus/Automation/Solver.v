@@ -332,3 +332,56 @@ Ltac idtac' :=
   match goal with
   | |- _ => idtac (* I actually need this idtac for some unknown reason *)
   end.
+
+(* May move to somewhere else. *)
+Lemma Prefix_Format_front
+      {S T : Type}
+      {store : Cache}
+      (monoid : Monoid T)
+      (format subformat format' : FormatM S T)
+  : Prefix_Format monoid format subformat ->
+    Prefix_Format monoid (format' ++ format) (format' ++ subformat).
+Proof.
+  unfold Prefix_Format, sequence_Format, ComposeOpt.compose, Bind2; intros.
+  computes_to_inv. destruct_conjs. simpl in *. injections.
+  edestruct H; eauto. destruct_conjs. subst.
+  eexists _, _, _. split; cycle 1.
+  computes_to_econstructor; eauto.
+  simpl. apply mappend_assoc.
+Qed.
+
+Lemma Prefix_Format_empty
+      {S T : Type}
+      {store : Cache}
+      (monoid : Monoid T)
+      (format : FormatM S T)
+  : Prefix_Format monoid format empty_Format.
+Proof.
+  unfold Prefix_Format, empty_Format; intros.
+  eexists _, _, _. split; cycle 1.
+  computes_to_econstructor; eauto.
+  symmetry. apply mempty_left.
+Qed.
+
+Corollary Prefix_Format_prefix
+      {S T : Type}
+      {store : Cache}
+      (monoid : Monoid T)
+      (format subformat : FormatM S T)
+  : Prefix_Format monoid (subformat ++ format) subformat.
+Proof.
+  eapply prefix_format_refineEquiv; unfold flip.
+  unfold EquivFormat. reflexivity.
+  apply EquivFormat_sym. eapply sequence_mempty'.
+  apply Prefix_Format_front.
+  apply Prefix_Format_empty.
+Qed.
+
+Ltac solve_Prefix_Format :=
+  normalize_format;
+  repeat
+    match goal with
+    | |- Prefix_Format _ _ _ => first [apply Prefix_Format_front
+                                    | apply Prefix_Format_empty
+                                    | apply Prefix_Format_prefix]
+    end.

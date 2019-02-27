@@ -180,21 +180,26 @@ Section Checksum.
         (format1 format2 : FormatM A B)
         (subformat : FormatM A B)
         (decode_measure : DecodeM (nat * B) B)
-        view
+        (view : A -> nat -> Prop)
         View_Predicate
+        view_format
         (decode_measure_OK
            : cache_inv_Property P P_invM ->
-             CorrectRefinedDecoder monoid predicate View_Predicate view
+             CorrectRefinedDecoder monoid predicate View_Predicate
+                                   view
                                    (format1 ++ format_unused_word checksum_sz ++ format2)
                                    subformat
-                            decode_measure P
-                            (fun n env t =>
-                               forall a t1 t2 (w : word checksum_sz),
-                                 predicate a
-                                 -> format1 a env t1
-                                 -> format2 a (addE (snd t1) checksum_sz) t2
-                                 -> bin_measure (fst t1) + (bin_measure (format_checksum w)
-                                                            + bin_measure (fst t2)) = n))
+                                   decode_measure P
+                                   view_format
+             /\ Prefix_Format _ (format1 ++ format_unused_word checksum_sz ++ format2) subformat)
+        (view_OK : forall s v,
+            view s v ->
+            forall env t1 t2 (w : word checksum_sz),
+              predicate s
+              -> format1 s env t1
+              -> format2 s (addE (snd t1) checksum_sz) t2
+              -> bin_measure (fst t1) + (bin_measure (format_checksum w)
+                                         + bin_measure (fst t2)) = v)
         (decodeA : B -> CacheDecode -> option (A * B * CacheDecode))
         (decodeA_pf :
            cache_inv_Property P P_inv
@@ -242,19 +247,20 @@ Section Checksum.
           simpl.
           rewrite <- com_pf'''; computes_to_econstructor. }
         generalize H as H'; intro.
-        eapply CorrectRefinedDecoder_decode_partial in H; eauto.
+        unfold Prefix_Format in decode_measure_OK.
+        eapply (proj2 decode_measure_OK) in H; eauto.
         destruct H as [? [? [? [bin_eq com_pf0] ] ] ].
         destruct_ex; split_and; subst.
-        eapply decode_measure_OK in com_pf0; eauto.
+        eapply H in com_pf0; eauto.
         destruct_ex; split_and.
         rewrite <- (mappend_assoc).
-        setoid_rewrite H2 ; simpl.
+        setoid_rewrite H4 ; simpl.
         simpl in *.
         find_if_inside.
       - intuition.
-        eapply H5 in H'; destruct_ex; split_and.
+        eapply H7 in H'; destruct_ex; split_and.
         rewrite mappend_assoc.
-        rewrite H8; eexists _, _; intuition eauto.
+        rewrite H10; eexists _, _; intuition eauto.
         subst. eauto.
         eauto.
         eauto.
@@ -263,18 +269,37 @@ Section Checksum.
         unfold composeChecksum, sequence_Format, Bind2 in com_pf;
           computes_to_inv; destruct v; destruct v0; injections.
         simpl in com_pf''.
-        rewrite unfold_computes in H3.
-        specialize (proj1 H3 _ _ _ v1 pred_pm com_pf com_pf'); simpl in H3.
-        intros; rewrite <- H5.
+        rewrite unfold_computes in H5.
+        rewrite mappend_assoc, <- H6.
+        rewrite unfold_computes in com_pf, com_pf'.
+        destruct H5.
+        eapply view_OK in H3; eauto.
+        simpl in H3.
+        rewrite <- H3.
+        repeat setoid_rewrite mappend_measure in com_pf''.
+        eauto.
+        (*
+        forall a t1 t2 (w : word checksum_sz),
+                                 predicate a
+                                 -> format1 a env t1
+                                 -> format2 a (addE (snd t1) checksum_sz) t2
+                                 -> bin_measure (fst t1) + (bin_measure (format_checksum w)
+                                                            + bin_measure (fst t2)) = n) *)
+
+        (*specialize (proj1 H3 _ _ _ v1 pred_pm com_pf com_pf'); simpl in H3.
+        simpl; intros. rewrite <- H5.
         repeat setoid_rewrite mappend_measure in com_pf''.
         rewrite mappend_assoc, <- H7.
-        eauto. }
+        eauto. *) }
     { intros.
       destruct (decode_measure t env') as [ [ [? ?] ?] | ] eqn: ? ;
         simpl in *; try discriminate.
       find_if_inside; try discriminate.
       - eapply decodeA_pf in H1; intuition eauto.
         destruct H5 as [? [? [? [? [? ?] ] ] ] ].
+        rename H8 into H'.
+        specialize (H' _ _ _ _ H5).
+        (* assert (exists b', b = mappend b' x) by admit. *)
         subst.
         unfold sequence_Format, compose, Bind2 in H5.
         computes_to_inv; subst.
@@ -283,7 +308,7 @@ Section Checksum.
         unfold format_unused_word, Compose_Format in H5'.
         apply (proj1 (unfold_computes _ _)) in H5'; simpl in H5'.
         destruct_ex; intuition.
-        unfold format_word in H10; computes_to_inv; injections.
+        unfold format_word in H11; computes_to_inv; injections.
         eexists _, _; split.
         computes_to_econstructor; eauto.
         computes_to_econstructor; simpl; eauto.
@@ -295,16 +320,33 @@ Section Checksum.
         eassumption.
         2: computes_to_econstructor.
         2: intuition.
-        eapply H6 in Heqo; eauto.
+        generalize Heqo as H'; intro.
+        eapply H7 in Heqo; eauto.
         split_and; destruct_ex; split_and.
-        rewrite unfold_computes in H12.
-        specialize (proj1 H12 _ _ _ x1 H8 H5 H5''0); intro.
-        simpl in H14.
+        rewrite unfold_computes in H14.
+        fold (format_checksum x4) in H8.
+        rewrite <- H8 in c0.
+        2: rewrite <- H8; reflexivity.
+        instantiate (1 := t').
+        replace (bin_measure (mappend b0 (mappend (format_checksum x4) b2))) with n.
+        eauto.
+        rewrite <- H8 in H'.
+        eapply H7 in H13.
+        destruct_ex; split_and.
+        rewrite H8 in H'.
+        rewrite <- mappend_assoc in H'.
+        rewrite H16 in H'.
+        injections.
+        destruct H18.
+        rewrite unfold_computes in H5; rewrite unfold_computes in H5''0.
+        eapply view_OK in H14; eauto.
+        rewrite <- H14.
+        simpl.
         repeat setoid_rewrite mappend_measure.
-        rewrite H14.
-        unfold format_checksum.
-        eapply c0.
-    }
+        reflexivity.
+        auto.
+        auto.
+        auto. }
   Qed.
 
 End Checksum.
