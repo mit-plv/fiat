@@ -104,7 +104,7 @@ Section EthernetPacketDecoder.
         (mappend (fst t) t', env') -> bs = true) /\
      ((format_enum EtherTypeCodes ◦ EthType ++ empty_Format) s env (mappend (fst t) t', env') -> bs = false)).
   Proof.
-    split; intros.
+    intros.
     - econstructor; intros.
       + unfold format_unused_word, Compose_Format in H1.
         rewrite unfold_computes in H1; destruct_ex; split_and.
@@ -204,7 +204,7 @@ Section EthernetPacketDecoder.
                  end; simpl in H10; try discriminate.
           Discharge_NoDupVector.
         * apply unfold_computes; intros; intros; split; eauto.
-          split; simpl; intros; eauto.
+          split; simpl; intros.
           unfold sequence_Format at 1, Projection_Format, Compose_Format,
           ComposeOpt.compose, Bind2 in H2.
           apply unfold_computes in H2; computes_to_inv; subst.
@@ -229,7 +229,24 @@ Section EthernetPacketDecoder.
           rewrite <- (Nnat.Nat2N.id 1501).
           apply Nomega.Nlt_out.
           reflexivity.
-    - unfold composeIf, Union_Format in H; rewrite unfold_computes in H.
+          reflexivity.
+        Grab Existential Variables.
+        eauto.
+        eauto.
+  Qed.
+
+  Lemma distinguishing_word_prefix 
+    : Prefix_Format _ 
+    (Either format_nat 16 ◦ constant packet_len ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~1~1~0~0~0~0~0~0 ++
+            format_word ◦ constant wzero 24 ++ format_enum EtherTypeCodes ◦ EthType ++ empty_Format
+            Or format_enum EtherTypeCodes ◦ EthType ++ empty_Format)
+    (format_unused_word 16).
+    Proof.
+      unfold Prefix_Format, composeIf, Union_Format; intros.
+      rewrite unfold_computes in H.
       destruct_ex; revert H; pattern x;
         apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl;
           econstructor; [intros | econstructor; intros; eauto].
@@ -260,12 +277,9 @@ Section EthernetPacketDecoder.
         apply unfold_computes; eexists _; intuition eauto;
           try computes_to_econstructor.
         apply unfold_computes; eauto.
-        Grab Existential Variables.
-        eauto.
-        eauto.
-  Qed.
+    Qed.
 
-  Lemma valid_packet_len_OK_good_Len
+    Lemma valid_packet_len_OK_good_Len
     : lt packet_len (pow2 16).
   Proof.
     intros.
@@ -281,7 +295,9 @@ Section EthernetPacketDecoder.
     match goal with
     | H : cache_inv_Property ?mnd _
       |- context[CorrectRefinedDecoder] =>
-      eapply (@derive_distinguishing_word _ _ _ H); eauto
+      split; 
+      [ eapply (@derive_distinguishing_word _ _ _ H); eauto
+      | eapply distinguishing_word_prefix ]
   end.
 
   Definition EthernetHeader_decoder

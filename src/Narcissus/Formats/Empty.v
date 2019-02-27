@@ -100,13 +100,8 @@ Lemma ExtractViewFromRefined {S V T}
          decode_inv
          empty_Format.
 Proof.
-  intros; split.
-  - eapply ExtractViewFrom; eauto.
+  intros; eapply ExtractViewFrom; eauto.
     intros; apply unfold_computes; intros.
     intuition.
     unfold empty_Format; apply unfold_computes; eauto.
-  - intros.
-    eexists mempty, t, env; split.
-    + rewrite mempty_left; reflexivity.
-    + computes_to_econstructor.
 Qed.

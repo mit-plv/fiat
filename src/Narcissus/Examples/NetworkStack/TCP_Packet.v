@@ -140,7 +140,7 @@ Ltac apply_new_combinator_rule ::=
       | exact H
       | solve_mod_8
       | solve_mod_8
-      | intros; eapply ExtractViewFromRefined with (View_Predicate := fun _ => True); eauto
+      | 
       | intros; NormalizeFormats.normalize_format; apply_rules ]
   end.
 
@@ -149,9 +149,12 @@ Definition TCP_Packet_Header_decoder
   : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
 Proof.
     synthesize_aligned_decoder.
+    split.
+    intros; eapply ExtractViewFromRefined with (View_Predicate := fun _ => True); eauto.
     unfold TCP_Packet_OK; intros; split_and;
       instantiate (1 := wordToNat tcpLength); rewrite H3;
         omega.
+    admit.
     synthesize_cache_invariant.
     cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
     align_decoders.

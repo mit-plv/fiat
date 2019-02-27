@@ -1050,7 +1050,8 @@ Lemma compose_IPChecksum_format_correct'
                                 (format1 ++ format_unused_word 16 ++ format2)%format
                                 subformat
                                 decode_measure P
-                                format_measure)
+                                format_measure
+          /\ Prefix_Format _ (format1 ++ format_unused_word 16 ++ format2) subformat)%format
       -> forall decodeA : B -> CacheDecode -> option (A * B * CacheDecode),
         (cache_inv_Property P P_inv ->
          CorrectDecoder monoid predicate predicate eq (format1 ++ format_unused_word 16 ++ format2)%format decodeA P (format1 ++ format_unused_word 16 ++ format2)%format) ->
@@ -1066,11 +1067,13 @@ Proof.
   intros.
   eapply format_decode_correct_alt.
   7: { eapply (composeChecksum_format_correct'
-                 A _ monoid _ 16 IPChecksum_Valid); try eassumption.
-       - intros.
-         specialize (H4 (proj2 H)); destruct H4 as [H4 H4'].
-         split; eauto.
+                 A _ monoid _ 16 IPChecksum_Valid).
+       - eapply H.
+       - specialize (H4 (proj2 H)); destruct H4 as [H4 H4'].
+         split.
+         2: eauto.
          eapply injection_decode_correct with (inj := fun n => mult n 8).
+         4: simpl.
          eapply H4.
          + intros.
            instantiate (1 := fun a n => len_format1 a + 16 + len_format2 a = n).
@@ -1083,18 +1086,16 @@ Proof.
            2: rewrite unfold_computes in H11; intuition.
            intros.
            rewrite unfold_computes in H11; intuition.
-           destruct t1; destruct t2; simpl fst in *; simpl snd in *.
-           erewrite H0; eauto.
-           2: apply unfold_computes; eapply H14.
-           unfold format_checksum; rewrite length_encode_word', measure_mempty.
-           simpl bin_measure; rewrite (H1 _ _ _ _ H15).
-           assert ((format1 ++ format_unused_word 16 ++ format2)%format a env ∋ (mappend b (mappend (encode_word' 16 (wzero _) mempty) b0), c0)).
-           admit.
-           eapply H4' in H11; destruct_ex.
-           destruct H11.
-           rewrite unfold_computes in H19.
-           erewrite <- H17; eauto.
-           omega.
+           instantiate (1 := fun v env t => format_measure (Nat.div v 8) env t).
+           cbv beta; rewrite Nat.div_mul; eauto.
+       - simpl; intros.
+         destruct t1; destruct t2; simpl fst in *; simpl snd in *.
+         apply unfold_computes in H8; apply unfold_computes in H9.
+         erewrite H0; eauto.
+         erewrite (H1 _ b0); eauto.
+         unfold format_checksum; rewrite length_encode_word', measure_mempty.
+         rewrite <- H6; omega.
+       - eauto.
        - unfold IPChecksum_Valid in *; intros; simpl.
          rewrite ByteString2ListOfChar_Over.
          * rewrite ByteString2ListOfChar_Over in H9.

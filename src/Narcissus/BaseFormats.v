@@ -25,17 +25,24 @@ Definition CorrectRefinedDecoder
            (view_format : V -> CacheFormat -> Comp (T * CacheFormat)) :=
   CorrectDecoder monoid Source_Predicate View_Predicate view
                  subformat decode decode_inv
-                 (fun v env t => view_format v env t
-                                 /\ forall s t,
+                 (fun v env t =>
+                    view_format v env t
+                    /\ forall s,
                       Source_Predicate s ->
-                      subformat s env t -> view s v)
-  /\ (forall s t env env',
+                        subformat s env ∋ t
+                        -> view s v).
+Definition Prefix_Format
+           {S T : Type}
+           {store : Cache}
+           (monoid : Monoid T)
+           (format subformat : FormatM S T)
+  := forall s t env env',
     format s env ∋ (t, env') ->
     exists t1 t2 env'',
       t = mappend t1 t2
-      /\ subformat s env ∋ (t1, env'')).
+      /\ subformat s env ∋ (t1, env'').
 
-Lemma  CorrectRefinedDecoder_decode_partial
+(*Lemma  CorrectRefinedDecoder_decode_partial
        {S T : Type}
        {store : Cache}
        {V : Type}
@@ -67,7 +74,7 @@ Proof.
   (* computes_to_inv; destruct v; destruct v0; simpl in *; eauto. *)
   (* injections. *)
   (* eexists _, _, _; intuition eauto. *)
-Qed.
+Qed. *)
 
 Lemma CorrectRefinedDecoder_decode_impl
        {S T : Type}
@@ -82,12 +89,12 @@ Lemma CorrectRefinedDecoder_decode_impl
     -> CorrectDecoder monoid' Source_Predicate Source_Predicate eq
                       format decode decode_inv format.
 Proof.
-  intros; destruct H as [? ?].
+  intros.
   eapply weaken_view_pred.
   intros; subst; eauto.
   2: apply H.
   intros.
-  simpl in H2; intuition eauto.
+  simpl in H1; intuition eauto.
 Qed.
 
 Add Parametric Morphism
@@ -108,8 +115,6 @@ Add Parametric Morphism
       as format_decode_refined_correct_refineEquiv.
 Proof.
   unfold EquivFormat, impl, pointwise_relation; intros.
-  split.
-  - eapply H0.
-  - intros; eapply H in H1.
-    eapply H0 in H1; eauto.
+  - unfold CorrectRefinedDecoder in *.
+    apply H0.
 Qed.

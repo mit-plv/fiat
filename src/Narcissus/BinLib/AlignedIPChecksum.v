@@ -365,124 +365,6 @@ Qed.
 
 Import VectorNotations.
 
-(*Lemma compose_PseudoChecksum_format_correct {A}
-      (srcAddr : Vector.t (word 8) 4)
-      (destAddr : Vector.t (word 8) 4)
-      (udpLength : word 16)
-      protoCode
-      (predicate : A -> Prop)
-      (P : CacheDecode -> Prop)
-      (P_inv : (CacheDecode -> Prop) -> Prop)
-      (format_A format_B : FormatM A ByteString)
-      (formated_measure : _ -> nat)
-      (len_format_A : A -> nat)
-      (len_format_A_OK : forall a' b ctx ctx',
-          computes_to (format_A a' ctx) (b, ctx')
-          -> length_ByteString b = len_format_A a')
-      (len_format_B : A -> nat)
-      (len_format_B_OK : forall a' b ctx ctx',
-          computes_to (format_B a' ctx) (b, ctx')
-          -> length_ByteString b = len_format_B a')
-  : cache_inv_Property P P_inv ->
-    (forall a, NPeano.modulo (len_format_A a) 8 = 0)
-    -> (forall a, NPeano.modulo (len_format_B a) 8 = 0)
-    -> (forall (a : A) (ctx ctx' ctx'' : CacheFormat) c (b b'' ext : _),
-           format_A a ctx ↝ (b, ctx') ->
-           format_B a ctx' ↝ (b'', ctx'') ->
-           predicate a ->
-           len_format_A a + len_format_B a + 16 =
-           8 * formated_measure (mappend (mappend b (mappend (format_checksum _ _ _ 16 c) b'')) ext)) ->
-    forall decodeA : _ -> CacheDecode -> option (A * _ * CacheDecode),
-      (cache_inv_Property P P_inv ->
-       CorrectDecoder monoid predicate predicate eq (format_A ++ format_unused_word 16 ++ format_B)%format decodeA P (format_A ++ format_unused_word 16 ++ format_B)%format) ->
-      CorrectDecoder monoid predicate predicate eq
-                     (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B)
-                     (fun (v : ByteString) (env : CacheDecode) =>
-                        if weqb (onesComplement (wzero 8 :: protoCode ::
-                                                       to_list srcAddr ++ to_list destAddr ++ to_list (splitLength udpLength)
-                                                       ++(ByteString2ListOfChar (8 * (formated_measure v)) v))%list) (wones 16)
-                        then
-                          decodeA v env
-                        else None) P
-                     (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
-Proof.
-  intros.
-  Opaque CorrectDecoder.
-  replace ((fun (v : ByteString) (env : CacheDecode) =>
-     if
-      weqb
-        (onesComplement
-           (wzero 8
-            :: (protoCode
-                :: to_list srcAddr ++
-                   to_list destAddr ++ to_list (splitLength udpLength) ++ ByteString2ListOfChar (8 * formated_measure v) v)%list))
-        (wones 16)
-     then decodeA v env
-     else None)) with
-      ((fun (v : ByteString) (env : CacheDecode) =>
-          if weq
-        (onesComplement
-           (wzero 8
-            :: (protoCode ::
-                          to_list srcAddr ++
-                   to_list destAddr ++ to_list (splitLength udpLength) ++ ByteString2ListOfChar (8 * formated_measure v) v)%list))
-        (wones 16)
-          then decodeA v env
-          else None)).
-  eapply (composeChecksum_format_correct
-                A _ _ _ 16 (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode)
-   (fun n v =>
-                weq
-        (onesComplement
-           (wzero 8
-            :: (protoCode
-                :: to_list srcAddr ++
-                to_list destAddr ++ to_list (splitLength udpLength)
-               ++ ByteString2ListOfChar n v)%list))
-        (wones 16))).
-  apply H.
-  intros.
-  simpl in H2.
-  simpl.
-  unfold monoid; rewrite <- (H2 _ _ _ _ b' _ b'' ext H4 H5 H6).
-  rewrite !length_ByteString_enqueue_ByteString.
-  erewrite len_format_A_OK by eauto.
-  erewrite (len_format_B_OK _ _ _ _ H5).
-  rewrite <- plus_assoc; f_equal; rewrite plus_comm; f_equal.
-  unfold format_checksum; rewrite length_encode_word'; reflexivity.
-  eapply H3.
-  intros.
-  unfold Pseudo_Checksum_Valid in *.
-  revert H7.
-  rewrite !ByteString2ListOfChar_Over; eauto.
-  simpl; rewrite padding_eq_mod_8.
-  rewrite !length_ByteString_enqueue_ByteString.
-  rewrite Nat.add_mod by omega.
-  apply len_format_A_OK in H5.
-  apply len_format_B_OK in H6.
-  rewrite H5, H0, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by omega.
-  rewrite H6, H1, <- plus_n_O, NPeano.Nat.mod_mod by omega.
-  unfold format_checksum; rewrite length_encode_word'; reflexivity.
-  simpl; rewrite padding_eq_mod_8.
-  rewrite !length_ByteString_enqueue_ByteString.
-  rewrite Nat.add_mod by omega.
-  apply len_format_A_OK in H5.
-  apply len_format_B_OK in H6.
-  rewrite H5, H0, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by omega.
-  rewrite H6, H1, <- plus_n_O, NPeano.Nat.mod_mod by omega.
-  unfold format_checksum; rewrite length_encode_word'; reflexivity.
-  repeat (apply functional_extensionality; intros).
-  find_if_inside.
-  eapply weqb_true_iff in e; rewrite e; eauto.
-  destruct (weqb
-      (onesComplement
-         (wzero 8
-          :: (protoCode
-              :: to_list srcAddr ++
-                 to_list destAddr ++ to_list (splitLength udpLength) ++ ByteString2ListOfChar (8 * formated_measure x) x)%list))
-      (wones 16)) eqn: ?; eauto.
-  eapply weqb_true_iff in Heqb; congruence.
-Qed. *)
 
 Lemma Pseudo_Checksum_Valid_bounded
       {A}
@@ -568,7 +450,8 @@ Lemma compose_PseudoChecksum_format_correct' {A}
                                 (format_A ++ format_unused_word 16 ++ format_B)%format
                                 subformat
                                 decode_measure P
-                                format_measure) ->
+                                format_measure
+       /\ Prefix_Format _ (format_A ++ format_unused_word 16 ++ format_B) subformat)%format->
     forall decodeA : _ -> CacheDecode -> option (A * _ * CacheDecode),
       (cache_inv_Property P P_inv ->
        CorrectDecoder monoid predicate predicate eq (format_A ++ format_unused_word 16 ++ format_B)%format decodeA P (format_A ++ format_unused_word 16 ++ format_B)%format) ->
@@ -585,54 +468,41 @@ Lemma compose_PseudoChecksum_format_correct' {A}
                      (format_A ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_B).
 Proof.
   intros.
-  Opaque CorrectDecoder.
   eapply format_decode_correct_alt.
-  7: {
-    eapply (composeChecksum_format_correct'
-              A _ monoid _ 16 (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode)); try eassumption.
-    - intros.
-      specialize (H2 H4); destruct H2 as [H2 H2'].
-      split; eauto.
-      eapply injection_decode_correct with (inj := fun n => mult n 8).
-      eapply H2.
-      + intros.
-        instantiate (1 := fun a n => len_format_A a + 16 + len_format_B a = n).
-        eapply H6.
-      + intros; instantiate (1 := fun v => View_Predicate (Nat.div v 8)).
-        cbv beta.
-        rewrite Nat.div_mul; eauto.
-      + intros; apply unfold_computes; intros.
-        split.
-        2: rewrite unfold_computes in H5; intuition.
-        intros.
-        rewrite unfold_computes in H5; intuition.
-        destruct t1; destruct t2; simpl fst in *; simpl snd in *.
-        erewrite len_format_A_OK; eauto.
-        2: apply unfold_computes; eauto.
-        unfold format_checksum; rewrite length_encode_word', measure_mempty.
-        simpl bin_measure; rewrite (len_format_B_OK _ _ _ _ H8).
-        assert ((format_A ++ format_unused_word 16 ++ format_B)%format a env ∋ (mappend b (mappend (encode_word' 16 (wzero _) mempty) b0), c0)).
-        { apply unfold_computes in H7.
-          apply unfold_computes in H8.
-          unfold sequence_Format, ComposeOpt.compose, Bind2; computes_to_econstructor; eauto.
-          computes_to_econstructor; eauto.
-          computes_to_econstructor; eauto.
-          unfold format_unused_word, Compose_Format; apply unfold_computes.
-          simpl; eexists (wzero 16); split.
-          unfold format_word; computes_to_econstructor.
-          apply unfold_computes; eauto.
-          computes_to_econstructor; eauto.
-          computes_to_econstructor; eauto.
-        }
-        eapply H2' in H5; destruct_ex.
-        destruct H5.
-        rewrite unfold_computes in H11.
-        erewrite <- H10; eauto.
-        omega.
+  7: { eapply (composeChecksum_format_correct'
+                 A _ monoid _ 16 (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode)).
+       - eapply H.
+       - specialize (H2 (proj2 H)); destruct H2 as [H4 H4'].
+         split.
+         2: eauto.
+         eapply injection_decode_correct with (inj := fun n => mult n 8).
+         4: simpl.
+         eapply H4.
+         + intros.
+           instantiate (1 := fun a n => len_format_A a + 16 + len_format_B a = n).
+           eapply H6.
+         + intros; instantiate (1 := fun v => View_Predicate (Nat.div v 8)).
+           cbv beta.
+           rewrite Nat.div_mul; eauto.
+         + intros; apply unfold_computes; intros.
+           split.
+           2: rewrite unfold_computes in H5; intuition.
+           intros.
+           rewrite unfold_computes in H5; intuition.
+           instantiate (1 := fun v env t => format_measure (Nat.div v 8) env t).
+           cbv beta; rewrite Nat.div_mul; eauto.
+       - simpl; intros.
+         destruct t1; destruct t2; simpl fst in *; simpl snd in *.
+         apply unfold_computes in H7; apply unfold_computes in H6.
+         erewrite len_format_A_OK; eauto.
+         erewrite (len_format_B_OK _ b0); eauto.
+         unfold format_checksum; rewrite length_encode_word', measure_mempty.
+         rewrite <- H4; omega.
+       - eauto.
        - eapply Pseudo_Checksum_Valid_bounded; eauto. }
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.
-  instantiate (1 := fun (n : nat) a =>
+    instantiate (1 := fun (n : nat) a =>
                     weq
        (onesComplement
           (wzero 8
