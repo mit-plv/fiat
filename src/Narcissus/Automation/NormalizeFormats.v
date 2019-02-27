@@ -56,6 +56,22 @@ Proof.
   apply refineEquiv_compose_Done.
 Qed.
 
+Lemma sequence_mempty'
+      {S T : Type}
+      {store : Cache}
+      {m : Monoid T}
+  : forall (format : FormatM S T),
+    EquivFormat (format ++ empty_Format) format.
+Proof.
+  unfold sequence_Format, EquivFormat, empty_Format; intros.
+  split; unfold compose, Bind2; intros v Comp_v.
+  - computes_to_econstructor; eauto. destruct_conjs; simpl.
+    computes_to_econstructor; eauto. simpl.
+    rewrite mempty_right; eauto.
+  - computes_to_inv; subst; destruct_conjs. simpl.
+    rewrite mempty_right; eauto.
+Qed.
+
 Lemma EquivFormat_ComposeIf
       {S T : Type}
       {monoid : Monoid T}
@@ -218,5 +234,8 @@ Ltac normalize_format :=
          match goal with
          | |- CorrectDecoder ?monoid _ _ _ _ _ _ _ =>
            intros; eapply format_decode_correct_refineEquiv; unfold flip;
+           repeat (normalize_step monoid)
+         | |- Prefix_Format ?monoid _ _ =>
+           intros; eapply prefix_format_refineEquiv; unfold flip;
            repeat (normalize_step monoid)
          end.

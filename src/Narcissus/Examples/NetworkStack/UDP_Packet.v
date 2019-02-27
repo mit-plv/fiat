@@ -135,7 +135,7 @@ Section UDP_Decoder.
       rewrite Nat.mul_add_distr_r.
       unfold mult at 2; simpl; rewrite mult_comm.
       reflexivity.
-      admit. }
+      solve_Prefix_Format. }
     synthesize_cache_invariant.
     cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
     align_decoders.

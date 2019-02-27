@@ -118,3 +118,17 @@ Proof.
   - unfold CorrectRefinedDecoder in *.
     apply H0.
 Qed.
+
+Add Parametric Morphism
+    {S T : Type}
+    {cache : Cache}
+    (monoid : Monoid T)
+  : (fun format subformat =>
+       @Prefix_Format S T cache monoid format subformat)
+    with signature (EquivFormat --> EquivFormat --> impl)
+      as prefix_format_refineEquiv.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation; unfold Prefix_Format; intros.
+  edestruct H1. apply H. eauto. destruct_conjs.
+  eexists _, _, _. intuition eauto. apply H0. eauto.
+Qed.
