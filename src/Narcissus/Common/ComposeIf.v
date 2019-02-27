@@ -372,6 +372,73 @@ Proof.
   }
 Qed.
 
+Lemma composeIf_subformat_correct
+      {S T}
+      {cache : Cache}
+      {P  : CacheDecode -> Prop}
+      (monoid : Monoid T)
+      (Source_Predicate : S -> Prop)
+      (formatT formatE : FormatM S T)
+      (subformatT subformatE : FormatM S T)
+      (decodeT decodeE : DecodeM (unit * T) T)
+      (decodeT_OK : CorrectDecoder monoid Source_Predicate
+                                   (fun _ => True) (fun _ _ => True) subformatT
+                                   decodeT P
+                                   (fun _ env tenv => exists s, subformatT s env ∋ tenv /\ Source_Predicate s))
+      (decodeE_OK : CorrectDecoder monoid Source_Predicate
+                                   (fun _ => True) (fun _ _ => True) subformatE
+                                   decodeE P
+                                   (fun _ env tenv => exists s, subformatE s env ∋ tenv /\ Source_Predicate s))
+      (decode_disjoint : forall t env x y z,
+          (decodeT t env = Some (x, y, z) -> decodeE t env = None) /\
+          (decodeE t env = Some (x, y, z) -> decodeT t env = None))
+      (subformat_OK1 : forall s t env env',
+          formatT s env ∋ (t, env') ->
+          exists t1 t2 env'',
+            t = mappend t1 t2
+            /\ subformatT s env ∋ (t1, env''))
+      (subformat_OK2 : forall s t env env',
+          formatE s env ∋ (t, env') ->
+          exists t1 t2 env'',
+            t = mappend t1 t2
+            /\ subformatE s env ∋ (t1, env''))
+  : CorrectRefinedDecoder
+      monoid
+      Source_Predicate
+      (fun bs => True)
+      (fun s bs => True)
+      (composeIf formatT formatE)
+      (composeIf subformatT subformatE)
+      (fun t env => match decodeT t env with
+                 | Some (_, t', env') => Some (true, t', env')
+                 | None => match decodeE t env with
+                          | Some (_, t', env') => Some (false, t', env')
+                          | None => None
+                          end
+                 end)
+      P
+      (fun bs env t => (forall s t' env',
+                        Source_Predicate s ->
+                        (formatT s env (mappend (fst t) t', env') -> bs = true)
+                        /\ (formatE s env (mappend (fst t) t', env') -> bs = false))).
+Proof.
+  destruct decodeT_OK as [decodeT_OK1 decodeT_OK2].
+  destruct decodeE_OK as [decodeE_OK1 decodeE_OK2].
+  apply composeIf_subformat_correct'; intros; eauto.
+  - edestruct decodeT_OK1; eauto. setoid_rewrite @unfold_computes in H3. destruct_conjs. 
+    rewrite H4. eauto.
+  - destruct decodeT as [[[[] ?] ?]|] eqn:?; injections.
+    edestruct decodeT_OK2; eauto.
+    setoid_rewrite unfold_computes in H2. destruct_conjs. split; auto. eexists _, _, _; eauto.
+    destruct decodeE as [[[[] ?] ?]|]; easy.
+  - edestruct decodeE_OK1; eauto. setoid_rewrite @unfold_computes in H3. destruct_conjs.
+    rewrite H4. apply decode_disjoint in H4. rewrite H4; eauto.
+  - destruct decodeT as [[[[] ?] ?]|] eqn:?; injections; try easy.
+    destruct decodeE as [[[[] ?] ?]|] eqn:?; injections; try easy.
+    edestruct decodeE_OK2; eauto.
+    setoid_rewrite unfold_computes in H2. destruct_conjs. split; auto. eexists _, _, _; eauto.
+Qed.
+
 Lemma EquivFormat_ComposeIf {S T}
       {cache : Cache}
       {monoid : Monoid T}
