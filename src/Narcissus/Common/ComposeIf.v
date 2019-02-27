@@ -173,8 +173,8 @@ Proof.
        destruct_ex; split_and.
        rewrite <- mappend_assoc.
        rewrite H2; simpl.
-       rewrite unfold_computes in H3.
-       rewrite (proj1 (proj1 H3 _ _ _ pred_pm) H); simpl.
+       rewrite unfold_computes in H5.
+       rewrite (proj1 (proj1 H5 _ _ _ pred_pm) H); simpl.
        eapply decodeT_pf in H;
          destruct_ex; split_and.
        rewrite mappend_assoc.
@@ -192,9 +192,9 @@ Proof.
        destruct_ex; split_and.
        rewrite <- mappend_assoc.
        rewrite H1; simpl.
-       rewrite unfold_computes in H5.
-       rewrite (proj2 (proj1 H5 _ _ _ pred_pm) H2); simpl.
-       eapply decodeE_pf in H2; destruct_ex; split_and.
+       rewrite unfold_computes in H7.
+       rewrite (proj2 (proj1 H7 _ _ _ pred_pm) H4); simpl.
+       eapply decodeE_pf in H4; destruct_ex; split_and.
        rewrite mappend_assoc.
        rewrite H9; eexists _, _; intuition eauto.
        unfold composeIf, Union_Format; apply unfold_computes;
@@ -268,6 +268,24 @@ Proof.
   intros x. apply Fin.case0; auto.
 Qed.
 
+Lemma composeIf_subformat_correct_prefix
+      {S T}
+      {cache : Cache}
+      (monoid : Monoid T)
+      (formatT formatE : FormatM S T)
+      (subformatT subformatE : FormatM S T)
+      (subformat_OK1 : Prefix_Format monoid formatT subformatT)
+      (subformat_OK2 : Prefix_Format monoid formatE subformatE)
+  : Prefix_Format monoid (composeIf formatT formatE) (composeIf subformatT subformatE).
+Proof.
+  unfold Prefix_Format in *; intros.
+  apply composeIf_format_elim in H. destruct H.
+  edestruct subformat_OK1; eauto. destruct_ex.
+  eexists _, _, _; intuition eauto. eauto using composeIf_format_inj1.
+  edestruct subformat_OK2; eauto. destruct_ex.
+  eexists _, _, _; intuition eauto. eauto using composeIf_format_inj2.
+Qed.
+
 Lemma composeIf_subformat_correct_low
       {S T}
       {cache : Cache}
@@ -307,16 +325,8 @@ Lemma composeIf_subformat_correct_low
           exists t'' xenv,
             exists s, subformatE s env ∋ (t'', xenv) /\ Source_Predicate s /\
                  t = mappend t'' t' /\ Equiv xenv xenv')
-      (subformat_OK1 : forall s t env env',
-          formatT s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatT s env ∋ (t1, env''))
-      (subformat_OK2 : forall s t env env',
-          formatE s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatE s env ∋ (t1, env''))
+      (subformat_OK1 : Prefix_Format monoid formatT subformatT)
+      (subformat_OK2 : Prefix_Format monoid formatE subformatE)
   : CorrectRefinedDecoder
       monoid
       Source_Predicate
@@ -330,44 +340,36 @@ Lemma composeIf_subformat_correct_low
                         (formatT s env (mappend (fst t) t', env') -> bs = true)
                         /\ (formatE s env (mappend (fst t) t', env') -> bs = false))).
 Proof.
-  split; intuition eauto. {
-    split; intros. {
-      apply composeIf_format_elim in H1; destruct H1.
-      edestruct decodeB_OK1; eauto. intuition eauto. rewrite H3.
-      eexists _, _; intuition eauto.
-      rewrite unfold_computes; repeat split; simpl; intros.
-      rewrite <- unfold_computes in H6. apply subformat_OK2 in H6. destruct_ex. intuition.
-      edestruct decodeB_OK2 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
-      edestruct decodeB_OK1 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
-      congruence.
-      edestruct decodeB_OK2; eauto. intuition eauto. rewrite H3.
-      eexists _, _; intuition eauto.
-      rewrite unfold_computes; repeat split; simpl; intros.
-      rewrite <- unfold_computes in H6. apply subformat_OK1 in H6. destruct_ex. intuition.
-      edestruct decodeB_OK1 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
-      edestruct decodeB_OK2 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
-      congruence.
-    } {
-      destruct v.
-      edestruct decodeB_OK1'; eauto. destruct_ex. intuition eauto.
-      eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
-      rewrite <- unfold_computes in H8. apply subformat_OK2 in H8. destruct_ex. intuition.
-      edestruct decodeB_OK2 with (env:=env) (env':=env') (ext:=x3); intuition eauto 1.
-      edestruct decodeB_OK1 with (s:=x1) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
-      congruence.
-      edestruct decodeB_OK2'; eauto. destruct_ex. intuition eauto.
-      eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
-      rewrite <- unfold_computes in H8. apply subformat_OK1 in H8. destruct_ex. intuition.
-      edestruct decodeB_OK1 with (env:=env) (env':=env') (ext:=x3); intuition eauto 1.
-      edestruct decodeB_OK2 with (s:=x1) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
-      congruence.
-    }
+  split; intros. {
+    apply composeIf_format_elim in H1; destruct H1.
+    edestruct decodeB_OK1; eauto. intuition eauto. rewrite H3.
+    eexists _, _; intuition eauto.
+    rewrite unfold_computes; repeat split; simpl; intros.
+    rewrite <- unfold_computes in H6. apply subformat_OK2 in H6. destruct_ex. intuition.
+    edestruct decodeB_OK2 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
+    edestruct decodeB_OK1 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
+    congruence.
+    edestruct decodeB_OK2; eauto. intuition eauto. rewrite H3.
+    eexists _, _; intuition eauto.
+    rewrite unfold_computes; repeat split; simpl; intros.
+    rewrite <- unfold_computes in H6. apply subformat_OK1 in H6. destruct_ex. intuition.
+    edestruct decodeB_OK1 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
+    edestruct decodeB_OK2 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
+    congruence.
   } {
-    apply composeIf_format_elim in H. destruct H.
-    edestruct subformat_OK1; eauto. destruct_ex.
-    eexists _, _, _; intuition eauto. eauto using composeIf_format_inj1.
-    edestruct subformat_OK2; eauto. destruct_ex.
-    eexists _, _, _; intuition eauto. eauto using composeIf_format_inj2.
+    destruct v.
+    edestruct decodeB_OK1'; eauto. destruct_ex. intuition eauto.
+    eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
+    rewrite <- unfold_computes in H8. apply subformat_OK2 in H8. destruct_ex. intuition.
+    edestruct decodeB_OK2 with (env:=env) (env':=env') (ext:=x3); intuition eauto 1.
+    edestruct decodeB_OK1 with (s:=x1) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
+    congruence.
+    edestruct decodeB_OK2'; eauto. destruct_ex. intuition eauto.
+    eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
+    rewrite <- unfold_computes in H8. apply subformat_OK1 in H8. destruct_ex. intuition.
+    edestruct decodeB_OK1 with (env:=env) (env':=env') (ext:=x3); intuition eauto 1.
+    edestruct decodeB_OK2 with (s:=x1) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
+    congruence.
   }
 Qed.
 
@@ -391,16 +393,8 @@ Lemma composeIf_subformat_correct
       (decode_disjoint : forall t env x y z,
           (decodeT t env = Some (x, y, z) -> decodeE t env = None) /\
           (decodeE t env = Some (x, y, z) -> decodeT t env = None))
-      (subformat_OK1 : forall s t env env',
-          formatT s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatT s env ∋ (t1, env''))
-      (subformat_OK2 : forall s t env env',
-          formatE s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatE s env ∋ (t1, env''))
+      (subformat_OK1 : Prefix_Format monoid formatT subformatT)
+      (subformat_OK2 : Prefix_Format monoid formatE subformatE)
   : CorrectRefinedDecoder
       monoid
       Source_Predicate
@@ -478,16 +472,8 @@ Lemma composeIf_subformat_correct_low'
           exists t'' xenv,
             (v = false -> (exists s, subformatE s env ∋ (t'', xenv) /\ Source_Predicate s)) /\
                  t = mappend t'' t' /\ Equiv xenv xenv')
-      (subformat_OK1 : forall s t env env',
-          formatT s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatT s env ∋ (t1, env''))
-      (subformat_OK2 : forall s t env env',
-          formatE s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatE s env ∋ (t1, env''))
+      (subformat_OK1 : Prefix_Format monoid formatT subformatT)
+      (subformat_OK2 : Prefix_Format monoid formatE subformatE)
   : CorrectRefinedDecoder
       monoid
       Source_Predicate
@@ -501,44 +487,36 @@ Lemma composeIf_subformat_correct_low'
                         (formatT s env (mappend (fst t) t', env') -> bs = true)
                         /\ (formatE s env (mappend (fst t) t', env') -> bs = false))).
 Proof.
-  split; intuition eauto. {
-    split; intros. {
-      apply composeIf_format_elim in H1; destruct H1.
-      edestruct decodeB_OK1; eauto. intuition eauto. rewrite H3.
-      eexists _, _; intuition eauto.
-      rewrite unfold_computes; repeat split; simpl; intros.
-      rewrite <- unfold_computes in H6. apply subformat_OK2 in H6. destruct_ex. intuition.
-      edestruct decodeB_OK2 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
-      edestruct decodeB_OK1 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
-      congruence.
-      edestruct decodeB_OK2; eauto. intuition eauto. rewrite H3.
-      eexists _, _; intuition eauto.
-      rewrite unfold_computes; repeat split; simpl; intros.
-      rewrite <- unfold_computes in H6. apply subformat_OK1 in H6. destruct_ex. intuition.
-      edestruct decodeB_OK1 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
-      edestruct decodeB_OK2 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
-      congruence.
-    } {
-      destruct v.
-      edestruct decodeB_OK1'; eauto. destruct_ex. intuition eauto.
-      eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
-      rewrite <- unfold_computes in H7. apply subformat_OK2 in H7. destruct_ex. intuition.
-      edestruct decodeB_OK2 with (s:=s) (env:=env) (env':=env') (ext:=x2); intuition eauto 1.
-      edestruct decodeB_OK1 with (s:=x4) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
-      congruence.
-      edestruct decodeB_OK2'; eauto. destruct_ex. intuition eauto.
-      eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
-      rewrite <- unfold_computes in H7. apply subformat_OK1 in H7. destruct_ex. intuition.
-      edestruct decodeB_OK1 with (s:=s) (env:=env) (env':=env') (ext:=x2); intuition eauto 1.
-      edestruct decodeB_OK2 with (s:=x4) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
-      congruence.
-    }
+  split; intros. {
+    apply composeIf_format_elim in H1; destruct H1.
+    edestruct decodeB_OK1; eauto. intuition eauto. rewrite H3.
+    eexists _, _; intuition eauto.
+    rewrite unfold_computes; repeat split; simpl; intros.
+    rewrite <- unfold_computes in H6. apply subformat_OK2 in H6. destruct_ex. intuition.
+    edestruct decodeB_OK2 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
+    edestruct decodeB_OK1 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
+    congruence.
+    edestruct decodeB_OK2; eauto. intuition eauto. rewrite H3.
+    eexists _, _; intuition eauto.
+    rewrite unfold_computes; repeat split; simpl; intros.
+    rewrite <- unfold_computes in H6. apply subformat_OK1 in H6. destruct_ex. intuition.
+    edestruct decodeB_OK1 with (env:=env) (env':=env') (ext:=x1); intuition eauto 1.
+    edestruct decodeB_OK2 with (s:=s) (env:=env) (env':=env') (ext:=t'); intuition eauto 1.
+    congruence.
   } {
-    apply composeIf_format_elim in H. destruct H.
-    edestruct subformat_OK1; eauto. destruct_ex.
-    eexists _, _, _; intuition eauto. eauto using composeIf_format_inj1.
-    edestruct subformat_OK2; eauto. destruct_ex.
-    eexists _, _, _; intuition eauto. eauto using composeIf_format_inj2.
+    destruct v.
+    edestruct decodeB_OK1'; eauto. destruct_ex. intuition eauto.
+    eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
+    rewrite <- unfold_computes in H7. apply subformat_OK2 in H7. destruct_ex. intuition.
+    edestruct decodeB_OK2 with (s:=s) (env:=env) (env':=env') (ext:=x2); intuition eauto 1.
+    edestruct decodeB_OK1 with (s:=x4) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
+    congruence.
+    edestruct decodeB_OK2'; eauto. destruct_ex. intuition eauto.
+    eexists _, _. rewrite unfold_computes; simpl. intuition eauto 1.
+    rewrite <- unfold_computes in H7. apply subformat_OK1 in H7. destruct_ex. intuition.
+    edestruct decodeB_OK1 with (s:=s) (env:=env) (env':=env') (ext:=x2); intuition eauto 1.
+    edestruct decodeB_OK2 with (s:=x4) (env:=env) (env':=env') (ext:=t'0); intuition eauto 1.
+    congruence.
   }
 Qed.
 
@@ -561,16 +539,8 @@ Lemma composeIf_subformat_correct'
                                     (fun v env tenv => v = false ->
                                                     (exists s, subformatE s env ∋ tenv /\
                                                           Source_Predicate s)))
-      (subformat_OK1 : forall s t env env',
-          formatT s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatT s env ∋ (t1, env''))
-      (subformat_OK2 : forall s t env env',
-          formatE s env ∋ (t, env') ->
-          exists t1 t2 env'',
-            t = mappend t1 t2
-            /\ subformatE s env ∋ (t1, env''))
+      (subformat_OK1 : Prefix_Format monoid formatT subformatT)
+      (subformat_OK2 : Prefix_Format monoid formatE subformatE)
   : CorrectRefinedDecoder
       monoid
       Source_Predicate
