@@ -136,7 +136,7 @@ Proof.
     unfold Basics.compose, IsProj in *.
     unfold IPv4_Packet_OK in *.
     omega. }
-  admit.
+  solve_Prefix_Format.
   synthesize_cache_invariant.
   cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
   align_decoders.
