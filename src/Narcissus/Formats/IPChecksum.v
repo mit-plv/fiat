@@ -393,6 +393,20 @@ Qed.
 Definition IPChecksum_Valid (n : nat) (b : ByteString) : Prop :=
   onesComplement (ByteString2ListOfChar n b) = wones 16.
 
+Local Notation "x ++ y" := (mappend x y) : comp_scope.
+
+Definition format_IP_Checksum
+           {S}
+           (format1 : FormatM S ByteString)
+           (format2 : FormatM S ByteString)
+           (a : S) (ctx : _)  :=
+  (`(p, ctx) <- format1 a ctx;
+    `(q, ctx) <- format2 a (addE ctx 16);
+    c <- { c : word 16 | forall ext,
+             IPChecksum_Valid (bin_measure (p ++ (encode_word c) ++ q))
+                              (p ++ (encode_word c) ++ q ++ ext) };
+    ret (p ++ (encode_word c) ++ q, ctx))%comp.
+
 Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
   : {IPChecksum_Valid n b} + {~IPChecksum_Valid n b} := weq _ _.
 

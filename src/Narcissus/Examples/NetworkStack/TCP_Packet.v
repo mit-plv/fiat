@@ -63,13 +63,11 @@ Section TCPPacketDecoder.
           ++ format_word ◦ DestPort
           ++ format_word ◦ SeqNumber
           ++ format_word ◦ AckNumber
-          ++ format_nat 4 ◦ (Basics.compose (plus 5) (Basics.compose (@length _) Options))
+          ++ format_nat 4 ◦ (plus 5) ◦ (@length _) ◦ Options
           ++ format_unused_word 3 (* These bits are reserved for future use. *)
           ++ format_bool ◦ NS
           ++ format_bool ◦ CWR
           ++ format_bool ◦ ECE
-          (*++ format_option (format_bool ◦ constant true) (format_bool ◦ constant false) ◦ UrgentPointer *)
-
           ++ format_bool ◦ (fun urg_opt => Ifopt urg_opt as urg Then true Else false) ◦ UrgentPointer
           ++ format_bool ◦ ACK
           ++ format_bool ◦ PSH
@@ -78,7 +76,7 @@ Section TCPPacketDecoder.
           ++ format_bool ◦ FIN
           ++ format_word ◦ WindowSize)
           ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr tcpLength (natToWord 8 6)) OfSize 16
-          ThenCarryOn (format_option format_word (@format_unused_word 16 _ _ _ _ _ _) ◦ UrgentPointer
+          ThenCarryOn (format_option format_word (format_unused_word 16) ◦ UrgentPointer
                                             ++ format_list format_word ◦ Options
                                             ++ format_bytebuffer ◦ Payload).
 
@@ -140,7 +138,7 @@ Ltac apply_new_combinator_rule ::=
       | exact H
       | solve_mod_8
       | solve_mod_8
-      | 
+      |
       | intros; NormalizeFormats.normalize_format; apply_rules ]
   end.
 
@@ -154,7 +152,7 @@ Proof.
     unfold TCP_Packet_OK; intros; split_and;
       instantiate (1 := wordToNat tcpLength); rewrite H3;
         omega.
-    admit.
+    solve_Prefix_Format.
     synthesize_cache_invariant.
     cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
     align_decoders.
