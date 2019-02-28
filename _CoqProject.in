@@ -254,6 +254,7 @@ src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v
 src/Examples/QueryStructure/Bookstore.v
 src/Examples/QueryStructure/BookstoreFacade.v
+src/Examples/QueryStructure/BookstoreOcaml.v
 src/Examples/QueryStructure/Classifier.v
 src/Examples/QueryStructure/ClassifierExtraction.v
 src/Examples/QueryStructure/ClassifierUnOpt.v
