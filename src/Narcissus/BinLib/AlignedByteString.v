@@ -2101,3 +2101,11 @@ Lemma length_ByteString_id :
 Proof.
   reflexivity.
 Qed.
+
+Global Instance ByteString_RichMonoidOpt
+  : RichMonoidOpt ByteStringQueueMonoid :=
+  {
+  }.
+Proof.
+  abstract eauto using ByteString_enqueue_ByteString_inj.
+Defined.

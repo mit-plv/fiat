@@ -101,3 +101,8 @@ Class QueueMonoidOpt (bin : Type) (trans : Monoid bin) (B : Type) :=
     - eapply (mappend_measure mempty mempty).
     - rewrite mempty_left; reflexivity.
   Qed.
+
+Class RichMonoidOpt (bin : Type) (trans : Monoid bin) :=
+  {
+    mappend_inj : forall (t1 t2 t : bin), mappend t1 t = mappend t2 t -> t1 = t2
+  }.

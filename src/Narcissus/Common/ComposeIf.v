@@ -286,14 +286,12 @@ Proof.
   eexists _, _, _; intuition eauto. eauto using composeIf_format_inj2.
 Qed.
 
-Variable mappend_inj : forall {T} `{Monoid T} (t1 t2 t : T),
-    mappend t1 t = mappend t2 t -> t1 = t2.
-
 Lemma composeIf_subformat_correct_low
       {S T}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
-      (monoid : Monoid T)
+      {monoid : Monoid T}
+      {richmonoid : RichMonoidOpt monoid}
       (Source_Predicate : S -> Prop)
       (formatT formatE : FormatM S T)
       (subformat : FormatM S T)
@@ -353,7 +351,8 @@ Lemma composeIf_subformat_correct_low'
       {S T}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
-      (monoid : Monoid T)
+      {monoid : Monoid T}
+      {richmonoid : RichMonoidOpt monoid}
       (Source_Predicate : S -> Prop)
       (formatT formatE : FormatM S T)
       (subformatT subformatE : FormatM S T)
@@ -422,7 +421,8 @@ Lemma composeIf_subformat_correct'
       {S T}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
-      (monoid : Monoid T)
+      {monoid : Monoid T}
+      {richmonoid : RichMonoidOpt monoid}
       (Source_Predicate : S -> Prop)
       (formatT formatE : FormatM S T)
       (subformatT subformatE : FormatM S T)
@@ -473,7 +473,8 @@ Lemma composeIf_subformat_correct''
       {S T}
       {cache : Cache}
       {P  : CacheDecode -> Prop}
-      (monoid : Monoid T)
+      {monoid : Monoid T}
+      {richmonoid : RichMonoidOpt monoid}
       (Source_Predicate : S -> Prop)
       (formatT formatE : FormatM S T)
       (subformatT subformatE : FormatM S T)
