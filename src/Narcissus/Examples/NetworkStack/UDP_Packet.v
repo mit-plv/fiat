@@ -73,18 +73,8 @@ Section UDP_Decoder.
   Definition UDP_encoder_impl r {sz} v :=
     Eval simpl in (projT1 UDP_encoder sz v 0 r tt).
 
-    (* Step Two and a Half: Add some simple facts about correct packets
+  (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
-
-  Ltac apply_new_base_rule ::=
-    match goal with
-    | |- _ => intros; eapply unused_word_decode_correct; eauto
-    | H : cache_inv_Property ?mnd _
-      |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
-      intros; eapply @ByteBuffer_decode_correct;
-      first [exact H | solve [intros; intuition eauto] ]
-    end.
-
   Ltac apply_new_combinator_rule ::=
     match goal with
     | H : cache_inv_Property ?mnd _
@@ -94,51 +84,16 @@ Section UDP_Decoder.
       | exact H
       | solve_mod_8
       | solve_mod_8
-      |
-      | intros; NormalizeFormats.normalize_format; apply_rules ]
+      | normalize_format; apply_rules
+      | normalize_format; apply_rules
+      | solve_Prefix_Format ]
   end.
-
-  Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_1.
-  Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
 
   (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
   Definition UDP_Packet_Header_decoder
     : CorrectAlignedDecoderFor UDP_Packet_OK UDP_Packet_Format.
   Proof.
     synthesize_aligned_decoder.
-    { intros; split.
-      match goal with
-      | |- CorrectRefinedDecoder ?monoid _ _ _ _ _ _ _ _ =>
-        intros; eapply format_decode_refined_correct_refineEquiv; unfold flip;
-          repeat (normalize_step monoid)
-      end.
-      eapply format_sequence_refined_correct.
-      apply H0.
-      intros; apply_rules.
-      solve_data_inv.
-      intros.
-      eapply format_sequence_refined_correct.
-      apply H1.
-      intros; apply_rules.
-      intros; split_and; simpl; eauto.
-      intros.
-      eapply format_sequence_refined_correct.
-      apply H3.
-      intros; apply_rules.
-      intros; split_and; simpl; eauto.
-      intros.
-      intros; eapply ExtractViewFromRefined with (View_Predicate := fun _ => True); eauto.
-      intros; intuition.
-      unfold Basics.compose, IsProj in *.
-      instantiate (1 := v2).
-      unfold UDP_Packet_OK in *; subst.
-      rewrite Nat.mul_add_distr_r.
-      unfold mult at 2; simpl; rewrite mult_comm.
-      reflexivity.
-      solve_Prefix_Format. }
-    synthesize_cache_invariant.
-    cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
-    align_decoders.
   Defined.
 
   (* Step Four: Extract the decoder function, and have /it/ start decoding

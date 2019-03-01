@@ -63,6 +63,8 @@ Ltac decompose_source_predicate :=
            pose proof (proj2 H) as H2;
            clear H; simpl in H1;
            simpl in H2
+         | H : ?Inv _ |- _ =>
+           unfold Inv in *
          end.
 
 Lemma IsProj_eq {S S'}
@@ -85,7 +87,8 @@ Ltac subst_projections :=
          | H : IsProj _ _ _ |- _ => apply IsProj_eq in H;
                                     unfold Basics.compose in H;
                                     simpl in H; rewrite H in *|-*
-         end.
+         end;
+  unfold Basics.compose, IsProj in *.
 
 Ltac decide_data_invariant :=
   (* Show that the invariant on the data is decideable. Most *)
@@ -116,7 +119,7 @@ Ltac decide_data_invariant :=
                | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq, pair_eq_dec ].
 
 
-Ltac build_fully_determined_type cleanup_tac :=
+Ltac build_fully_determined_type :=
   (* Build the parsed object by showing it can be built *)
   (* from previously parsed terms and that and that the *)
   (* byte string was a valid encoding of this object. *)
@@ -136,17 +139,53 @@ Ltac build_fully_determined_type cleanup_tac :=
   (* any product types that might have been built up *)
   (* along the way *)
   subst_projections;
-  cleanup_tac;
   (* And unify with original object *) reflexivity.
 
-Ltac FinishDecoder :=
+Ltac ExtractSource :=
   solve [simpl; intros;
          eapply CorrectDecoderEmpty;
-         [ build_fully_determined_type idtac
+         [ build_fully_determined_type
          | decide_data_invariant ] ].
 
+Ltac ExtractView :=
+  simpl; intros;
+  eapply ExtractViewFromRefined with (View_Predicate := fun _ => True); eauto;
+  intros;
+  decompose_source_predicate;
+  subst_projections;
+  try reflexivity;
+  (* Try to instantiate and solve the goal with any variables in hand *)
+  solve [match goal with
+         | H : _ |- _ => solve [instantiate (1 := H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 2 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 3 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 4 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 5 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 6 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 7 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 8 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 9 * H); try omega;
+                                auto with arith]
+         | H : _ |- _ => solve [instantiate (1 := 10 * H); try omega;
+                                auto with arith]
+         | H : ?x = ?y |- _ => solve [instantiate (1 := x); try omega;
+                                      auto with arith]
+         | H : ?x = ?y |- _ => solve [instantiate (1 := y); try omega;
+                                      auto with arith]
+         end] .
+
 Ltac extract_view :=
+  (* Finish a decoder derivation *)
   match goal with
-  (* Finishing a derivation *)
-  | |- context [CorrectDecoder _ _ _ _ empty_Format _ _ _] => FinishDecoder
+  | |- context [ CorrectDecoder _ _ _ _ empty_Format _ _ _ ] => ExtractSource
+  | H : cache_inv_Property ?mnd _
+    |- CorrectRefinedDecoder _ _ _ _ (_ ++ _)%format _ _ _ _ => ExtractView
   end.

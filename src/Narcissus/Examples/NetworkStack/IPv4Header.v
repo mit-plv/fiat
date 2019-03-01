@@ -90,11 +90,6 @@ Definition IPv4_encoder_impl {sz} v r :=
   Eval simpl in (projT1 IPv4_encoder sz v 0 r tt).
 Print IPv4_encoder_impl.
 
-Arguments andb : simpl never.
-
-(*Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_1.
-Hint Extern 4 => eapply aligned_IPv4_Packet_encoded_measure_OK_2. *)
-
 Ltac apply_new_combinator_rule ::=
   match goal with
   | H : cache_inv_Property ?mnd _
@@ -105,41 +100,17 @@ Ltac apply_new_combinator_rule ::=
     | repeat calculate_length_ByteString
     | solve_mod_8
     | solve_mod_8
-    | split
-    | intros; NormalizeFormats.normalize_format; apply_rules ]
+    | intros; normalize_format; apply_rules
+    | normalize_format; apply_rules
+    | solve_Prefix_Format
+    ]
   end.
-
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition IPv4_Packet_Header_decoder
   : CorrectAlignedDecoderFor IPv4_Packet_OK IPv4_Packet_Format.
 Proof.
   synthesize_aligned_decoder.
-  { intros.
-    match goal with
-    | |- CorrectRefinedDecoder ?monoid _ _ _ _ _ _ _ _ =>
-      intros; eapply format_decode_refined_correct_refineEquiv; unfold flip;
-        repeat (normalize_step monoid)
-    end.
-    eapply format_sequence_refined_correct.
-    apply H0.
-    intros; apply_rules.
-    solve_data_inv.
-    intros.
-    eapply format_sequence_refined_correct.
-    apply H1.
-    intros; apply_rules.
-    solve_data_inv.
-    intros; eapply ExtractViewFromRefined with (View_Predicate := fun _ => True); eauto.
-    intros; intuition.
-    instantiate (1 := v0 * 4).
-    unfold Basics.compose, IsProj in *.
-    unfold IPv4_Packet_OK in *.
-    omega. }
-  solve_Prefix_Format.
-  synthesize_cache_invariant.
-  cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
-  align_decoders.
 Defined.
 
 Print Assumptions IPv4_Packet_Header_decoder.
