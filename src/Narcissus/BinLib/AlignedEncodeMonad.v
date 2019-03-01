@@ -117,7 +117,7 @@ Section AlignedEncodeM.
 
   (* Equivalence Criteria:
      A bit-aligned encoder and byte-aligned encoder are equivalent when
-     - the byte aligned encoder fails when the bit aligned encoder would write past
+\backsimeq     - the byte aligned encoder fails when the bit aligned encoder would write past
        the end of the bytestring
      - encodes the same bit sequence values as the bit-aligned encoder (and who can
        say about the rest of the .

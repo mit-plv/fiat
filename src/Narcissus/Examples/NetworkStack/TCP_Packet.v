@@ -63,13 +63,11 @@ Section TCPPacketDecoder.
           ++ format_word ◦ DestPort
           ++ format_word ◦ SeqNumber
           ++ format_word ◦ AckNumber
-          ++ format_nat 4 ◦ (Basics.compose (plus 5) (Basics.compose (@length _) Options))
+          ++ format_nat 4 ◦ (plus 5) ◦ (@length _) ◦ Options
           ++ format_unused_word 3 (* These bits are reserved for future use. *)
           ++ format_bool ◦ NS
           ++ format_bool ◦ CWR
           ++ format_bool ◦ ECE
-          (*++ format_option (format_bool ◦ constant true) (format_bool ◦ constant false) ◦ UrgentPointer *)
-
           ++ format_bool ◦ (fun urg_opt => Ifopt urg_opt as urg Then true Else false) ◦ UrgentPointer
           ++ format_bool ◦ ACK
           ++ format_bool ◦ PSH
@@ -78,7 +76,7 @@ Section TCPPacketDecoder.
           ++ format_bool ◦ FIN
           ++ format_word ◦ WindowSize)
           ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr tcpLength (natToWord 8 6)) OfSize 16
-          ThenCarryOn (format_option format_word (@format_unused_word 16 _ _ _ _ _ _) ◦ UrgentPointer
+          ThenCarryOn (format_option format_word (format_unused_word 16) ◦ UrgentPointer
                                             ++ format_list format_word ◦ Options
                                             ++ format_bytebuffer ◦ Payload).
 
@@ -112,56 +110,33 @@ Section TCPPacketDecoder.
   Definition TCP_encoder_impl r {sz} v :=
     Eval simpl in (projT1 TCP_encoder sz v 0 r tt).
 
-(* Step Two and a Half: Add some simple facts about correct packets
+  (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
-Opaque pow2.
-Arguments andb : simpl never.
-
-Ltac apply_new_base_rule ::=
-  match goal with
-  | |- _ => intros; eapply unused_word_decode_correct; eauto
-  | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
-    intros; eapply @ByteBuffer_decode_correct;
-    first [exact H | solve [intros; intuition eauto] ]
-  end.
-
-Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_1.
-Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
-
-Ltac apply_new_combinator_rule ::=
-  match goal with
-  | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
-    eapply compose_PseudoChecksum_format_correct';
-    [ repeat calculate_length_ByteString
+  Ltac apply_new_combinator_rule ::=
+    match goal with
+    | H : cache_inv_Property ?mnd _
+      |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
+      eapply compose_PseudoChecksum_format_correct';
+      [ repeat calculate_length_ByteString
       | repeat calculate_length_ByteString
       | exact H
       | solve_mod_8
       | solve_mod_8
-      | 
-      | intros; NormalizeFormats.normalize_format; apply_rules ]
-  end.
+      | normalize_format; apply_rules
+      | normalize_format; apply_rules
+      | solve_Prefix_Format ]
+    end.
 
-(* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
-Definition TCP_Packet_Header_decoder
-  : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
-Proof.
+  (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
+  Definition TCP_Packet_Header_decoder
+    : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
+  Proof.
     synthesize_aligned_decoder.
-    split.
-    intros; eapply ExtractViewFromRefined with (View_Predicate := fun _ => True); eauto.
-    unfold TCP_Packet_OK; intros; split_and;
-      instantiate (1 := wordToNat tcpLength); rewrite H3;
-        omega.
-    admit.
-    synthesize_cache_invariant.
-    cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
-    align_decoders.
     Grab Existential Variables.
     eauto.
     eauto.
-Defined.
+  Defined.
 
 Definition TCP_decoder_impl {sz} v :=
   Eval simpl in (projT1 TCP_Packet_Header_decoder sz v 0 ()).

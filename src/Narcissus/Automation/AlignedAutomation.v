@@ -565,6 +565,8 @@ Ltac synthesize_aligned_encoder :=
 
 Global Opaque cache_inv_Property.
 Global Opaque CorrectDecoder.
+Global Arguments andb : simpl never.
+Global Arguments pow2 : simpl never.
 Arguments word_indexed : simpl never.
 Arguments weqb : simpl never.
 
