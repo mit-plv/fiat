@@ -96,6 +96,7 @@ Section EthernetPacketDecoder.
          Some (true, t', env') else Some (false, t', env')) P
     (fun (bs : bool) (env : CacheFormat) (t : ByteString * CacheFormat) =>
      forall (s : EthernetHeader) (t' : ByteString) (env' : CacheFormat),
+       (fun s : EthernetHeader => (ethernet_Header_OK s /\ IsProj Destination v1 s) /\ IsProj Source v0 s) s ->
      ((format_nat 16 ◦ constant packet_len ++
        format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
        format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
@@ -104,132 +105,57 @@ Section EthernetPacketDecoder.
         (mappend (fst t) t', env') -> bs = true) /\
      ((format_enum EtherTypeCodes ◦ EthType ++ empty_Format) s env (mappend (fst t) t', env') -> bs = false)).
   Proof.
-    intros.
-    - econstructor; intros.
-      + unfold format_unused_word, Compose_Format in H1.
-        rewrite unfold_computes in H1; destruct_ex; split_and.
-        eapply @Word_decode_correct with (P := P) in H2; eauto.
-        destruct_ex; split_and.
-        rewrite H2; simpl; subst.
-        destruct (wlt_dec x0 (natToWord 16 1501)); simpl.
-        * eexists _, _; intuition eauto.
-          apply unfold_computes; intuition eauto.
-          unfold sequence_Format, Projection_Format, empty_Format,
-          Compose_Format, ComposeOpt.compose, Bind2 in H1.
-          apply unfold_computes in H1; computes_to_inv.
-          rewrite unfold_computes in H1; destruct_ex; split_and;
-            injections; destruct v; subst.
-          pose proof mempty_right as H'; simpl in H'; rewrite H' in H11;
-            subst; clear H'.
-          simpl in H11; subst.
-          eapply @Enum_decode_correct with (P := P) in H8; try eassumption.
-          eapply @Word_decode_correct with (P := P) in H6; try eassumption.
-          destruct_ex; split_and.
-          unfold decode_enum in H8.
-          instantiate (1 := mempty) in H8.
-          pose proof mempty_right as H'; simpl in H'; rewrite H' in H8;
-            subst; clear H'.
-          rewrite H12 in H8; simpl in H8.
-          destruct (word_indexed x3 EtherTypeCodes) eqn: ?; try discriminate;
-            simpl in H8.
-          injections.
-          unfold word_indexed in Heqo; simpl in Heqo.
-          repeat match type of Heqo with
-                   context[weqb ?a ?b] =>
-                   let H := fresh in destruct (weqb a b) eqn : H;
-                                       try apply weqb_sound in H; subst
-                 end.
-          injections.
-          Local Transparent natToWord.
-          unfold natToWord in w; compute in w; discriminate.
-          unfold natToWord in w; compute in w; discriminate.
-          unfold natToWord in w; compute in w; discriminate.
-          unfold natToWord in w; compute in w; discriminate.
-          discriminate.
-          Discharge_NoDupVector.
-        * eexists _, _; intuition eauto.
-          apply unfold_computes; intuition eauto.
-          unfold sequence_Format at 1, Projection_Format, empty_Format,
-          Compose_Format, ComposeOpt.compose, Bind2 in H1.
-          apply unfold_computes in H1; computes_to_inv.
-          rewrite unfold_computes in H1; destruct_ex; split_and;
-            injections; destruct v; subst.
-          clear H1'.
-          simpl in H11.
-          eapply @Nat_decode_correct with (P := P) in H8; try eassumption.
-          eapply @Word_decode_correct with (P := P) in H6; try eassumption.
-          simpl in H8; rewrite H11 in H8.
-          destruct_ex; split_and.
-          unfold decode_nat in H8.
-          rewrite H13 in H8; simpl in H8.
-          injections; subst.
-          destruct n.
-          unfold wlt.
-          rewrite !wordToN_nat, wordToNat_natToWord_idempotent.
-          eapply Nomega.Nlt_in.
-          rewrite !Nnat.Nat2N.id.
-          eauto.
-          reflexivity.
-          etransitivity; try eassumption.
-          rewrite <- Nnat.Nat2N.id.
-          rewrite <- (Nnat.Nat2N.id 1501).
-          apply Nomega.Nlt_out.
-          reflexivity.
-      + destruct (decode_word t env') as [ [ [? ?] ?] | ] eqn: ? ; simpl in H1;
-          try discriminate.
-        generalize Heqo; intros.
-        eapply @Word_decode_correct with (P := P) in Heqo; try eassumption.
-        destruct (wlt_dec w (natToWord 16 1501)) eqn: ?; simpl in H1;
-          try discriminate; injections; intuition eauto;
-            destruct_ex; split_and;
-              subst; eexists _, _; intuition eauto.
-        * apply unfold_computes; intros; intros; split; eauto.
-          split; simpl; intros; eauto.
-          unfold sequence_Format, Projection_Format, Compose_Format,
-          ComposeOpt.compose, Bind2 in H2.
-          apply unfold_computes in H2; computes_to_inv; subst.
-          rewrite unfold_computes in H2; destruct_ex; split_and; subst.
-          destruct v; destruct v2; injections.
-          eapply @Word_decode_correct with (P := P) in H3; try eassumption.
-          eapply @Enum_decode_correct with (P := P) in H5; try eassumption.
-          destruct_ex; split_and.
-          unfold decode_enum in H10.
-          rewrite <- H7 in H5.
-          rewrite H5 in H10; simpl in H10.
-          unfold word_indexed in H10; simpl in H10.
-          repeat match type of H10 with
-                   context[weqb ?a ?b] =>
-                   let H := fresh in destruct (weqb a b) eqn : H;
-                                       try apply weqb_sound in H; subst
-                 end; simpl in H10; try discriminate.
-          Discharge_NoDupVector.
-        * apply unfold_computes; intros; intros; split; eauto.
-          split; simpl; intros.
-          unfold sequence_Format at 1, Projection_Format, Compose_Format,
-          ComposeOpt.compose, Bind2 in H2.
-          apply unfold_computes in H2; computes_to_inv; subst.
-          clear H2'.
-          rewrite unfold_computes in H2; destruct_ex; split_and; subst.
-          destruct v; destruct v2; injections.
-          eapply @Word_decode_correct with (P := P) in H3; try eassumption.
-          eapply @Nat_decode_correct with (P := P) in H5; try eassumption.
-          destruct_ex; split_and.
-          unfold decode_nat in H10.
-          rewrite <- H7 in H5.
-          rewrite H5 in H10; simpl in H10; injections.
-          destruct n.
-          unfold wlt.
-          rewrite !wordToN_nat, wordToNat_natToWord_idempotent.
-          eapply Nomega.Nlt_in.
-          rewrite !Nnat.Nat2N.id.
-          eauto.
-          reflexivity.
-          etransitivity; try eassumption.
-          rewrite <- Nnat.Nat2N.id.
-          rewrite <- (Nnat.Nat2N.id 1501).
-          apply Nomega.Nlt_out.
-          reflexivity.
-          reflexivity.
+    intros. apply composeIf_subformat_correct_low; intros.
+    - unfold format_unused_word, Compose_Format in H2.
+      rewrite unfold_computes in H2; destruct_conjs.
+      eapply @Word_decode_correct with (P := P) in H5; eauto. destruct_conjs.
+      rewrite H8; simpl; subst.
+      destruct wlt_dec; simpl; eauto.
+    - destruct decode_word as [ [ [? ?] ?] | ] eqn: ? ; simpl in H1;
+        try discriminate.
+      generalize Heqo; intros.
+      eapply @Word_decode_correct with (P := P) in Heqo; try eassumption.
+      destruct wlt_dec eqn: ?; simpl in H1;
+        try discriminate; injections; intuition eauto 1;
+          destruct_conjs; subst; eexists _, _; intuition eauto 1.
+      + unfold sequence_Format, Projection_Format, Compose_Format,
+        ComposeOpt.compose, Bind2 in H8. computes_to_inv; subst.
+        rewrite unfold_computes in H8; destruct_conjs; subst; injections.
+        eapply @Word_decode_correct with (P := P) in H4; try eassumption.
+        eapply @Enum_decode_correct with (P := P) in H11; try eassumption.
+        destruct_conjs; subst.
+        unfold decode_enum in H19. simpl in *.
+        rewrite <- H12 in H13.
+        rewrite H13 in H19; simpl in H19.
+        unfold word_indexed in H19; simpl in H19.
+        repeat match type of H19 with
+                 context[weqb ?a ?b] =>
+                 let H := fresh in destruct (weqb a b) eqn : H;
+                                     try apply weqb_sound in H; subst
+               end; simpl in H10; try discriminate.
+        Discharge_NoDupVector.
+      + unfold sequence_Format at 1, Projection_Format, Compose_Format,
+        ComposeOpt.compose, Bind2 in H8. computes_to_inv; subst.
+        clear H8'.
+        rewrite unfold_computes in H8; destruct_conjs; subst; injections.
+        eapply @Word_decode_correct with (P := P) in H4; try eassumption.
+        eapply @Nat_decode_correct with (P := P) in H11; try eassumption.
+        destruct_conjs; subst; simpl in *.
+        unfold decode_nat in H20.
+        rewrite <- H13 in H14.
+        rewrite H14 in H20; simpl in H20; injections.
+        destruct n.
+        unfold wlt.
+        rewrite !wordToN_nat, wordToNat_natToWord_idempotent.
+        eapply Nomega.Nlt_in.
+        rewrite !Nnat.Nat2N.id.
+        eauto.
+        reflexivity.
+        etransitivity; try eassumption.
+        rewrite <- Nnat.Nat2N.id.
+        rewrite <- (Nnat.Nat2N.id 1501).
+        apply Nomega.Nlt_out.
+        reflexivity.
         Grab Existential Variables.
         eauto.
         eauto.
