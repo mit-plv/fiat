@@ -2330,3 +2330,43 @@ Instance ByteString_QueueMonoidOpt
 Proof.
   - abstract eauto.
 Defined.
+
+Lemma ByteString_enqueue_inj (b : bool) (t1 t2 : ByteString)
+  : ByteString_enqueue b t1 = ByteString_enqueue b t2 ->
+    t1 = t2.
+Proof.
+  unfold ByteString_enqueue.
+  destruct eq_nat_dec; destruct eq_nat_dec; inversion 1;
+    destruct t1, t2; unfold eq_rec_r in *; simpl in *; subst; simpl in *.
+  - apply app_inj_tail in H1. destruct_conjs.
+    inversion H1. apply inj_pair2_eq_dec in H3; try apply eq_nat_dec.
+    subst. f_equal. apply le_uniqueness_proof.
+  - apply inj_pair2_eq_dec in H3; try apply eq_nat_dec.
+    subst. f_equal. apply le_uniqueness_proof.
+Qed.
+
+Lemma ByteString_enqueue_word_inj {n} (w : word n) (t1 t2 : ByteString)
+  : ByteString_enqueue_word w t1 = ByteString_enqueue_word w t2 ->
+    t1 = t2.
+Proof.
+  induction w; simpl; intros; auto.
+  eauto using ByteString_enqueue_inj.
+Qed.
+
+Lemma ByteString_enqueue_ByteString_inj' (bs : list char) (t1 t2 : ByteString)
+  : fold_left ByteString_enqueue_char bs t1 = fold_left ByteString_enqueue_char bs t2 ->
+    t1 = t2.
+Proof.
+  revert t1 t2.
+  induction bs; simpl; eauto using ByteString_enqueue_word_inj.
+  (* Coq 8.9 hangs forever *)
+Admitted.
+
+Lemma ByteString_enqueue_ByteString_inj (t1 t2 t : ByteString)
+  : ByteString_enqueue_ByteString t1 t = ByteString_enqueue_ByteString t2 t ->
+    t1 = t2.
+Proof.
+  intros. revert t1 t2 H. destruct t as [padding front ? bs].
+  unfold ByteString_enqueue_ByteString. simpl.
+  eauto using ByteString_enqueue_word_inj, ByteString_enqueue_ByteString_inj'.
+Qed.
