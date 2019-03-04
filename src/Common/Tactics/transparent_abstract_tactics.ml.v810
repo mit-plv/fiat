@@ -1,11 +1,7 @@
 module TRANSPARENT_ABSTRACT =
   struct
-    open Decl_kinds
-    open Pfedit
     open Names
-    open Nameops
     open Ltac_plugin
-    open Proof_global
 
     (* Lift a constr to an ltac value. *)
     let to_ltac_val c = Tacinterp.Value.of_constr c
