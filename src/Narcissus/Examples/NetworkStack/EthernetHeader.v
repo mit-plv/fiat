@@ -48,7 +48,7 @@ Section EthernetPacketDecoder.
     ].
 
   Variable packet_len : nat. (* The length of the ethernet packet, *)
-  (* which is a parameter to the formatr and decoder. *)
+  (* which is a parameter to the format and decoder. *)
   Variable packet_len_OK : lt packet_len 1501.
 
   Definition EthernetHeader_Format
@@ -235,8 +235,8 @@ Section EthernetPacketDecoder.
         eauto.
   Qed.
 
-  Lemma distinguishing_word_prefix 
-    : Prefix_Format _ 
+  Lemma distinguishing_word_prefix
+    : Prefix_Format _
     (Either format_nat 16 ◦ constant packet_len ++
             format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
             format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
@@ -280,8 +280,8 @@ Section EthernetPacketDecoder.
     Qed.
 
     Lemma valid_packet_len_OK_good_Len
-    : lt packet_len (pow2 16).
-  Proof.
+      : lt packet_len (pow2 16).
+    Proof.
     intros.
     etransitivity; eauto.
     rewrite <- (wordToNat_natToWord_idempotent 16 1501).
@@ -295,7 +295,7 @@ Section EthernetPacketDecoder.
     match goal with
     | H : cache_inv_Property ?mnd _
       |- context[CorrectRefinedDecoder] =>
-      split; 
+      split;
       [ eapply (@derive_distinguishing_word _ _ _ H); eauto
       | eapply distinguishing_word_prefix ]
   end.

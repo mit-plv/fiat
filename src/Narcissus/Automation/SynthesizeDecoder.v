@@ -22,6 +22,7 @@ Require Import
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.Bool
+        Fiat.Narcissus.Formats.ByteBuffer
         Fiat.Narcissus.Stores.EmptyStore
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
@@ -111,6 +112,16 @@ Ltac apply_base_rule :=
     intros;
     eapply (fun NoDup => @Enum_decode_correct _ _ _ _ _ _ _ tb NoDup _ H);
     solve_side_condition
+
+  (* Unused words *)
+  | |- context [CorrectDecoder _  _ _ _ (format_unused_word _) _ _ _] =>
+    intros; eapply unused_word_decode_correct; eauto
+
+  (* ByteBuffers *)
+  | H : cache_inv_Property ?mnd _
+    |- CorrectDecoder _ _ _ _ format_bytebuffer _ _ _ =>
+    intros; eapply @ByteBuffer_decode_correct;
+    first [exact H | solve [intros; intuition eauto] ]
 
   (* Hook for new base rules. *)
   | |- _ => apply_new_base_rule
@@ -231,6 +242,14 @@ Ltac apply_combinator_rule'
           ltac:(clear H; intros; apply_rules)
           sequence_fail_first_format
           sequence_fail_invariant
+
+  | H : cache_inv_Property ?mnd _
+    |- CorrectRefinedDecoder _ _ _ _ (_ ++ _)%format _ _ _ _ =>
+    eapply format_sequence_refined_correct;
+           [ apply H
+           | clear H; intros; solve [ apply_rules ]
+           | clear H; solve [solve_side_condition ]
+           | clear H; intros; solve [ apply_rules]  ]
 
   | H : cache_inv_Property ?mnd _
     |- CorrectDecoder _ _ _ _ (Either ?fmt1 Or ?format2) _ _ _ =>

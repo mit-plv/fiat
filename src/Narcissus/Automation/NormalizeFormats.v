@@ -199,17 +199,23 @@ Proof.
 Qed.
 
 Ltac normalize_step BitStringT :=
-  (first [ eapply EquivFormat_trans; [apply (@sequence_assoc _ _ BitStringT) | ]
-         | eapply EquivFormat_trans; [apply sequence_mempty with (monoid := BitStringT) | ]
-         | eapply EquivFormat_ComposeIf; intros
-         | eapply EquivFormat_trans; [apply EquivFormat_If_Then_Else with (monoid := BitStringT) | ]
-         | apply EquivFormat_If_Then_Else_Proper
-         | eapply (@EquivFormat_UnderSequence' _ _ BitStringT);
-           [ repeat (eapply EquivFormat_trans;
-                     [ eapply EquivFormat_compose_map | ]); apply EquivFormat_reflexive | ]
-         | eapply EquivFormat_Projection_Format_Empty_Format';
-           [ repeat eapply EquivFormat_compose_map; apply EquivFormat_reflexive ]
-         | unfold EquivFormat; intros; reflexivity]; intros).
+  (first
+     [ (* Always solve the goal if the first format is an evar *)
+       match goal with
+         |- EquivFormat ?z ?x =>
+         is_evar z; apply EquivFormat_reflexive
+       end
+     | eapply EquivFormat_trans; [ apply sequence_assoc |  ]
+     | eapply EquivFormat_trans; [ apply sequence_mempty with (monoid := BitStringT) |  ]
+     | eapply EquivFormat_ComposeIf; intros
+     | eapply EquivFormat_trans; [ apply EquivFormat_If_Then_Else with (monoid := BitStringT) |  ]
+     | apply EquivFormat_If_Then_Else_Proper
+     | eapply EquivFormat_UnderSequence';
+       [ repeat (eapply EquivFormat_trans; [ eapply EquivFormat_compose_map |  ]); apply EquivFormat_reflexive
+       |  ]
+     | eapply EquivFormat_Projection_Format_Empty_Format';
+       [ repeat eapply EquivFormat_compose_map; apply EquivFormat_reflexive ]
+     | unfold EquivFormat; intros; reflexivity ]); intros.
 
 Add Parametric Morphism
     S T
@@ -230,6 +236,7 @@ Qed.
 
 Ltac normalize_format :=
   (* Normalize formats by performing algebraic simplification. *)
+  intros;
   repeat progress
          match goal with
          | |- CorrectDecoder ?monoid _ _ _ _ _ _ _ =>
@@ -237,5 +244,8 @@ Ltac normalize_format :=
            repeat (normalize_step monoid)
          | |- Prefix_Format ?monoid _ _ =>
            intros; eapply prefix_format_refineEquiv; unfold flip;
+           repeat (normalize_step monoid)
+         | |- CorrectRefinedDecoder ?monoid _ _ _ _ _ _ _ _ =>
+           intros; eapply format_decode_refined_correct_refineEquiv; unfold flip;
            repeat (normalize_step monoid)
          end.
