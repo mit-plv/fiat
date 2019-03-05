@@ -1,7 +1,6 @@
 module WITH_DB =
   struct
     open Tacticals.New
-    open Names
     open Ltac_plugin
 
   (* Lift a constructor to an ltac value. *)
@@ -10,7 +9,7 @@ module WITH_DB =
   let with_hint_db dbs tacK =
     (* [dbs] : list of hint databases *)
     (* [tacK] : tactic to run on a hint *)
-    Proofview.Goal.nf_enter begin
+    Proofview.Goal.enter begin
 	fun gl ->
 	let syms = ref [] in
 	let _ =
@@ -42,9 +41,9 @@ module WITH_DB =
       end
 
   let add_resolve_to_db lem db =
-    Proofview.Goal.nf_enter begin
+    Proofview.Goal.enter begin
 	fun gl ->
-	let _ = Hints.add_hints true db (Hints.HintsResolveEntry [({ Typeclasses.hint_priority = Some 1 ; Typeclasses.hint_pattern = None },false,true,Hints.PathAny,lem)]) in
+	let _ = Hints.add_hints ~local:true db (Hints.HintsResolveEntry [({ Typeclasses.hint_priority = Some 1 ; Typeclasses.hint_pattern = None },false,true,Hints.PathAny,lem)]) in
 	tclIDTAC
       end
 
