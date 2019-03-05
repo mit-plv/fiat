@@ -69,10 +69,13 @@ let to_char w =
   Char.unsafe_chr (Int64.to_int w)
 
 let of_uint16 i16 =
-  Int64.of_int i16
+  wmask 16 (Int64.of_int i16)
 
-let to_int32 w =
-  Int64.to_int32 w
+let of_uint32 i32 =
+  wmask 32 (Int64.of_int32 i32)
+
+let to_uint32 i32 =
+  Int64.to_int32 i32
 
 let whd _ w =
   (Int64.logand Int64.one w) = Int64.one

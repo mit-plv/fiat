@@ -22,6 +22,13 @@ Ltac start_synthesizing_decoder :=
   (* pose_string_hyps; *)
   eapply Start_CorrectAlignedDecoderFor; simpl; intros.
 
+Ltac eapply_formatnchars_thm_simplified thm sz :=
+  let tm := constr:(fun cache cacheAddNat p1 p2 => thm cache cacheAddNat p1 p2 sz) in
+  let tm_t := type of tm in
+  let tm_t := (eval unfold GetCurrentBytes, SetCurrentBytes in tm_t) in
+  let tm_t := (eval simpl in tm_t) in
+  eapply (tm: tm_t).
+
 Ltac align_decoders_step :=
   first [
       eapply @AlignedDecodeBindDuplicate; intros
