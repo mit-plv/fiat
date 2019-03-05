@@ -539,11 +539,12 @@ Module LeastFixedPointFun.
   Instance CompleteLattice_funDef
            {fDom : list Type}
            {fCod : Type}
-    :  CompleteLattice (O := @funDefOps fDom fCod) :=
-    { cl_sup := refineFun_sup;
-      cl_inf := refineFun_inf
-    }.
+    :  CompleteLattice (O := @funDefOps fDom fCod).
   Proof.
+  refine
+    {| cl_sup := refineFun_sup;
+      cl_inf := refineFun_inf
+    |}.
     eapply glb_refineFun_inf.
     eapply lub_refineFun_sup.
   Defined.

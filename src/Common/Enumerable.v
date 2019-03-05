@@ -131,38 +131,41 @@ Local Ltac t bl :=
       repeat intros []; simpl; try reflexivity
     ).
 
-Global Instance enumerable_unit : Enumerable unit
-  := { enumerate := tt::nil }.
-Proof. t unit_bl. Defined.
+(* We do not want `Program` to perform simplifications *)
+Local Obligation Tactic := idtac.
 
-Global Instance enumerable_Empty_set : Enumerable Empty_set
+Global Program Instance enumerable_unit : Enumerable unit :=
+  { enumerate := tt::nil }.
+Next Obligation. t unit_bl. Defined.
+
+Global Program Instance enumerable_Empty_set : Enumerable Empty_set
   := { enumerate := nil }.
-Proof. intros []. Defined.
+Next Obligation. intros []. Defined.
 
-Global Instance enumerable_True : Enumerable True
+Global Program Instance enumerable_True : Enumerable True
   := { enumerate := I::nil }.
-Proof. intros []; left; reflexivity. Defined.
+Next Obligation. intros []; left; reflexivity. Defined.
 
-Global Instance enumerable_False : Enumerable False
+Global Program Instance enumerable_False : Enumerable False
   := { enumerate := nil }.
-Proof. intros []. Defined.
+Next Obligation. intros []. Defined.
 
-Global Instance enumerable_bool : Enumerable bool
+Global Program Instance enumerable_bool : Enumerable bool
   := { enumerate := true::false::nil }.
-Proof. t (@bool_bl). Defined.
+Next Obligation. t (@bool_bl). Defined.
 
-Global Instance enumerable_sum `{Enumerable A, Enumerable B} : Enumerable (A + B)
+Global Program Instance enumerable_sum `{Enumerable A, Enumerable B} : Enumerable (A + B)
   := { enumerate := List.map inl (enumerate A) ++ List.map inr (enumerate B) }.
-Proof.
-  intros [x|x]; apply in_or_app; [ left | right ];
+Next Obligation.
+  intros ? ? ? ? [x|x]; apply in_or_app; [ left | right ];
   apply in_map;
   apply enumerate_correct.
 Defined.
 
-Global Instance enumerable_prod `{Enumerable A, Enumerable B} : Enumerable (A * B)
+Global Program Instance enumerable_prod `{Enumerable A, Enumerable B} : Enumerable (A * B)
   := { enumerate := List.flat_map (fun a => List.map (pair a) (enumerate B)) (enumerate A) }.
-Proof.
-  intros [a b].
+Next Obligation.
+  intros ? ? ? ? [a b].
   apply List.in_flat_map.
   exists a; split.
   { apply enumerate_correct. }
@@ -173,9 +176,9 @@ Defined.
 Definition enumerate_ascii : list Ascii.ascii
   := Eval compute in List.map Ascii.ascii_of_nat (up_to 256).
 
-Global Instance enumerable_ascii : Enumerable Ascii.ascii
+Global Program Instance enumerable_ascii : Enumerable Ascii.ascii
   := { enumerate := enumerate_ascii }.
-Proof.
+Next Obligation.
   intro x.
   abstract (
       rewrite <- (Ascii.ascii_nat_embedding x);
