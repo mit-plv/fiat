@@ -184,44 +184,49 @@ Proof.
   intros.
   eapply format_decode_correct_alt.
   6: apply EquivFormat_reflexive.
-  6: { eapply injection_decode_correct.
-       - eapply Sequence_refined_decoder_correct.
-         + apply P_inv_pf.
-         + intros. eapply Compose_decode_correct.
-           intros; eapply decode_1_OK; eauto.
-           intros; eapply View_Predicate_OK; eauto.
-         + intros; eapply decode2_pf; eauto.
-         + intros.
-           instantiate (1 := (Projection_Format format1 fst ++ Projection_Format view_format snd)%format).
-           unfold Projection_Format, Compose_Format, sequence_Format,
-           ComposeOpt.compose, Bind2.
-           apply unfold_computes; computes_to_econstructor.
-           apply unfold_computes.
-           simpl; eexists _; intuition eauto.
-           apply unfold_computes; apply H.
-           computes_to_econstructor.
-           apply unfold_computes.
-           simpl; eexists _; intuition eauto.
-           apply unfold_computes; eauto.
-           simpl; eauto.
-       - simpl; intros; split_and; eauto.
-       - simpl; intros; split_and; eauto.
-       - simpl; intros.
-         rewrite unfold_computes in H.
-         split_and.
-         split.
-         + unfold Projection_Format, Compose_Format, sequence_Format,
-           ComposeOpt.compose, Bind2 in *; apply unfold_computes in H0; computes_to_inv.
-           rewrite unfold_computes in H0.
-           rewrite unfold_computes in H0';
-             destruct_ex; intuition; subst.
-           apply unfold_computes.
-           computes_to_econstructor.
-           apply unfold_computes.
-           eexists _; split; eauto.
-           computes_to_econstructor; eauto.
-         + eauto.
-  } 
+  Focus 6.
+  (* 6: { *)
+  {
+  eapply injection_decode_correct.
+  - eapply Sequence_refined_decoder_correct.
+    + apply P_inv_pf.
+    + intros; eapply Compose_decode_correct.
+      intros; eapply decode_1_OK; eauto.
+      intros; eapply View_Predicate_OK; eauto.
+    + intros; eapply decode2_pf; eauto.
+    + intros.
+      instantiate (1 := (Projection_Format format1 fst ++ Projection_Format view_format snd)%format).
+      unfold Projection_Format, Compose_Format, sequence_Format,
+      ComposeOpt.compose, Bind2.
+      apply unfold_computes; computes_to_econstructor.
+      apply unfold_computes.
+      simpl; eexists _; intuition eauto.
+      apply unfold_computes; apply H.
+      computes_to_econstructor.
+      apply unfold_computes.
+      simpl; eexists _; intuition eauto.
+      apply unfold_computes; eauto.
+      simpl; eauto.
+  - simpl; intros; split_and; eauto.
+  - simpl; intros; split_and; eauto.
+  - simpl; intros.
+    rewrite unfold_computes in H.
+    split_and.
+    split.
+    + unfold Projection_Format, Compose_Format, sequence_Format,
+      ComposeOpt.compose, Bind2 in *; apply unfold_computes in H0; computes_to_inv.
+      rewrite unfold_computes in H0.
+      rewrite unfold_computes in H0';
+        destruct_ex; intuition; subst.
+      apply unfold_computes.
+      computes_to_econstructor.
+      apply unfold_computes.
+      eexists _; split; eauto.
+      computes_to_econstructor; eauto.
+    + eauto.
+  }
+  all: try unfold flip, pointwise_relation, impl;
+    intuition eauto using EquivFormat_reflexive.
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.
   unfold Compose_Decode, sequence_Decode, sequence_Decode'; simpl.

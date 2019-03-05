@@ -1080,7 +1080,10 @@ Lemma compose_IPChecksum_format_correct'
 Proof.
   intros.
   eapply format_decode_correct_alt.
-  7: { eapply (composeChecksum_format_correct'
+  Focus 7.
+  (*7: { *)
+  {
+  eapply (composeChecksum_format_correct'
                  A _ monoid _ 16 IPChecksum_Valid).
        - eapply H.
        - rename H6 into H4'; rename H5 into H6; rename H4 into H5; rename H6 into H4.
@@ -1138,6 +1141,8 @@ Proof.
            rewrite <- (H1 _ _ _ _ H9) in H12.
            rewrite padding_eq_mod_8, H12.
            reflexivity. }
+  all: try unfold flip, pointwise_relation, impl;
+    intuition eauto using EquivFormat_reflexive.
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.
   instantiate (1 := IPChecksum_Valid_dec).

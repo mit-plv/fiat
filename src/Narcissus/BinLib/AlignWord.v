@@ -879,7 +879,9 @@ Section AlignEncodeWord.
       eapply DecodeMEquivAlignedDecodeM_trans;
         intros; try eapply AlignedDecodeMEquiv_refl.
       (*intros; unfold mult; simpl; rewrite decode_unused_word_plus'; simpl; fold mult. *)
-      2: { idtac.
+      Focus 2.
+      (*2: {*)
+      {
       instantiate (1 := fun b cd => `(w, v', cd') <- decode_unused_word (sz := 8) b cd;
                                     `(w', v'', cd') <- decode_unused_word (sz := m * 8) v' cd';
                                     Some ((), v'', cd')); simpl.
@@ -909,6 +911,7 @@ Section AlignEncodeWord.
       rewrite addD_addD_plus; reflexivity.
       eauto.
       }
+      all: idtac.
       repeat (intros; eapply Bind_DecodeMEquivAlignedDecodeM);
         eauto using @Return_DecodeMEquivAlignedDecodeM.
       eapply AlignedDecodeUnusedCharM.

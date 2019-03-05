@@ -760,11 +760,11 @@ Lemma AlignedDecodeBindDuplicate {A C : Type}
       (t : ByteString -> A -> DecodeM (C * ByteString) ByteString)
       (t' : forall {sz'}, ByteBuffer.t sz' -> forall {numBytes}, AlignedDecodeM C numBytes)
   : (forall {sz} (v0 : ByteBuffer.t sz),
-        DecodeMEquivAlignedDecodeM (fun v cd => `(a, t', cd') <- decode_A v cd;
-                                                  t (build_aligned_ByteString v0) a t' cd')
+        DecodeMEquivAlignedDecodeM (fun v cd => `(a, t'', cd') <- decode_A v cd;
+                                                  t (build_aligned_ByteString v0) a t'' cd')
                                    (@t' _ v0))
-    -> DecodeMEquivAlignedDecodeM (fun v cd => `(a, t', cd') <- decode_A v cd;
-                                                 t v a t' cd')
+    -> DecodeMEquivAlignedDecodeM (fun v cd => `(a, t'', cd') <- decode_A v cd;
+                                                 t v a t'' cd')
                                   (fun numBytes v0 => (@t' _ v0 _ v0)).
 Proof.
 Admitted.

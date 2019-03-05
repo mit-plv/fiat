@@ -92,11 +92,11 @@ Section ByteBufferFormat.
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b))).
 
   Definition format_bytebuffer
-             (b : { n & ByteBuffer.t n })
+             (b : { n : _ & ByteBuffer.t n })
              (ce : CacheFormat) : Comp (T * CacheFormat) :=
     format_Vector format_word (projT2 b) ce.
 
-  Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n & ByteBuffer.t n } * T * CacheDecode) :=
+  Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n :_ & ByteBuffer.t n } * T * CacheDecode) :=
     match decode_Vector (decode_word (sz := 8)) s b cd with
     | Some (v, t, cd) => Some (existT ByteBuffer.t _ v, t, cd)
     | None => None

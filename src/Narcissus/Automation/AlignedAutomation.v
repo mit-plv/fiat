@@ -399,6 +399,7 @@ Proof.
   intros; unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format, format_nat; intros ? ?.
   rewrite unfold_computes in H; destruct_ex; intuition.
   apply unfold_computes; eexists; split; eauto; subst.
+  try rewrite <- plus_n_O with (n := f s).
   eauto.
 Qed.
 

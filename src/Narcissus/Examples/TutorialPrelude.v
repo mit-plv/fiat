@@ -134,10 +134,13 @@ Lemma cleanup_aligned_encoder_bind_projection {cache S1 S2 sz}:
 Proof. congruence. Qed.
 
 Ltac eta_reduce :=
-  repeat change (fun x => ?h x) with h.
+  repeat match goal with
+           |- context [fun x => @?h x] =>
+           change (fun x => ?h x) with h
+         end.
 
-Ltac cleanup_single_encoder :=
-  lazymatch goal with
+Ltac cleanup_single_encoder := simpl.
+(*lazymatch goal with
   | [  |- forall v idx s ce, @?f v idx s ce = @?g v idx s ce ] =>
     change (forall v idx s ce, f v idx s ce = g v idx s ce); intros;
     eta_reduce;
@@ -149,7 +152,7 @@ Ltac cleanup_single_encoder :=
         (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2);
     change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g1 (?g2 (?g3 s)))) with
         (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2) g3)
-  end.
+  end. *)
 
 Lemma AlignedEncodeList_morphism {cache: Cache} {A: Type}:
   forall (encA encA': forall sz, AlignedEncodeM sz) sz,
@@ -179,13 +182,13 @@ Ltac exact_computed t :=
   let t' := (eval compute in t) in exact t'.
 
 Ltac derive_clean_encoder_do_postprocess :=
-  simpl;
-  repeat change (fun x => ?h x) with h;
+  simpl.
+(*repeat change (fun x => ?h x) with h;
   repeat change (wzero ?sz) with (ltac:(let w0 := (eval compute in (wzero sz)) in exact w0));
   repeat ((change (@split1' (S ?sz1) ?sz2 (WS ?b ?w)) with
                (ltac:(exact_computed (@split1' (S sz1) sz2 (WS b w))))) ||
           (change (@split2' (S ?sz1) ?sz2 (WS ?b ?w)) with
-               (ltac:(exact_computed (@split2' (S sz1) sz2 (WS b w)))))).
+               (ltac:(exact_computed (@split2' (S sz1) sz2 (WS b w)))))). *)
 
 Ltac derive_clean_encoder_do_projections_step :=
   lazymatch goal with

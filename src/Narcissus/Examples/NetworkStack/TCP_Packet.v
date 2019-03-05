@@ -48,7 +48,7 @@ Section TCPPacketDecoder.
      WindowSize : word 16;
      UrgentPointer : option (word 16);
      Options : list (word 32);
-     Payload : { n & ByteBuffer.t n }}.
+     Payload : { n : _ & ByteBuffer.t n }}.
 
   (* These values are provided by the IP header for checksum calculation.*)
 

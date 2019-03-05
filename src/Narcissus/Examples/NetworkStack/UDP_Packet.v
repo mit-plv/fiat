@@ -40,7 +40,7 @@ Section UDP_Decoder.
   Record UDP_Packet :=
     { SourcePort : word 16;
       DestPort : word 16;
-      Payload : { n & ByteBuffer.t n } }.
+      Payload : { n : _ & ByteBuffer.t n } }.
 
   Definition UDP_Packet_Format
     : FormatM UDP_Packet ByteString :=
