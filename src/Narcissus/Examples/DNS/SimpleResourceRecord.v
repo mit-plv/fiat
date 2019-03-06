@@ -47,7 +47,7 @@ Section DnsPacket.
 
   (*
   Local Open Scope Tuple_scope.
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
@@ -1685,7 +1685,7 @@ Require Import
 Section DnsPacket.
 
   Local Open Scope Tuple_scope.
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 

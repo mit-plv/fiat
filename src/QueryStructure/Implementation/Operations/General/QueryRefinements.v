@@ -22,7 +22,7 @@ Require Import
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Representation.QueryStructure.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Import Lists.List.ListNotations.
 (* [Query_For] and all aggregates are opaque, so we need to make them
    transparent in order to reason about them. *)

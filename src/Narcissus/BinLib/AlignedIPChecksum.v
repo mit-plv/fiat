@@ -166,7 +166,7 @@ Lemma Vector_destruct_O :
   forall {A} (v: Vector.t A 0),
     v = [].
 Proof.
-  intro; apply VectorDef.case0; reflexivity.
+  intro; apply Vector.case0; reflexivity.
 Qed.
 
 Ltac explode_vector :=

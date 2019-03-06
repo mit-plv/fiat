@@ -7,8 +7,8 @@ Require Import
         Fiat.Narcissus.Examples.NetworkStack.TCP_Packet
         Fiat.Narcissus.Examples.NetworkStack.UDP_Packet.
 
-Require Coq.Vectors.VectorDef.
-Export Coq.Vectors.VectorDef.VectorNotations.
+Require Coq.Vectors.Vector.
+Export Coq.Vectors.Vector.VectorNotations.
 
 (* Require Export *)
 (*         Fiat.Common.SumType *)
@@ -38,9 +38,9 @@ Export Coq.Vectors.VectorDef.VectorNotations.
 (*         Fiat.Narcissus.Formats.IPChecksum. *)
 
 Definition InjectEnum {n A}
-           (gallina_constructors: VectorDef.t A n)
+           (gallina_constructors: Vector.t A n)
            (enum_member: Fin.t n) : A :=
-  VectorDef.nth gallina_constructors enum_member.
+  Vector.nth gallina_constructors enum_member.
 
 Require Import AlignedByteString.
 

@@ -102,8 +102,8 @@ Delimit Scope ADTSig_scope with ADTSig.
 
 (* Notation for ADT signatures utilizing [BuildADTSig]. *)
 
-Require Import Coq.Vectors.VectorDef.
-Import Vectors.VectorDef.VectorNotations.
+Require Import Coq.Vectors.Vector.
+Import Vectors.Vector.VectorNotations.
 
 Delimit Scope vector_scope with vector.
 

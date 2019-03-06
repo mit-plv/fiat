@@ -3,7 +3,7 @@ Require Import
         Coq.Arith.Peano_dec
         Coq.Logic.Eqdep_dec.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Require Export
         Coq.Lists.List.
 

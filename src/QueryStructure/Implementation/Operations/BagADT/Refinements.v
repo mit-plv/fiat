@@ -30,7 +30,7 @@ Import Lists.List.ListNotations.
 
 Section BagsQueryStructureRefinements.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Variable qs_schema : RawQueryStructureSchema.
   Variable BagIndexKeys :

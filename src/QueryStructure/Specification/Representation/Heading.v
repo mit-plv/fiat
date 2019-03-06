@@ -1,6 +1,6 @@
 Require Import
         Coq.Vectors.Vector
-        Coq.Vectors.VectorDef
+        Coq.Vectors.Vector
         Coq.Lists.List
         Coq.Strings.String
         Coq.Logic.FunctionalExtensionality

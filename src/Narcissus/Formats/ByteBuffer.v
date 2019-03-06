@@ -11,7 +11,7 @@ Require Import
 
 Lemma eq_rect_Vector_cons {A}
   : forall n m a v H H',
-    eq_rect (S n) (Vector.t A) (VectorDef.cons A a n v) (S m) H =
+    eq_rect (S n) (Vector.t A) (Vector.cons A a n v) (S m) H =
     Vector.cons _ a _ (eq_rect n (Vector.t A) v _ H').
 Proof.
   intros.

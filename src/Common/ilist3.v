@@ -13,7 +13,7 @@ Section ilist3.
      by our ADT notations uses these to implement notation-friendly
      method lookups.  *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Context {A : Type}. (* The indexing type. *)
   Context {B : A -> Type}. (* The type of indexed elements. *)
@@ -156,7 +156,7 @@ End ilist3.
 Section ilist3_map.
   Context {A} (B : A -> Type).
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Fixpoint imap3_list (f : forall a : A, B a) {n} (As : Vector.t A n) : ilist3 As
     := match As with
@@ -180,7 +180,7 @@ Section ilist3_imap.
 
   (* Mapping a function over an indexed Vector.t. *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Variable A : Type. (* The indexing type. *)
   Variable B B' : A -> Type. (* The two types of indexed elements. *)
@@ -218,7 +218,7 @@ End ilist3_imap.
 
 Section ilist3_replace.
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   (* Replacing an element of an indexed Vector.t. *)
   Context {A : Type}. (* The indexing type. *)

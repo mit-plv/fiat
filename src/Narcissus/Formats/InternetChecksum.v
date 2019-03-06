@@ -649,7 +649,7 @@ Lemma Vector_checksum_eq_checksum'
   : forall (sz' sz : nat)
            (sz_lt : le sz sz')
            (bytes : ByteBuffer.t sz),
-    Vector_checksum bytes = checksum (VectorDef.to_list bytes).
+    Vector_checksum bytes = checksum (Vector.to_list bytes).
 Proof.
   induction sz'; simpl; eauto.
   - intros; inversion sz_lt; subst.
@@ -663,14 +663,14 @@ Qed.
 
 Corollary Vector_checksum_eq_checksum {sz}
   : forall (bytes : ByteBuffer.t sz),
-    Vector_checksum bytes = checksum (VectorDef.to_list bytes).
+    Vector_checksum bytes = checksum (Vector.to_list bytes).
 Proof.
   intros; eapply Vector_checksum_eq_checksum'; eauto.
 Qed.
 
 Corollary checksum_eq_Vector_checksum
   : forall (bytes : list (word 8)),
-    checksum bytes = Vector_checksum (VectorDef.of_list bytes).
+    checksum bytes = Vector_checksum (Vector.of_list bytes).
 Proof.
   intros; rewrite Vector_checksum_eq_checksum, Vector.to_list_of_list_opp; reflexivity.
 Qed.

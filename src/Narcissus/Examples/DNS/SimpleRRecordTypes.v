@@ -4,7 +4,7 @@ Require Import
         Coq.Strings.Ascii
         Coq.Strings.String
         Coq.Bool.Bool
-        Coq.Vectors.VectorDef
+        Coq.Vectors.Vector
         Coq.Lists.List.
 
 Require Import
@@ -20,7 +20,7 @@ Require Import
         Bedrock.Word
         Bedrock.Memory.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Local Open Scope vector_scope.
 Local Open Scope string_scope.
 
