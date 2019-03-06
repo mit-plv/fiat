@@ -909,20 +909,24 @@ Section BagsQueryStructureRefinements.
     setoid_rewrite refineEquiv_unit_bind.
     etransitivity.
     2: unfold List_Query_In; etransitivity.
-    3: {
+    Focus 3.
+    (* 3: { *)
       apply refine_under_bind.
       intros; set_evars.
       rewrite <- refineEquiv_bind_unit with (f := fun x => flatten_CompList (map resultComp x))
                                             (x := filter filter_rest a).
       unfold H1; finish honing.
-      }
-    2: { simpl.
+    (* } *)
+    Focus 2.
+    (* 2: { *)
+         simpl.
          rewrite <- refine_bind_bind.
          rewrite <- filter_and_join_ilist2_hd_dep with
              (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx')
                                                    (search_pattern tup)))
              (filter_rest0 := filter_rest).
-         finish honing. }
+         finish honing.
+    (* } *)
     simplify with monad laws.
     rewrite refineEquiv_bind_bind.
     setoid_rewrite refineEquiv_bind_unit.
