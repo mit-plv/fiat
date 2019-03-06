@@ -211,7 +211,7 @@ Extract Inlined Constant AlignedList.bytebuffer_of_bytebuffer_range =>
 (* CPC clean up CstructBytestring.ml to remove unneeded stuff *)
 
 Import AlignedByteString.
-Extract Constant AlignedByteString.ByteBuffer.t => "CstructBytestring.storage_t".
+Extract Constant ByteBuffer.t => "CstructBytestring.storage_t".
 Extract Inlined Constant ByteBuffer.t => "CstructBytestring.storage_t".
 Extract Inlined Constant ByteBuffer.nil => "CstructBytestring.nil".
 Extract Inlined Constant ByteBuffer.cons => "CstructBytestring.cons".
@@ -225,8 +225,8 @@ Extract Inlined Constant nth_opt => "CstructBytestring.nth_opt".
 Extract Inlined Constant set_nth' => "CstructBytestring.set_nth".
 Extract Inlined Constant initialize_Aligned_ByteString => "CstructBytestring.create".
 Extract Inlined Constant InternetChecksum.ByteBuffer_checksum_bound => "CstructBytestring.checksum_bound".
-Extract Inlined Constant AlignedList.buffer_blit_buffer => "CstructBytestring.blit_buffer".
-Extract Constant AlignedList.bytebuffer_of_bytebuffer_range =>
+Extract Inlined Constant AlignedByteBuffer.buffer_blit_buffer => "CstructBytestring.blit_buffer".
+Extract Constant AlignedByteBuffer.bytebuffer_of_bytebuffer_range =>
   "(fun sz from len v ->
     let b = CstructBytestring.slice_range sz from len v in
     ExistT (CstructBytestring.length b, b))".
