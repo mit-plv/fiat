@@ -1,0 +1,19 @@
+- Write a completely src/Parsers/ContextFreeGrammar/Fix/PreInterface.v file that contains:
+  + a class for the data needed to make the vm_computable structure
+  + a class for the data needed to make use of that structure in proofs
+- Write src/Parsers/ContextFreeGrammar/Fix/Interface.v file that contains:
+  + a class for the vm_computable structure
+  + function and tactic that builds the vm_computable structure for lists of data
+  + tactic that decomposes the vm_computed structure into its parts, and poses each of them
+  + lemmas that are for using the structure
+Nothing should need to peek underneath this abstraction barrier
+
+
+
+
+Google for worklist for dataflow analysis
+
+Write a tactic that handles reasoning about empty strings
+
+Thread the invariant through the completeness proof, assuming that the split state will only contain non-proofy bits
+Provide a simply typed interface for splitting algorithms (no minimal parse trees mentioned, too)

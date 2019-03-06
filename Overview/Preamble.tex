@@ -1,0 +1,26 @@
+\definecolor{Black}{rgb}{0.1,0.1,0.1}
+\definecolor{White}{rgb}{1,1,1}
+\definecolor{LightGray}{rgb}{0.8,0.8,0.8}
+\definecolor{LightRed}{rgb}{0.8,0.4,0.4}
+\definecolor{LightBlue}{rgb}{0.4,0.8,0.4}
+\definecolor{LightGreen}{rgb}{0.6,0.6,0.8}
+\definecolor{LightPurple}{RGB}{179,40,244}
+\definecolor{DPurple}{RGB}{149,91,165}
+\definecolor{DGreen}{RGB}{78,186,111}
+\definecolor{DOrange}{RGB}{215,90,90}
+\definecolor{DBlue}{RGB}{45,149,191}
+\definecolor{DYellow}{RGB}{215,196,25}
+\definecolor{HPurple}{RGB}{189,131,205}
+\definecolor{HGreen}{RGB}{118,226,151}
+\definecolor{HOrange}{RGB}{255,130,130}
+\definecolor{HBlue}{RGB}{85,189,231}
+\definecolor{HYellow}{RGB}{255,236,65}
+
+\newcommand\AC[1]{\textcolor{DGreen}{[AC: #1]}} % Adam's Comments
+\newcommand\BD[1]{\textcolor{DPurple}{[BD: #1]}} % Ben's Comments
+\newcommand\JG[1]{\textcolor{DOrange!}{[JG: #1]}} % Jason's Comments
+
+\newenvironment{tabbedcodeblock}{ % For Code Blocks
+\sf\small
+\begin{tabbing}w\=w\=w\=w\=w\=w\=w\=w\=w\=w\=w\=w\=w\kill
+}{\end{tabbing}\vspace{-.1in}}

@@ -1,0 +1,57 @@
+\documentclass[preprint]{sigplanconf}
+
+\usepackage{color}
+\usepackage{url}
+\usepackage{bcprules}
+\usepackage{epigraph}
+\usepackage{pdfpages}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\input{Preamble}
+
+\bibliographystyle{plain}
+
+
+\begin{document}
+
+\title{Fiat: Deductive Synthesis of Abstract Data Types in a Proof Assistant}
+
+\authorinfo{Foo}
+
+\maketitle
+
+\begin{abstract}
+
+\input{src/Abstract}
+
+\end{abstract}
+
+\category{D.3.1}{Programming Languages}
+               {Formal Definitions and Theory}
+               [Semantics]
+
+\keywords
+
+\input{src/Introduction}
+
+\input{src/Computation}
+
+\input{src/ADT}
+
+\input{src/QueryStructures}
+
+\input{src/Evaluation}
+
+\input{src/RelatedWork}
+
+\bibliography{bibliography}
+
+\cleardoublepage
+
+\appendix
+%\section{The Code}
+%\includepdf[pages={-}]{library.pdf}
+
+\end{document}

@@ -1,0 +1,26 @@
+General TODO
+8/28/15
+
+- move generic DNS lemmas to QueryStructures
+- pull out big ideas from tuples_in_relation_satisfy_constraint_specific
+- Comp in predicate: relation-building query notation
+- Fiat wishlist (tuples, monads, etc.)
+- authoritative server needs to be patched for packet changes
+  (in progress, honeDns fails)
+- fill in stubs
+- pass rep around properly in process
+- Filter rows by record type and class
+- Bounded amount of work (delete a referral in SLIST when queried too many times)
+- Returning all answer/authority/additional instead of just one (re-hierarchizing rows into packet)
+- Proper SBELT IP
+- Dealing with CNAME; requires FueledFix
+- CNAME in answers and having that as the answer for the domain and the aliases (see RFC 1034, 6.2.7)
+- Inverse queries
+- variant types for cache pointers
+- caching opportunity with SLIST_ORDER (remove table, compute order whenever needed -> generate table)
+- TTL optimization?
+- put constraints back on tables
+- wrapper: time monad
+- Fiat schema/tuple autocomplete (Emacs hacking)
+- Parallelism (long term research goal)
+- Coq clippy thing

@@ -1,0 +1,100 @@
+.PHONY: all test test-reference test-pretty correctness test-profile test-profile-graph
+
+all: test_ab_star.exe test_ab_star_reference.exe
+
+test_ab_star.exe test_ab_star_reference.exe: %.exe : %.ml
+	rm -f $*.mli
+	ocamlopt -o $@ $<
+
+test_ab_star_p.exe test_ab_star_reference_p.exe: %_p.exe : %.ml
+	rm -f $*.mli
+	ocamloptp -p -o $@ $<
+
+ab10:
+	echo -n "abababababababababab" > $@
+
+aba10:
+	echo -n "ababababababababababa" > $@
+
+ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0 ab10.0.0.0.0.0.0 ab10.0.0.0.0.0.0.0 ab10.0.0.0.0.0.0.0.0 : %.0 : %
+	@cp -f $< $@
+	@cat $< >> $@
+	@cat $< >> $@
+	@cat $< >> $@
+	@cat $< >> $@
+	@cat $< >> $@
+	@cat $< >> $@
+	@cat $< >> $@
+	@cat $< >> $@
+	@cat $< >> $@
+
+ifeq ($(LONG),2)
+  PROF_FILE = ab10.0.0.0.0.0
+else
+ifeq ($(LONG),1)
+  PROF_FILE = ab10.0.0.0.0
+else
+  PROF_FILE = ab10.0.0.0
+endif
+endif
+
+ocamlprof.dump: test_ab_star_p.exe $(PROF_FILE)
+	./test_ab_star_p.exe $(PROF_FILE)
+
+test-profile: ocamlprof.dump test_ab_star_p.exe
+	gprof ./test_ab_star_p.exe
+
+test-profile-graph: ocamlprof.dump test_ab_star_p.exe
+	gprof --graph="$$(gprof ./test_ab_star_p.exe  | grep -o '[^ ]*fix[0-9]*_F[^ ]*' | sort | uniq)" ./test_ab_star_p.exe
+
+make_fmt = $$(echo "$1 (real: %e, user: %U, sys: %S, mem: %M ko)" | sed s'/\.//g')
+
+# ab10.0.0.0.0.0
+TEST_FILES = ab10 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0
+ifeq ($(LONG),1)
+  TEST_FILES += ab10.0.0.0.0.0
+endif
+test: ab10.0.0.0.0.0.0 test_ab_star.exe test_ab_star_reference.exe
+	for F in $(TEST_FILES); do \
+	FMT="$(call make_fmt, $$F)"; \
+	$(shell which time) -f "cat       $$FMT" cat $$F>/dev/null; \
+	echo $$? >/dev/null; \
+	echo >/dev/null; \
+	echo "reference $$F"; \
+	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
+	echo $$? >/dev/null; \
+	echo >/dev/null; \
+	echo "coq $$F"; \
+	$(shell which time) -f "coq       $$FMT" ./test_ab_star.exe $$F; \
+	echo $$? >/dev/null; \
+	echo; \
+	echo; \
+	done
+
+test-reference: ab10.0.0.0.0.0 test_ab_star_reference.exe
+	for F in ab10 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0; do \
+	FMT="$(call make_fmt, $$F)"; \
+	$(shell which time) -f "cat       $$FMT" cat $$F>/dev/null; \
+	echo $$?; \
+	echo; \
+	echo "reference"; \
+	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
+	echo $$?; \
+	done
+
+correctness: aba10 test_ab_star.exe test_ab_star_reference.exe
+	for F in ab10 aba10; do \
+	FMT="$(call make_fmt, $$F)"; \
+	echo "reference $$F"; \
+	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
+	echo $$?; \
+	echo >/dev/null; \
+	echo "coq $$F"; \
+	$(shell which time) -f "coq       $$FMT" ./test_ab_star.exe $$F; \
+	echo $$?; \
+	echo; \
+	echo; \
+	done
+
+test-pretty:
+	$(MAKE) -f $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)) test 2>&1 | python format-test-output.py

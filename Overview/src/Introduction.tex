@@ -1,0 +1,63 @@
+\begin{quote}
+\it
+  ``Every block of stone has a statue inside it and it is the task of
+  the sculptor to discover it.''
+
+  \par\raggedleft--- \textup{Michelangelo}
+
+\end{quote}
+
+\section{Introduction}
+
+The choice of data structures has a pervasive impact on the design of
+a system. This decision is becoming more complicated as the set of
+computing platforms becomes increasingly heterogeneous. It more
+important than ever for clients to inoculate their code (and
+themselves) from implementation details by utilizing high-level
+specifications of data types and their operations. Almost every
+programming language has some mechanism for data abstraction which
+allows a client to craft a design which works with any implementation
+of the desired datatype.
+
+The client of an abstract data type (ADT) is much like a patron
+commissioning a sculpture, relying on the efforts of an ADT
+implementor to discover the efficient implementation hiding within the
+client's specification. The implementor's task is faced with the same
+design decisions the client has avoided through abstraction and is
+further constrained to produce an implementation satisfying the
+specification.
+
+Standard practice is to first produce an implementation and then
+carefully squint at the code to ensure it satisfies the
+specification. Of course, the truly dedicated implementor will
+formally verify its correctness using e.g. separation logic. This is
+somewhat unsatisfying for a number of reasons:
+\begin{itemize}
+\item The implementor must still navigate an array of design decisions
+  to produce the final implementation.
+\item Post-facto verification tools such as shape-analysis are unable
+  to take advantage of high-level invariants.
+\end{itemize}
+
+This project focuses on an alternative approach: enabling ADT
+designers to interactively derive implementations of a specification
+which are correct by construction- each derived implementation is
+accompanied by an proof that it satisfies its specification. By
+starting from a high-level specification, we are able to justify
+high-level transformations. The cool features of the system are:
+\begin{itemize}
+\item A system for deriving efficient implementations from a
+  high-level specification based on setoid rewriting in
+  Coq. Refinements are specified as rewrite rules, with each step
+  guaranteed to preserve the refinement relation.
+\item It's trying to be useable by Joe programmer: the entire system
+  makes heavy use of Coq's notations so users to write specifications
+  in a familiar language.
+\item Also to that point, we have custom tactic support which take
+  care of the little details, helping users focus on the high-level
+  design decisions. This is particularly useful for specialized
+  domains where we can exploit high-level constraints (i.e. the
+  relational query operations).
+\item If we can get the ADT delegation stuff working nicely, we'd have
+  a good story about reasoning about client code.
+\end{itemize}

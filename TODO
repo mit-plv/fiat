@@ -1,0 +1,43 @@
+In General:
+
+* Make a targeted-examples file of examples we want to target with
+  this system.
+
+* Consider having mutators, observers, _and constructors_.
+
+Targeted examples:
+
+* Refinement from "pick arbitrary element of orderless multiset" to
+  "pick most recently inserted element of multiset"
+
+* Dijkstra's algorithm (verifying the interesting parts while holding
+   the picking method abstract)
+
+* Generalize column constraints to arbitrary propositions, see if we
+  can erase them at compile time?
+
+Notes/Ideas:
+
+* Perhaps all queries are secretly either views
+
+For Ben Delaware:
+
+* Remove list from representation in min example.
+
+* Add Notation to Mutators + Obesrvers, etc. to make refinement
+  more readable.
+
+* Look into other examples?
+
+For Jason Gross:
+
+* Make a "return the min plus the max" example, which demos refinement
+  adding new methods to an ADT
+
+* Explore RepInv vs. HProp.
+
+* Add a parametric relation which takes advantage of [bind_bind], so
+  we don't need [interleave_autorewrite_refine_monad_with]
+
+* Look into various interesting algorithms, try to find one where
+   refinement is useful in constructing implementations

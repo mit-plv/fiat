@@ -1,0 +1,91 @@
+\section{Computation}
+
+The synthesis process in WhetStone is one of \textit{refinement}:
+users start out with a high-level specification which can be
+implemented in any number of different ways and iteratively reduces
+the possible implementations until they have produced a (hopefully
+efficient) fully computational implementation.
+
+The \textsf{Comp} data type shown in
+Figure~\ref{fig:Comp+Defs}\footnote{This section's core notions of
+  computational refinement are found in \textsf{Computation/Core.v}.}
+defines the set of computations with three constructors while
+Figure~\ref{fig:ComputesTo+Defs} gives the semantics of each
+constructor defined by the values it can can produce.
+
+\begin{itemize}
+\item \textsf{Return} computes to a singular value \textsf{a}, and is
+  thus fully deterministic.
+\item\textsf{Pick}, in contrast, represents a nondeterministic
+  computation which can compute to \textit{any} value \textsf{a}
+  satisfying some predicate \textsf{P} (defined as an
+  \textsf{Ensemble}).
+\item \textsf{Bind} builds composite computations, computing to any
+  value \textsf{b} produced by binding any value \textsf{a} yielded by
+  the first computation $\mathsf{c_a}$ in the second computation
+  $\mathsf{c_b}$.
+\end{itemize}
+
+
+
+\begin{figure}[h]
+  \begin{tabbedcodeblock}
+    Inductive Comp : Type $\rightarrow$ Type := \+\\
+    $|$ Return : forall A, A $\rightarrow$ Comp A \\
+    $|$ Pick : forall A, Ensemble A $\rightarrow$ Comp A \\
+    $|$ Bind : forall A B, Comp A $\rightarrow$ (A $\rightarrow$ Comp B) $\rightarrow$ Comp B.
+  \end{tabbedcodeblock}
+  \caption{The definition of computations. }
+  \label{fig:Comp+Defs}
+\end{figure}
+
+\begin{figure}[h]
+  \begin{tabular}{cc}
+    \begin{minipage}{.5\columnwidth}
+      \infrule{}{\mathsf{Comp a} \leadsto \mathsf{a}}
+    \end{minipage}
+    &
+    \begin{minipage}{.5\columnwidth}
+      \infrule{\mathsf{P~a}}{\mathsf{Pick P} \leadsto \mathsf{a}}
+    \end{minipage}
+  \end{tabular}
+  \infrule{\mathsf{c_a} \leadsto \mathsf{a} \andalso
+    \mathsf{c_b~a} \leadsto \mathsf{b}}
+  {\mathsf{Bind~c_a~c_b} \leadsto \mathsf{b}}
+  \caption{The semantics of computations. }
+  \label{fig:ComputesTo+Defs}
+\end{figure}
+
+We can define refinement as a partial order on computations: a
+computation $\mathsf{c_a}$ is a refinement of a computation
+$\mathsf{c_b}$ iff $\mathsf{c_a}$ computes to a subset of the values
+that $\mathsf{c_b}$ computes to:
+\begin{align*}
+  \mathsf{c_a \subset c_b} & \quad\quad\quad \longleftrightarrow  &
+  \mathsf{\forall a, c_a \leadsto a \rightarrow
+    c_b \leadsto a}
+\end{align*}
+\textsf{Comp} obeys the monad laws using both $\leadsto$ and $\subset$
+as the notion of equivalence.
+
+The essence of the refinement process is to refine computations by
+incrementally replacing the nondeterministic parts with more
+deterministic ones. We accomplish this using setoid rewriting, which
+extends Coq's rewriting machinery with support relations other than
+Leibniz equality\footnote{The
+  \href{http://coq.inria.fr/distrib/current/refman/Reference-Manual029.html}{\underline{Coq
+      documentation}} has a full explanation of the machinery
+  involved.}. In particular, we can use facts about the refinement
+relation $\leadsto$ to refine computations. Given a hypothesis
+$\mathsf{c_a} \subset \mathsf{c_a'}$, for example, we can use the
+\textsf{setoid\_rewrite} tactic to transform the goal
+$\mathsf{Bind~c_a~c_b}$ into
+$\mathsf{Bind~c_a'~c_b}$. \textsf{Computation/SetoidMorphisms.v}
+registers $\leadsto$ as a \textsf{Parametric Relation} and also proves
+that a number of different computations are \textsf{Parametric
+  Morphism}s which respect this relation, allowing us to refine them
+using setoid rewriting.  \textsf{ComputationExamples.v} includes an
+example derivation which uses this machinery to refine a computation
+which folds a binary operation, \textsf{bin\_op}, over a list.
+
+\subsubsection{Finding the minumum element in a list}

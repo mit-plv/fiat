@@ -1,15 +1,15 @@
-Narcissus: Correct-By-Construction Derivation of Decoders and Encoders from Binary Formats
+Fiat − Deductive Synthesis of Abstract Data Types in a Proof Assistant
 ======================================================================
 
-This archive holds the source code of Narcissus, a Coq library for
-synthesizing binary encoders and decoders from specifications.
+This repository holds the source code of Fiat, a Coq ADT synthesis
+library.
 
 ## Dependencies:
-  * To build the library:          Coq 8.8.1
+  * To build the library:          Coq 8.4pl6
+  * To step through the examples:  GNU Emacs 24.3+, Proof General 4.4+
+  * To extract and run OCaml code: OCaml 4.02.0+
 
 ## Compiling and running the code
-  * To build the core library: `make bedrock narcissus`
-
-## Getting Started:
-  * A tour of Narcissus can be found in src/Narcissus/Examples/README.v
-  * The examples from our mirage case study can be found in src/Narcissus/Examples/NetworkStack
+  * To build the core library: `make fiat-core`
+  * To build the SQL-like libary: `make querystructures`
+  * To build the parsers libary: `make parsers`
