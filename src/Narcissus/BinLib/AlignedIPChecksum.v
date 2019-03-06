@@ -342,7 +342,9 @@ Proof.
   intros.
   rename H4 into H4'; rename H3 into H4; rename H2 into H3.
   eapply format_decode_correct_alt.
-  7: { eapply (composeChecksum_format_correct'
+  Focus 7.
+  (*7: {*)
+  {eapply (composeChecksum_format_correct'
                  A _ monoid _ 16 (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode)).
        - eapply H.
        - specialize (H4 (proj2 H)).
@@ -373,6 +375,8 @@ Proof.
          rewrite <- H2; omega.
        - eauto.
        - eapply Pseudo_Checksum_Valid_bounded; eauto. }
+  all: try unfold flip, pointwise_relation, impl;
+    intuition eauto using EquivFormat_reflexive.
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.
     instantiate (1 := fun (n : nat) a =>

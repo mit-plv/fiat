@@ -24,9 +24,9 @@ Module Sensor0.
 
   Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-     (stationID ▹ SetCurrentByte ≫
-      data ▹ (low_bits 8 ▹ SetCurrentByte ≫
-                     shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
+     (stationID ⋙ SetCurrentByte ≫
+      data ⋙ (low_bits 8 ⋙ SetCurrentByte ≫
+      shift_right 8 ⋙ SetCurrentByte)) v 0 r tt *)
   Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
      (b <- GetCurrentByte;
@@ -57,10 +57,10 @@ Module Sensor1.
 
   Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-    (stationID ▹ SetCurrentByte ≫
-     const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
-     data ▹ (low_bits 8 ▹ SetCurrentByte ≫
-                    shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
+    (stationID ⋙ SetCurrentByte ≫
+     const WO~0~0~0~0~0~0~0~0 ⋙ SetCurrentByte ≫
+     data ⋙ (low_bits 8 ⋙ SetCurrentByte ≫
+             shift_right 8 ⋙ SetCurrentByte)) v 0 r tt *)
 
   Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
@@ -88,7 +88,7 @@ Module Sensor2.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_enum [WO~0~0; WO~0~1] ◦ fst ◦ data
     ++ format_word ◦ snd ◦ data.
 
@@ -129,7 +129,7 @@ Module Sensor2.
   else fail)) v 0 tt *)
 End Sensor2.
 
-(** The use of `format_word ◦ constant _` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
+(** The use of `format_const _` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
 
 (** We use the next iteration to illustrate data dependencies and input restrictions.  To do so, we replace our single data point with a list of measurements (for conciseness, we remove tags and use 16-bit words).  We start as before, but we quickly run into an issue : **)
 
@@ -140,7 +140,7 @@ Module Sensor3.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_list format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
@@ -154,20 +154,7 @@ Module Sensor3.
   Abort.
 End Sensor3.
 
-(** The derivation fails, leaving multiple Coq goals unsolved.  The most relevant is equivalent to the following:
-
-<<
-forall (msg : sensor_msg)
-       (w : word 16),
-  stationID msg = sid ->
-  w = WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0 ->
-  length msg.(data) = ?Goal
->>
-
-It shows one of the side-conditions build by Narcissus as it generates the decoder.  On the left of the arrow is all that is known about an abstract incoming packet after decoding its stationID to the abstract value `sID`; on the right what needs to be known about the packet to be able to decode the list of measurements; namely, that this list has a known length, equal to some undetermined value `?Goal` (an “evar” in Coq parlance). In brief: we forgot to encode the length of the `data` list, and this prevents Narcissus from generating a decoder.
-
-Our attempted fix, unfortunately, only gets us half of the way there (`format_nat 16 ◦ length` specifies that the length of the list should be truncated to 16 bits and written out):
-**)
+(** The derivation fails, leaving multiple Coq goals unsolved.  We forgot to encode the length of the `data` list, and this prevents Narcissus from generating a decoder.  Our attempted fix, unfortunately, only gets us half of the way there (`format_nat 8 ◦ length` specifies that the length of the list should be truncated to 8 bits and written out): **)
 
 Module Sensor4.
   Record sensor_msg :=
@@ -175,9 +162,8 @@ Module Sensor4.
 
   Let format :=
        format_word ◦ stationID
-    ++ format_unused_word 8
-    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_nat 8 ◦ length ◦ data
+    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_list format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
@@ -190,15 +176,7 @@ Module Sensor4.
   Abort.
 End Sensor4.
 
-(** Again, decoder generation fails and spills out an unsolvable goal:
-
-<<
-forall data : sensor_msg,
-  invariant data /\ stationID data = proj /\ ->
-  length data.(data) < pow2 16
->>
-
-The problem is that, since we encode the list's length on 16 bits, the round-trip property that Narcissus attempts to prove only holds if the list has less than \(2^{16}\) elements: larger lists have their length truncated, and it becomes impossible for the decoder to know for cetain how many elements it should decode.  What we need is an input restriction: a predicate defining which messages we may encode; to this end, we update our example as follows:
+(** Again, decoder generation fails and produces an unsolvable goal. The problem is that, since we encode the list's length on 8 bits, the round-trip property that Narcissus attempts to prove only holds if the list has less than \(2^{8}\) elements: larger lists have their length truncated, and it becomes impossible for the decoder to know for cetain how many elements it should decode.  What we need is an input restriction: a predicate defining which messages we may encode; to this end, we update our example as follows:
 **)
 
 Module Sensor5.
@@ -207,9 +185,8 @@ Module Sensor5.
 
   Let format :=
        format_word ◦ stationID
-    ++ format_unused_word 8
-    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_nat 8 ◦ length ◦ data
+    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_list format_word ◦ data.
 
   Let invariant :=
@@ -220,32 +197,30 @@ Module Sensor5.
   Proof. derive_encoder_decoder_pair. Defined.
 
   Let encode := encoder_impl enc_dec.
-  (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-     (stationID ▹ SetCurrentByte ≫
-      const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
-      const WO~0~0~0~0~0~1~1~1 ▹ SetCurrentByte ≫
-      const WO~1~1~1~0~0~0~1~0 ▹ SetCurrentByte ≫
-      data ▹ Datatypes.length ▹ natToWord 8 ▹ SetCurrentByte ≫
-      data ▹ AlignedEncodeList (fun n => low_bits 8 ▹ SetCurrentByte ≫
-                                                 shift_right 8 ▹ SetCurrentByte) sz) v 0 r tt *)
+  (* fun (sz : nat) (r : sensor_msg) (v : ByteBuffer.t sz) =>
+     (stationID ⋙ SetCurrentByte ≫
+      data ⋙ Datatypes.length ⋙ natToWord 8 ⋙ SetCurrentByte ≫
+      const WO~0~0~0~0~0~1~1~1 ⋙ SetCurrentByte ≫
+      const WO~1~1~1~0~0~0~1~0 ⋙ SetCurrentByte ≫
+      data ⋙ AlignedEncodeList (fun n : nat => low_bits 8 ⋙ SetCurrentByte ≫
+                                               shift_right 8 ⋙ SetCurrentByte) sz) v 0 r tt *)
 
   Let decode := decoder_impl enc_dec.
-  (* fun (sz : nat) (v : t Core.char sz) =>
+  (* fun (sz : nat) (v : ByteBuffer.t sz) =>
      (b <- GetCurrentByte;
-      _ <- SkipCurrentByte;
+      b0 <- GetCurrentByte;
       b1 <- GetCurrentByte;
       b' <- GetCurrentByte;
       w <- return b1⋅b';
       (if weq w WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
        then
-        b2 <- GetCurrentByte;
         l <- ListAlignedDecodeM
                (fun numBytes : nat =>
                 w0 <- GetCurrentByte;
                 w' <- w1 <- GetCurrentByte;
                       w' <- return WO;
                       return w1⋅w';
-                return w0⋅w') (wordToNat b2);
+                return w0⋅w') (wordToNat b0);
         return {| stationID := b; data := l |}
        else fail)) v 0 tt *)
 End Sensor5.
@@ -325,7 +300,7 @@ Module Sensor6.
   Let format :=
        format_word ◦ stationID
     ++ format_unused_word 8
-    ++ format_word ◦ constant WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
+    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_nat 8 ◦ length ◦ data
     ++ format_list format_reading ◦ data.
 

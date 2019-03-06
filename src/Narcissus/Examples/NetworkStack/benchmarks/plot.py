@@ -11,6 +11,7 @@ import argparse
 from collections import OrderedDict
 from matplotlib import pyplot, rcParams, patches
 import mpl_toolkits.axisartist as axisartist
+import matplotlib.ticker as plticker
 
 def parsetime(time):
     if time.endswith("ns"):
@@ -57,16 +58,21 @@ def plotbench(grouped):
                           ("ip",    "green"),
                           ("tcp",   "blue"),
                           ("udp",   "purple")])
-    labels = OrderedDict([("ether", "Ethernet header"),
-                          ("arp",   "ARP header & payload"),
-                          ("ip",    "IPv4 header"),
-                          ("tcp",   "TCP header & payload"),
-                          ("udp",   "UDP header & payload")])
+    # labels = OrderedDict([("ether", "Ethernet header"),
+    #                       ("arp",   "ARP header & payload"),
+    #                       ("ip",    "IPv4 header"),
+    #                       ("tcp",   "TCP header & payload"),
+    #                       ("udp",   "UDP header & payload")])
+    labels = OrderedDict([("ether", "Ethernet"),
+                          ("arp",   "ARP"),
+                          ("ip",    "IPv4"),
+                          ("tcp",   "TCP"),
+                          ("udp",   "UDP")])
 
     rcParams.update({
         "font.size": 9,
         "legend.fontsize": 8,
-        "font.family": "Fira Mono",
+        "font.family": "Ubuntu Mono",
         "axes.titlesize": "medium",
         "xtick.labelsize": "small",
         "ytick.labelsize": "small",
@@ -77,36 +83,45 @@ def plotbench(grouped):
     })
 
     ylabels = []
-    fig = pyplot.figure(1, figsize=(4, 3.5))
+    fig = pyplot.figure(1, figsize=(4, 2.75))
     fig.subplots_adjust(left=0.5, hspace=0.7)
     ax = axisartist.Subplot(fig, 111)
     fig.add_subplot(ax)
 
+    THICKNESS = 1
+    LINE_HEIGHT = THICKNESS * 1.3
     for name, g in grouped.items():
-        ylabels.append(name.upper())
+        # ylabels.append(name.upper())
         for direction, g in g.items():
-            ylabels.append(" " + direction)
-            for kind, (size, measurements) in g.items():
-                ylabels.append("  {} ({}b)".format(kind, size))
-                offsety = 0
-                width = 0.8
-                linum = len(ylabels) - 1
-                for proto, y, dylow, dyhigh in measurements:
+            size = list(set(size for (_, (size, _)) in g.items()))[0]
+            ylabels.append("{} {}".format(name.upper(), direction)) #  ({}b)
+            # name = " " * len(name) # Omit names on next iterations
+            for kind, (sz, measurements) in g.items():
+                assert sz == size
+                ylabels.append("  {} ({}b)".format(kind, sz))
+                width_acc = 0
+                linum = (len(ylabels) - 1) * LINE_HEIGHT
+                for proto, width, dwlow, dwhigh in measurements:
+                    print(width, dwlow, dwhigh)
                     color = HEX[colors[proto]]
-                    pyplot.barh(-linum - width / 2, [y], width, left=[offsety],
+                    bottom = -linum
+                    pyplot.errorbar([width_acc + width], [bottom] , xerr=[[-dwlow], [dwhigh]],
+                                    ecolor=color[2], fmt='')
+                    pyplot.barh(bottom - THICKNESS / 2, [width], THICKNESS, left=[width_acc],
                                 color=color[0], edgecolor=color[2], linewidth=0.5, label=proto)
-                    offsety += y
+                    width_acc += width
 
-    # pyplot.yticks([-n for n in range(len(ylabels))], ylabels)
-    ax.set_ylim((-len(ylabels), 0))
-    ax.set_xlim((0, 25))
-    ax.set_yticks([-n for n in range(len(ylabels))])
+    ax.set_ylim((-len(ylabels) * LINE_HEIGHT, 0))
+    ax.set_xlim((0, 4.75))
+    ax.set_yticks([-n * LINE_HEIGHT for n in range(len(ylabels))])
     ax.set_yticklabels(ylabels)
     ax.set_xlabel("Single-packet processing time (µs)")
+    ax.set_xticks([x * 0.5 for x in range(5 * 2)])
     ax.axis["left"].major_ticklabels.set_ha("left")
     ax.axis["left"].major_ticks.set_visible(False)
-    ax.tick_params(axis="y", length=0)
-    ax.tick_params(axis=u'both', which=u'both', length=0)
+    ax.axis["top"].major_ticks.set_visible(False)
+    ax.axis["right"].major_ticks.set_visible(False)
+    ax.axis["bottom"].major_ticks.set_ticksize(2)
 
     legend_patches = [patches.Patch(facecolor=HEX[color][0],
                                     edgecolor=HEX[color][2],
@@ -128,8 +143,8 @@ def main():
     fig = plotbench(grouped)
     fig.tight_layout()
     pyplot.savefig(args.fname + ".pdf")
-    from pprint import pprint
-    pprint(grouped)
+    # from pprint import pprint
+    # pprint(grouped)
 
 if __name__ == '__main__':
     main()

@@ -576,6 +576,10 @@ Section DomainNameCache.
       eapply le_lt_trans.
       apply NPeano.Nat.mul_div_le; omega.
       rewrite mult_pow2_8; simpl; omega.
+    + eapply (mult_lt_compat_l' _ _ 8); try omega.
+      eapply le_lt_trans.
+      apply NPeano.Nat.mul_div_le; omega.
+      rewrite mult_pow2_8; simpl; omega.
   Qed.
 
   Lemma cacheIndependent_add_2

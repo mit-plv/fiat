@@ -37,11 +37,11 @@ Section AlignedList.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
 
-  Definition bytebuffer_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : { n & ByteBuffer.t n } :=
+  Definition bytebuffer_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : { n : _ & ByteBuffer.t n } :=
     let l := List.firstn len (List.skipn from (Vector.to_list v)) in
     existT ByteBuffer.t _ (Vector.of_list l).
 
-  Definition ByteBufferAlignedDecodeM {m : nat} (len: nat) : @AlignedDecodeM cache {n & ByteBuffer.t n} m :=
+  Definition ByteBufferAlignedDecodeM {m : nat} (len: nat) : @AlignedDecodeM cache {n : _ & ByteBuffer.t n} m :=
     fun (v: ByteBuffer.t m) idx env =>
       let lastidx := idx + len in
       if NPeano.leb lastidx m then
@@ -81,8 +81,8 @@ Section AlignedList.
 
   Lemma AlignedDecodeByteBufferM {C : Type}
         (n : nat)
-    : forall (t : { n & ByteBuffer.t n } -> DecodeM (C * _) ByteString)
-        (t' : { n & ByteBuffer.t n } -> forall {numBytes}, AlignedDecodeM C numBytes),
+    : forall (t : { n : _ & ByteBuffer.t n } -> DecodeM (C * _) ByteString)
+        (t' : { n : _ & ByteBuffer.t n } -> forall {numBytes}, AlignedDecodeM C numBytes),
       (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
       -> DecodeMEquivAlignedDecodeM
           (fun v cd => `(b, bs, cd') <- decode_bytebuffer n v cd;
@@ -220,7 +220,7 @@ Section AlignedList.
     else None.
 
   Definition AlignedEncodeByteBuffer
-    : forall sz, AlignedEncodeM (S := { n & ByteBuffer.t n }) sz :=
+    : forall sz, AlignedEncodeM (S := { n : _ & ByteBuffer.t n }) sz :=
     fun sz2 (dst: ByteBuffer.t sz2) idx src env =>
       let '(existT len src) := src in
       match buffer_blit_buffer idx src dst with
