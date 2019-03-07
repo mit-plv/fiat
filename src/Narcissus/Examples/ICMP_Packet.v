@@ -16,7 +16,6 @@ Require Import
         Fiat.Narcissus.Common.ComposeCheckSum
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Common.ComposeOpt
-        Fiat.Narcissus.Automation.SolverOpt
         Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt

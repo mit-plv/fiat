@@ -26,7 +26,6 @@ Export Coq.Vectors.Vector.VectorNotations.
 (*         Fiat.Narcissus.Common.ComposeCheckSum *)
 (*         Fiat.Narcissus.Common.ComposeIf *)
 (*         Fiat.Narcissus.Common.ComposeOpt *)
-(*         Fiat.Narcissus.Automation.SolverOpt *)
 (*         Fiat.Narcissus.Formats.FixListOpt *)
 (*         Fiat.Narcissus.Stores.EmptyStore *)
 (*         Fiat.Narcissus.Formats.WordOpt *)
