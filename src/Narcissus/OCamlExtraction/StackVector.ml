@@ -1,4 +1,5 @@
-(* This is the same as what Coq would do, but extraction of vectors is broken… *)
+(* This is mostly needed because extraction of vectors is broken by mixing VectorDef and Vector *)
+
 type 'a t =
   { len: int;
     arr: 'a ArrayVector.storage_t }
@@ -38,7 +39,6 @@ let nth_opt' (v: 'a t) (idx: ArrayVector.idx_t) : 'a option =
 
 let nth_opt _ (v: 'a t) (idx: ArrayVector.idx_t) : 'a option =
   nth_opt' v idx
-
 
 let index (_: int) (_: int) (x: 'a) (v: 'a t) : ArrayVector.idx_t option =
   match ArrayVector.index' x v.arr.ArrayVector.data 0 v.len with

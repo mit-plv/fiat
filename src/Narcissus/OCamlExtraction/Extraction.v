@@ -7,8 +7,8 @@ Extract Inductive nat => "OCamlNativeInt.t" [ "0" "Pervasives.succ" ]
 Extract Inductive prod => "(*)"  [ "(,)" ].
 
 
-Extract Inlined Constant Nat.ltb => "(<)".
-Extract Inlined Constant Nat.ltb => "(<=)".
+Extract Constant Nat.ltb => "(<)".
+Extract Constant Nat.leb => "(<=)".
 (* ExtrOCamlNatInt uses Pervasives.max, which is slow *)
 Extract Constant Nat.sub =>
   "fun (x: OCamlNativeInt.t) (y: OCamlNativeInt.t) ->
@@ -89,56 +89,6 @@ Extract Inductive Fin.t =>
 Extract Inlined Constant Fin.L => "(fun _ n p -> p)".
 Extract Inlined Constant Fin.R => "(fun _ n p -> n + p)".
 
-Extract Inductive Vector.t =>
-"StackVector.t"
-  ["StackVector.empty ()" "StackVector.cons"]
-  "StackVector.destruct".
-
-Extract Inductive VectorDef.t =>
-"StackVector.t"
-  ["StackVector.empty ()" "StackVector.cons"]
-  "StackVector.destruct".
-
-Extract Inlined Constant Vector.nth => "StackVector.nth".
-Extract Inlined Constant VectorDef.nth => "StackVector.nth".
-Extract Inlined Constant Vector_nth_opt => "StackVector.nth_opt".
-Extract Inlined Constant EnumOpt.word_indexed => "StackVector.index".
-
-(*
-Extract Inductive Vector.t =>
-"ArrayVector.storage_t"
-  ["ArrayVector.empty ()" "ArrayVector.cons"]
-  "ArrayVector.destruct_storage".
-Extract Inductive VectorDef.t =>
-"ArrayVector.storage_t"
-  ["ArrayVector.empty ()" "ArrayVector.cons"]
-  "ArrayVector.destruct_storage".
-
-Extract Inlined Constant Vector.hd => "ArrayVector.hd".
-Extract Inlined Constant VectorDef.hd => "ArrayVector.hd".
-Extract Inlined Constant Vector.tl => "ArrayVector.tl".
-Extract Inlined Constant VectorDef.tl => "ArrayVector.tl".
-Extract Inlined Constant Vector.to_list => "ArrayVector.to_list".
-Extract Inlined Constant VectorDef.to_list => "ArrayVector.to_list".
-Extract Inlined Constant Vector.append => "ArrayVector.append".
-Extract Inlined Constant VectorDef.append => "ArrayVector.append".
-Extract Inlined Constant Vector.nth => "ArrayVector.nth".
-Extract Inlined Constant VectorDef.nth => "ArrayVector.nth".
-Extract Inlined Constant Vector.replace => "ArrayVector.set_nth".
-Extract Inlined Constant VectorDef.replace => "ArrayVector.set_nth".
-Extract Inlined Constant Vector_nth_opt => "ArrayVector.nth_opt".
-Extract Inlined Constant EnumOpt.word_indexed => "ArrayVector.index".
-
-Extract Inlined Constant nth_opt => "ArrayVector.nth_opt".
-Extract Inlined Constant set_nth' => "ArrayVector.set_nth".
-Extract Inlined Constant InternetChecksum.ByteBuffer_fold_left_pair => "ArrayVector.fold_left_pair".
-Extract Inlined Constant AlignedList.buffer_blit_buffer => "ArrayVector.blit_array".
-Extract Inlined Constant AlignedList.bytebuffer_of_bytebuffer_range =>
-  "(fun sz from len v ->
-    let b = ArrayVector.array_of_range sz from len v in
-    ExistT (ArrayVector.length b, b))".
-*)
-
 (* CPC clean up CstructBytestring.ml to remove unneeded stuff *)
 
 Require Import Fiat.Narcissus.BinLib.AlignedByteString.
@@ -150,8 +100,10 @@ Extract Inlined Constant ByteBuffer.cons => "CstructBytestring.cons".
 Extract Inlined Constant ByteBuffer.hd => "CstructBytestring.hd".
 Extract Inlined Constant ByteBuffer.tl => "CstructBytestring.tl".
 Extract Inlined Constant ByteBuffer.to_list => "CstructBytestring.to_list".
+Extract Inlined Constant ByteBuffer.of_list => "CstructBytestring.of_list".
 Extract Inlined Constant ByteBuffer.of_vector => "CstructBytestring.of_vector".
 Extract Inlined Constant ByteBuffer.to_vector => "CstructBytestring.to_vector".
+Extract Inlined Constant ByteBuffer.fold_left => "CstructBytestring.fold_left".
 Extract Inlined Constant ByteBuffer.append => "CstructBytestring.append".
 Extract Inlined Constant nth_opt => "CstructBytestring.nth_opt".
 Extract Inlined Constant set_nth' => "CstructBytestring.set_nth".

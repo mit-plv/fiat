@@ -141,6 +141,12 @@ let append _ _ (arr1: storage_t) (arr2: storage_t) : storage_t =
   throw_if_stale "append" arr2;
   of_cstruct (Cstruct.append arr1.data arr2.data)
 
+let of_list (ls: data_t list) : storage_t =
+  let len = List.length ls in
+  let cs = Cstruct.create len in
+  List.iteri (fun idx w -> unsafe_setdata cs idx w) ls;
+  of_cstruct cs
+
 let to_list _ (arr: storage_t) : data_t list =
   throw_if_stale "to_list" arr;
   let ls = ref [] in

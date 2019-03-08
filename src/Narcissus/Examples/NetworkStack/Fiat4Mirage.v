@@ -74,6 +74,56 @@ End IPv4.
 
 Require Import Narcissus.OCamlExtraction.Extraction.
 
+Extract Inductive Vector.t =>
+"StackVector.t"
+  ["StackVector.empty ()" "StackVector.cons"]
+  "StackVector.destruct".
+
+Extract Inductive VectorDef.t =>
+"StackVector.t"
+  ["StackVector.empty ()" "StackVector.cons"]
+  "StackVector.destruct".
+
+Extract Inlined Constant Vector.nth => "StackVector.nth".
+Extract Inlined Constant VectorDef.nth => "StackVector.nth".
+Extract Inlined Constant Vector_nth_opt => "StackVector.nth_opt".
+Extract Inlined Constant EnumOpt.word_indexed => "StackVector.index".
+
+(*
+Extract Inductive Vector.t =>
+"ArrayVector.storage_t"
+  ["ArrayVector.empty ()" "ArrayVector.cons"]
+  "ArrayVector.destruct_storage".
+Extract Inductive VectorDef.t =>
+"ArrayVector.storage_t"
+  ["ArrayVector.empty ()" "ArrayVector.cons"]
+  "ArrayVector.destruct_storage".
+
+Extract Inlined Constant Vector.hd => "ArrayVector.hd".
+Extract Inlined Constant VectorDef.hd => "ArrayVector.hd".
+Extract Inlined Constant Vector.tl => "ArrayVector.tl".
+Extract Inlined Constant VectorDef.tl => "ArrayVector.tl".
+Extract Inlined Constant Vector.to_list => "ArrayVector.to_list".
+Extract Inlined Constant VectorDef.to_list => "ArrayVector.to_list".
+Extract Inlined Constant Vector.append => "ArrayVector.append".
+Extract Inlined Constant VectorDef.append => "ArrayVector.append".
+Extract Inlined Constant Vector.nth => "ArrayVector.nth".
+Extract Inlined Constant VectorDef.nth => "ArrayVector.nth".
+Extract Inlined Constant Vector.replace => "ArrayVector.set_nth".
+Extract Inlined Constant VectorDef.replace => "ArrayVector.set_nth".
+Extract Inlined Constant Vector_nth_opt => "ArrayVector.nth_opt".
+Extract Inlined Constant EnumOpt.word_indexed => "ArrayVector.index".
+
+Extract Inlined Constant nth_opt => "ArrayVector.nth_opt".
+Extract Inlined Constant set_nth' => "ArrayVector.set_nth".
+Extract Inlined Constant InternetChecksum.ByteBuffer_fold_left_pair => "ArrayVector.fold_left_pair".
+Extract Inlined Constant AlignedList.buffer_blit_buffer => "ArrayVector.blit_array".
+Extract Inlined Constant AlignedList.bytebuffer_of_bytebuffer_range =>
+  "(fun sz from len v ->
+    let b = ArrayVector.array_of_range sz from len v in
+    ExistT (ArrayVector.length b, b))".
+*)
+
 Extraction "Fiat4Mirage"
 
            fiat_ethernet_type_of_enum

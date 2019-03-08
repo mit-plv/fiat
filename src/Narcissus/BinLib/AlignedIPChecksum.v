@@ -83,8 +83,8 @@ Definition splitLength (len: word 16) : Vector.t (word 8) 2 :=
   Vector.cons _ (split2 8 8 len) _ (Vector.cons _ (split1 8 8 len) _ (Vector.nil _)).
 
 Definition Pseudo_Checksum_Valid
-           (srcAddr : Vector.t (word 8) 4)
-           (destAddr : Vector.t (word 8) 4)
+           (srcAddr : ByteBuffer.t 4)
+           (destAddr : ByteBuffer.t 4)
            (udpLength : word 16)
            (protoCode : word 8)
            (n : nat) (* Number of /bits/ in checksum; needed by
@@ -99,8 +99,8 @@ Definition Pseudo_Checksum_Valid
 Import VectorNotations.
 
 Definition pseudoHeader_checksum
-           (srcAddr : Vector.t (word 8) 4)
-           (destAddr : Vector.t (word 8) 4)
+           (srcAddr : ByteBuffer.t 4)
+           (destAddr : ByteBuffer.t 4)
            (udpLength : word 16)
            (protoCode : word 8)
            {sz} (packet: ByteBuffer.t sz) :=
@@ -112,8 +112,8 @@ Infix "^1+" := (InternetChecksum.OneC_plus) (at level 50, left associativity).
 Import InternetChecksum.
 
 Definition pseudoHeader_checksum'
-           (srcAddr : Vector.t (word 8) 4)
-           (destAddr : Vector.t (word 8) 4)
+           (srcAddr : ByteBuffer.t 4)
+           (destAddr : ByteBuffer.t 4)
            (udpLength : word 16)
            (protoCode : word 8)
            {sz} (packet: ByteBuffer.t sz) :=
@@ -183,15 +183,15 @@ Ltac explode_vector :=
   end.
 
 Lemma pseudoHeader_checksum'_ok :
-  forall (srcAddr : Vector.t (word 8) 4)
-         (destAddr : Vector.t (word 8) 4)
+  forall (srcAddr : ByteBuffer.t 4)
+         (destAddr : ByteBuffer.t 4)
          (udpLength : word 16)
          (protoCode : word 8)
          {sz} (packet: ByteBuffer.t sz),
     pseudoHeader_checksum srcAddr destAddr udpLength protoCode packet =
     pseudoHeader_checksum' srcAddr destAddr udpLength protoCode packet.
 Proof.
-  unfold pseudoHeader_checksum, pseudoHeader_checksum'.
+  unfold pseudoHeader_checksum, pseudoHeader_checksum', ByteBuffer.t, Core.char.
   intros.
   repeat explode_vector.
   Opaque split1.
@@ -209,8 +209,8 @@ Proof.
 Qed.
 
 Definition calculate_PseudoChecksum {S} {sz}
-           (srcAddr : Vector.t (word 8) 4)
-           (destAddr : Vector.t (word 8) 4)
+           (srcAddr : ByteBuffer.t 4)
+           (destAddr : ByteBuffer.t 4)
            (udpLength : word 16)
            (protoCode : word 8)
            (idx' : nat)
@@ -239,8 +239,8 @@ Import VectorNotations.
 
 Lemma Pseudo_Checksum_Valid_bounded
       {A}
-      (srcAddr : Vector.t (word 8) 4)
-      (destAddr : Vector.t (word 8) 4)
+      (srcAddr : ByteBuffer.t 4)
+      (destAddr : ByteBuffer.t 4)
       (udpLength : word 16)
       protoCode
       (predicate : A -> Prop)
@@ -291,8 +291,8 @@ Proof.
 Qed.
 
 Lemma compose_PseudoChecksum_format_correct' {A}
-      (srcAddr : Vector.t (word 8) 4)
-      (destAddr : Vector.t (word 8) 4)
+      (srcAddr : ByteBuffer.t 4)
+      (destAddr : ByteBuffer.t 4)
       (udpLength : word 16)
       protoCode
       (predicate : A -> Prop)
@@ -640,8 +640,8 @@ Hint Extern 4  => eapply aligned_IPChecksum_OK_2.
 (* We admit alignment rules for encoding IP checksums. *)
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
-      (srcAddr : Vector.t (word 8) 4)
-      (destAddr : Vector.t (word 8) 4)
+      (srcAddr : ByteBuffer.t 4)
+      (destAddr : ByteBuffer.t 4)
       (udpLength : word 16)
       (protoCode : word 8)
       (idx : nat)
