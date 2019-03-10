@@ -36,8 +36,8 @@ Section Bool.
 
     apply_bijection_rule with (whd (sz:=_));
       intuition eauto using Word_decode_correct.
-    dependent destruction v.
-    dependent destruction v. reflexivity.
+    rewrite <- (natToWord_wordToNat v).
+    destruct (wordToNat v) eqn:?; reflexivity.
 
     unfold decode_word, decode_word'; derive_decoder_equiv.
   Qed.
