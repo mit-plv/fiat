@@ -31,8 +31,7 @@ Ltac eapply_formatnchars_thm_simplified thm sz :=
 
 Ltac align_decoders_step :=
   first [
-      eapply @AlignedDecodeBindDuplicate; intros
-    | eapply @AlignedDecodeNatM; intros
+      eapply @AlignedDecodeNatM; intros
     | eapply @AlignedDecodeByteBufferM; intros; eauto
     | eapply @AlignedDecodeBind2CharM; intros; eauto
     | eapply @AlignedDecodeBindCharM; intros; eauto
@@ -81,6 +80,28 @@ Ltac align_decoders_step :=
       decode_word_eq_decode_bool,
       decode_word_eq_decode_nat,
       decode_word_eq_decode_word
+    | eapply @AlignedDecodeBindDuplicate;
+      [ simpl; intros;
+        f_equiv; apply functional_extensionality; intros;
+        repeat (apply functional_extensionality; intros);
+        symmetry;
+        repeat match goal with
+                 |- (if ?b then ?tt else ?te) = ?t' (?f ?d) ?a ?v' ?cd =>
+                 etransitivity;
+                   [ eapply (FindFuncIf a v' cd b d f tt te);
+                     [ try higher_order_reflexivity | higher_order_reflexivity | higher_order_reflexivity]
+                   | higher_order_reflexivity ]
+               |  |- (`(a, t'', cd'') <- ?decode_A' ?v' ?cd'; @?t' a t'' cd'') = _ ?d' _ _ _ =>
+                  etransitivity;
+                    [eapply FindFuncBind with (decode_A := decode_A')
+                                              (v0 := v') (cd0 := cd')
+                                              (t := t')
+                                              (d := d'); intros
+                    | higher_order_reflexivity ]
+               end
+        | simpl; intros
+        | intros; eapply functional_extensionality_dep; intros; eauto
+        | intros; eapply functional_extensionality_dep; intros; eauto ]
     ].
 
 Ltac align_decoders := repeat align_decoders_step.

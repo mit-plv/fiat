@@ -410,6 +410,9 @@ Definition format_IP_Checksum
 Definition IPChecksum_Valid_dec (n : nat) (b : ByteString)
   : {IPChecksum_Valid n b} + {~IPChecksum_Valid n b} := weq _ _.
 
+Definition IPChecksum_Valid_check (n : nat) (b : ByteString)
+  := weqb (onesComplement (ByteString2ListOfChar n b)) (wones 16).
+
 Definition decode_IPChecksum
   : ByteString -> CacheDecode -> option (() * ByteString * CacheDecode) :=
   decode_unused_word (sz := 16).
@@ -859,7 +862,7 @@ Lemma compose_IPChecksum_format_correct
               ByteString_QueueMonoidOpt)
            (calculate_checksum := IPChecksum)
            (checksum_Valid := IPChecksum_Valid)
-           (checksum_Valid_dec := IPChecksum_Valid_dec)
+           (checksum_Valid_dec := IPChecksum_Valid_check)
            (P : CacheDecode -> Prop)
            (P_inv : (CacheDecode -> Prop) -> Prop)
            (decodeChecksum := decode_IPChecksum),
@@ -896,41 +899,49 @@ Lemma compose_IPChecksum_format_correct
                        (format1 ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format2).
 Proof.
   intros.
-  eapply composeChecksum_format_correct; eauto.
-  - intros; rewrite !mappend_measure.
-    simpl; rewrite (H0 _ _ _ _ H6).
-    simpl; rewrite (H1 _ _ _ _ H7).
-    erewrite <- H4; eauto; try omega.
-    unfold format_checksum.
-    rewrite length_encode_word'.
-    simpl; omega.
-  - unfold IPChecksum_Valid in *; intros; simpl.
-    rewrite ByteString2ListOfChar_Over.
-    * rewrite ByteString2ListOfChar_Over in H9.
-      eauto.
-      simpl.
-      apply H0 in H7.
-      pose proof (H2 data).
-      rewrite <- H7 in H10.
-      rewrite !ByteString_enqueue_ByteString_padding_eq.
-      rewrite padding_eq_mod_8, H10.
-      pose proof (H3 data).
+  eapply format_decode_correct_EquivDecoder_Proper with
+      (x := fun bin env => if IPChecksum_Valid_dec (formatd_A_measure bin) bin then decodeA bin env else None).
+  - unfold flip, pointwise_relation, checksum_Valid_dec; intros.
+    destruct (IPChecksum_Valid_dec (formatd_A_measure a));
+      unfold IPChecksum_Valid, IPChecksum_Valid_check in *.
+    + rewrite i, (proj2 (weqb_true_iff _ _)); eauto.
+    + destruct (weqb (onesComplement (ByteString2ListOfChar (formatd_A_measure a) a)) (wones 16)) eqn: ?; eauto.
+      apply weqb_sound in Heqb; congruence.
+  - eapply composeChecksum_format_correct; eauto.
+    + intros; rewrite !mappend_measure.
+      simpl; rewrite (H0 _ _ _ _ H6).
+      simpl; rewrite (H1 _ _ _ _ H7).
+      erewrite <- H4; eauto; try omega.
       unfold format_checksum.
-      rewrite encode_word'_padding.
-      rewrite <- (H1 _ _ _ _ H8) in H11.
-      rewrite padding_eq_mod_8, H11.
-      reflexivity.
-    * rewrite !ByteString_enqueue_ByteString_padding_eq.
-      apply H0 in H7.
-      pose proof (H2 data).
-      rewrite <- H7 in H10.
-      rewrite padding_eq_mod_8, H10.
-      pose proof (H3 data).
-      unfold format_checksum.
-      rewrite encode_word'_padding.
-      rewrite <- (H1 _ _ _ _ H8) in H11.
-      rewrite padding_eq_mod_8, H11.
-      reflexivity.
+      rewrite length_encode_word'.
+      simpl; omega.
+    + unfold IPChecksum_Valid in *; intros; simpl.
+      rewrite ByteString2ListOfChar_Over.
+      * rewrite ByteString2ListOfChar_Over in H9.
+        eauto.
+        simpl.
+        apply H0 in H7.
+        pose proof (H2 data).
+        rewrite <- H7 in H10.
+        rewrite !ByteString_enqueue_ByteString_padding_eq.
+        rewrite padding_eq_mod_8, H10.
+        pose proof (H3 data).
+        unfold format_checksum.
+        rewrite encode_word'_padding.
+        rewrite <- (H1 _ _ _ _ H8) in H11.
+        rewrite padding_eq_mod_8, H11.
+        reflexivity.
+      * rewrite !ByteString_enqueue_ByteString_padding_eq.
+        apply H0 in H7.
+        pose proof (H2 data).
+        rewrite <- H7 in H10.
+        rewrite padding_eq_mod_8, H10.
+        pose proof (H3 data).
+        unfold format_checksum.
+        rewrite encode_word'_padding.
+        rewrite <- (H1 _ _ _ _ H8) in H11.
+        rewrite padding_eq_mod_8, H11.
+        reflexivity.
 Qed.
 
 Lemma injection_decode_correct' {S V V' T}
@@ -1035,7 +1046,7 @@ Lemma compose_IPChecksum_format_correct'
               ByteString_QueueMonoidOpt)
            (calculate_checksum := IPChecksum)
            (checksum_Valid := IPChecksum_Valid)
-           (checksum_Valid_dec := IPChecksum_Valid_dec)
+           (checksum_Valid_dec := IPChecksum_Valid_check)
            (P : CacheDecode -> Prop)
            (P_inv : (CacheDecode -> Prop) -> Prop)
            (P_invM : (CacheDecode -> Prop) -> Prop)
@@ -1148,6 +1159,12 @@ Proof.
   instantiate (1 := IPChecksum_Valid_dec).
   unfold Compose_Decode.
   destruct (decode_measure a a0) as [ [ [? ?] ? ] | ]; simpl; eauto.
+  unfold flip, pointwise_relation, checksum_Valid_dec; intros.
+  destruct (IPChecksum_Valid_dec (n * 8) a);
+    unfold IPChecksum_Valid, IPChecksum_Valid_check in *.
+    + rewrite i, (proj2 (weqb_true_iff _ _)); eauto.
+    + destruct (weqb (onesComplement (ByteString2ListOfChar (n * 8) a)) (wones 16)) eqn: ?; eauto.
+      apply weqb_sound in Heqb0; congruence.
 Qed.
 
 Lemma build_aligned_ByteString_nil

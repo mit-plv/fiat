@@ -113,8 +113,6 @@ Proof.
   synthesize_aligned_decoder.
 Defined.
 
-Print Assumptions IPv4_Packet_Header_decoder.
-
 (* Step Four: Extract the decoder function, and have /it/ start decoding
    at the start of the provided ByteString [v]. *)
 Arguments GetCurrentBytes : simpl never.

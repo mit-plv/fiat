@@ -38,7 +38,7 @@ Lemma Sequence_refined_decoder_correct
       (view_format3 : FormatM (V1 * V2) T)
       (decode2_pf : forall v1 : V1,
           cache_inv_Property P P_inv2 ->
-          View_Predicate1 v1 -> 
+          View_Predicate1 v1 ->
           CorrectRefinedDecoder monoid (fun s => Source_Predicate s
                                                  /\ view1 s v1)
                          (View_Predicate2 v1) (view2 v1) format2 subformat (decode2 v1) P (view_format2 v1))
@@ -381,7 +381,6 @@ Proof.
          instantiate (1 := (Compose_Format (Compose_Format format1 view) (fun _ v => True) ++ view_format)%format).
          unfold sequence_Format, ComposeOpt.compose, Compose_Format, Bind2 in *;
            computes_to_inv; simpl in *; subst.
-         admit.
   }
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.

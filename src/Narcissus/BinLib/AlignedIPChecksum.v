@@ -537,8 +537,7 @@ Lemma aligned_Pseudo_checksum_OK_1
   : forall (v : t Core.char sz),
     weqb
       (InternetChecksum.add_bytes_into_checksum (wzero 8) id
-                                                (onesComplement(to_list srcAddr ++ to_list destAddr ++ to_list (splitLength pktlength)
-                                                                        ++ (ByteString2ListOfChar (measure * 8) (build_aligned_ByteString v)))))
+                                                (onesComplement(to_list srcAddr ++ to_list destAddr ++ split2 8 8  pktlength :: split1 8 8 pktlength :: (ByteString2ListOfChar (measure * 8) (build_aligned_ByteString v)))%list))
       WO~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1
     = aligned_Pseudo_checksum srcAddr destAddr pktlength id measure v 0.
 Proof.
@@ -593,8 +592,50 @@ Proof.
   apply Vector.caseS; reflexivity.
 Qed.
 
-Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_1.
+Fixpoint aligned_IPchecksum
+         m
+         {sz}
+         (v : t Core.char sz) (idx : nat)
+         {struct idx}
+  := match idx with
+     | 0 =>
+       weqb (InternetChecksum.ByteBuffer_checksum_bound m v) (wones 16)
+     | S idx' =>
+       match v with
+       | Vector.cons _ _ v' => aligned_IPchecksum m v' idx'
+       | _ => false
+       end
+     end.
+
+Corollary aligned_IPChecksum_OK_1 :
+  forall m sz (v : ByteBuffer.t sz),
+    IPChecksum_Valid_check (m * 8) (build_aligned_ByteString v)
+    = aligned_IPchecksum m v 0.
+Proof.
+  intros.
+  unfold IPChecksum_Valid_check, aligned_IPchecksum.
+  rewrite InternetChecksum_To_ByteBuffer_Checksum'.
+  higher_order_reflexivity.
+Qed.
+
+Lemma aligned_IPChecksum_OK_2
+      m
+      {sz}
+  : forall (v : ByteBuffer.t (S sz)) (idx : nat),
+    aligned_IPchecksum m v (S idx) =
+    aligned_IPchecksum m (Vector.tl v) idx.
+Proof.
+  intros v; pattern sz, v.
+  apply Vector.caseS; reflexivity.
+Qed.
+
+Hint Extern 4 (weqb _ _ = _) =>
+rewrite aligned_Pseudo_checksum_OK_1; higher_order_reflexivity.
 Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
+
+Hint Extern 4 (IPChecksum_Valid_check _ _ = _ ) =>
+rewrite aligned_IPChecksum_OK_1; higher_order_reflexivity.
+Hint Extern 4  => eapply aligned_IPChecksum_OK_2.
 
 (* We admit alignment rules for encoding IP checksums. *)
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
