@@ -116,7 +116,8 @@ let compare_chksum bytes =
   let c = Cstruct.of_bytes bytes in
   let us = checksum' c in
   let them = !checksum c in
-  Printf.printf "Computed checksums of '%s': slow %d, fast %d, 65535 - fast %d\n" bytes us them (65535 - them)
+  Printf.printf "Computed checksums of '%s': slow %d, fast %d, 65535 - fast %d\n"
+    (Bytes.to_string bytes) us them (65535 - them)
 
 let checksum_bound n _ (arr: storage_t) =
   throw_if_stale "checksum_bound" arr;
