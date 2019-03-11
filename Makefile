@@ -114,6 +114,11 @@ ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml sr
 
 ML_COMPATIBILITY_FILES := $(subst @ML4_OR_MLG@,$(ML4_OR_MLG),$(ML_COMPATIBILITY_FILES_PATTERN))
 
+MAKEFILE_COQ_COMMON_CONTENTS := $(shell grep -- '-include Makefile.coq' etc/coq-scripts/Makefile.coq.common)
+ifneq ($(MAKEFILE_COQ_COMMON_CONTENTS),)
+$(error "Your coq-scripts submodule is too old!  Please update it.  Hopefully this error message will prevent future silent failures on Coq's CI as fixed twice now, e.g., by 75a2142c94a90a45287389d26a26ea5322e84f7e")
+endif
+
 include etc/coq-scripts/Makefile.coq.common
 
 include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
