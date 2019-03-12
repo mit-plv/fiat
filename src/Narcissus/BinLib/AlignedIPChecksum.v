@@ -83,8 +83,8 @@ Definition splitLength (len: word 16) : Vector.t (word 8) 2 :=
   Vector.cons _ (split2 8 8 len) _ (Vector.cons _ (split1 8 8 len) _ (Vector.nil _)).
 
 Definition Pseudo_Checksum_Valid
-           (srcAddr : ByteBuffer.t 4)
-           (destAddr : ByteBuffer.t 4)
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
            (udpLength : word 16)
            (protoCode : word 8)
            (n : nat) (* Number of /bits/ in checksum; needed by
@@ -99,12 +99,13 @@ Definition Pseudo_Checksum_Valid
 Import VectorNotations.
 
 Definition pseudoHeader_checksum
-           (srcAddr : ByteBuffer.t 4)
-           (destAddr : ByteBuffer.t 4)
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
+           (measure : nat)
            (udpLength : word 16)
            (protoCode : word 8)
            {sz} (packet: ByteBuffer.t sz) :=
-  InternetChecksum.ByteBuffer_checksum_bound (12 + wordToNat udpLength)
+  InternetChecksum.ByteBuffer_checksum_bound (12 + measure)
                                              (srcAddr ++ destAddr ++ [wzero 8; protoCode] ++ (splitLength udpLength) ++ packet).
 
 Infix "^1+" := (InternetChecksum.OneC_plus) (at level 50, left associativity).
@@ -112,8 +113,9 @@ Infix "^1+" := (InternetChecksum.OneC_plus) (at level 50, left associativity).
 Import InternetChecksum.
 
 Definition pseudoHeader_checksum'
-           (srcAddr : ByteBuffer.t 4)
-           (destAddr : ByteBuffer.t 4)
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
+           (measure : nat)
            (udpLength : word 16)
            (protoCode : word 8)
            {sz} (packet: ByteBuffer.t sz) :=
@@ -121,7 +123,7 @@ Definition pseudoHeader_checksum'
                                ByteBuffer_checksum destAddr ^1+
                                                              zext protoCode 8 ^1+
                                                                                udpLength ^1+
-                                                                                          InternetChecksum.ByteBuffer_checksum_bound (wordToNat udpLength) packet.
+                                                                                          InternetChecksum.ByteBuffer_checksum_bound measure packet.
 
 Lemma OneC_plus_wzero_l :
   forall w, OneC_plus (wzero 16) w = w.
@@ -183,15 +185,16 @@ Ltac explode_vector :=
   end.
 
 Lemma pseudoHeader_checksum'_ok :
-  forall (srcAddr : ByteBuffer.t 4)
-         (destAddr : ByteBuffer.t 4)
+  forall (srcAddr : Vector.t (word 8) 4)
+         (destAddr : Vector.t (word 8) 4)
+         (measure : nat)
          (udpLength : word 16)
          (protoCode : word 8)
          {sz} (packet: ByteBuffer.t sz),
-    pseudoHeader_checksum srcAddr destAddr udpLength protoCode packet =
-    pseudoHeader_checksum' srcAddr destAddr udpLength protoCode packet.
+    pseudoHeader_checksum srcAddr destAddr measure udpLength protoCode packet =
+    pseudoHeader_checksum' srcAddr destAddr measure udpLength protoCode packet.
 Proof.
-  unfold pseudoHeader_checksum, pseudoHeader_checksum', ByteBuffer.t, Core.char.
+  unfold pseudoHeader_checksum, pseudoHeader_checksum'.
   intros.
   repeat explode_vector.
   Opaque split1.
@@ -209,14 +212,15 @@ Proof.
 Qed.
 
 Definition calculate_PseudoChecksum {S} {sz}
-           (srcAddr : ByteBuffer.t 4)
-           (destAddr : ByteBuffer.t 4)
+           (srcAddr : Vector.t (word 8) 4)
+           (destAddr : Vector.t (word 8) 4)
+           (measure : nat)
            (udpLength : word 16)
            (protoCode : word 8)
            (idx' : nat)
   : AlignedEncodeM (S := S) sz :=
   (fun v idx s =>
-     (let checksum := pseudoHeader_checksum' srcAddr destAddr udpLength protoCode v in
+     (let checksum := pseudoHeader_checksum' srcAddr destAddr measure udpLength protoCode v in
       (fun v idx s => SetByteAt (n := sz) idx' v 0 (wnot (split2 8 8 checksum)) ) >>
                                                                                   (fun v idx s => SetByteAt (n := sz) (1 + idx') v 0 (wnot (split1 8 8 checksum)))) v idx s)%AlignedEncodeM.
 
@@ -239,8 +243,8 @@ Import VectorNotations.
 
 Lemma Pseudo_Checksum_Valid_bounded
       {A}
-      (srcAddr : ByteBuffer.t 4)
-      (destAddr : ByteBuffer.t 4)
+      (srcAddr : Vector.t (word 8) 4)
+      (destAddr : Vector.t (word 8) 4)
       (udpLength : word 16)
       protoCode
       (predicate : A -> Prop)
@@ -291,8 +295,8 @@ Proof.
 Qed.
 
 Lemma compose_PseudoChecksum_format_correct' {A}
-      (srcAddr : ByteBuffer.t 4)
-      (destAddr : ByteBuffer.t 4)
+      (srcAddr : Vector.t (word 8) 4)
+      (destAddr : Vector.t (word 8) 4)
       (udpLength : word 16)
       protoCode
       (predicate : A -> Prop)
@@ -414,9 +418,7 @@ Fixpoint aligned_Pseudo_checksum
          {struct idx}
   := match idx with
      | 0 =>
-       weqb (InternetChecksum.ByteBuffer_checksum_bound (12 + measure)
-                                                        ([wzero 8; id] ++ srcAddr ++ destAddr ++
-                                                                       (splitLength pktlength) ++ v ))%vector
+       weqb (pseudoHeader_checksum' srcAddr destAddr measure pktlength id v)
             (wones 16)
      | S idx' =>
        match v with
@@ -543,7 +545,9 @@ Lemma aligned_Pseudo_checksum_OK_1
 Proof.
   simpl; intros.
   unfold onesComplement.
+  rewrite <- pseudoHeader_checksum'_ok.
   rewrite checksum_eq_Vector_checksum.
+  unfold pseudoHeader_checksum.
   rewrite <- ByteBuffer_checksum_bound_ok.
   unfold ByteBuffer.t in *.
   simpl.
@@ -640,8 +644,8 @@ Hint Extern 4  => eapply aligned_IPChecksum_OK_2.
 (* We admit alignment rules for encoding IP checksums. *)
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
-      (srcAddr : ByteBuffer.t 4)
-      (destAddr : ByteBuffer.t 4)
+      (srcAddr : Vector.t (word 8) 4)
+      (destAddr : Vector.t (word 8) 4)
       (udpLength : word 16)
       (protoCode : word 8)
       (idx : nat)
@@ -658,7 +662,7 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
                           (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
                           (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
                           encode_A sz >>
-                          calculate_PseudoChecksum srcAddr destAddr udpLength protoCode (NPeano.div idx 8))% AlignedEncodeM.
+                          calculate_PseudoChecksum srcAddr destAddr (wordToNat udpLength) udpLength protoCode (NPeano.div idx 8))% AlignedEncodeM.
 Proof.
 Admitted.
 
