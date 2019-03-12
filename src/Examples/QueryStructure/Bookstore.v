@@ -39,6 +39,13 @@ Definition BookStoreSchema :=
                       sDATE :: nat> ]
     enforcing [attribute sISBN for sORDERS references sBOOKS].
 
+Definition TablesAndColumns (qs: QueryStructureSchema) :=
+  Vector.fold_right2
+    (fun table colnames acc => (table, colnames) :: acc) [] _
+    (QSschemaNames qs) (Vector.map (fun sch => Vector.to_list (schemaHeadingNames sch)) (QSschemaSchemas qs)).
+
+Eval compute in (TablesAndColumns BookStoreSchema).
+
 (* Aliases for the tuples contained in Books and Orders, respectively. *)
 Definition Book := TupleDef BookStoreSchema sBOOKS.
 Definition Order := TupleDef BookStoreSchema sORDERS.
@@ -98,26 +105,74 @@ Definition BookStoreSpec : ADT BookStoreSig :=
         ret (r, count)
   }%methDefParsing.
 
-Record DelegationADT (Sig : ADTSig)
-  : Type
-  := Build_SharpenedUnderDelegates
-       { DelegateeIDs : nat;
-         DelegateeSigs : Fin.t DelegateeIDs -> ADTSig;
-         DelegatedImplementation :
-           forall (DelegateImpls : forall idx,
-                      ADT (DelegateeSigs idx)),
-             ADT Sig;
-         DelegateeSpecs : forall idx, ADT (DelegateeSigs idx) }.
-
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
 
-  master_plan EqIndexTactics.
+  (* To pick a specific index structure using
+     [master_plan_w_specific_indexes], users provide a list of (type
+     of index, attribute name) for each table.  As an example, the
+     invocation below specifies that the Books table should be indexed
+     first on authors and then ISBNs (using nested AVLs keyed on those
+     attributes), and that the Orders table should be indexed on
+     ISBNs, again using an AVL tree keyed on order ISBNs.
 
-Time Defined.
+     Changing the attributes used, the order of those attributes, and
+     the type of index for each pair will result in a different data
+     structure.
 
-Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=
-  Eval simpl in projT1 SharpenedBookStore.
+     We currently support (more details on each are in the
+     QueryStructure/Automation/SearchTerms/ directory):
 
-Print BookstoreImpl.
+     - "EqualityIndex" : AVL Trees keyed on equality
+     - "FindPrefixIndex" : Tries
+     - "InclusionIndex" : Inverted Indexes
+     - "RangeIndex" : AVL Trees keyed on range
+
+     You'll also have to change the package of tactics, as
+     demonstrated by other examples in this directory, in order to use
+     these different index data structures. *)
+
+  Notation IndexType :=
+    (@ilist3 RawSchema (fun sch : RawSchema =>
+                          list (string * Attributes (rawSchemaHeading sch)))
+             (numRawQSschemaSchemas BookStoreSchema) (qschemaSchemas BookStoreSchema)).
+
+  Definition indices0 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices1 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
+                   ("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices2 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sTITLE # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices3 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sTITLE # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sDATE # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices4 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
+                   ("EqualityIndex", sTITLE # sBOOKS ## BookStoreSchema);
+                   ("EqualityIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("EqualityIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  Definition indices5 : IndexType :=
+    {| prim_fst := [("EqualityIndex", sAUTHOR # sBOOKS ## BookStoreSchema);
+                   ("RangeIndex", sISBN # sBOOKS ## BookStoreSchema)];
+       prim_snd := {| prim_fst := [("RangeIndex", sISBN # sORDERS ## BookStoreSchema)];
+                     prim_snd := () |} |}.
+
+  master_plan_w_specific_indexes
+    indices0
+    ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics).
+Defined.
