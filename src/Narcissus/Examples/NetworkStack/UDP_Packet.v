@@ -66,6 +66,9 @@ Section UDP_Decoder.
     CorrectAlignedEncoderFor UDP_Packet_Format.
   Proof.
     synthesize_aligned_encoder.
+    Grab Existential Variables.
+    eauto.
+    eauto.
   Defined.
 
   (* Step Two: Extract the encoder function, and have it start encoding

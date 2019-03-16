@@ -416,9 +416,11 @@ Section AlignedEncodeM.
              (format : FormatM S ByteString)
              (encoder : forall sz, AlignedEncodeM sz)
     := {encoder' : EncodeM S ByteString &
-                   (forall s env t env',
-                       encoder' s env = Some (t, env')
-                       -> refine (format s env) (ret (t, env')))
+                   (forall s env,
+                       (forall t env', encoder' s env = Some (t, env')
+                                       -> refine (format s env) (ret (t, env')))
+                       /\ (encoder' s env = None ->
+                           forall benv', ~ computes_to (format s env) benv'))
                    /\ (forall s env t env',
                           encoder' s env = Some (t, env')
                        -> padding t = 0)
@@ -429,10 +431,12 @@ Section AlignedEncodeM.
   Proof.
     unfold CorrectAlignedEncoder; intros.
     eexists (fun _ env => Some (ByteString_id, env)); split; [ | split]; intros.
-    congruence.
-    injections; reflexivity.
-    eapply Return_EncodeMEquivAlignedEncodeM.
-  Qed.
+    - split; intros.
+      + congruence.
+      + congruence.
+    - injections; reflexivity.
+    - eapply Return_EncodeMEquivAlignedEncodeM.
+  Defined.
 
   (* Lemma CorrectAlignedEncoderForDoneC A
         (format_A : FormatM A ByteString)
@@ -460,36 +464,54 @@ Section AlignedEncodeM.
         (encode_B : forall sz, AlignedEncodeM sz)
         (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
         (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+        (encoder_A_OK' :
+           forall (s : S) (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
+            format_B s env ∋ tenv' ->
+            format_A s (snd tenv') ∋ tenv'' ->
+            exists tenv3 tenv4 : _ * CacheFormat,
+              projT1 encoder_B_OK s env = Some tenv3
+              /\ format_A s (snd tenv3) ∋ tenv4)
     : CorrectAlignedEncoder
         (format_B ++ format_A)
         (fun sz => AppendAlignedEncodeM (encode_B sz) (encode_A sz)).
   Proof.
     unfold CorrectAlignedEncoder; intros.
-    destruct encoder_A_OK as [encoder_A ?], encoder_B_OK as [encoder_B ?]; intuition
-    eexists; split; [ | split]; intros.
+    destruct encoder_A_OK as [encoder_A ?], encoder_B_OK as [encoder_B ?]; intuition.
+    destruct a0 as [? [? ?] ].
+    eexists (sequence_Encode encoder_B encoder_A); split; [ | split];
+      intros; simpl in *.
     3: eapply Append_EncodeMEquivAlignedEncodeM.
-    4: apply H5.
-    4: apply H4.
-    3: apply H0.
-    unfold sequence_Format, sequence_Encode, compose, Bind2 in *.
-    apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
-    symmetry in H7.
-    apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
-    injections.
-    specialize (H _ _ _ _ H7).
-    specialize (H3 _ _ _ _ H7).
-    specialize (H1 _ _ _ _ H6).
-    specialize (H0 _ _ _ _ H6).
-    rewrite H1, Monad.refineEquiv_bind_unit.
-    rewrite H, Monad.refineEquiv_bind_unit.
-    reflexivity.
-    unfold sequence_Format, sequence_Encode, Bind2 in *.
-    apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
-    symmetry in H7.
-    apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
-    injections.
-    rewrite padding_ByteString_enqueue_aligned_ByteString; eauto.
-  Qed.
+    4: apply e0.
+    4: apply H2.
+    3: apply e.
+    pose proof (fun H a => CorrectEncoder_sequence format_B format_A encoder_B encoder_A H encoder_A_OK' a).
+    destruct H0.
+    - unfold CorrectEncoder; split; intros.
+      specialize (proj1 (a _ _) _ _ H0); intro.
+      unfold refine in H3; eauto.
+      specialize (proj2 (a _ _) H0); intro.
+      intro.
+      eapply H3; eauto.
+    - unfold CorrectEncoder; split; intros.
+      specialize (proj1 (H _ _) _ _ H0); intro.
+      unfold refine in H3; eauto.
+      specialize (proj2 (H _ _) H0); intro.
+      intro.
+      eapply H3; eauto.
+    - split; intros.
+      + apply H0 in H4.
+        intros ? ?; computes_to_inv; subst.
+        eauto.
+      + destruct benv'.
+        eapply H3 in H4.
+        eauto.
+    - unfold sequence_Format, sequence_Encode, Bind2 in *.
+      apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
+      symmetry in H4.
+      apply_in_hyp DecodeBindOpt_inv; destruct_ex; split_and.
+      injections.
+      rewrite padding_ByteString_enqueue_aligned_ByteString; eauto.
+  Defined.
 
 End AlignedEncodeM.
 
@@ -498,14 +520,20 @@ Lemma refine_CorrectAlignedEncoder
       {cache : Cache}
   : forall format format' encode,
     (forall (s : S) (env : CacheFormat),
-        refine (format s env) (format' s env))
+        refine (format s env) (format' s env)
+        /\ ((forall v, ~ computes_to (format' s env) v)
+            -> (forall v, ~ computes_to (format s env) v)))
     -> (CorrectAlignedEncoder format' encode)
     -> (CorrectAlignedEncoder format encode).
 Proof.
   unfold CorrectAlignedEncoder; intros.
   destruct X as [? [? ?] ]; eexists; intuition eauto.
-  rewrite H; eauto.
-Qed.
+  rewrite (proj1 (H _ _)); eauto.
+  eapply H0; eauto.
+  eapply H; eauto.
+  intros.
+  eapply H0 in H1; eauto.
+Defined.
 
 Lemma EncodeMEquivAlignedEncodeM_morphism
       {S : Type}
@@ -532,8 +560,10 @@ Proof.
   unfold CorrectAlignedEncoder; intros.
   destruct X as [? [? ?] ]; eexists; intuition eauto.
   eapply H1 in H2; rewrite <- H2; eapply H.
+  eapply H1 in H2; eauto.
+  eapply H; eauto.
   eauto using EncodeMEquivAlignedEncodeM_morphism.
-Qed.
+Defined.
 
 Lemma CorrectAlignedEncoderThenCAssoc
       {S : Type}
@@ -550,12 +580,19 @@ Proof.
   intros; eapply refine_CorrectAlignedEncoder; eauto.
   unfold sequence_Format, compose; intros.
   unfold Bind2.
-  repeat setoid_rewrite Monad.refineEquiv_bind_bind.
-  setoid_rewrite Monad.refineEquiv_bind_unit; simpl; f_equiv; intro.
-  simpl; f_equiv; intro.
-  simpl; f_equiv; intro.
-  rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
-Qed.
+  split.
+  - repeat setoid_rewrite Monad.refineEquiv_bind_bind.
+    setoid_rewrite Monad.refineEquiv_bind_unit; simpl.
+    f_equiv; intro.
+    simpl; f_equiv; intro.
+    simpl; f_equiv; intro.
+    rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
+  - intros.
+    intro; eapply (H v).
+    computes_to_inv; repeat computes_to_econstructor; eauto.
+    simpl; subst.
+    rewrite <- ByteString_enqueue_ByteString_assoc; reflexivity.
+Defined.
 
 Corollary Guarded_CorrectAlignedEncoderThenCAssoc
           {S : Type}
@@ -572,7 +609,7 @@ Corollary Guarded_CorrectAlignedEncoderThenCAssoc
          encode.
 Proof.
   intros; eapply CorrectAlignedEncoderThenCAssoc; eauto.
-Qed.
+Defined.
 
 Lemma CorrectAlignedEncoderThenCAssoc'
       {S : Type}
@@ -589,12 +626,17 @@ Proof.
   intros; eapply refine_CorrectAlignedEncoder; eauto.
   unfold sequence_Format, compose; intros.
   unfold Bind2.
-  repeat setoid_rewrite Monad.refineEquiv_bind_bind.
-  setoid_rewrite Monad.refineEquiv_bind_unit; simpl; f_equiv; intro.
-  simpl; f_equiv; intro.
-  simpl; f_equiv; intro.
-  rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
-Qed.
+  split.
+  - repeat setoid_rewrite Monad.refineEquiv_bind_bind.
+    setoid_rewrite Monad.refineEquiv_bind_unit; simpl; f_equiv; intro.
+    simpl; f_equiv; intro.
+    simpl; f_equiv; intro.
+    rewrite ByteString_enqueue_ByteString_assoc; reflexivity.
+  - intros ? ? ?; eapply (H v).
+    computes_to_inv; subst; repeat computes_to_econstructor; eauto.
+    simpl; subst.
+    rewrite  ByteString_enqueue_ByteString_assoc; reflexivity.
+Defined.
 
 Definition Format_Source_Intersection
            {A B}
@@ -644,6 +686,10 @@ Proof.
     eapply H in H3.
     unfold Projection_Format, Compose_Format; apply unfold_computes; eexists; split; eauto.
     apply H2.
+  - unfold Projection_Format, Compose_Format in H3.
+    rewrite @unfold_computes in H3; destruct_ex; intuition.
+    eapply H in H2; eauto.
+    subst; eauto.
   - eapply H0.
     unfold Basics.compose in H2; eauto.
   - unfold EncodeMEquivAlignedEncodeM, Basics.compose; intuition.
@@ -654,39 +700,218 @@ Proof.
       eapply H6; eassumption.
     + edestruct H1 as [? [? [? ?] ] ].
       eapply H6; eassumption.
-Qed.
+Defined.
 
-Lemma CorrectAlignedEncoderEither_T
+Definition AlignEncode_Alt
+           {S : Type}
+           {cache : Cache}
+           (encode_T encode_E : forall sz, AlignedEncodeM (S := S) sz)
+           sz
+  : AlignedEncodeM sz :=
+  fun v idx s c => (Ifopt (encode_T sz) v idx s c as a' Then Some a' Else encode_E sz v idx s c).
+
+(*Lemma CorrectAlignedEncoderEither_Both
       {S : Type}
       {cache : Cache}
       (format_T format_E : FormatM S ByteString)
-      (encode : forall sz, AlignedEncodeM sz)
-  : CorrectAlignedEncoder format_T encode
+      (encode_T encode_E : forall sz, AlignedEncodeM sz)
+  : CorrectAlignedEncoder format_T encode_T
+    -> CorrectAlignedEncoder format_E encode_E
     -> CorrectAlignedEncoder
          (composeIf format_T format_E)
-         encode.
+         (AlignEncode_Alt encode_T encode_E).
 Proof.
   intros.
-  intros; eapply refine_CorrectAlignedEncoder; eauto.
-  unfold composeIf, Union_Format; intros; intros ? ?.
-  apply unfold_computes; eexists Fin.F1; simpl; eauto.
-Qed.
+  destruct X as [? [? [? ?] ] ].
+  destruct X0 as [? [? [? ?] ] ].
+  eexists (fun s ce => Ifopt x s ce as a' Then
+                                          Ifopt x0 s ce as a'' Then (If (Nat.ltb (length_ByteString (fst a')) (length_ByteString (fst a''))) Then Some a' Else Some a'')
+                                                               Else Some a' Else x0 s ce); intuition.
+  - destruct (x s env) as [ [ [? ?] ? ] | ] eqn: ?; simpl in *.
+    destruct (x0 s env) as [ [ [? ?] ? ] | ] eqn: ?; simpl in *.
+    destruct (length_ByteString
+             {|
+             padding := padding;
+             front := front;
+             paddingOK := paddingOK;
+             numBytes := numBytes;
+             byteString := byteString |} <?
+           length_ByteString
+             {|
+             padding := padding0;
+             front := front0;
+             paddingOK := paddingOK0;
+             numBytes := numBytes0;
+             byteString := byteString0 |}) eqn: ?; simpl in H5.
+    + injections; subst.
+      unfold composeIf, Union_Format.
+      intros ? ?; apply unfold_computes; eexists Fin.F1; simpl; eauto.
+      eapply H; eauto.
+    + injections; subst;
+        unfold composeIf, Union_Format.
+      intros ? ?; apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
+      eapply H2; eauto.
+    + injections; subst.
+      unfold composeIf, Union_Format.
+      intros ? ?; apply unfold_computes; eexists Fin.F1; simpl; eauto.
+      eapply H; eauto.
+    +  injections; subst;
+        unfold composeIf, Union_Format.
+      intros ? ?; apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
+      eapply H2; eauto.
+  - destruct (x s env) as [ [ [? ?] ? ] | ] eqn: ?; simpl in *.
+    + destruct (x0 s env) as [ [ [? ?] ? ] | ] eqn: ?; simpl in *.
+      destruct (length_ByteString
+             {|
+             padding := padding;
+             front := front;
+             paddingOK := paddingOK;
+             numBytes := numBytes;
+             byteString := byteString |} <?
+           length_ByteString
+             {|
+             padding := padding0;
+             front := front0;
+             paddingOK := paddingOK0;
+             numBytes := numBytes0;
+             byteString := byteString0 |}) eqn: ?; simpl in H5; try discriminate.
+      discriminate.
+    + unfold composeIf, Union_Format in H6;
+        rewrite unfold_computes in H6.
+      destruct_ex.
+      revert H6; pattern x1.
+      eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl.
+      econstructor; intros.
+      eapply H in Heqo; eauto.
+      econstructor; intros.
+      eapply H2 in H5; eauto.
+      constructor.
+  - destruct (x s env) as [ [ [? ?] ? ] | ] eqn: ?; simpl in *; try discriminate.
+    + destruct (x0 s env) as [ [ [? ?] ? ] | ] eqn: ?; simpl in *.
+      * destruct (length_ByteString
+                    {|
+                      padding := padding;
+                      front := front;
+                      paddingOK := paddingOK;
+                      numBytes := numBytes;
+                      byteString := byteString |} <?
+                  length_ByteString
+                    {|
+                      padding := padding0;
+                      front := front0;
+                      paddingOK := paddingOK0;
+                      numBytes := numBytes0;
+                      byteString := byteString0 |}) eqn: ?; simpl in H5.
+        -- injections.
+           eapply H0 in Heqo; simpl in *; eauto.
+        -- injections.
+           eapply H3 in Heqo0; simpl in *; eauto.
+      * injections.
+        eapply H0 in Heqo; simpl in *; eauto.
+    + eapply H3 in H5; simpl in *; eauto.
+  - unfold EncodeMEquivAlignedEncodeM; intros.
+    unfold AlignEncode_Alt.
+    destruct (x s env) as [ [ [? ?] ? ] | ] eqn: ?.
+    + destruct (x0 s env) as [ [ [? ?] ? ] | ] eqn: ?; simpl in *.
+      destruct (length_ByteString
+                    {|
+                      padding := padding;
+                      front := front;
+                      paddingOK := paddingOK;
+                      numBytes := numBytes;
+                      byteString := byteString |} <?
+                  length_ByteString
+                    {|
+                      padding := padding0;
+                      front := front0;
+                      paddingOK := paddingOK0;
+                      numBytes := numBytes0;
+                      byteString := byteString0 |}) eqn: ?; simpl.
+      * unfold EncodeMEquivAlignedEncodeM in *.
+          specialize (H1 env s idx); injections.
+          simpl If_Opt_Then_Else; intuition eauto.
+        -- injections.
+           specialize (H5 _ _ Heqo H9 v1 v m v2); simpl in *.
+           destruct H5; intuition.
+           eexists _; rewrite H7; simpl; split; eauto.
+        -- injections.
+           specialize (H1 _ _ _ v Heqo H9); simpl in *.
+           rewrite H1; simpl.
+           specialize (H4 env s idx); eapply (proj1 (proj2 H4)); eauto.
+           eapply PeanoNat.Nat.ltb_lt in Heqb.
+           Omega.omega.
+        -- injections.
+           apply H0 in Heqo.
+           rewrite Heqo in H9; intuition.
+        -- discriminate.
+      * unfold EncodeMEquivAlignedEncodeM in *.
+          specialize (H4 env s idx); injections.
+          simpl If_Opt_Then_Else; intuition eauto.
+        -- injections.
+           specialize (H5 _ _ Heqo0 H9 v1 v m v2); simpl in *.
+           destruct H5; intuition.
+           eexists _; rewrite H7; simpl; split; eauto.
+        -- injections.
+           specialize (H1 _ _ _ v Heqo H9); simpl in *.
+           rewrite H1; simpl.
+           specialize (H4 env s idx); eapply (proj1 (proj2 H4)); eauto.
+           eapply PeanoNat.Nat.ltb_lt in Heqb.
+           Omega.omega.
+        -- injections.
+           apply H0 in Heqo.
+           rewrite Heqo in H9; intuition.
+        -- discriminate.
+    + simpl; specialize (H4 env s idx); specialize (H1 env s idx);
+        intuition.
+      * rewrite H10; simpl; eauto.
+      * rewrite H10; simpl; eauto.
+      * rewrite H10; simpl; eauto.
+      * rewrite H10; simpl; eauto.
+Qed. *)
 
 Lemma CorrectAlignedEncoderEither_E
       {S : Type}
       {cache : Cache}
       (format_T format_E : FormatM S ByteString)
       (encode : forall sz, AlignedEncodeM sz)
-  : CorrectAlignedEncoder format_E encode
+      (encode_E_OK : CorrectAlignedEncoder format_E encode)
+  : (forall s env, exists (v : ByteString * CacheFormat), projT1 encode_E_OK s env = Some v)
     -> CorrectAlignedEncoder
          (composeIf format_T format_E)
          encode.
 Proof.
-  intros.
   intros; eapply refine_CorrectAlignedEncoder; eauto.
-  unfold composeIf, Union_Format; intros; intros ? ?.
-  apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
-Qed.
+  unfold composeIf, Union_Format; split; intros.
+  - intros ? ?; apply unfold_computes; eexists (Fin.FS Fin.F1); simpl; eauto.
+  - intros ? ;
+      specialize (H s env); destruct_ex.
+    apply (H0 x); eauto.
+    destruct x.
+    apply (proj1 (projT2 encode_E_OK)) in H; eapply H.
+    eauto.
+Defined.
+
+Lemma CorrectAlignedEncoderEither_T
+      {S : Type}
+      {cache : Cache}
+      (format_T format_E : FormatM S ByteString)
+      (encode : forall sz, AlignedEncodeM sz)
+      (encode_T_OK : CorrectAlignedEncoder format_T encode)
+  : (forall s env, exists (v : ByteString * CacheFormat), projT1 encode_T_OK s env = Some v)
+    -> CorrectAlignedEncoder
+         (composeIf format_T format_E)
+         encode.
+Proof.
+  intros; eapply refine_CorrectAlignedEncoder; eauto.
+  unfold composeIf, Union_Format; split; intros.
+  - intros ? ?; apply unfold_computes; eexists Fin.F1; simpl; eauto.
+  - intros ? ;
+      specialize (H s env); destruct_ex.
+    apply (H0 x); eauto.
+    destruct x.
+    apply (proj1 (projT2 encode_T_OK)) in H; eapply H.
+    eauto.
+Defined.
 
 Definition SetByteAt (* Sets the bytes at the specified index and sets the current index
                         to the following position. *)

@@ -277,20 +277,7 @@ Section Checksum.
         simpl in H3.
         rewrite <- H3.
         repeat setoid_rewrite mappend_measure in com_pf''.
-        eauto.
-        (*
-        forall a t1 t2 (w : word checksum_sz),
-                                 predicate a
-                                 -> format1 a env t1
-                                 -> format2 a (addE (snd t1) checksum_sz) t2
-                                 -> bin_measure (fst t1) + (bin_measure (format_checksum w)
-                                                            + bin_measure (fst t2)) = n) *)
-
-        (*specialize (proj1 H3 _ _ _ v1 pred_pm com_pf com_pf'); simpl in H3.
-        simpl; intros. rewrite <- H5.
-        repeat setoid_rewrite mappend_measure in com_pf''.
-        rewrite mappend_assoc, <- H7.
-        eauto. *) }
+        eauto. }
     { intros.
       destruct (decode_measure t env') as [ [ [? ?] ?] | ] eqn: ? ;
         simpl in *; try discriminate.
@@ -299,7 +286,6 @@ Section Checksum.
         destruct H5 as [? [? [? [? [? ?] ] ] ] ].
         rename H8 into H'.
         specialize (H' _ _ _ _ H5).
-        (* assert (exists b', b = mappend b' x) by admit. *)
         subst.
         unfold sequence_Format, compose, Bind2 in H5.
         computes_to_inv; subst.

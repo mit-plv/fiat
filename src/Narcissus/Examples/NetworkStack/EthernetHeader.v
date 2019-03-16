@@ -175,7 +175,7 @@ Section EthernetPacketDecoder.
           rewrite <- (Nnat.Nat2N.id 1501).
           apply Nomega.Nlt_out.
           admit. (* reflexivity works in later versions. *)
-          
+
       + destruct (decode_word t env') as [ [ [? ?] ?] | ] eqn: ? ; simpl in H1;
           try discriminate.
         generalize Heqo; intros.

@@ -267,8 +267,32 @@ Lemma length_ByteString_Projection_compose {S S' S''}:
     eapply EquivFormat_Projection_Format; eauto.
   Qed.
 
-Ltac calculate_length_ByteString' :=
-  repeat first [ apply_in_hyp @length_ByteString_map_word
+  Lemma encoder_empty_cache_OK {S1 S2}
+        (format_A : FormatM S1 ByteString)
+        (format_B : FormatM S2 ByteString)
+        (encode_B : forall sz, AlignedEncodeM sz)
+        (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+    : forall (s1 : S1) (s2 : S2) (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
+      format_B s2 env ∋ tenv' ->
+      format_A s1 (snd tenv') ∋ tenv'' ->
+      exists tenv3 tenv4 : _ * CacheFormat,
+        projT1 encoder_B_OK s2 env = Some tenv3
+        /\ format_A s1 (snd tenv3) ∋ tenv4.
+  Proof.
+    intros.
+    destruct tenv'; destruct tenv''; simpl in *.
+    match goal with
+      |- exists _ _, ?b = _ /\ _ =>  destruct b as [ [? ?] | ] eqn: ?
+    end.
+    - eexists _, _; simpl in *; split; intros; eauto.
+      simpl in *.
+      destruct c; destruct c1; eauto.
+    - eapply (proj1 (projT2 encoder_B_OK)) in Heqo.
+      eapply Heqo in H; intuition.
+  Qed.
+
+  Ltac calculate_length_ByteString' :=
+    repeat first [ apply_in_hyp @length_ByteString_map_word
                | apply_in_hyp
                | apply_in_hyp @length_ByteString_map_bool
                | apply_in_hyp @length_ByteString_word
@@ -518,29 +542,62 @@ Qed.
     clear H
   end.
 
-Ltac collapse_unaligned_words :=
-  intros;
-  eapply refine_CorrectAlignedEncoder;
-  [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
-   unfold format_nat;
-   repeat first [ eapply refine_format_compose_map; intros
-                | eapply refine_format_option_map; intros
-                | eapply refine_format_bool_map
-                | eauto using refine_format_bool, refine_format_unused_word_map,
-                  refine_format_bool_map, refine_format_unused_word,
-                  refine_format_option_map, refine_format_enum_map,
-                  refine_format_nat_map];
-   reflexivity
-  | ].
+  Lemma format_word_inhabited' {S} (P : Prop)
+        {sz : nat}
+        (f : S -> word sz)
+        s env
+    : (forall (v : ByteString * CacheFormat), (format_word ◦ f) s env ∌ v) ->
+      P.
+  Proof.
+    intros; elimtype False.
+    eapply H.
+    eapply refine_Projection_Format.
+    unfold format_word.
+    eauto.
+  Qed.
 
-Ltac start_synthesizing_encoder :=
-  lazymatch goal with
-  | |- CorrectAlignedEncoderFor ?Spec =>
-    try unfold Spec
-  end;
-  (* Memoize any string constants *)
-  (*pose_string_hyps; *)
-  eexists; simpl; intros.
+  Lemma format_word_inhabited {S}
+        {sz : nat}
+        (f : S -> word sz)
+        (format_S : FormatM S ByteString)
+        s env
+    : (forall (v : ByteString * CacheFormat), (format_word ◦ f) s env ∌ v) ->
+      forall v : ByteString * CacheFormat,
+        format_S s env ∌ v.
+  Proof.
+    intros; intro.
+    eapply H.
+    eapply refine_Projection_Format.
+    unfold format_word.
+    eauto.
+  Qed.
+
+  Ltac collapse_unaligned_words :=
+    intros;
+    eapply refine_CorrectAlignedEncoder;
+    [ split;
+      [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
+       unfold format_nat;
+       repeat first [ eapply refine_format_compose_map; intros
+                    | eapply refine_format_option_map; intros
+                    | eapply refine_format_bool_map
+                    | eauto using refine_format_bool, refine_format_unused_word_map,
+                      refine_format_bool_map, refine_format_unused_word,
+                      refine_format_option_map, refine_format_enum_map,
+                      refine_format_nat_map];
+       reflexivity
+      | eapply format_word_inhabited ]
+    | ].
+
+
+  Ltac start_synthesizing_encoder :=
+    lazymatch goal with
+    | |- CorrectAlignedEncoderFor ?Spec =>
+      try unfold Spec
+    end;
+    (* Memoize any string constants *)
+    (*pose_string_hyps; *)
+    eexists; simpl; intros.
 
 (* Redefine this tactic to implement new encoder rules *)
 Ltac new_encoder_rules := fail.
@@ -551,16 +608,22 @@ Ltac align_encoder_step :=
     | |- CorrectAlignedEncoder (_ ++ _ ++ _) _ => associate_for_ByteAlignment
     end
   | match goal with
-    | |- CorrectAlignedEncoder (Either _ Or _) _ => eapply CorrectAlignedEncoderEither_E
+    | |- CorrectAlignedEncoder (Either _ Or _) _ =>
+      eapply CorrectAlignedEncoderEither_E;
+      unshelve (instantiate (1 := _));
+      [ repeat align_encoder_step
+      | eexists; reflexivity ]
     end
   | new_encoder_rules
-  | apply CorrectAlignedEncoderForFormatList; eauto
-  | apply CorrectAlignedEncoderForFormatVector
+  | eapply CorrectAlignedEncoderForFormatList; unshelve (instantiate (1 := _));
+    eauto using encoder_empty_cache_OK
+  | eapply CorrectAlignedEncoderForFormatVector; unshelve (instantiate (1 := _));
+    eauto using encoder_empty_cache_OK
   | apply CorrectAlignedEncoderForFormatChar; eauto
   | apply CorrectAlignedEncoderForFormatNat
   | apply CorrectAlignedEncoderForFormat2Nat; eauto
   | apply CorrectAlignedEncoderForFormatEnum
-  | eapply CorrectAlignedEncoderForFormatByteBuffer; eauto
+  | eapply CorrectAlignedEncoderForFormatByteBuffer; eauto using encoder_empty_cache_OK
   | eapply CorrectAlignedEncoderProjection
   | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2); [ solve [ eauto ] | solve [ eauto ] ]
   | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 3); [ solve [ eauto ] | solve [ eauto ] ]
@@ -577,7 +640,10 @@ Ltac align_encoder_step :=
       eapply CorrectAlignedEncoderForDoneC
     end
   | match goal with
-    | |- CorrectAlignedEncoder (_ ++ _) _ => apply @CorrectAlignedEncoderForThenC; [  | try collapse_unaligned_words ]
+    | |- CorrectAlignedEncoder (_ ++ _) _ =>
+      eapply @CorrectAlignedEncoderForThenC; [  | unshelve (instantiate (1 := _));
+                                                  [try collapse_unaligned_words
+                                                  | try eauto using encoder_empty_cache_OK ] ]
     end ].
 
 Ltac normalize_encoder_format :=

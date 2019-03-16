@@ -244,10 +244,16 @@ Section AlignedDecoders.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatChar_f.
     unfold format_nat; intros.
-    intros ? ?.
-    unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
-    rewrite unfold_computes in H.
-    destruct_ex; intuition; subst; eauto.
+    split.
+    - intros ? ?.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
+      rewrite unfold_computes in H.
+      destruct_ex; intuition; subst; eauto.
+    - intros; intro.
+      eapply H.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format.
+      rewrite unfold_computes.
+      eexists; intuition; subst; eauto.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormat2Nat
@@ -257,9 +263,12 @@ Section AlignedDecoders.
   Proof.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
-    unfold format_nat; intros.
-    intros ? ?.
-    eapply FMapFormat.EquivFormat_Projection_Format; eauto.
+    unfold format_nat; intros; split.
+    - intros ? ?.
+      eapply FMapFormat.EquivFormat_Projection_Format; eauto.
+    - intros ? ?; intro.
+      eapply H.
+      eapply FMapFormat.EquivFormat_Projection_Format; eauto.
   Qed.
 
   Fixpoint AlignedEncodeVector' n n' {sz} {S}
@@ -299,33 +308,54 @@ Section AlignedDecoders.
   Lemma CorrectAlignedEncoderForFormatVector {sz}
         {S}
     : forall (format_S : FormatM S ByteString)
-        (encode_S : forall numBytes : nat, AlignedEncodeM numBytes),
-      CorrectAlignedEncoder format_S encode_S ->
+             (encode_S : forall numBytes : nat, AlignedEncodeM numBytes)
+             (encode_S_OK : CorrectAlignedEncoder format_S encode_S)
+             (encode_A_OK' :
+                forall (s : S) sz (l : Vector.t S sz)
+                       (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
+                  format_S s env ∋ tenv' ->
+                  Vector.format_Vector format_S l (snd tenv') ∋ tenv'' ->
+                  exists tenv3 tenv4 : _ * CacheFormat,
+                    projT1 encode_S_OK s env = Some tenv3
+                    /\ Vector.format_Vector format_S l (snd tenv3) ∋ tenv4),
       CorrectAlignedEncoder (Vector.format_Vector format_S)
                             (AlignedEncodeVector encode_S (sz := sz)).
   Proof.
     intros; induction sz.
     - eapply refine_CorrectAlignedEncoder with (format' := fun s env => ret (mempty, env)).
       intros.
-      pattern s; eapply Vector.case0.
-      reflexivity.
-      unfold AlignedEncodeVector; simpl.
-      eapply CorrectAlignedEncoderForDoneC.
+      pattern s; eapply Vector.case0; split.
+      + reflexivity.
+      + intros; intro.
+        eapply H; eauto.
+      + unfold AlignedEncodeVector; simpl.
+        eapply CorrectAlignedEncoderForDoneC.
     - eapply refine_CorrectAlignedEncoder with (format' :=
                                                   SequenceFormat.sequence_Format
                                                     (FMapFormat.Projection_Format format_S Vector.hd)
                                                     (FMapFormat.Projection_Format (Vector.format_Vector format_S) Vector.tl)).
-      + intros; pattern sz, s; eapply Vector.caseS; intros; simpl.
-        unfold SequenceFormat.sequence_Format; simpl.
-        unfold compose, Bind2.
-        f_equiv; [ apply FMapFormat.EquivFormat_Projection_Format | intro].
-        f_equiv; apply FMapFormat.EquivFormat_Projection_Format.
+      + intros; pattern sz, s; eapply Vector.caseS; intros; simpl; split.
+        * unfold SequenceFormat.sequence_Format; simpl.
+          unfold compose, Bind2.
+          f_equiv; [ apply FMapFormat.EquivFormat_Projection_Format | intro].
+          f_equiv; apply FMapFormat.EquivFormat_Projection_Format.
+        * unfold SequenceFormat.sequence_Format; simpl;
+            unfold compose, Bind2; intros; intro.
+          computes_to_inv.
+          eapply H.
+          computes_to_econstructor.
+          eapply (proj1 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)).
+          simpl; eauto.
+          computes_to_econstructor.
+          eapply (proj1 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)).
+          simpl; eauto.
+          eauto.
       + unfold AlignedEncodeVector.
         eapply CorrectAlignedEncoder_morphism.
         apply EquivFormat_reflexive.
         2: eapply CorrectAlignedEncoderForThenC.
         2: eapply CorrectAlignedEncoderProjection; eauto.
-        2: eapply CorrectAlignedEncoderProjection; eauto.
+        (* 2: eapply CorrectAlignedEncoderProjection; eauto. *)
         intros.
         pattern sz, w; apply Vector.caseS; intros.
         unfold AppendAlignedEncodeM, Projection_AlignedEncodeM,
@@ -340,9 +370,37 @@ Section AlignedDecoders.
           destruct (encode_S sz0 t0 idx s cf) as [ [ [? ?] ?] | ] eqn: ?; simpl; eauto.
           erewrite <- IHn' with (k := 1 + k); simpl; reflexivity.
         }
+        instantiate (1 := fun sz v idx v' c => encode_S sz v idx (Vector.hd v') c).
+        simpl; rewrite Heqo; simpl.
         erewrite <- H with (k := 0) (m := 1)
                            (t1 := Vector.cons _ h _ (Vector.nil _)).
         reflexivity.
+        simpl; rewrite Heqo; reflexivity.
+        instantiate (1 := CorrectAlignedEncoderProjection _ _ _ encode_S_OK).
+        intros.
+        match goal with
+          |- exists _ _, (projT1 ?H) ?s ?env = _ /\ _ =>
+          destruct (projT1 H s env) eqn: ? ;
+            generalize (proj1 (projT2 H) s env); intros
+        end.
+        * apply proj1 in H1.
+          destruct p.
+          eapply H1 in Heqo.
+          eapply (proj2 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)) in H.
+          eapply (proj2 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)) in H0.
+          specialize (encode_A_OK' _ _ _ _ _ _ H H0).
+          destruct_ex; intuition; subst.
+          destruct encode_S_OK.
+          destruct a.
+          destruct a0.          
+          unfold CorrectAlignedEncoderProjection; simpl in *.
+          eexists _, _; split.
+          unfold Basics.compose; eauto.
+          eapply FMapFormat.EquivFormat_Projection_Format.
+          eauto.
+        * apply proj2 in H1.
+          eapply H1 in Heqo.
+          eapply Heqo in H; intuition.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatNEnum
@@ -355,11 +413,16 @@ Section AlignedDecoders.
   Proof.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
-    unfold format_enum; intros.
-    intros ? ?.
-    unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
-    rewrite unfold_computes in H.
-    destruct_ex; intuition; subst; eauto.
+    unfold format_enum; intros; split.
+    - intros ? ?.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
+      rewrite unfold_computes in H.
+      destruct_ex; intuition; subst; eauto.
+    - intros; intro.
+      eapply H.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format.
+      rewrite unfold_computes.
+      eexists _; intuition; subst; eauto.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatEnum
@@ -371,11 +434,16 @@ Section AlignedDecoders.
   Proof.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatChar_f; eauto.
-    unfold format_enum; intros.
-    intros ? ?.
-    unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
-    rewrite unfold_computes in H.
-    destruct_ex; intuition; subst; eauto.
+    unfold format_enum; intros; split.
+    - intros ? ?.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
+      rewrite unfold_computes in H.
+      destruct_ex; intuition; subst; eauto.
+    - intros; intro.
+      eapply H.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format.
+      rewrite unfold_computes.
+      eexists _; intuition; subst; eauto.
   Qed.
 
   Definition aligned_option_encode {S}
@@ -400,6 +468,9 @@ Section AlignedDecoders.
     exists (Option.option_encode (projT1 encode_Some_OK) (projT1 encode_None_OK));
       simpl; intuition.
     - destruct s; simpl in *.
+      eapply (proj1 (projT2 encode_Some_OK) s); eauto.
+      eapply (proj1 (projT2 encode_None_OK)); eauto.
+    - destruct s; simpl in .
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
     - destruct s; simpl in *.

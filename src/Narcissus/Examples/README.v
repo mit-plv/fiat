@@ -8,6 +8,99 @@ The following section presents the Narcissus framework through a series of incre
 We start with an extremely simple record, and a correspondingly simple format:
 **)
 
+(*Module Example.
+
+Require Import ilist
+        SumType.
+
+Definition instr : Type := SumType [word 8 : Type; word 8 : Type].
+
+Definition instr_codes : t (word 8) 2 :=
+  [ natToWord 8 5; natToWord 8 43].
+
+Let invariant (i : instr) := True.
+
+Definition format_instr : FormatM instr ByteString :=
+  format_enum instr_codes ◦ (SumType_index _) ++ (* Format the tag for the instructions *)
+  format_SumType _ (icons format_word (icons format_word inil)) ◦ (@id _) (* Format the argment for the instructions *)
+.
+
+Let no_align_decode : CorrectDecoderFor invariant format_instr.
+ Proof.
+   Solver.start_synthesizing_decoder.
+   NormalizeFormats.normalize_format; apply_rules.
+   last_failing_goal.
+   revert H.
+   match goal with
+     | |- context [ CorrectDecoder (T := ?B) _ _ _ _ (format_SumType (m := ?n)  ?types _) _ _ _ ] =>
+          let cache_inv_H := fresh in
+          intros cache_inv_H; (first
+           [ let types' := eval unfold types in types in
+             ilist_of_evar (fun T : Type => T -> CacheFormat -> Comp (B * CacheFormat)) types'
+              ltac:(fun formatrs' =>
+                      ilist_of_evar (fun T : Type => B -> CacheDecode -> option (T * B * CacheDecode)) types'
+                       ltac:(fun decoders' =>
+                               ilist_of_evar (fun T : Type => Ensembles.Ensemble T) types'
+                                ltac:(fun invariants' =>
+                                        ilist_of_evar (fun T : Type => T -> B -> Prop) types'
+                                                  ltac:(fun cache_invariants' =>
+                                                          eapply (SumType_decode_correct types) with
+                                                            (formatrs := formatrs') (
+                                                           decoders := decoders') (invariants := invariants')
+                                                           (cache_invariants := cache_invariants')))));
+              apply_rules
+           | ilist_of_evar (fun T : Type => T -> CacheFormat -> Comp (B * CacheFormat)) types
+              ltac:(fun formatrs' =>
+                      ilist_of_evar (fun T : Type => B -> CacheDecode -> option (T * B * CacheDecode)) types
+                       ltac:(fun decoders' =>
+                               ilist_of_evar (fun T : Type => Ensembles.Ensemble T) types
+                                ltac:(fun invariants' =>
+                                                 Vector_of_evar n (Ensembles.Ensemble (CacheDecode -> Prop))
+                                                  ltac:(fun cache_invariants' =>
+                                                          eapply (SumType_decode_correct types) with
+                                                            (formatrs := formatrs') (
+                                                              decoders := decoders') (invariants := invariants')
+                                                            (cache_invariants := cache_invariants'))))) ]);
+          [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros ** ); try exact I; apply_rules
+                          | apply cache_inv_H ]; intros
+             end.
+            intros; simpl.
+            unfold IsProj in H1.
+            intuition eauto.
+            destruct s; simpl; eauto.
+            intros; apply_rules.
+            simpl; intros;
+              eapply CorrectDecoderEmpty.
+            unfold Basics.compose in *;
+              simpl in *;
+              let a' := fresh in
+              intros a'; repeat destruct a' as [? a'];
+                (* Show that it is determined by the constraints (equalities) *)
+  (* inferred during parsing. *)
+                simpl in *; intros;
+                  (* Decompose data predicate *)
+                  decompose_source_predicate;
+                  (* Substitute any inferred equalities; decomposing *)
+                  (* any product types that might have been built up *)
+                  (* along the way *)
+                  subst_projections.
+            eapply H1.
+            decide_data_invariant.
+            simpl.
+            instantiate (1 := fun _ => True).
+            instantiate (1 := fun _ => True).
+            apply unfold_cache_inv_Property; compute; intuition.
+            cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
+            Defined.
+
+
+Inductive instr : Type :=
+  | ADDI: word 8 -> instr    (* 05 iw *)
+  | SUBI: word 8 -> instr.   (* 2D iw *)
+
+
+Definition *)
+
 Module Sensor0.
   Record sensor_msg :=
     { stationID: word 8; data: word 16 }.
@@ -251,7 +344,8 @@ Module Sensor6.
     2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
     intros; destruct s; simpl;
       rewrite refine_Projection_Format;
-      reflexivity.
+      split; try reflexivity;
+        intros; eapply format_word_inhabited'; intros; eauto.
   Qed.
 
   Let dec_reading :=
