@@ -28,11 +28,11 @@ Ltac psearch n z :=
 
 Create HintDb headingCache.
 
-Ltac fold_heading_hyps :=
-  (repeat foreach [ headingCache ] run (fun id => progress fold id)).
+Ltac fold_heading_hyps := idtac.
+  (* (repeat foreach [ headingCache ] run (fun id => progress fold id)). *)
 
-Ltac fold_heading_hyps_in H :=
-  repeat foreach [ headingCache ] run (fun id => progress fold id in H).
+Ltac fold_heading_hyps_in H := idtac.
+(*repeat foreach [ headingCache ] run (fun id => progress fold id in H). *)
 
 Ltac pose_heading_hyps :=
   fold_heading_hyps;

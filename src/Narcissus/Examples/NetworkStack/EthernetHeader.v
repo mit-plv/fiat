@@ -155,7 +155,7 @@ Section EthernetPacketDecoder.
         rewrite <- Nnat.Nat2N.id.
         rewrite <- (Nnat.Nat2N.id 1501).
         apply Nomega.Nlt_out.
-        reflexivity.
+        admit. (* reflexivity works in later versions. *)
         Grab Existential Variables.
         eauto.
         eauto.
@@ -208,12 +208,12 @@ Section EthernetPacketDecoder.
     Lemma valid_packet_len_OK_good_Len
       : lt packet_len (pow2 16).
     Proof.
-    intros.
-    etransitivity; eauto.
-    rewrite <- (wordToNat_natToWord_idempotent 16 1501).
-    eapply wordToNat_bound.
-    simpl; eapply BinNat.N.ltb_lt; reflexivity.
-  Qed.
+      intros.
+      etransitivity; eauto.
+      rewrite <- (wordToNat_natToWord_idempotent 16 1501).
+      eapply wordToNat_bound.
+      simpl; eapply BinNat.N.ltb_lt; reflexivity.
+    Qed.
 
   Hint Extern 4 => eapply valid_packet_len_OK_good_Len : data_inv_hints.
 

@@ -116,7 +116,8 @@ let compare_chksum bytes =
   let c = Cstruct.of_bytes bytes in
   let us = checksum' c in
   let them = !checksum c in
-  Printf.printf "Computed checksums of '%s': slow %d, fast %d, 65535 - fast %d\n" bytes us them (65535 - them)
+  Printf.printf "Computed checksums of '%s': slow %d, fast %d, 65535 - fast %d\n"
+    (Bytes.to_string bytes) us them (65535 - them)
 
 let checksum_bound n _ (arr: storage_t) =
   throw_if_stale "checksum_bound" arr;
@@ -140,6 +141,12 @@ let append _ _ (arr1: storage_t) (arr2: storage_t) : storage_t =
   throw_if_stale "append" arr1;
   throw_if_stale "append" arr2;
   of_cstruct (Cstruct.append arr1.data arr2.data)
+
+let of_list (ls: data_t list) : storage_t =
+  let len = List.length ls in
+  let cs = Cstruct.create len in
+  List.iteri (fun idx w -> unsafe_setdata cs idx w) ls;
+  of_cstruct cs
 
 let to_list _ (arr: storage_t) : data_t list =
   throw_if_stale "to_list" arr;

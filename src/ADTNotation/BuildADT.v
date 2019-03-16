@@ -390,7 +390,7 @@ Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn 
              (icons cons1%consDef .. (icons consn%consDef (@inil _ (@consDef r))) ..)
              (icons meth1%methDefParsing .. (icons methn%methDefParsing (@inil _ (@methDef r))) ..))
     (no associativity, at level 96, r at level 0,
-     format "'Def' 'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADTParsing_scope.
+     format "'Def'  'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADTParsing_scope.
 
 Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn } " :=
   (@BuildADT r%type
@@ -399,7 +399,7 @@ Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn 
              (icons cons1%consDef .. (icons consn%consDef (@inil _ (@consDef r))) ..)
              (icons meth1%methDef .. (icons methn%methDef (@inil _ (@methDef r))) ..))
     (no associativity, at level 96, r at level 0,
-     format "'Def' 'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
+     format "'Def'  'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
 Notation callMeth adt idx := (callADTMethod adt (fun idx => ibound (indexb idx))

@@ -72,91 +72,7 @@ Section IPv4.
     end.
 End IPv4.
 
-Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
-
-(* Work around the fact that Decimal declares a type "int" *)
-Extract Inductive nat => "OCamlNativeInt.t" [ "0" "Pervasives.succ" ]
- "(fun fO fS n -> if n=0 then fO () else fS (n-1))".
-
-Extract Inductive prod => "(*)"  [ "(,)" ].
-
-Extract Inlined Constant NPeano.ltb => "(<)".
-Extract Inlined Constant NPeano.leb => "(<=)".
-(* ExtrOCamlNatInt uses Pervasives.max, which is slow *)
-Extract Constant Nat.sub =>
-  "fun (x: OCamlNativeInt.t) (y: OCamlNativeInt.t) ->
-if x <= y then 0 else (x - y)".
-
-(** * Inline a few functions *)
-Require Import
-        Fiat.Narcissus.BinLib.AlignedDecodeMonad
-        Fiat.Narcissus.BinLib.AlignedEncodeMonad.
-Extraction Inline fst snd Basics.compose.
-Extraction Inline Projection_AlignedEncodeM.
-Extraction Inline GetCurrentByte SetCurrentByte.
-Extraction Inline BindAlignedDecodeM ReturnAlignedDecodeM ThrowAlignedDecodeM.
-Extraction Inline AppendAlignedEncodeM ReturnAlignedEncodeM ThrowAlignedEncodeM.
-Extraction Inline Common.If_Opt_Then_Else AlignedDecoders.LetIn_If_Opt_Then_Else.
-
-(** * Extract words as int64
-      (Only works for words with length < 64) *)
-
-Extract Inductive Word.word =>
-"Int64Word.t"
-  ["(Int64Word.w0)" "Int64Word.ws"]
-  "Int64Word.destruct".
-
-Extract Inlined Constant whd => "Int64Word.whd".
-Extract Inlined Constant wtl => "Int64Word.wtl".
-Extract Inlined Constant zext => "Int64Word.zext".
-Extract Inlined Constant wplus => "Int64Word.wplus".
-Extract Inlined Constant wmult => "Int64Word.wmult".
-Extract Inlined Constant wminus => "Int64Word.wminus".
-Extract Inlined Constant weq => "Int64Word.weq".
-Extract Inlined Constant weqb => "Int64Word.weqb".
-Extract Inlined Constant wlt => "Int64Word.wlt".
-Extract Inlined Constant wlt_dec => "Int64Word.wlt_dec".
-Extract Inlined Constant wand => "Int64Word.wand".
-Extract Inlined Constant wor => "Int64Word.wor".
-Extract Inlined Constant wnot => "Int64Word.wnot".
-Extract Inlined Constant wneg => "Int64Word.wneg".
-Extract Inlined Constant wordToNat => "Int64Word.wordToNat".
-Extract Inlined Constant natToWord => "Int64Word.natToWord".
-Extract Inlined Constant wzero => "Int64Word.wzero".
-Extract Inlined Constant wzero' => "Int64Word.wzero'".
-Extract Inlined Constant wones => "Int64Word.wones".
-
-Extract Inlined Constant WordOpt.word_split_hd => "Int64Word.word_split_hd".
-Extract Inlined Constant WordOpt.word_split_tl => "Int64Word.word_split_tl".
-Extract Inlined Constant AlignWord.split1' => "Int64Word.split1'".
-Extract Inlined Constant AlignWord.split2' => "Int64Word.split2'".
-Extract Inlined Constant split1 => "Int64Word.split1".
-Extract Inlined Constant split2 => "Int64Word.split2".
-Extract Inlined Constant WordOpt.SW_word => "Int64Word.SW_word".
-Extract Inlined Constant combine => "Int64Word.combine".
-Extract Inlined Constant Core.append_word => "Int64Word.append".
-
-Definition word_split_hd_test := WordOpt.word_split_hd (natToWord 5 30).
-Definition word_split_tl_test := wordToNat (WordOpt.word_split_tl (natToWord 5 30)).
-Definition alignword_split1'_test := wordToNat (AlignWord.split1' 2 3 (natToWord 5 30)).
-Definition alignword_split2'_test := wordToNat (AlignWord.split2' 2 3 (natToWord 5 30)).
-Definition split1_test := wordToNat (split1 3 2 (natToWord 5 30)).
-Definition split2_test := wordToNat (split2 3 2 (natToWord 5 30)).
-Definition combine_test := wordToNat (combine (natToWord 5 30) (natToWord 7 14)).
-Definition append_word_test := wordToNat (Core.append_word (@natToWord 8 5) (@natToWord 12 126)).
-
-(** * Special case of internet checksum *)
-Extract Constant InternetChecksum.OneC_plus => "Int64Word.onec_plus".
-
-(** Efficient bytestrings *)
-
-Extract Inductive Fin.t =>
-"ArrayVector.idx_t"
-  ["ArrayVector.zero" "ArrayVector.succ"]
-  "ArrayVector.destruct_idx".
-
-Extract Inlined Constant Fin.L => "(fun _ n p -> p)".
-Extract Inlined Constant Fin.R => "(fun _ n p -> n + p)".
+Require Import Narcissus.OCamlExtraction.Extraction.
 
 Extract Inductive Vector.t =>
 "StackVector.t"
@@ -208,47 +124,7 @@ Extract Inlined Constant AlignedList.bytebuffer_of_bytebuffer_range =>
     ExistT (ArrayVector.length b, b))".
 *)
 
-(* CPC clean up CstructBytestring.ml to remove unneeded stuff *)
-
-Import AlignedByteString.
-Extract Constant ByteBuffer.t => "CstructBytestring.storage_t".
-Extract Inlined Constant ByteBuffer.t => "CstructBytestring.storage_t".
-Extract Inlined Constant ByteBuffer.nil => "CstructBytestring.nil".
-Extract Inlined Constant ByteBuffer.cons => "CstructBytestring.cons".
-Extract Inlined Constant ByteBuffer.hd => "CstructBytestring.hd".
-Extract Inlined Constant ByteBuffer.tl => "CstructBytestring.tl".
-Extract Inlined Constant ByteBuffer.to_list => "CstructBytestring.to_list".
-Extract Inlined Constant ByteBuffer.of_vector => "CstructBytestring.of_vector".
-Extract Inlined Constant ByteBuffer.to_vector => "CstructBytestring.to_vector".
-Extract Inlined Constant ByteBuffer.append => "CstructBytestring.append".
-Extract Inlined Constant nth_opt => "CstructBytestring.nth_opt".
-Extract Inlined Constant set_nth' => "CstructBytestring.set_nth".
-Extract Inlined Constant initialize_Aligned_ByteString => "CstructBytestring.create".
-Extract Inlined Constant InternetChecksum.ByteBuffer_checksum_bound => "CstructBytestring.checksum_bound".
-Extract Inlined Constant AlignedByteBuffer.buffer_blit_buffer => "CstructBytestring.blit_buffer".
-Extract Constant AlignedByteBuffer.bytebuffer_of_bytebuffer_range =>
-  "(fun sz from len v ->
-    let b = CstructBytestring.slice_range sz from len v in
-    ExistT (CstructBytestring.length b, b))".
-
-Compute
-  match IPv4Header.IPv4_decoder_impl IPv4Header.bin_pkt with
-  | Some (p, _, _) =>
-    match IPv4Header.IPv4_encoder_impl (AlignedByteString.initialize_Aligned_ByteString 20) p with
-    | Some (bytes, _, _) => Some (Vector.map (@wordToNat 8) bytes)
-    | None => None
-    end
-  | None => None
-  end.
-
-Definition fiat_ipv4_decode_bench (_: unit) :=
-  fiat_ipv4_decode IPv4Header.bin_pkt.
-Definition fiat_ipv4_encode_bench (_: unit) :=
-  fiat_ipv4_encode IPv4Header.pkt (MakeBuffer 20).
-
 Extraction "Fiat4Mirage"
-           (* fiat_ipv4_decode_bench *)
-           (* fiat_ipv4_encode_bench *)
 
            fiat_ethernet_type_of_enum
            fiat_ethernet_type_to_enum

@@ -166,19 +166,4 @@ Section AlignedList.
                               Some (String (ascii_of_N (wordToN c)) s, b', cd')
     end.
 
-  (*Lemma optimize_align_decode_string_w_term_char
-    : forall (term_char : Ascii.ascii)
-             {sz}
-             (v : Vector.t (word 8) sz)
-             (cd : CacheDecode),
-      decode_string_with_term_char term_char (build_aligned_ByteString v) cd
-      = Ifopt align_decode_string_with_term_char (NToWord _ (N_of_ascii term_char)) v cd as a
-              Then
-              Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
-              Else
-              None.
-  Proof.
-    intros.
-  Admitted. *)
-
 End AlignedList.

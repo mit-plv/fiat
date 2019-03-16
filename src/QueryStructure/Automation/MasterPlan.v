@@ -110,3 +110,29 @@ Ltac finish_planning IndexTactics PickIndex := IndexTactics ltac:(finish_plannin
 
 Ltac simple_master_plan := master_plan EqIndexTactics.
 Ltac simple_partial_master_plan := partial_master_plan EqIndexTactics.
+
+
+(* Here are some tactics + notations for doing explicit data structure selection: *)
+Ltac master_plan_w_specific_indexes'
+     indexes
+     FindAttributeUses
+     BuildEarlyIndex BuildLastIndex
+     IndexUse createEarlyTerm createLastTerm
+     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+     BuildEarlyBag BuildLastBag :=
+  (* Implement constraints as queries. *)
+  start sharpening ADT;
+  start_honing_QueryStructure';
+  finish_planning' ltac:(fun makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist')
+                          BuildEarlyIndex BuildLastIndex
+                          IndexUse createEarlyTerm createLastTerm
+                          IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+                          BuildEarlyBag BuildLastBag.
+
+Ltac master_plan_w_specific_indexes indexes IndexTactics := IndexTactics ltac:(master_plan_w_specific_indexes' indexes).
+
+
+Notation "attr # Ridx ## qs_sch " :=
+  (let heading' := GetHeading qs_sch Ridx in
+   let attr' := (@Build_BoundedIndex _ _ (HeadingNames heading') attr _) in
+   ibound (indexb attr'))  (at level 55).

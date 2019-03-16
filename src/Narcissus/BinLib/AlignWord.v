@@ -1057,10 +1057,11 @@ Section AlignEncodeWord.
     intros.
     unfold CorrectAlignedEncoder. eexists (Compose_Encode  (fun c env => Some ((build_aligned_ByteString (cons (word 8) c 0 (nil (word 8))), addE env 8))) (fun s => Some (proj s))); split; [ | split].
     - unfold Compose_Encode, Projection_Format, Compose_Format; intros.
-      setoid_rewrite aligned_format_char_eq.
-      injections.
-      intros ? ?;
-      apply unfold_computes; eexists; intuition eauto.
+      split; intros.
+      + setoid_rewrite aligned_format_char_eq.
+        injections.
+        intros ? ?; apply unfold_computes; eexists; intuition eauto.
+      + simpl in H; discriminate.
     - unfold Compose_Encode; simpl; intros.
       injections; reflexivity.
     - unfold Compose_Encode, EncodeMEquivAlignedEncodeM; intros; injections; intuition; simpl.
@@ -1095,7 +1096,7 @@ Section AlignEncodeWord.
         omega.
       + injections; simpl in *; omega.
       + discriminate.
-  Qed.
+  Defined.
 
   Lemma CorrectAlignedEncoderForFormatChar
     : CorrectAlignedEncoder
@@ -1106,14 +1107,18 @@ Section AlignEncodeWord.
       with (fun (sz : nat) v idx s => SetCurrentByte (n := sz) v idx (id s)).
     eapply refine_CorrectAlignedEncoder.
     2: eapply (CorrectAlignedEncoderForFormatChar_f id).
-    intros.
-    unfold Projection_Format, Compose_Format.
-    intros v Comp_v; rewrite unfold_computes in Comp_v; destruct_ex; intuition.
-    subst; eauto.
-    eapply functional_extensionality_dep; intros.
-    repeat (eapply functional_extensionality; intros).
-    reflexivity.
-  Qed.
+    split; intros.
+    + unfold Projection_Format, Compose_Format.
+      intros v Comp_v; rewrite unfold_computes in Comp_v; destruct_ex; intuition.
+      subst; eauto.
+    + intro; apply (H v).
+      unfold Projection_Format, Compose_Format in *.
+      rewrite unfold_computes; eexists.
+      subst; eauto.
+    + eapply functional_extensionality_dep; intros.
+      repeat (eapply functional_extensionality; intros).
+      reflexivity.
+  Defined.
 
   Lemma CorrectAlignedEncoderForFormatUnusedWord
         {S}
@@ -1123,14 +1128,22 @@ Section AlignEncodeWord.
   Proof.
     intros; eapply refine_CorrectAlignedEncoder;
       eauto using (CorrectAlignedEncoderForFormatChar_f (fun _ => wzero 8)).
-    simpl; intros.
-    unfold format_unused_word, Projection_Format, Compose_Format; simpl.
-    intros ? ?.
-    rewrite unfold_computes in *.
-    destruct_ex; split_and; subst.
-    eexists; split; eauto.
-    rewrite unfold_computes; eauto.
-  Qed.
+    simpl; split; intros.
+    + unfold format_unused_word, Projection_Format, Compose_Format; simpl.
+      intros ? ?.
+      rewrite unfold_computes in *.
+      destruct_ex; split_and; subst.
+      eexists; split; eauto.
+      rewrite unfold_computes; eauto.
+    + unfold format_unused_word, Projection_Format, Compose_Format; simpl.
+      intros ?.
+      eapply (H _).
+      unfold format_unused_word, Projection_Format, Compose_Format; simpl.
+      destruct_ex; split_and; subst.
+      rewrite unfold_computes; eauto.
+      eexists _; split; eauto.
+      unfold format_word; eauto.
+  Defined.
 
   Lemma CorrectAlignedEncoderForProjection_Format
         {S S'}
@@ -1143,12 +1156,18 @@ Section AlignEncodeWord.
                             (fun sz v idx (s : S) => encoder sz v idx (f s)).
   Proof.
     intros; eapply refine_CorrectAlignedEncoder.
-    intros. rewrite refine_Projection_Format at 1. higher_order_reflexivity.
-    destruct X; intuition.
-    eexists (fun s env => x (f s) env); intuition eauto.
-    unfold EncodeMEquivAlignedEncodeM in *; intros.
-    specialize (H2 env (f s) idx); intuition eauto.
-  Qed.
+    split; intros.
+    - rewrite refine_Projection_Format at 1. higher_order_reflexivity.
+    - intro.
+      eapply H.
+      apply refine_Projection_Format in H0. eauto.
+    - destruct X; intuition.
+      eexists (fun s env => x (f s) env); intuition eauto.
+      eapply H; eauto.
+      eapply H; eauto.
+      unfold EncodeMEquivAlignedEncodeM in *; intros.
+      specialize (H2 env (f s) idx); intuition eauto.
+  Defined.
 
   Lemma CollapseCorrectAlignedEncoderFormatWord
         {S : Type}
@@ -1173,19 +1192,43 @@ Section AlignEncodeWord.
     pose proof CollapseFormatWord.
     unfold compose, Bind2 in H.
     rewrite <- H; eauto.
-    f_equiv; intro.
-    rewrite !refine_sequence_Format.
-    simpl.
-    unfold compose, Bind2.
-    simplify with monad laws.
-    rewrite !refine_Projection_Format.
-    setoid_rewrite refineEquiv_bind_bind.
-    f_equiv; intro.
-    setoid_rewrite refineEquiv_bind_bind.
-    f_equiv; intro.
-    setoid_rewrite refineEquiv_bind_unit.
-    reflexivity.
-  Qed.
+    split.
+    - f_equiv; intro.
+      rewrite !refine_sequence_Format.
+      simpl.
+      unfold compose, Bind2.
+      simplify with monad laws.
+      rewrite !refine_Projection_Format.
+      setoid_rewrite refineEquiv_bind_bind.
+      f_equiv; intro.
+      setoid_rewrite refineEquiv_bind_bind.
+      f_equiv; intro.
+      setoid_rewrite refineEquiv_bind_unit.
+      reflexivity.
+    - intros.
+      intro.
+      simpl.
+      apply refine_sequence_Format in H1.
+      unfold compose, Bind2 in H1.
+      computes_to_inv.
+      apply refine_Projection_Format in H1.
+      apply refine_sequence_Format in H1'.
+      unfold compose, Bind2 in H1'.
+      unfold format_word in *.
+      computes_to_inv; subst.
+      apply refine_Projection_Format in H1'.
+      computes_to_inv; subst.
+      simpl in *.
+      eapply H0.
+      unfold sequence_Format, compose, Bind2.
+      computes_to_econstructor.
+      apply refine_Projection_Format.
+      eauto.
+      computes_to_econstructor; eauto.
+      simpl.
+      rewrite addE_addE_plus in H1''0;
+      rewrite plus_comm; eauto.
+  Defined.
 
   Lemma CollapseCorrectAlignedEncoderFormatWord'
         {S : Type}
@@ -1210,19 +1253,44 @@ Section AlignEncodeWord.
     pose proof CollapseFormatWord'.
     unfold compose, Bind2 in H.
     rewrite H; eauto.
-    f_equiv; intro.
-    rewrite !refine_sequence_Format.
-    simpl.
-    unfold compose, Bind2.
-    simplify with monad laws.
-    rewrite !refine_Projection_Format.
-    setoid_rewrite refineEquiv_bind_bind.
-    f_equiv; intro.
-    setoid_rewrite refineEquiv_bind_bind.
-    f_equiv; intro.
-    setoid_rewrite refineEquiv_bind_unit.
-    reflexivity.
-  Qed.
+    split.
+    - f_equiv; intro.
+      rewrite !refine_sequence_Format.
+      simpl.
+      unfold compose, Bind2.
+      simplify with monad laws.
+      rewrite !refine_Projection_Format.
+      setoid_rewrite refineEquiv_bind_bind.
+      f_equiv; intro.
+      setoid_rewrite refineEquiv_bind_bind.
+      f_equiv; intro.
+      setoid_rewrite refineEquiv_bind_unit.
+      reflexivity.
+    - intros.
+      intro.
+      simpl.
+      apply refine_sequence_Format in H1.
+      unfold compose, Bind2 in H1.
+      computes_to_inv.
+      apply refine_Projection_Format in H1.
+      unfold format_word in *.
+      computes_to_inv; subst.
+      simpl in *.
+      eapply H0.
+      unfold sequence_Format, compose, Bind2.
+      computes_to_econstructor.
+      apply refine_Projection_Format.
+      eauto.
+      computes_to_econstructor; eauto.
+      simpl.
+      computes_to_econstructor; eauto.
+      apply refine_Projection_Format.
+      eauto.
+      computes_to_econstructor; eauto.
+      simpl.
+      rewrite addE_addE_plus;
+      rewrite plus_comm; eauto.
+  Defined.
 
   Lemma refine_CollapseFormatWord
         (addE_addE_plus :
@@ -1361,19 +1429,44 @@ Section AlignEncodeWord.
   Proof.
     intros; pose proof (format_words addE_addE_plus (n := 8) (m := sz)) as H';
       eapply refine_CorrectAlignedEncoder.
-    unfold flip, pointwise_relation; eapply H'.
-    eapply refine_CorrectAlignedEncoder.
-    intros.
-    rewrite <- split2'_eq, <- split1'_eq.
-    2: eapply CorrectAlignedEncoderForThenC.
-    3: eapply (@CorrectAlignedEncoderForFormatChar_f (word (8 + sz))
-                                                     (split1' 8 sz)).
-    instantiate (1 := Projection_Format format_word (split2' 8 sz)).
-    rewrite refine_sequence_Format.
-    unfold compose, Bind2; rewrite refine_Projection_Format; f_equiv.
-    intro; rewrite refine_Projection_Format; f_equiv.
-    eapply CorrectAlignedEncoderForProjection_Format; eauto.
-  Qed.
+    split.
+    - unfold flip, pointwise_relation; eapply H'.
+    - intros; intro.
+      eapply H.
+      unfold compose, format_word; computes_to_econstructor; eauto.
+      unfold compose, format_word; computes_to_econstructor; eauto.
+    - eapply refine_CorrectAlignedEncoder.
+      split; intros.
+      rewrite <- split2'_eq, <- split1'_eq.
+      3: eapply CorrectAlignedEncoderForThenC.
+      (*3: intros; eapply (@CorrectAlignedEncoderForFormatChar_f (word (8 + sz))
+        (split1' 8 sz)).*)
+      instantiate (1 := Projection_Format format_word (split2' 8 sz)).
+      rewrite refine_sequence_Format.
+      instantiate (1 := Projection_Format format_word (split1' 8 sz)).
+      unfold compose, Bind2; rewrite refine_Projection_Format; f_equiv.
+      intro; rewrite refine_Projection_Format; f_equiv.
+      2: eapply CorrectAlignedEncoderForProjection_Format; eauto.
+      + intro.
+        eapply H.
+        rewrite <- split2'_eq, <- split1'_eq in H0.
+        unfold sequence_Format.
+        unfold compose, Bind2 in *; computes_to_inv; computes_to_econstructor.
+        apply refine_Projection_Format; eauto.
+        computes_to_econstructor.
+        apply refine_Projection_Format; eauto.
+        subst; eauto.
+      + intros.
+        instantiate (1 := (@CorrectAlignedEncoderForFormatChar_f (word (8 + sz)) (split1' 8 sz))).
+        destruct (projT1 (CorrectAlignedEncoderForFormatChar_f (split1' 8 sz)) s env) eqn: ?.
+        * eexists _, _; split; eauto.
+          apply refine_Projection_Format; eauto.
+          unfold format_word; eauto.
+        * generalize (proj2 (proj1 (projT2 (CorrectAlignedEncoderForFormatChar_f (split1' 8 sz))) s env));
+            intro.
+          eapply H1 in Heqo.
+          eapply Heqo in H; intuition eauto.
+  Defined.
 
   Fixpoint SetCurrentBytes' (* Sets the bytes at the current index and increments the current index. *)
            {n sz : nat}
@@ -1445,13 +1538,17 @@ Section AlignEncodeWord.
     induction sz; simpl; intros.
     - eapply refine_CorrectAlignedEncoder; intros.
       shatter_word s; unfold format_word; simpl.
+      split.
       unfold format_word; rewrite addE_0; higher_order_reflexivity.
+      intros; intro.
+      eapply H.
+      eauto.
       + eapply CorrectAlignedEncoderForDoneC.
     - eapply (CorrectAlignedEncoderForFormatNChar'
                 addE_addE_plus
                 (fun sz' => @SetCurrentBytes' sz' sz));
         eauto.
-  Qed.
+  Defined.
 
   Lemma CorrectAlignedEncoderForFormatMChar_f n
         {S}
@@ -1469,7 +1566,7 @@ Section AlignEncodeWord.
         (encoder := fun sz => @SetCurrentBytes sz n)
         (f := proj).
     eapply CorrectAlignedEncoderForFormatNChar; eauto.
-  Qed.
+  Defined.
 
 End AlignEncodeWord.
 
