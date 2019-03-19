@@ -8,9 +8,6 @@ Require Import
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Common.IterateBoundedIndex
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts

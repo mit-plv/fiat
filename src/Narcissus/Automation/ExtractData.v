@@ -8,9 +8,6 @@ Require Import
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Common.IterateBoundedIndex
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
@@ -95,7 +92,7 @@ Ltac decide_data_invariant :=
   (* of the clauses in this predicate are obviously true by *)
   (* construction, but there may be some that need to be checked *)
   (* by a decision procedure*)
-  unfold GetAttribute, GetAttributeRaw, IsProj in *;
+  unfold IsProj in *;
   simpl in *; intros; intuition;
   repeat first [ progress subst
                | match goal with
@@ -125,13 +122,12 @@ Ltac build_fully_determined_type :=
   (* byte string was a valid encoding of this object. *)
   (* Start by doing some simplification and *)
   (* destructing the formatd object  *)
-  unfold Domain, GetAttribute, GetAttributeRaw, Basics.compose in *;
+  unfold Basics.compose in *;
   simpl in *;
   let a' := fresh in
   intros a'; repeat destruct a' as [? a'];
   (* Show that it is determined by the constraints (equalities) *)
   (* inferred during parsing. *)
-  unfold Domain, GetAttribute, GetAttributeRaw in *;
   simpl in *; intros;
   (* Decompose data predicate *)
   decompose_source_predicate;

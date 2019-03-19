@@ -9,9 +9,6 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.Common.Specs
@@ -35,7 +32,6 @@ Require Import Bedrock.Word.
 
 Import Vectors.Vector.VectorNotations.
 Open Scope string_scope.
-Open Scope Tuple_scope.
 
 Definition onesComplement (chars : list char) : word 16 :=
   InternetChecksum.checksum chars.
@@ -1449,7 +1445,7 @@ Ltac resolve_Checksum :=
       match format2' with
       | ?format2'' a =>
         eapply (@refineEquiv_ThenC _ _ _ _ format1'' format2'');
-        [unfold GetAttribute, GetAttributeRaw; simpl;
+        [simpl;
          try (intros; higher_order_reflexivity)
         | cbv beta; clear
         | higher_order_reflexivity]

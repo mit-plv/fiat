@@ -1,7 +1,11 @@
 Require Import
   Fiat.Common
   Fiat.Computation.Core
-  Fiat.Computation.SetoidMorphisms.
+  Fiat.Computation.SetoidMorphisms
+  Fiat.Computation.Monad
+  Fiat.Computation.ApplyMonad
+  Fiat.Computation.Refinements.General.
+
 
 Open Scope comp_scope.
 
@@ -94,8 +98,6 @@ Proof.
   exact H.
 Qed.
 
-Require Import Fiat.ADT.
-
 Lemma refine_foldComp_fold :
   forall A B (st : A) (f : A -> B -> A) (xs : list B),
     refineEquiv (foldComp (fun st x => ret (f st x)) st xs)
@@ -105,7 +107,7 @@ Proof.
   generalize dependent st.
   induction xs; simpl; intros.
     reflexivity.
-  autorewrite with monad laws.
+    autorewrite with monad laws.
   apply IHxs.
 Qed.
 
@@ -198,9 +200,10 @@ Proof.
   eapply refine_foldComp_invariant'; eauto; intros.
     intros ?.
     rewrite (H _ _).
-    refine pick val z'; trivial.
+    refine pick val z'.
     simplify with monad laws.
     reflexivity.
-  refine pick val st_n'; trivial.
-  reflexivity.
+    eauto.
+    refine pick val st_n'; trivial.
+    reflexivity.
 Qed.

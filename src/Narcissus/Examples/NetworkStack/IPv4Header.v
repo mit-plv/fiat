@@ -9,9 +9,6 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
@@ -28,7 +25,6 @@ Require Import Bedrock.Word.
 
 Import Vectors.Vector.VectorNotations.
 Open Scope string_scope.
-Open Scope Tuple_scope.
 
 (* Our source data type for IP packets. *)
 Record IPv4_Packet :=
