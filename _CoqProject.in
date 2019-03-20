@@ -131,7 +131,6 @@ src/Narcissus/BinLib/AlignedByteBuffer.v
 src/Narcissus/BinLib/AlignedByteString.v
 src/Narcissus/BinLib/AlignedDecodeMonad.v
 src/Narcissus/BinLib/AlignedDecoders.v
-src/Narcissus/BinLib/AlignedDomainName.v
 src/Narcissus/BinLib/AlignedEncodeMonad.v
 src/Narcissus/BinLib/AlignedFix.v
 src/Narcissus/BinLib/AlignedIPChecksum.v
