@@ -11,128 +11,72 @@ Set Implicit Arguments.
 
 Section Specifications.
 
-  Variable A : Type. (* Source Type. (in-memory data) *)
-  Variable B : Type. (* Target Type. (usually ByteStrings) *)
+  Variable S : Type. (* Source Type. (in-memory data) *)
+  Variable T : Type. (* Target Type. (usually ByteStrings) *)
   Context {store : Cache}. (* Store Type. *)
 
   (* Formats are a quaternary relation on an source value, initial store,
      target value, and final store. *)
   Definition FormatM : Type :=
-    A -> CacheFormat -> Comp (B * CacheFormat).
+    S -> CacheFormat -> Comp (T * CacheFormat).
 
   (* Decoders consume a target value and store and produce either
      - a source value, remaining target value, and updated store
      - or an error value, i.e. None. *)
 
   Definition DecodeM : Type :=
-    B -> CacheDecode -> option (A * CacheDecode).
+    T -> CacheDecode -> option (S * CacheDecode).
 
   (* Encoders take a source value and store and produce either a
      - target value and updated store
      - or an error value, i.e. None. *)
 
   Definition EncodeM : Type :=
-    A -> CacheFormat -> option (B * CacheFormat).
+    S -> CacheFormat -> option (T * CacheFormat).
 
   Local Notation "a ∋ b" := (@computes_to _ a b) (at level 90).
   Local Notation "a ∌ b" := (~ @computes_to _ a b) (at level 90).
 
-  Definition format_decode_correct
-             (monoid : Monoid B)
-             (predicate : A -> Prop)
-             (format : A -> CacheFormat -> B * CacheFormat)
-             (decode : B -> CacheDecode -> A * B * CacheDecode) :=
-    forall env env' xenv xenv' data data' bin ext ext',
-      Equiv env env' ->
-      predicate data ->
-      format data env = (bin, xenv) ->
-      decode (mappend bin ext) env' = (data', ext', xenv') ->
-      Equiv xenv xenv' /\ data = data' /\ ext = ext'.
-
-  Definition CorrectDecoder
-             (monoid : Monoid B)
-             (predicate : A -> Prop)
-             (rest_predicate : A -> B -> Prop)
+  Definition CorrectDecoder {V}
+             (monoid : Monoid T)
+             (Source_Predicate : S -> Prop)
+             (View_Predicate : V -> Prop)
+             (view : S -> V -> Prop)
              (format : FormatM)
-             (decode : B -> CacheDecode -> option (A * B * CacheDecode))
-             (decode_inv : CacheDecode -> Prop) :=
-    (forall env env' xenv data bin ext
+             (decode : T -> CacheDecode -> option (V * T * CacheDecode))
+             (decode_inv : CacheDecode -> Prop)
+             (view_format : V -> CacheFormat -> Comp (T * CacheFormat)) :=
+    (forall env env' xenv s t ext
             (env_OK : decode_inv env'),
         Equiv env env' ->
-        predicate data ->
-        rest_predicate data ext ->
-        format data env ∋ (bin, xenv) ->
-        exists xenv',
-          decode (mappend bin ext) env' = Some (data, ext, xenv')
+        Source_Predicate s ->
+        format s env ∋ (t, xenv) ->
+        exists v xenv',
+          decode (mappend t ext) env' = Some (v, ext, xenv')
+          /\ view s v
+          /\ (view_format v env ∋ (t, xenv))
           /\ Equiv xenv xenv' /\ decode_inv xenv') /\
-    (forall env env' xenv' data bin ext,
-        Equiv env env'
-        -> decode_inv env'
-        -> decode bin env' = Some (data, ext, xenv')
-        -> decode_inv xenv'
-           /\ exists bin' xenv,
-            (format data env ∋ (bin', xenv))
-            /\ bin = mappend bin' ext
-            /\ predicate data
-            /\ Equiv xenv xenv').
-
-  Definition CorrectDecoder_simpl
-             (format : FormatM)
-             (decode : DecodeM) :=
-    (forall env env' xenv data bin,
+    (forall (env : CacheFormat) (env' xenv' : CacheDecode) (v : V) (t t' : T),
         Equiv env env' ->
-        format data env ∋ (bin, xenv) ->
-        exists xenv',
-          decode bin env' = Some (data, xenv') /\ Equiv xenv xenv')
-    /\ (forall env env' xenv' data bin,
-        Equiv env env'
-        -> decode bin env' = Some (data, xenv')
-        -> exists xenv,
-            (format data env ∋ (bin, xenv)) /\ Equiv xenv xenv').
+        decode_inv env' ->
+        decode t env' = Some (v, t', xenv') ->
+        decode_inv xenv' /\
+        exists (t'' : T) (xenv : CacheFormat),
+          (view_format v env ∋ (t'', xenv))
+          /\ t = mappend t'' t'
+          /\ View_Predicate v
+          /\ Equiv xenv xenv').
 
   Definition CorrectEncoder
              (format : FormatM)
              (encode : EncodeM)
     :=
-      (forall (a : A) (env : CacheFormat) (b : B) (xenv : CacheFormat),
+      (forall (a : S) (env : CacheFormat) (b : T) (xenv : CacheFormat),
           encode a env = Some (b, xenv)
           -> format a env ∋ (b, xenv))
-      /\ (forall (a : A) (env : CacheFormat),
+      /\ (forall (a : S) (env : CacheFormat),
              encode a env = None
              -> forall b xenv, ~ (format a env ∋ (b, xenv))).
-
-  (* Lemma CorrectDecoder_CorrectEncoder_inverse
-    : forall (format : FormatM)
-             (encode : EncodeM)
-             (decode : DecodeM),
-      CorrectDecoder_simpl format decode
-      -> CorrectEncoder format encode
-      -> forall (a : A) (env : CacheFormat) (b : B) (xenv : CacheFormat),
-          format a env ∋ (b, xenv)
-          -> forall (env' : CacheDecode),
-            Equiv env env'
-            -> exists xenv',
-              decode (fst (encode a env)) env' = Some (a, xenv').
-  Proof.
-    intros; eapply H0 in H1; destruct (encode a env).
-    destruct (proj1 H _ _ _ _ _ H2 H1); simpl in *; intuition eauto.
-  Qed.
-
-  Lemma CorrectEncoder_CorrectDecoder_inverse
-    : forall (format : FormatM)
-             (encode : A -> CacheFormat -> B * CacheFormat)
-             (decode : B -> CacheDecode -> option (A * CacheDecode)),
-      CorrectDecoder_simpl format decode
-      -> CorrectEncoder format encode
-      -> forall (a : A) (env : CacheDecode) (b : B) (xenv : CacheDecode),
-          decode b env = Some (a, xenv)
-          -> forall (env' : CacheFormat),
-            Equiv env' env
-            -> format a env' ∋ encode a env'.
-  Proof.
-    intros.
-    destruct (proj2 H _ _ _ _ _ H2 H1); simpl in *; intuition eauto.
-  Qed. *)
 
     (* Definition that identifies properties of cache invariants for automation. *)
   Definition cache_inv_Property
@@ -141,118 +85,164 @@ Section Specifications.
     P_inv P.
 
   Lemma CorrectDecoderNone
-        (monoid : Monoid B)
-    : forall (predicate : A -> Prop)
-             (rest_predicate : A -> B -> Prop)
+        (monoid : Monoid T)
+        {V}
+    : forall (Source_Predicate : S -> Prop)
+             (View_Predicate : V -> Prop)
              (format : FormatM)
              (decode : _)
-             (decode_inv : CacheDecode -> Prop),
-      CorrectDecoder _ predicate rest_predicate format decode decode_inv
+             (view : S -> V -> Prop)
+             (decode_inv : CacheDecode -> Prop)
+             (view_format : V -> CacheFormat -> Comp (T * CacheFormat)),
+      CorrectDecoder _ Source_Predicate View_Predicate view format decode decode_inv view_format
       -> forall b b' s_d,
         decode_inv s_d
         -> decode (mappend b b') s_d = None
         -> forall a s_e s_e',
             Equiv s_e s_d
-            -> predicate a
-            -> rest_predicate a b'
+            -> Source_Predicate a
             -> format a s_e ∌ (b, s_e').
   Proof.
     unfold not, CorrectDecoder; intros.
-    eapply H in H4; eauto.
-    destruct H4 as [? [? [? ?] ] ].
-    rewrite H1 in H4; discriminate.
+    split_and.
+    eapply H5 in H4; eauto.
+    destruct_ex; split_and.
+    rewrite H6 in H1; discriminate.
   Qed.
 
-  Corollary CorrectDecoderNone_dec_predicates
-            (monoid : Monoid B)
-    : forall (predicate : A -> Prop)
-             (rest_predicate : A -> B -> Prop)
-             (predicate_dec : forall a, predicate a \/ ~ predicate a)
-             (rest_predicate_dec : forall a b, rest_predicate a b \/ ~ rest_predicate a b)
+  Definition CorrectDecoder_id
+             (monoid : Monoid T)
+             (Source_Predicate : S -> Prop)
+             (format : FormatM)
+             (decode : T -> CacheDecode -> option (S * T * CacheDecode))
+             (decode_inv : CacheDecode -> Prop) :=
+    (forall env env' xenv s t ext
+            (env_OK : decode_inv env'),
+        Equiv env env' ->
+        Source_Predicate s ->
+        format s env ∋ (t, xenv) ->
+        exists xenv',
+          decode (mappend t ext) env' = Some (s, ext, xenv')
+          /\ Equiv xenv xenv' /\ decode_inv xenv') /\
+    (forall env env' xenv' s t ext,
+        Equiv env env'
+        -> decode_inv env'
+        -> decode t env' = Some (s, ext, xenv')
+        -> decode_inv xenv'
+           /\ exists t' xenv,
+            (format s env ∋ (t', xenv))
+            /\ t = mappend t' ext
+            /\ Source_Predicate s
+            /\ Equiv xenv xenv').
+
+  (* The current definition of decoder correctness is equivalent to an
+   e arlier one, when the projection is the identity function. *)
+  Lemma CorrectDecoder_equiv_CorrectDecoder_id
+    : forall (monoid : Monoid T)
+             (Source_Predicate : S -> Prop)
+             (format : FormatM)
+             encode
+             (correctEncode : CorrectEncoder format encode)
+             (decode : T -> CacheDecode -> option (S * T * CacheDecode))
+             (decode_inv : CacheDecode -> Prop),
+      (CorrectDecoder_id monoid Source_Predicate format decode decode_inv <->
+       CorrectDecoder monoid Source_Predicate Source_Predicate eq format decode decode_inv format).
+  Proof.
+    unfold CorrectDecoder_id, CorrectDecoder; intuition eauto.
+    - generalize H3; intro;
+        eapply H0 in H3; destruct_ex; split_and; eauto.
+      rewrite H5; eexists _, _; intuition eauto.
+    - eapply H0 in H3; destruct_ex; split_and; eauto.
+      rewrite H3; eexists _; subst; intuition eauto.
+  Qed.
+
+  Corollary CorrectDecoderNone_dec_Source_Predicates
+            (monoid : Monoid T)
+            {V}
+    : forall (Source_Predicate : S -> Prop)
+             (View_Predicate : V -> Prop)
+             (view : S -> V -> Prop)
+             (Source_Predicate_dec : forall a, Source_Predicate a \/ ~ Source_Predicate a)
              (format : FormatM)
              (decode : _)
-             (decode_inv : CacheDecode -> Prop),
-      CorrectDecoder _ predicate rest_predicate format decode decode_inv
+             (decode_inv : CacheDecode -> Prop)
+             view_format,
+      CorrectDecoder _ Source_Predicate View_Predicate view format decode decode_inv view_format
       -> forall b b' s_d,
         decode_inv s_d
         -> decode (mappend b b') s_d = None
         -> forall a ,
-            (~ predicate a)
-            \/ (~ rest_predicate a b')
+            (~ Source_Predicate a)
             \/ forall s_e s_e',
                 Equiv s_e s_d
                 -> format a s_e ∌ (b, s_e').
   Proof.
     intros.
-    destruct (predicate_dec a); intuition.
-    destruct (rest_predicate_dec a b'); intuition.
-    right; right; intros; eapply CorrectDecoderNone; eauto.
+    destruct (Source_Predicate_dec a); intuition.
+    right; intros; eapply CorrectDecoderNone; eauto.
   Qed.
 
   Lemma decode_None :
-    forall (monoid : Monoid B)
-           (predicate : A -> Prop)
-           (rest_predicate : A -> B -> Prop)
-           (format : A -> CacheFormat -> Comp (B * CacheFormat))
-           (decode : B -> CacheDecode -> option (A * B * CacheDecode))
+    forall (monoid : Monoid T)
+           (Source_Predicate : S -> Prop)
+           (format : S -> CacheFormat -> Comp (T * CacheFormat))
+           (decode : T -> CacheDecode -> option (S * T * CacheDecode))
            (decode_inv : CacheDecode -> Prop)
-           (predicate_dec : forall a, {predicate a} + {~ predicate a})
-           (rest_predicate_dec : forall data, {rest_predicate data mempty} + {~rest_predicate data mempty}),
-      CorrectDecoder monoid predicate rest_predicate format decode decode_inv
+           (Source_Predicate_dec : forall a, {Source_Predicate a} + {~ Source_Predicate a}),
+      CorrectDecoder monoid Source_Predicate Source_Predicate eq format decode decode_inv format
       -> forall b env' env,
         Equiv env env'
         -> decode b env' = None
         -> decode_inv env'
-        -> forall data,
-          ~ predicate data
-          \/ ~ rest_predicate data mempty
-          \/ ~ exists xenv, format data env ∋ (b, xenv).
+        -> forall s,
+          ~ Source_Predicate s
+          \/ ~ exists xenv, format s env ∋ (b, xenv).
   Proof.
     intros.
-    destruct (predicate_dec data); try (solve [intuition]).
-    right.
-    destruct (rest_predicate_dec data); try (solve [intuition]).
+    destruct (Source_Predicate_dec s); try (solve [intuition]).
     right.
     intros [? ?].
-    destruct ((proj1 H) env env' _ data _ _ H2 H0 p r H3); intuition.
+    destruct ((proj1 H) env env' _ s _ mempty H2 H0 s0 H3); intuition;
+      destruct_ex; intuition.
     rewrite mempty_right in H5; congruence.
   Qed.
 
   Local Transparent computes_to.
 
-  (* We can always strengthen a format to disallow invalid data. *)
+  (* We can always strengthen a format to disallow invalid s. *)
   Lemma CorrectDecoderStrengthenFormat :
-    forall (monoid : Monoid B)
-           (predicate : A -> Prop)
-           (rest_predicate : A -> B -> Prop)
-           (format : A -> CacheFormat -> Comp (B * CacheFormat))
-           (decode : B -> CacheDecode -> option (A * B * CacheDecode))
+    forall (monoid : Monoid T)
+           {V}
+           (Source_Predicate : S -> Prop)
+           (View_Predicate : V -> Prop)
+           (view : S -> V -> Prop)
+           (format : S -> CacheFormat -> Comp (T * CacheFormat))
+           (decode : T -> CacheDecode -> option (V * T * CacheDecode))
            (decode_inv : CacheDecode -> Prop)
-           (predicate_dec : forall a, {predicate a} + {~ predicate a})
-           (rest_predicate_dec : forall data, {rest_predicate data mempty} + {~rest_predicate data mempty}),
-      CorrectDecoder monoid predicate rest_predicate format decode decode_inv
+           (Source_Predicate_dec : forall a, {Source_Predicate a} + {~ Source_Predicate a})
+           view_format
+    ,
+      CorrectDecoder monoid Source_Predicate View_Predicate view format decode decode_inv view_format
       ->
-      CorrectDecoder monoid predicate rest_predicate  (fun a s b => (format a s ∋ b) /\ predicate a) decode decode_inv.
+      CorrectDecoder monoid Source_Predicate View_Predicate view  (fun a s b => (format a s ∋ b) /\ Source_Predicate a) decode decode_inv view_format.
   Proof.
-    intros; destruct H; unfold CorrectDecoder; split; intros.
-    eapply H; eauto.
-    apply (proj1 H4).
-    destruct (H0 env env' xenv' data bin ext) as [? [? [? ?] ] ]; intuition eauto.
-    eexists _, _; intuition eauto.
-    unfold computes_to; eauto.
+    intros; destruct H as [? ? ]; unfold CorrectDecoder; split; intros.
+    - eapply H; eauto.
+      apply (proj1 H3).
+    - eapply H0 in H3; intuition eauto.
   Qed.
 
   Local Opaque computes_to.
 
-  Definition BindOpt {A' A''}
-             (a_opt : option A')
-             (k : A' -> option A'') :=
+  Definition BindOpt {S' S''}
+             (a_opt : option S')
+             (k : S' -> option S'') :=
     Ifopt a_opt as a Then k a Else None.
 
-  Lemma BindOpt_assoc {A''' A' A''} :
-    forall (a_opt : option A''')
-           (f : A''' -> option A')
-           (g : A' -> option A''),
+  Lemma BindOpt_assoc {S''' S' S''} :
+    forall (a_opt : option S''')
+           (f : S''' -> option S')
+           (g : S' -> option S''),
       BindOpt (BindOpt a_opt f) g =
       BindOpt a_opt (fun a => BindOpt (f a) g).
   Proof.
@@ -260,24 +250,24 @@ Section Specifications.
   Qed.
 
   Definition DecodeBindOpt2
-             {C D E}
-             (a : option (A * B * D))
-             (k : A -> B -> D -> option (C * E * D))
-    : option (C * E * D) :=
+             {V D E}
+             (a : option (S * T * D))
+             (k : S -> T -> D -> option (V * E * D))
+    : option (V * E * D) :=
     BindOpt a (fun a => match a with (a, b, d) => k a b d end).
 
   Definition DecodeBindOpt
-             {C}
-             (a : option (A * B))
-             (k : A -> B -> option (C * B))
-    : option (C * B) :=
+             {V}
+             (a : option (S * T))
+             (k : S -> T -> option (V * T))
+    : option (V * T) :=
     BindOpt a (fun a => let (a, b) := a in k a b).
 
   Lemma DecodeBindOpt2_inv
-        {C D E}
-        (a_opt : option (A * B * D))
-        (a : C * E * D)
-        (k : A -> B -> D -> option (C * E * D))
+        {V D E}
+        (a_opt : option (S * T * D))
+        (a : V * E * D)
+        (k : S -> T -> D -> option (V * E * D))
     : DecodeBindOpt2 a_opt k = Some a ->
       exists a' b' d',
         a_opt = Some (a', b', d')
@@ -289,10 +279,10 @@ Section Specifications.
   Qed.
 
   Lemma DecodeBindOpt_inv
-        {C}
-        (a_opt : option (A * B))
-        (a : C * B)
-        (k : A -> B -> option (C * B))
+        {V}
+        (a_opt : option (S * T))
+        (a : V * T)
+        (k : S -> T -> option (V * T))
     : DecodeBindOpt a_opt k = Some a ->
       exists a' b',
         a_opt = Some (a', b')
@@ -312,146 +302,56 @@ Definition Cache_plus_inv (cache : Cache)
      Equiv ce cd := Equiv ce cd /\ decode_inv cd|}.
 
 Definition decode_strict
-           {A B}
+           {S T}
            {cache : Cache}
-           {monoid : Monoid B}
-           (decode : DecodeM A B)
-  : DecodeM (A * B) B :=
+           {monoid : Monoid T}
+           (decode : DecodeM S T)
+  : DecodeM (S * T) T :=
   fun cd bs => Ifopt decode cd bs
     as abscd'
          Then Some (fst abscd', mempty, snd abscd')
          Else None.
 
 Definition RestrictFormat
-           {A B}
+           {S T}
            {cache : Cache}
-           (format : FormatM A B)
-           (predicate : A -> Prop)
-  : FormatM A B :=
-  fun data env binxenv => format data env binxenv /\ predicate data.
-
-Lemma CorrectDecoder_simpl_equiv_format
-      {A B}
-      (cache : Cache)
-  : forall (format format' : FormatM A B)
-           (decode : DecodeM A B),
-    CorrectDecoder_simpl format decode
-    -> (forall a env b env', format a env (b, env') <-> format' a env (b, env'))
-    -> CorrectDecoder_simpl format' decode.
-Proof.
-  unfold CorrectDecoder_simpl, RestrictFormat; intros; split_and; split; intros.
-  - eapply H1; eauto.
-    apply unfold_computes; apply unfold_computes in H3; apply H0; eauto.
-  - eapply H2 in H3; eauto.
-    destruct_ex; split_and; rewrite unfold_computes in H4.
-    eexists; rewrite unfold_computes; split; eauto; apply H0; eauto.
-Qed.
-
-Lemma CorrectDecoder_simpl_equiv_decode
-      {A B}
-      (cache : Cache)
-  : forall (format : FormatM A B)
-           (decode decode' : DecodeM A B),
-    CorrectDecoder_simpl format decode
-    -> (forall env b, decode b env = decode' b env)
-    -> CorrectDecoder_simpl format decode'.
-Proof.
-  unfold CorrectDecoder_simpl, RestrictFormat; intros; split_and; split; intros.
-  - rewrite <- H0. eapply H1; eauto.
-  - eapply H2; eauto.
-    rewrite H0; eauto.
-Qed.
-
-Lemma CorrectDecoder_simpl_no_inv
-      {A B}
-      (cache : Cache)
-  : forall (format : FormatM A B)
-           (decode : DecodeM A B),
-    CorrectDecoder_simpl
-      (store := Cache_plus_inv cache (fun _ => True))
-      format decode
-    <-> CorrectDecoder_simpl (store := cache) format decode.
-Proof.
-  unfold CorrectDecoder_simpl; simpl; setoid_rewrite LogicFacts.and_True;
-    intuition.
-Qed.
-
-Lemma CorrectDecoder_simpl_strict_equiv
-      {A B}
-      (cache : Cache)
-      (monoid : Monoid B)
-      (predicate : A -> Prop)
-  : forall (decode_inv : CacheDecode -> Prop)
-           (format : FormatM A B)
-           (decode : DecodeM A B),
-    CorrectDecoder_simpl
-      (store := Cache_plus_inv cache decode_inv)
-      (RestrictFormat format predicate)
-      decode
-    <-> CorrectDecoder (store := cache) monoid predicate (fun _ b => b = mempty) format
-                       (decode_strict decode)
-                   decode_inv.
-Proof.
-  unfold CorrectDecoder, CorrectDecoder_simpl, decode_strict, RestrictFormat; intuition.
-  - destruct (H0 env env' xenv data bin); simpl; eauto.
-    rewrite unfold_computes; simpl; intuition.
-    simpl in *; intuition; subst.
-    rewrite mempty_right.
-    destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
-    eexists x; intuition eauto.
-  - destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
-    eapply H1 in Heqo; destruct_ex; intuition eauto.
-  - destruct (decode bin env') as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
-    eapply H1 in Heqo; destruct_ex; simpl in *; intuition eauto.
-    rewrite unfold_computes in H4; eexists _, _; rewrite mempty_right, unfold_computes; intuition eauto.
-  - rewrite unfold_computes in H2; simpl in *; intuition.
-    rewrite <- unfold_computes in H; eapply H0 in H; eauto.
-    rewrite mempty_right in H; intuition eauto.
-    destruct (decode bin env') as [ [? ?] | ] eqn: ?; destruct_ex;
-      simpl in *; try discriminate; intuition; injections.
-    eexists; intuition eauto.
-    discriminate.
-  - simpl in *; intuition.
-    destruct (H1 env env' xenv' data bin mempty); eauto.
-    destruct (decode bin env') as [ [? ?] | ] eqn: ?; destruct_ex;
-      simpl in *; try discriminate; intuition; injections; eauto.
-    destruct_ex; intuition; eexists.
-    subst; rewrite unfold_computes in *; intuition eauto.
-    rewrite mempty_right; eauto.
-Qed.
+           (format : FormatM S T)
+           (Source_Predicate : S -> Prop)
+  : FormatM S T :=
+  fun s env txenv => format s env txenv /\ Source_Predicate s.
 
 (* DoneLax 'appends' a supplied bytestring onto the end of a format *)
-Definition DoneLax {A B}
+Definition DoneLax {S T}
            {cache : Cache}
-           {monoid : Monoid B}
-           (format : FormatM A B)
-  : FormatM (A * B) B :=
-  fun data_rest env binxenv =>
-    exists bin', fst binxenv = mappend bin' (snd data_rest) /\
-                 format (fst data_rest) env (bin', snd binxenv).
+           {monoid : Monoid T}
+           (format : FormatM S T)
+  : FormatM (S * T) T :=
+  fun s_rest env txenv =>
+    exists t', fst txenv = mappend t' (snd s_rest) /\
+                 format (fst s_rest) env (t', snd txenv).
 
 Definition decode_obliviously
-           {A B}
+           {S T}
            {cache : Cache}
-           {monoid : Monoid B}
-           (decode : DecodeM (A * B) B)
-  : B -> CacheDecode -> option (A * CacheDecode) :=
+           {monoid : Monoid T}
+           (decode : DecodeM (S * T) T)
+  : T -> CacheDecode -> option (S * CacheDecode) :=
   fun bs cd => option_map (fun abc => (fst (fst abc), snd abc)) (decode bs cd).
 
-Lemma CorrectDecoder_simpl_lax_equiv
-      {A B}
+(*Lemma CorrectDecoder_simpl_lax_equiv
+      {S T}
       (cache : Cache)
-      (monoid : Monoid B)
-      (predicate : A -> Prop)
+      (monoid : Monoid T)
+      (Source_Predicate : S -> Prop)
   : forall (decode_inv : CacheDecode -> Prop)
-           (format : FormatM A B)
-           (decode : DecodeM (A * B) B),
-    CorrectDecoder (store := cache) monoid predicate (fun _ _ => True)  format
+           (format : FormatM S T)
+           (decode : DecodeM (S * T) T),
+    CorrectDecoder (store := cache) monoid Source_Predicate (fun _ _ => True)  format
                    decode
                    decode_inv
     <-> CorrectDecoder_simpl
          (store := Cache_plus_inv cache decode_inv)
-         (DoneLax (RestrictFormat format predicate))
+         (DoneLax (RestrictFormat format Source_Predicate))
          decode.
 Proof.
   unfold CorrectDecoder, CorrectDecoder_simpl, DoneLax, RestrictFormat, decode_obliviously; split.
@@ -459,43 +359,43 @@ Proof.
     + rewrite unfold_computes in H2; simpl in *; destruct_ex; intuition.
       destruct (H0 env env' xenv a x b); simpl; intuition eauto.
       rewrite H, H7; simpl; eauto.
-    + destruct (decode bin env') as [ [ [? ?] ?] | ] eqn: ?; destruct_ex;
+    + destruct (decode t env') as [ [ [? ?] ?] | ] eqn: ?; destruct_ex;
         simpl in *; try discriminate; intuition; injections; eauto.
       eapply H1 in Heqo; intuition eauto; destruct_ex; intuition.
       rewrite H2; eexists; rewrite unfold_computes; intuition eauto.
       rewrite unfold_computes in H5; simpl; eauto.
   - intros; split_and; split; intros.
-    + destruct (H0 env env' xenv (data, ext) (mappend bin ext)).
+    + destruct (H0 env env' xenv (s, ext) (mappend t ext)).
       simpl; intuition.
       apply unfold_computes; simpl.
       eexists; intuition eauto.
       split_and; eauto.
-    + destruct (H1 env env' xenv' (data, ext) bin); eauto.
+    + destruct (H1 env env' xenv' (s, ext) t); eauto.
       split_and. rewrite unfold_computes in H5; destruct_ex; split_and.
       subst; split; eauto.
       eexists _, _; intuition eauto.
       eauto using unfold_computes.
-Qed.
+Qed. *)
 
 Definition DecodeOpt2_fmap
-           {A A'}
-           (f : A -> A')
-           (a_opt : option A)
-  : option A' := Ifopt a_opt as a Then Some (f a) Else None.
+           {S S'}
+           (f : S -> S')
+           (a_opt : option S)
+  : option S' := Ifopt a_opt as a Then Some (f a) Else None.
 
-Definition DecodeOpt2_fmap_id {A}
-  : forall (a_opt : option A),
+Definition DecodeOpt2_fmap_id {S}
+  : forall (a_opt : option S),
     DecodeOpt2_fmap id a_opt = a_opt.
 Proof.
   destruct a_opt as [ a' | ]; reflexivity.
 Qed.
 
 Definition DecodeOpt2_fmap_compose
-           {A A' A''}
+           {S S' S''}
   : forall
-    (f : A -> A')
-    (f' : A' -> A'')
-    (a_opt : option A),
+    (f : S -> S')
+    (f' : S' -> S'')
+    (a_opt : option S),
     DecodeOpt2_fmap f' (DecodeOpt2_fmap f a_opt) =
     DecodeOpt2_fmap (compose f' f) a_opt.
 Proof.
@@ -503,10 +403,10 @@ Proof.
 Qed.
 
 Definition DecodeBindOpt2_fmap
-           {A B B'} :
-  forall (f : B -> B')
-         (a_opt : option A)
-         (k : A -> option B),
+           {S T T'} :
+  forall (f : T -> T')
+         (a_opt : option S)
+         (k : S -> option T),
     DecodeOpt2_fmap f (BindOpt a_opt k) =
     BindOpt a_opt (fun a => DecodeOpt2_fmap f (k a)).
 Proof.
@@ -514,21 +414,21 @@ Proof.
 Qed.
 
 Definition BindOpt_map
-           {A B B'} :
-  forall (f : option B -> B')
-         (a_opt : option A)
-         (k : A -> option B),
+           {S T T'} :
+  forall (f : option T -> T')
+         (a_opt : option S)
+         (k : S -> option T),
     f (BindOpt a_opt k) =
     Ifopt a_opt as a Then f (k a) Else f None.
 Proof.
   destruct a_opt as [ a' | ]; reflexivity.
 Qed.
 
-Lemma If_Opt_Then_Else_BindOpt {A B C}
-  : forall (a_opt : option A)
-           (t : A -> option B)
-           (e : option B)
-           (k : _ -> option C),
+Lemma If_Opt_Then_Else_BindOpt {S T V}
+  : forall (a_opt : option S)
+           (t : S -> option T)
+           (e : option T)
+           (k : _ -> option V),
     BindOpt (Ifopt a_opt as a Then t a Else e) k
     = Ifopt a_opt as a Then (BindOpt (t a) k) Else (BindOpt e k).
 Proof.
@@ -536,11 +436,11 @@ Proof.
 Qed.
 
 Lemma DecodeOpt2_fmap_if_bool
-      {A A' }
+      {S S' }
   : forall
-    (f : A -> A')
+    (f : S -> S')
     (b : bool)
-    (a_opt a_opt' : option A),
+    (a_opt a_opt' : option S),
     DecodeOpt2_fmap f (if b then a_opt else a_opt') =
     if b then (DecodeOpt2_fmap f a_opt)
     else (DecodeOpt2_fmap f a_opt').
@@ -549,11 +449,11 @@ Proof.
 Qed.
 
 Lemma BindOpt_map_if_bool
-      {A A' }
+      {S S' }
   : forall
-    (f : option A -> A')
+    (f : option S -> S')
     (b : bool)
-    (a_opt a_opt' : option A),
+    (a_opt a_opt' : option S),
     f (if b then a_opt else a_opt') =
     if b then (f a_opt)
     else (f a_opt').
@@ -562,11 +462,11 @@ Proof.
 Qed.
 
 Lemma DecodeOpt2_fmap_if
-      {A A' P P'}
+      {S S' P P'}
   : forall
-    (f : A -> A')
+    (f : S -> S')
     (b : {P} + {P'})
-    (a_opt a_opt' : option A),
+    (a_opt a_opt' : option S),
     DecodeOpt2_fmap f (if b then a_opt else a_opt') =
     if b then (DecodeOpt2_fmap f a_opt)
     else (DecodeOpt2_fmap f a_opt').
@@ -575,11 +475,11 @@ Proof.
 Qed.
 
 Lemma BindOpt_map_if
-      {A A' P P'}
+      {S S' P P'}
   : forall
-    (f : option A -> A')
+    (f : option S -> S')
     (b : {P} + {P'})
-    (a_opt a_opt' : option A),
+    (a_opt a_opt' : option S),
     f (if b then a_opt else a_opt') =
     if b then (f a_opt)
     else (f a_opt').
@@ -587,19 +487,19 @@ Proof.
   intros; find_if_inside; reflexivity.
 Qed.
 
-Lemma DecodeBindOpt2_assoc {A B C D E F G} :
-  forall (a_opt : option (A * B * D))
-         (f : A -> B -> D -> option (C * E * D))
-         (g : C -> E -> D -> option (F * G * D)),
+Lemma DecodeBindOpt2_assoc {S T V D E F G} :
+  forall (a_opt : option (S * T * D))
+         (f : S -> T -> D -> option (V * E * D))
+         (g : V -> E -> D -> option (F * G * D)),
     DecodeBindOpt2 (DecodeBindOpt2 a_opt f) g =
     DecodeBindOpt2 a_opt (fun a b c => DecodeBindOpt2 (f a b c) g).
 Proof.
   destruct a_opt as [ [ [? ?] ?] | ]; simpl; intros; eauto.
 Qed.
 
-Lemma DecodeBindOpt2_under_bind {A B C D E} :
-  forall (a_opt : option (A * B * D))
-         (f f' : A -> B -> D -> option (C * E * D)),
+Lemma DecodeBindOpt2_under_bind {S T V D E} :
+  forall (a_opt : option (S * T * D))
+         (f f' : S -> T -> D -> option (V * E * D)),
     (forall a b d, f a b d = f' a b d)
     -> DecodeBindOpt2 a_opt f = DecodeBindOpt2 a_opt f'.
 Proof.
@@ -614,22 +514,22 @@ Notation "`( a , b ) <- c ; k" :=
 
 Open Scope format_scope.
 
-Lemma optimize_If_bind2_bool {A A' B B' C}
+Lemma optimize_If_td2_bool {S S' T T' V}
   : forall (c : bool)
-           (t e : option (A * B * C))
-           (k : A -> B -> C -> option (A' * B' * C)),
+           (t e : option (S * T * V))
+           (k : S -> T -> V -> option (S' * T' * V)),
     (`(a, b, env) <- (If c Then t Else e); k a b env) =
     If c Then `(a, b, env) <- t; k a b env Else (`(a, b, env) <- e; k a b env).
 Proof.
   destruct c; simpl; intros; reflexivity.
 Qed.
 
-Lemma If_sumbool_Then_Else_DecodeBindOpt {A B B' ResultT ResultT'} {c : Cache} {P}
-  : forall (a_eq_dec : forall a a' : A, {P a a'} + {~ P a a'})
+Lemma If_sumbool_Then_Else_DecodeBindOpt {S T T' ResultT ResultT'} {c : Cache} {P}
+  : forall (a_eq_dec : forall a a' : S, {P a a'} + {~ P a a'})
            a a'
-           (k : _ -> _ -> _ -> option (ResultT' * B' * CacheDecode))
-           (t : P a a' ->  option (ResultT * B * CacheDecode))
-           (e : ~ P a a' -> option (ResultT * B * CacheDecode)),
+           (k : _ -> _ -> _ -> option (ResultT' * T' * CacheDecode))
+           (t : P a a' ->  option (ResultT * T * CacheDecode))
+           (e : ~ P a a' -> option (ResultT * T * CacheDecode)),
     (`(w, b', cd') <- match a_eq_dec a a' with
                       | left e => t e
                       | right n => e n
@@ -643,15 +543,15 @@ Proof.
   intros; destruct (a_eq_dec a a'); simpl; intros; reflexivity.
 Qed.
 
-Lemma optimize_under_DecodeBindOpt2_both {A B C D E} {B' }
-  : forall (a_opt : option (A * B * C))
-           (a_opt' : option (A * B' * C))
-           (g : B' -> B)
+Lemma optimize_under_DecodeBindOpt2_both {S T V D E} {T' }
+  : forall (a_opt : option (S * T * V))
+           (a_opt' : option (S * T' * V))
+           (g : T' -> T)
            (a_opt_eq_Some : forall a' b' c,
                a_opt' = Some (a', b', c) ->
                a_opt = Some (a', g b', c))
            (a_opt_eq_None : a_opt' = None -> a_opt = None)
-           (k : _ -> _ -> _ -> option (D * E * C))
+           (k : _ -> _ -> _ -> option (D * E * V))
            (k' : _ -> _ -> _ -> _)
            (k_eq_Some :
               forall a' b' c,
@@ -677,185 +577,385 @@ Proof.
     eapply H.
 Qed.
 
+Lemma EquivFormat_reflexive
+      {S T : Type} {cache : Cache}
+  : forall (format : FormatM S T),
+    EquivFormat format format.
+Proof.
+  unfold EquivFormat; intros.
+  reflexivity.
+Qed.
+
 Add Parametric Morphism
-    A B
+    S T V
     (cache : Cache)
-    (monoid : Monoid B)
-    (predicate : A -> Prop)
-    rest_predicate
-    (decode : B -> CacheDecode -> option (A * B * CacheDecode))
+    (monoid : Monoid T)
     (decode_inv : CacheDecode -> Prop)
+  : (fun Source_Predicate View_Predicate view format decode =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv)
+    with signature (pointwise_relation _ iff
+                                       --> pointwise_relation _ (flip impl)
+                                       --> pointwise_relation _ (pointwise_relation _ iff)
+                                       --> EquivFormat
+                                       --> pointwise_relation _ (pointwise_relation _ eq)
+                                       --> EquivFormat
+                                       --> impl)
+      as format_decode_correct_alt.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder; intros.
+  intuition eauto; intros.
+  - setoid_rewrite H3.
+    setoid_rewrite H1.
+    eapply H2 in H9.
+    eapply H6 in H9.
+    destruct_ex; split_and;
+      eexists _, _; intuition eauto.
+    eapply H4; eauto.
+    eauto.
+    eauto.
+    eapply H; eauto.
+  - eapply H7; eauto.
+    rewrite <- H3; eauto.
+  - rewrite H3 in H9.
+    eapply H7 in H8; eauto.
+    split_and; destruct_ex; split_and; subst.
+    eexists _, _; intuition eauto.
+    eapply H4; eauto.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (decode_inv : CacheDecode -> Prop)
+    View_Predicate
+    view
+    format
+    decode
+    view_format
+  : (fun Source_Predicate  =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                       view format decode decode_inv view_format)
+    with signature (pointwise_relation _ impl
+                                       --> impl)
+      as weaken_source_pred.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder; intros.
+  intuition eauto; intros.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (View_Predicate : V -> Prop)
+    view
+    (decode : T -> CacheDecode -> option (V * T * CacheDecode))
+    (decode_inv : CacheDecode -> Prop)
+    view_format
   : (fun format =>
-       @CorrectDecoder A B cache monoid predicate
-                                rest_predicate format decode decode_inv)
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv view_format)
     with signature (EquivFormat --> impl)
       as format_decode_correct_refineEquiv.
 Proof.
-  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder;
-    intuition eauto; intros.
-  - eapply H1; eauto; apply H; eauto.
-  - eapply H2; eauto.
-  - destruct (H2 _ _ _ _ _ _ H0 H3 H4) as [ ? [? [? ?] ] ];
-      intuition.
-    repeat eexists; intuition eauto; apply H; eauto.
+  unfold EquivFormat, impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity.
+  unfold flip, EquivFormat; intros; reflexivity.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (View_Predicate : V -> Prop)
+    format
+    view
+    (decode : T -> CacheDecode -> option (V * T * CacheDecode))
+    (decode_inv : CacheDecode -> Prop)
+    view_format
+  : (fun Source_Predicate =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv view_format)
+    with signature (pointwise_relation _ iff --> impl)
+      as format_decode_correct_EquivPred.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity.
+  unfold flip, EquivFormat; intros; reflexivity.
+  unfold flip, EquivFormat; intros; reflexivity.
+Qed.
+
+Add Parametric Morphism
+    S T
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (View_Predicate : S -> Prop)
+    view
+    (decode : T -> CacheDecode -> option (S * T * CacheDecode))
+    (decode_inv : CacheDecode -> Prop)
+  : (fun format =>
+       @CorrectDecoder S T cache S monoid Source_Predicate View_Predicate
+                                view format decode decode_inv format)
+    with signature (EquivFormat --> impl)
+      as format_decode_correct_EquivFormatAndView.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (View_Predicate : V -> Prop)
+    format
+    view
+    (decode_inv : CacheDecode -> Prop)
+    view_format
+  : (fun decode =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv view_format)
+    with signature (pointwise_relation _ (pointwise_relation _ eq)
+                                       --> impl)
+      as format_decode_correct_EquivDecoder.
+Proof.
+  unfold impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity;
+    unfold flip, EquivFormat; reflexivity.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (decode_inv : CacheDecode -> Prop)
+  : (fun Source_Predicate View_Predicate view format decode =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv)
+    with signature (pointwise_relation _ iff
+                                       --> pointwise_relation _ (flip impl)
+                                       --> pointwise_relation _ (pointwise_relation _ (flip impl))
+                                       --> EquivFormat
+                                       --> pointwise_relation _ (pointwise_relation _ eq)
+                                       --> EquivFormat
+                                       --> impl)
+      as format_decode_correct_alt'.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder; intros.
+  intuition eauto; intros.
+  - setoid_rewrite H3.
+    eapply H2 in H9.
+    eapply H6 in H9.
+    destruct_ex; split_and;
+      eexists _, _; intuition eauto.
+    eapply H4; eauto.
+    eauto.
+    eauto.
+    eapply H; eauto.
+  - eapply H7; eauto.
+    rewrite <- H3; eauto.
+  - rewrite H3 in H9.
+    eapply H7 in H8; eauto.
+    split_and; destruct_ex; split_and; subst.
+    eexists _, _; intuition eauto.
+    eapply H4; eauto.
+Qed.
+
+Lemma weaken_view_pred
+      S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (decode_inv : CacheDecode -> Prop)
+    (View_Predicate : V -> Prop)
+    (view : S -> V -> Prop)
+    (format : FormatM S T)
+    decode
+    (Source_Predicate : S -> Prop)
+    (View_Predicate_OK : forall s v,
+        Source_Predicate s ->
+        view s v ->
+        View_Predicate v)
+  : forall x y : V -> CacheFormat -> T * CacheFormat -> Prop,
+    (forall (a : V) (a0 : CacheFormat) (a1 : T * CacheFormat),
+        View_Predicate a -> x a a0 a1 -> y a a0 a1) ->
+  CorrectDecoder monoid Source_Predicate View_Predicate view format decode decode_inv x ->
+  CorrectDecoder monoid Source_Predicate View_Predicate view format decode decode_inv y.
+Proof.
+  Local Transparent CorrectDecoder.
+  unfold CorrectDecoder.
+  intuition eauto; intros.
+  - eapply H1 in H4.
+    destruct_ex; split_and.
+    rewrite H5; eexists _, _; intuition eauto.
+    apply unfold_computes; eapply H; eauto.
+    all: eauto.
+  - eapply H2 in H4; intuition eauto.
+  - eapply H2 in H4; intuition eauto.
+    destruct_ex; split_and; subst; eexists _, _; intuition eauto.
+    apply unfold_computes; eapply H; eauto.
 Qed.
 
 Section DecodeWMeasure.
-  Context {A : Type}. (* data type *)
-  Context {B : Type}. (* bin type *)
+  Context {S : Type}. (* s type *)
+  Context {T : Type}. (* t type *)
   Context {cache : Cache}.
-  Context {monoid : Monoid B}.
+  Context {monoid : Monoid T}.
 
-  Variable format_A : A -> CacheFormat -> Comp (B * CacheFormat).
-  Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
+  Variable format_S : S -> CacheFormat -> Comp (T * CacheFormat).
+  Variable S_decode : T -> CacheDecode -> option (S * T * CacheDecode).
 
   Definition Decode_w_Measure_lt
-             (b : B)
+             (b : T)
              (cd : CacheDecode)
-             (A_decode_lt
-              : forall  (b : B)
+             (S_decode_lt
+              : forall  (b : T)
                         (cd : CacheDecode)
-                        (a : A)
-                        (b' : B)
+                        (a : S)
+                        (b' : T)
                         (cd' : CacheDecode),
-                 A_decode b cd = Some (a, b', cd')
+                 S_decode b cd = Some (a, b', cd')
                  -> lt_B b' b)
-    : option (A * {b' : B | lt_B b' b} * CacheDecode).
-    generalize (A_decode_lt b cd); clear.
-    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
+    : option (S * {b' : T | lt_B b' b} * CacheDecode).
+    generalize (S_decode_lt b cd); clear.
+    destruct (S_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
       [ refine (Some (a, exist _ b' (H _ _ _ eq_refl), cd'))
       | exact None ].
   Defined.
 
   Lemma Decode_w_Measure_lt_eq
-        (b : B)
+        (b : T)
         (cd : CacheDecode)
-        (A_decode_lt
-         : forall  (b : B)
+        (S_decode_lt
+         : forall  (b : T)
                    (cd : CacheDecode)
-                   (a : A)
-                   (b' : B)
+                   (a : S)
+                   (b' : T)
                    (cd' : CacheDecode),
-            A_decode b cd = Some (a, b', cd')
+            S_decode b cd = Some (a, b', cd')
             -> lt_B b' b)
     : forall a' b' cd',
-      A_decode b cd = Some (a', b', cd')
+      S_decode b cd = Some (a', b', cd')
       -> exists pf,
-        Decode_w_Measure_lt b cd A_decode_lt =
+        Decode_w_Measure_lt b cd S_decode_lt =
         Some (a', exist _ b' pf , cd').
   Proof.
     clear; intros; unfold Decode_w_Measure_lt.
-    remember (A_decode_lt b cd); clear Heql.
-    destruct (A_decode b cd) as [ [ [? ?] ? ] | ].
+    remember (S_decode_lt b cd); clear Heql.
+    destruct (S_decode b cd) as [ [ [? ?] ? ] | ].
     injections; eauto.
     discriminate.
   Qed.
 
   Lemma Decode_w_Measure_lt_eq'
-        (b : B)
+        (b : T)
         (cd : CacheDecode)
-        (A_decode_lt
-         : forall  (b : B)
+        (S_decode_lt
+         : forall  (b : T)
                    (cd : CacheDecode)
-                   (a : A)
-                   (b' : B)
+                   (a : S)
+                   (b' : T)
                    (cd' : CacheDecode),
-            A_decode b cd = Some (a, b', cd')
+            S_decode b cd = Some (a, b', cd')
             -> lt_B b' b)
-    : A_decode b cd = None
-      -> Decode_w_Measure_lt b cd A_decode_lt = None.
+    : S_decode b cd = None
+      -> Decode_w_Measure_lt b cd S_decode_lt = None.
   Proof.
     clear; intros; unfold Decode_w_Measure_lt.
-    remember (A_decode_lt b cd); clear Heql.
-    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    remember (S_decode_lt b cd); clear Heql.
+    destruct (S_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
     discriminate.
   Qed.
 
   Definition Decode_w_Measure_le
-             (b : B)
+             (b : T)
              (cd : CacheDecode)
-             (A_decode_le
-              : forall  (b : B)
+             (S_decode_le
+              : forall  (b : T)
                         (cd : CacheDecode)
-                        (a : A)
-                        (b' : B)
+                        (a : S)
+                        (b' : T)
                         (cd' : CacheDecode),
-                 A_decode b cd = Some (a, b', cd')
+                 S_decode b cd = Some (a, b', cd')
                  -> le_B b' b)
-    : option (A * {b' : B | le_B b' b} * CacheDecode).
-    generalize (A_decode_le b cd); clear.
-    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
+    : option (S * {b' : T | le_B b' b} * CacheDecode).
+    generalize (S_decode_le b cd); clear.
+    destruct (S_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
       [ refine (Some (a, exist _ b' (H _ _ _ eq_refl), cd'))
       | exact None ].
   Defined.
 
   Lemma Decode_w_Measure_le_eq
-        (b : B)
+        (b : T)
         (cd : CacheDecode)
-        (A_decode_le
-         : forall  (b : B)
+        (S_decode_le
+         : forall  (b : T)
                    (cd : CacheDecode)
-                   (a : A)
-                   (b' : B)
+                   (a : S)
+                   (b' : T)
                    (cd' : CacheDecode),
-            A_decode b cd = Some (a, b', cd')
+            S_decode b cd = Some (a, b', cd')
             -> le_B b' b)
     : forall a' b' cd',
-      A_decode b cd = Some (a', b', cd')
+      S_decode b cd = Some (a', b', cd')
       -> exists pf,
-        Decode_w_Measure_le b cd A_decode_le =
+        Decode_w_Measure_le b cd S_decode_le =
         Some (a', exist _ b' pf , cd').
   Proof.
     clear; intros; unfold Decode_w_Measure_le.
-    remember (A_decode_le b cd); clear Heql.
-    destruct (A_decode b cd) as [ [ [? ?] ? ] | ].
+    remember (S_decode_le b cd); clear Heql.
+    destruct (S_decode b cd) as [ [ [? ?] ? ] | ].
     injections; eauto.
     discriminate.
   Qed.
 
   Lemma Decode_w_Measure_le_eq'
-        (b : B)
+        (b : T)
         (cd : CacheDecode)
-        (A_decode_le
-         : forall  (b : B)
+        (S_decode_le
+         : forall  (b : T)
                    (cd : CacheDecode)
-                   (a : A)
-                   (b' : B)
+                   (a : S)
+                   (b' : T)
                    (cd' : CacheDecode),
-            A_decode b cd = Some (a, b', cd')
+            S_decode b cd = Some (a, b', cd')
             -> le_B b' b)
-    : A_decode b cd = None
-      -> Decode_w_Measure_le b cd A_decode_le = None.
+    : S_decode b cd = None
+      -> Decode_w_Measure_le b cd S_decode_le = None.
   Proof.
     clear; intros; unfold Decode_w_Measure_le.
-    remember (A_decode_le b cd); clear Heql.
-    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    remember (S_decode_le b cd); clear Heql.
+    destruct (S_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
     discriminate.
   Qed.
 
   Lemma Decode_w_Measure_le_eq'':
-    forall (b : B) (cd : CacheDecode)
-           (A_decode_le : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
-               A_decode b0 cd0 = Some (a, b', cd') -> le_B b' b0),
-      Decode_w_Measure_le b cd A_decode_le = None ->
-      A_decode b cd = None.
+    forall (b : T) (cd : CacheDecode)
+           (S_decode_le : forall (b0 : T) (cd0 : CacheDecode) (a : S) (b' : T) (cd' : CacheDecode),
+               S_decode b0 cd0 = Some (a, b', cd') -> le_B b' b0),
+      Decode_w_Measure_le b cd S_decode_le = None ->
+      S_decode b cd = None.
   Proof.
     clear; intros ? ? ?; unfold Decode_w_Measure_le in *.
-    remember (A_decode_le b cd); clear Heql.
-    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    remember (S_decode_le b cd); clear Heql.
+    destruct (S_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
     intros; discriminate.
   Qed.
 
   Lemma Decode_w_Measure_lt_eq'':
-    forall (b : B) (cd : CacheDecode)
-           (A_decode_lt : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
-               A_decode b0 cd0 = Some (a, b', cd') -> lt_B b' b0),
-      Decode_w_Measure_lt b cd A_decode_lt = None ->
-      A_decode b cd = None.
+    forall (b : T) (cd : CacheDecode)
+           (S_decode_lt : forall (b0 : T) (cd0 : CacheDecode) (a : S) (b' : T) (cd' : CacheDecode),
+               S_decode b0 cd0 = Some (a, b', cd') -> lt_B b' b0),
+      Decode_w_Measure_lt b cd S_decode_lt = None ->
+      S_decode b cd = None.
   Proof.
     clear; intros ? ? ?; unfold Decode_w_Measure_lt in *.
-    remember (A_decode_lt b cd); clear Heql.
-    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    remember (S_decode_lt b cd); clear Heql.
+    destruct (S_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
     discriminate.
   Qed.
 
@@ -863,20 +963,20 @@ End DecodeWMeasure.
 
 Global Unset Implicit Arguments.
 
-Definition CorrectDecoderFor {A B} {cache : Cache}
-           {monoid : Monoid B} Invariant FormatSpec :=
+Definition CorrectDecoderFor {S T} {cache : Cache}
+           {monoid : Monoid T} Invariant FormatSpec :=
   { decodePlusCacheInv : _ |
     exists P_inv,
     (cache_inv_Property (snd decodePlusCacheInv) P_inv
-     -> CorrectDecoder (A := A) monoid Invariant (fun _ _ => True)
+     -> CorrectDecoder (S := S) monoid Invariant Invariant eq
                                 FormatSpec
                                 (fst decodePlusCacheInv)
-                                (snd decodePlusCacheInv))
+                                (snd decodePlusCacheInv) FormatSpec)
     /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 
-Definition CorrectEncoderFor {A B} {cache : Cache}
-      {monoid : Monoid B} FormatSpec :=
-  { encoder' : EncodeM A B & forall a env,
+Definition CorrectEncoderFor {S T} {cache : Cache}
+      {monoid : Monoid T} FormatSpec :=
+  { encoder' : EncodeM S T & forall a env,
         (forall benv', encoder' a env = Some benv' ->
                        refine (FormatSpec a env) (ret benv'))
         /\ (encoder' a env = None ->
@@ -884,10 +984,10 @@ Definition CorrectEncoderFor {A B} {cache : Cache}
 
 (* Here are the expected correctness lemmas for synthesized functions. *)
 Lemma CorrectDecodeEncode
-      {A B} {cache : Cache}
-      {monoid : Monoid B}
+      {S T} {cache : Cache}
+      {monoid : Monoid T}
   : forall Invariant
-           (FormatSpec : FormatM A B)
+           (FormatSpec : FormatM S T)
            (encoder : CorrectEncoderFor FormatSpec)
            (decoder : CorrectDecoderFor Invariant FormatSpec),
     forall a envE envD b envE',
@@ -907,23 +1007,24 @@ Proof.
   unfold cache_inv_Property in Inv_cd.
   eapply decoder_OK  with (ext := mempty) in H3; eauto.
   destruct_ex; intuition.
-  rewrite mempty_right in H4; eauto.
+  subst; rewrite mempty_right in H4; eauto.
 Qed.
 
 Lemma CorrectEncodeDecode
-      {A B} {cache : Cache}
-      {monoid : Monoid B}
+      {S T}
+      {cache : Cache}
+      {monoid : Monoid T}
   : forall Invariant
-           (FormatSpec : FormatM A B)
+           (FormatSpec : FormatM S T)
            (decoder : CorrectDecoderFor Invariant FormatSpec),
-    forall bs ce cd cd' a ext,
+    forall bs ce cd cd' s ext,
       Equiv ce cd
       -> snd (proj1_sig decoder) cd
-      -> fst (proj1_sig decoder) bs cd = Some (a, ext, cd')
-      -> Invariant a /\
+      -> fst (proj1_sig decoder) bs cd = Some (s, ext, cd')
+      -> Invariant s /\
          exists ce' bs',
            bs = mappend bs' ext
-           /\ Equiv ce' cd' /\ FormatSpec a ce (bs', ce').
+           /\ Equiv ce' cd' /\ FormatSpec s ce (bs', ce').
 Proof.
   intros.
   destruct decoder as [decoder [Inv [decoder_OK Inv_cd] ] ]; simpl in *.
@@ -934,39 +1035,39 @@ Proof.
 Qed.
 
 Lemma Start_CorrectDecoderFor
-      {A B} {cache : Cache}
-      {monoid : Monoid B}
+      {S T} {cache : Cache}
+      {monoid : Monoid T}
       Invariant
       FormatSpec
-      (decoder decoder_opt : B -> CacheDecode -> option (A * B * CacheDecode))
+      (decoder decoder_opt : T -> CacheDecode -> option (S * T * CacheDecode))
       (cache_inv : CacheDecode -> Prop)
       (P_inv : (CacheDecode -> Prop) -> Prop)
       (decoder_OK :
          cache_inv_Property cache_inv P_inv
-         -> CorrectDecoder (A := A) monoid Invariant (fun _ _ => True)
-                                    FormatSpec decoder cache_inv)
+         -> CorrectDecoder monoid Invariant Invariant
+                           eq FormatSpec decoder cache_inv FormatSpec)
       (cache_inv_OK : cache_inv_Property cache_inv P_inv)
       (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)
-  : @CorrectDecoderFor A B cache monoid Invariant FormatSpec.
+  : @CorrectDecoderFor S T cache monoid Invariant FormatSpec.
 Proof.
   exists (decoder_opt, cache_inv); exists P_inv; split; simpl; eauto.
   unfold CorrectDecoder in *; intuition; intros.
-  - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4 H5).
-    rewrite decoder_opt_OK in H6; eauto.
+  - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4).
+    rewrite decoder_opt_OK in H5; eauto.
   - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
   - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
 Defined.
 
 (* Shorthand for nondeterministically decoding a value. *)
 Definition Pick_Decoder_For
-           {A B} {cache : Cache}
-           {monoid : Monoid B}
+           {S T} {cache : Cache}
+           {monoid : Monoid T}
            Invariant
            FormatSpec
-           (b : B)
+           (b : T)
            (ce : CacheFormat)
-  := {a : option A |
-      forall a' : A,
+  := {a : option S |
+      forall a' : S,
         a = Some a' <->
         (exists b1 b2 (ce' : CacheFormat),
             computes_to (FormatSpec a' ce) (b1, ce')
@@ -974,10 +1075,11 @@ Definition Pick_Decoder_For
             /\ Invariant a')}%comp.
 
 Lemma refine_Pick_Decoder_For
-      {A B} {cache : Cache}
-      {monoid : Monoid B} {Invariant}
+      {S T} {cache : Cache}
+      {monoid : Monoid T}
+      {Invariant}
       {FormatSpec}
-      (decoderImpl : @CorrectDecoderFor A B cache monoid Invariant FormatSpec)
+      (decoderImpl : @CorrectDecoderFor S T cache monoid Invariant FormatSpec)
   : forall b ce cd,
     Equiv ce cd
     -> snd (proj1_sig decoderImpl) cd
@@ -992,7 +1094,7 @@ Proof.
   pose proof (proj2_sig (decoderImpl)).
   cbv beta in H1.
   destruct_ex; intuition.
-  destruct H1.
+  destruct H1 as [? ?].
   intros v Comp_v; computes_to_inv; subst;
     apply PickComputes; intros.
   split; intros.
@@ -1006,8 +1108,11 @@ Proof.
   - destruct_ex; intuition; subst.
     eapply H1 in H5; eauto.
     destruct_ex; intuition.
-    rewrite H5; reflexivity.
+    rewrite H5; simpl; congruence.
 Qed.
 
 Notation "a ∋ b" := (@computes_to _ a b) (at level 65) : format_scope.
 Notation "a ∌ b" := (~ @computes_to _ a b) (at level 65) : format_scope.
+
+(* Nicer notation for formating constants *)
+Notation "'constant' n" := (fun _ => n) (at level 20) : format_scope.

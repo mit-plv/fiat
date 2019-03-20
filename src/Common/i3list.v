@@ -15,7 +15,7 @@ Section i3list.
      by our ADT notations uses these to implement notation-friendly
      method lookups.  *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Context {A : Type}. (* The indexing type. *)
   Context {B : A -> Type}. (* The type of indexed elements. *)
@@ -124,7 +124,7 @@ Section i3list_replace.
   Variable B : A -> Type. (* The two types of indexed elements. *)
   Variable C : forall a, B a -> Type. (* The type of doubly-indexed elements. *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Fixpoint replace3_Index3
           {m : nat}

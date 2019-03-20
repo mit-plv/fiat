@@ -15,21 +15,21 @@ Proof.
     apply dec_decides_P in H0; intuition.
 Qed.
 
-Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
+Program Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
   : DecideableEnsemble (fun a => f a > f' a) :=
   {| dec a := if le_lt_dec (f a) (f' a) then false else true |}.
-Proof.
+Next Obligation.
   intros; find_if_inside; intuition.
 Defined.
 
-Instance DecideableEnsemble_And
+Program Instance DecideableEnsemble_And
          {A : Type}
          {P P' : Ensemble A}
          {P_dec : DecideableEnsemble P}
          {P'_dec : DecideableEnsemble P'}
 : DecideableEnsemble (fun a => P a /\ P' a) :=
   {| dec a := (@dec _ _ P_dec a) && (@dec _ _  P'_dec a) |}.
-Proof.
+Next Obligation.
   intros; rewrite <- (@dec_decides_P _ P),
           <- (@dec_decides_P _ P').
   setoid_rewrite andb_true_iff; reflexivity.
@@ -52,62 +52,62 @@ Instance Query_eq_list {A}
   : Query_eq (list A) :=
   {| A_eq_dec := List.list_eq_dec A_eq_dec |}.
 
-Instance DecideableEnsemble_NEqDec
+Program Instance DecideableEnsemble_NEqDec
          {A B : Type}
          {b_eq_dec : Query_eq B}
          (f f' : A -> B)
 : DecideableEnsemble (fun a : A => f a <> f' a) :=
   {| dec a := if A_eq_dec (f a) (f' a) then false else true |}.
-Proof.
+Next Obligation.
   intros; find_if_inside; intuition.
 Defined.
 
-Instance DecideableEnsemble_EqDec {A B : Type}
+Program Instance DecideableEnsemble_EqDec {A B : Type}
          (B_eq_dec : Query_eq B)
          (f f' : A -> B)
 : DecideableEnsemble (fun a => eq (f a) (f' a)) :=
   {| dec a := if A_eq_dec (f a) (f' a) then true else false |}.
-Proof.
+Next Obligation.
   intros; find_if_inside; split; congruence.
 Defined.
 
-Instance DecideableEnsemble_Not
+Program Instance DecideableEnsemble_Not
          {A : Type}
          (P : Ensemble A)
          {P_dec : DecideableEnsemble P}
 : DecideableEnsemble (fun a => ~ P a) :=
   {| dec a := negb (dec a) |}.
-Proof.
+Next Obligation.
   intros; case_eq (dec a); intros; intuition eauto.
   - discriminate.
   - rewrite dec_decides_P in H; intuition.
   - rewrite <- dec_decides_P in H1; congruence.
 Defined.
 
-Instance DecideableEnsemble_True
+Program Instance DecideableEnsemble_True
          {A : Type}
 : DecideableEnsemble (fun a : A => True) :=
   {| dec a := true |}.
-Proof.
+Next Obligation.
   intros; intuition eauto.
 Defined.
 
-Instance DecideableEnsemble_False
+Program Instance DecideableEnsemble_False
          {A : Type}
 : DecideableEnsemble (fun a : A => False) :=
   {| dec a := false |}.
-Proof.
+Next Obligation.
   intros; intuition eauto; discriminate.
 Defined.
 
-Instance DecideableEnsemble_Or
+Program Instance DecideableEnsemble_Or
          {A : Type}
          (P P' : Ensemble A)
          {P_dec : DecideableEnsemble P}
          {P'_dec : DecideableEnsemble P'}
 : DecideableEnsemble (fun a : A => P a \/ P' a) :=
   {| dec a := if dec (P := P) a then true else dec (P := P') a |}.
-Proof.
+Next Obligation.
   intros; case_eq (dec (P := P) a);
   [ rewrite dec_decides_P | rewrite Decides_false];
   intuition.

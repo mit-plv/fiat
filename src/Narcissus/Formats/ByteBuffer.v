@@ -9,44 +9,9 @@ Require Import
 Require Import
         Bedrock.Word.
 
-(* Module Type BYTEBUFFER. *)
-(*   Axiom t : forall (n: nat), Type. *)
-
-(*   Axiom nil: t 0. *)
-(*   Axiom cons: forall (c: char) {n} (b: t n), t (S n). *)
-
-(*   Axiom hd: forall {n} (b: t (S n)), char. *)
-(*   Axiom tl: forall {n} (b: t (S n)), t n. *)
-
-(*   Axiom append: forall {n1 n2} (b1: t n1) (b2: t n2), t (n1 + n2). *)
-(*   Axiom fold_left: forall {B: Type} (f: B -> char -> B) (b: B) {n} (v: t n), B. *)
-(*   Axiom to_list: forall {n} (b: t n), list char. *)
-(*   Axiom of_list: forall (l: list char), t (List.length l). *)
-
-(*   Axiom to_list_of_list_eq : *)
-(*     forall (v : list _), *)
-(*       to_list (of_list v) = v. *)
-
-(*   Axiom to_list_length : *)
-(*     forall n (v : t n), *)
-(*       n = length (to_list v). *)
-
-(*   Axiom t_ind : *)
-(*     forall (P : forall n : nat, t n -> Prop), *)
-(*       P 0 nil -> *)
-(*       (forall (h : char) (n : nat) (t : t n), P n t -> P (S n) (cons h t)) -> *)
-(*       forall (n : nat) (t : t n), P n t. *)
-
-(*   Axiom of_list_to_list : *)
-(*     forall (n : nat) (b : t n), *)
-(*       of_list (to_list b) = *)
-(*       eq_rect n t b (length (to_list b)) *)
-(*               (to_list_length n b). *)
-(* End BYTEBUFFER. *)
-
 Lemma eq_rect_Vector_cons {A}
   : forall n m a v H H',
-    eq_rect (S n) (Vector.t A) (VectorDef.cons A a n v) (S m) H =
+    eq_rect (S n) (Vector.t A) (Vector.cons A a n v) (S m) H =
     Vector.cons _ a _ (eq_rect n (Vector.t A) v _ H').
 Proof.
   intros.
@@ -127,11 +92,11 @@ Section ByteBufferFormat.
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b))).
 
   Definition format_bytebuffer
-             (b : { n & ByteBuffer.t n })
+             (b : { n : _ & ByteBuffer.t n })
              (ce : CacheFormat) : Comp (T * CacheFormat) :=
     format_Vector format_word (projT2 b) ce.
 
-  Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n & ByteBuffer.t n } * T * CacheDecode) :=
+  Definition decode_bytebuffer (s : nat) (b : T) (cd : CacheDecode) : option ({ n :_ & ByteBuffer.t n } * T * CacheDecode) :=
     match decode_Vector (decode_word (sz := 8)) s b cd with
     | Some (v, t, cd) => Some (existT ByteBuffer.t _ v, t, cd)
     | None => None
@@ -143,23 +108,30 @@ Section ByteBufferFormat.
         CorrectDecoder
           monoid
           (fun ls => projT1 ls = n)
-          (fun _ _ => True)
-          format_bytebuffer (decode_bytebuffer n) P.
+          (fun ls => projT1 ls = n)
+          eq
+          format_bytebuffer (decode_bytebuffer n) P
+          format_bytebuffer.
   Proof.
     unfold format_bytebuffer; split; intros.
-    { eapply (proj1 (Vector_decode_correct (fun _ => True) _ decode_word P _ _)) in H2; eauto.
-      instantiate (1 := ext) in H2; destruct H2 as [? [? ?] ]; eexists; split; eauto.
-      destruct data; unfold decode_bytebuffer; subst; rewrite H2; simpl in *; eauto. }
-    { destruct data; simpl in *.
+    { eapply (fun H' => proj1 (Vector_decode_correct (fun _ => True) _ decode_word P H' _)) in H1; eauto.
+      instantiate (1 := ext) in H1; destruct H1 as [? [? ?] ]; eexists _, _; split; eauto.
+      split_and; unfold id in *; destruct s; unfold decode_bytebuffer;
+        subst; rewrite H2; simpl in *; intuition eauto.
+      intuition eauto.
+      subst; eauto.
+      apply Word_decode_correct; eauto.
+    }
+    { destruct v; simpl in *.
       unfold decode_bytebuffer in H1.
-      destruct (decode_Vector decode_word n bin env') as [ [ [? ?] ? ] | ] eqn: H';
+      destruct (decode_Vector decode_word n t env') as [ [ [? ?] ? ] | ] eqn: H';
         try discriminate; injection H1; intros; subst; clear H1.
       apply inj_pair2_eq_dec in H4; try decide equality; subst.
-      eapply (proj2 (Vector_decode_correct (fun _ => True) format_word decode_word P _ _)) in H';
-        try eassumption; destruct H' as [? [? [? [? [? [? ?] ] ] ] ] ]; subst; intuition eauto.
-      eexists _, _; split; eauto. }
-    Grab Existential Variables.
-    apply Word_decode_correct; eauto.
-    apply Word_decode_correct; eauto.
+      eapply (fun H' H'' => proj2 (Vector_decode_correct (fun _ => True)
+                                                         format_word decode_word P H' H'')) in H';
+        try eassumption; destruct H'; destruct_ex; split_and; subst; intuition eauto.
+      unfold id in *; subst; eexists _, _; simpl; intuition eauto.
+      apply Word_decode_correct; eauto.
+    }
   Defined.
 End ByteBufferFormat.

@@ -10,18 +10,13 @@ Require Import
         Fiat.Common.ilist
         Fiat.Common.DecideableEnsembles
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib.AlignedEncodeMonad
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedString
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Common.Compose
         Fiat.Narcissus.Common.ComposeOpt
-        Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.StringOpt
@@ -29,7 +24,6 @@ Require Import
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.EnumOpt
-        Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Narcissus.Formats.IPChecksum
@@ -246,10 +240,16 @@ Section AlignedDecoders.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatChar_f.
     unfold format_nat; intros.
-    intros ? ?.
-    unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
-    rewrite unfold_computes in H.
-    destruct_ex; intuition; subst; eauto.
+    split.
+    - intros ? ?.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
+      rewrite unfold_computes in H.
+      destruct_ex; intuition; subst; eauto.
+    - intros; intro.
+      eapply H.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format.
+      rewrite unfold_computes.
+      eexists; intuition; subst; eauto.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormat2Nat
@@ -259,9 +259,12 @@ Section AlignedDecoders.
   Proof.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
-    unfold format_nat; intros.
-    intros ? ?.
-    eapply FMapFormat.EquivFormat_Projection_Format; eauto.
+    unfold format_nat; intros; split.
+    - intros ? ?.
+      eapply FMapFormat.EquivFormat_Projection_Format; eauto.
+    - intros ? ?; intro.
+      eapply H.
+      eapply FMapFormat.EquivFormat_Projection_Format; eauto.
   Qed.
 
   Fixpoint AlignedEncodeVector' n n' {sz} {S}
@@ -301,32 +304,54 @@ Section AlignedDecoders.
   Lemma CorrectAlignedEncoderForFormatVector {sz}
         {S}
     : forall (format_S : FormatM S ByteString)
-        (encode_S : forall numBytes : nat, AlignedEncodeM numBytes),
-      CorrectAlignedEncoder format_S encode_S ->
+             (encode_S : forall numBytes : nat, AlignedEncodeM numBytes)
+             (encode_S_OK : CorrectAlignedEncoder format_S encode_S)
+             (encode_A_OK' :
+                forall (s : S) sz (l : Vector.t S sz)
+                       (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
+                  format_S s env ∋ tenv' ->
+                  Vector.format_Vector format_S l (snd tenv') ∋ tenv'' ->
+                  exists tenv3 tenv4 : _ * CacheFormat,
+                    projT1 encode_S_OK s env = Some tenv3
+                    /\ Vector.format_Vector format_S l (snd tenv3) ∋ tenv4),
       CorrectAlignedEncoder (Vector.format_Vector format_S)
                             (AlignedEncodeVector encode_S (sz := sz)).
   Proof.
     intros; induction sz.
     - eapply refine_CorrectAlignedEncoder with (format' := fun s env => ret (mempty, env)).
       intros.
-      pattern s; eapply Vector.case0.
-      reflexivity.
-      unfold AlignedEncodeVector; simpl.
-      eapply CorrectAlignedEncoderForDoneC.
+      pattern s; eapply Vector.case0; split.
+      + reflexivity.
+      + intros; intro.
+        eapply H; eauto.
+      + unfold AlignedEncodeVector; simpl.
+        eapply CorrectAlignedEncoderForDoneC.
     - eapply refine_CorrectAlignedEncoder with (format' :=
                                                   SequenceFormat.sequence_Format
                                                     (FMapFormat.Projection_Format format_S Vector.hd)
                                                     (FMapFormat.Projection_Format (Vector.format_Vector format_S) Vector.tl)).
-      + intros; pattern sz, s; eapply Vector.caseS; intros; simpl.
-        unfold SequenceFormat.sequence_Format; simpl.
-        unfold compose, Bind2.
-        f_equiv; [ apply FMapFormat.EquivFormat_Projection_Format | intro].
-        f_equiv; apply FMapFormat.EquivFormat_Projection_Format.
+      + intros; pattern sz, s; eapply Vector.caseS; intros; simpl; split.
+        * unfold SequenceFormat.sequence_Format; simpl.
+          unfold compose, Bind2.
+          f_equiv; [ apply FMapFormat.EquivFormat_Projection_Format | intro].
+          f_equiv; apply FMapFormat.EquivFormat_Projection_Format.
+        * unfold SequenceFormat.sequence_Format; simpl;
+            unfold compose, Bind2; intros; intro.
+          computes_to_inv.
+          eapply H.
+          computes_to_econstructor.
+          eapply (proj1 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)).
+          simpl; eauto.
+          computes_to_econstructor.
+          eapply (proj1 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)).
+          simpl; eauto.
+          eauto.
       + unfold AlignedEncodeVector.
         eapply CorrectAlignedEncoder_morphism.
+        apply EquivFormat_reflexive.
         2: eapply CorrectAlignedEncoderForThenC.
         2: eapply CorrectAlignedEncoderProjection; eauto.
-        2: eapply CorrectAlignedEncoderProjection; eauto.
+        (* 2: eapply CorrectAlignedEncoderProjection; eauto. *)
         intros.
         pattern sz, w; apply Vector.caseS; intros.
         unfold AppendAlignedEncodeM, Projection_AlignedEncodeM,
@@ -341,9 +366,37 @@ Section AlignedDecoders.
           destruct (encode_S sz0 t0 idx s cf) as [ [ [? ?] ?] | ] eqn: ?; simpl; eauto.
           erewrite <- IHn' with (k := 1 + k); simpl; reflexivity.
         }
+        instantiate (1 := fun sz v idx v' c => encode_S sz v idx (Vector.hd v') c).
+        simpl; rewrite Heqo; simpl.
         erewrite <- H with (k := 0) (m := 1)
                            (t1 := Vector.cons _ h _ (Vector.nil _)).
         reflexivity.
+        simpl; rewrite Heqo; reflexivity.
+        instantiate (1 := CorrectAlignedEncoderProjection _ _ _ encode_S_OK).
+        intros.
+        match goal with
+          |- exists _ _, (projT1 ?H) ?s ?env = _ /\ _ =>
+          destruct (projT1 H s env) eqn: ? ;
+            generalize (proj1 (projT2 H) s env); intros
+        end.
+        * apply proj1 in H1.
+          destruct p.
+          eapply H1 in Heqo.
+          eapply (proj2 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)) in H.
+          eapply (proj2 (FMapFormat.EquivFormat_Projection_Format _ _ _ _)) in H0.
+          specialize (encode_A_OK' _ _ _ _ _ _ H H0).
+          destruct_ex; intuition; subst.
+          destruct encode_S_OK.
+          destruct a.
+          destruct a0.
+          unfold CorrectAlignedEncoderProjection; simpl in *.
+          eexists _, _; split.
+          unfold Basics.compose; eauto.
+          eapply FMapFormat.EquivFormat_Projection_Format.
+          eauto.
+        * apply proj2 in H1.
+          eapply H1 in Heqo.
+          eapply Heqo in H; intuition.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatNEnum
@@ -356,11 +409,16 @@ Section AlignedDecoders.
   Proof.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
-    unfold format_enum; intros.
-    intros ? ?.
-    unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
-    rewrite unfold_computes in H.
-    destruct_ex; intuition; subst; eauto.
+    unfold format_enum; intros; split.
+    - intros ? ?.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
+      rewrite unfold_computes in H.
+      destruct_ex; intuition; subst; eauto.
+    - intros; intro.
+      eapply H.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format.
+      rewrite unfold_computes.
+      eexists _; intuition; subst; eauto.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatEnum
@@ -372,11 +430,16 @@ Section AlignedDecoders.
   Proof.
     eapply refine_CorrectAlignedEncoder.
     2: eapply CorrectAlignedEncoderForFormatChar_f; eauto.
-    unfold format_enum; intros.
-    intros ? ?.
-    unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
-    rewrite unfold_computes in H.
-    destruct_ex; intuition; subst; eauto.
+    unfold format_enum; intros; split.
+    - intros ? ?.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format in H.
+      rewrite unfold_computes in H.
+      destruct_ex; intuition; subst; eauto.
+    - intros; intro.
+      eapply H.
+      unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format.
+      rewrite unfold_computes.
+      eexists _; intuition; subst; eauto.
   Qed.
 
   Definition aligned_option_encode {S}
@@ -401,6 +464,9 @@ Section AlignedDecoders.
     exists (Option.option_encode (projT1 encode_Some_OK) (projT1 encode_None_OK));
       simpl; intuition.
     - destruct s; simpl in *.
+      eapply (proj1 (projT2 encode_Some_OK) s); eauto.
+      eapply (proj1 (projT2 encode_None_OK)); eauto.
+    - destruct s; simpl in .
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
     - destruct s; simpl in *.
@@ -488,6 +554,25 @@ Section AlignedDecoders.
       f_equal.
       erewrite <- IHm; eauto.
       omega.
+  Qed.
+
+    Lemma Decode_w_Measure_le_eq'
+    : forall (A B : Type) (cache : Cache) (monoid : Monoid B)
+             (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (b : B) (cd : CacheDecode)
+             (A_decode_le : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+                 A_decode b0 cd0 = Some (a, b', cd') -> le_B b' b0)
+             (a' : A) (b' : B) (cd' : CacheDecode)
+             pf,
+      Decode_w_Measure_le A_decode b cd A_decode_le = Some (a', pf, cd')
+      -> A_decode b cd = Some (a', `pf , cd').
+  Proof.
+    unfold Decode_w_Measure_le; intros.
+    revert pf H.
+    generalize (A_decode_le b cd).
+    destruct (A_decode b cd) as [ [ [? ?] ?] | ]; simpl; intros;
+      try discriminate.
+    injections; reflexivity.
   Qed.
 
   Lemma ByteAlign_Decode_w_Measure_le {A}
@@ -612,6 +697,25 @@ Section AlignedDecoders.
     | EmptyString => Vector.nil _
     | String a s' => Vector.cons _ (NToWord 8 (Ascii.N_of_ascii a)) _ (StringToBytes s')
     end.
+
+  Lemma Decode_w_Measure_lt_eq'
+    : forall (A B : Type) (cache : Cache) (monoid : Monoid B)
+             (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (b : B) (cd : CacheDecode)
+             (A_decode_lt : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+                 A_decode b0 cd0 = Some (a, b', cd') -> lt_B b' b0)
+             (a' : A) (b' : B) (cd' : CacheDecode)
+             pf,
+      Decode_w_Measure_lt A_decode b cd A_decode_lt = Some (a', pf, cd')
+      -> A_decode b cd = Some (a', `pf , cd').
+  Proof.
+    unfold Decode_w_Measure_lt; intros.
+    revert pf H.
+    generalize (A_decode_lt b cd).
+    destruct (A_decode b cd) as [ [ [? ?] ?] | ]; simpl; intros;
+      try discriminate.
+    injections; reflexivity.
+  Qed.
 
   Lemma ByteAlign_Decode_w_Measure_lt {A}
     : forall (dec_a : nat -> ByteString -> CacheDecode -> option (A * ByteString * CacheDecode))
@@ -1521,13 +1625,6 @@ Section AlignedDecoders.
     destruct ab; reflexivity.
   Qed.
 
-  Ltac rewrite_DecodeOpt2_fmap :=
-    set_refine_evar;
-    progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
-    ?DecodeOpt2_fmap_if_bool;
-    subst_refine_evar.
-
-
   Lemma Ifopt_Ifopt {A A' B}
     : forall (a_opt : option A)
              (t : A -> option A')
@@ -1919,16 +2016,23 @@ Section AlignedDecoders.
     unfold decode_enum, Aligned_decode_enum.
     intros; eapply DecodeMEquivAlignedDecodeM_trans.
     eapply AlignedDecodeBindCharM; intros.
-    2: { simpl; intros.
+    Focus 2.
+    (*2: {*)
+      { simpl; intros.
          unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
          destruct (decode_word b cd) as [ [ [? ?] ] | ]; eauto.
          higher_order_reflexivity.
-    }
-    2: { unfold AlignedDecodeMEquiv; simpl; intros.
-         unfold BindAlignedDecodeM.
-         destruct (GetCurrentByte v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
-         higher_order_reflexivity.
-    }
+      }
+      all: idtac.
+      Focus 2.
+      (*2: { *)
+      {
+        unfold AlignedDecodeMEquiv; simpl; intros.
+        unfold BindAlignedDecodeM.
+        destruct (GetCurrentByte v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
+        higher_order_reflexivity.
+      }
+      all: idtac.
     simpl.
     destruct (word_indexed b tb); simpl; eauto.
     eapply AlignedDecode_Throw.
@@ -1958,19 +2062,27 @@ Section AlignedDecoders.
   Proof.
     unfold decode_enum, Aligned_decode_enum.
     intros; eapply DecodeMEquivAlignedDecodeM_trans.
-    eapply Bind_DecodeMEquivAlignedDecodeM; 
+    eapply Bind_DecodeMEquivAlignedDecodeM;
       [ eapply AlignedDecodeNCharM with (m := sz); intros; eauto | ].
-    2: { simpl; intros.
+    Focus 2.
+    (*2: { *)
+    {
+      simpl; intros.
          unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
          destruct (decode_word b cd) as [ [ [? ?] ] | ]; eauto.
          higher_order_reflexivity.
     }
-    2: { unfold AlignedDecodeMEquiv; simpl; intros.
+    all: idtac.
+    Focus 2.
+    (*2: { *)
+    {
+      unfold AlignedDecodeMEquiv; simpl; intros.
          unfold Aligned_decode_enumN; simpl.
          unfold BindAlignedDecodeM.
          destruct (GetCurrentBytes sz v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
          higher_order_reflexivity.
     }
+    all: idtac.
     simpl.
     intros; destruct (word_indexed a tb); simpl; eauto.
     eapply AlignedDecode_Throw.
@@ -2011,7 +2123,7 @@ Section AlignedDecoders.
           end
           Else
           match decode_None v idx env with
-          | Some (a, b, c) => Some ((None, b), c)
+          | Some (a, b, c) => Some ((None , b), c)
           | None => None
           end).
 
@@ -2027,7 +2139,7 @@ Section AlignedDecoders.
       -> (DecodeMEquivAlignedDecodeM decode_None aligned_decode_None)
       -> (forall s_opt, DecodeMEquivAlignedDecodeM (t s_opt) (@t' s_opt))
       -> DecodeMEquivAlignedDecodeM
-           (fun v cd => `(a, b0, cd') <- Option.option_decode decode_Some decode_None b' v cd ;
+           (fun v cd => `(a, b0, cd') <- Option.option_decode _ decode_Some decode_None b' v cd ;
                           t a b0 cd')
            (fun numBytes => a <- aligned_option_decode aligned_decode_Some aligned_decode_None b';
                               t' a)%AlignedDecodeM.
@@ -2096,55 +2208,3 @@ Section AlignedDecoders.
   Qed.
 
 End AlignedDecoders.
-
-Ltac encoder_reflexivity :=
-  match goal with
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d ?e ?f), ?store' ?a ?b ?c ?d ?e ?f)) =>
-    let encoder'' := (eval pattern a, b, c, d, e, f in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c, d, e, f in store) in
-    let store'' := (match store'' with ?store _ _ _ _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d ?e), ?store' ?a ?b ?c ?d ?e)) =>
-    let encoder'' := (eval pattern a, b, c, d, e in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c, d, e in store) in
-    let store'' := (match store'' with ?store _ _ _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d), ?store' ?a ?b ?c ?d)) =>
-    let encoder'' := (eval pattern a, b, c, d in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c, d in store) in
-    let store'' := (match store'' with ?store _ _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c), ?store' ?a ?b ?c)) =>
-    let encoder'' := (eval pattern a, b, c in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ _ => encoder end) in
-    let store'' := (eval pattern a, b, c in store) in
-    let store'' := (match store'' with ?store _ _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?a ?b), ?store' ?a ?b)) =>
-    let encoder'' := (eval pattern a, b in encoder) in
-    let encoder'' := (match encoder'' with ?encoder _ _ => encoder end) in
-    let store'' := (eval pattern a, b in store) in
-    let store'' := (match store'' with ?store _ _ => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
-              (ret (build_aligned_ByteString (?encoder' ?p), ?store' ?p)) =>
-    let encoder'' := (eval pattern p in encoder) in
-    let encoder'' := (match encoder'' with ?encoder p => encoder end) in
-    let store'' := (eval pattern p in store) in
-    let store'' := (match store'' with ?store p => store end) in
-    unify encoder' encoder''; unify store' store'';
-    reflexivity
-  end.

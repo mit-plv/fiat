@@ -32,27 +32,6 @@ Section StrictTerminalFormat.
     : EncodeM S T :=
     fun a env => Some (mempty, env).
 
-  Lemma CorrectDecoder_StrictTerminal
-        (s : S)
-        (Singleton_Format : forall s' env tenv',
-            StrictTerminal_Format s env ∋ tenv' ->
-            s = s')
-    : CorrectDecoder_simpl StrictTerminal_Format (StrictTerminal_Decode s).
-  Proof.
-    unfold CorrectDecoder_simpl, StrictTerminal_Decode, StrictTerminal_Format in *; split; intros.
-    { computes_to_inv; injections; subst.
-      rewrite H0; simpl.
-      eexists; intuition eauto.
-      erewrite Singleton_Format with (env := xenv); eauto.
-    }
-    { destruct (beq_nat (bin_measure bin) 0) eqn: ?; simpl in *;
-        try discriminate.
-      apply_in_hyp beq_nat_true.
-      injections.
-      eexists env; intuition eauto.
-    }
-  Qed.
-
   Lemma CorrectEncoder_StrictTerminal
     : CorrectEncoder StrictTerminal_Format StrictTerminal_Encode.
   Proof.

@@ -2,6 +2,9 @@ Require Import Fiat.Narcissus.Examples.NetworkStack.TestInfrastructure.
 
 Definition buf := MakeBuffer 4096.
 
+Transparent weqb.
+Transparent natToWord.
+
 Definition arp_request_ether_decode_42_input :=
   Eval compute in Vector.map (@natToWord 8) [72;81;183;14;152;89;80;199;191;62;218;205;8;6;0;1;8;0;6;4;0;1;80;199;191;62;218;205;192;168;1;1;0;0;0;0;0;0;192;168;1;109].
 

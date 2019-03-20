@@ -1,11 +1,11 @@
 Require Import
         Coq.Vectors.Vector
-        Coq.Vectors.VectorDef.
+        Coq.Vectors.Vector.
 
 Require Import
         Fiat.Common.BoundedLookup.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Local Open Scope vector_scope.
 Local Open Scope string_scope.
 
@@ -109,7 +109,7 @@ Qed.
 
 Lemma SumType_proj_inj {n} (v : Vector.t Type n):
   forall tag (P : forall (tag : Fin.t n),
-                 VectorDef.nth v tag -> Type),
+                 Vector.nth v tag -> Type),
   forall el,
     P tag el ->
     P (SumType_index v (inj_SumType v tag el))

@@ -5,7 +5,7 @@ This archive holds the source code of Narcissus, a Coq library for
 synthesizing binary encoders and decoders from specifications.
 
 ## Dependencies:
-  * To build the library:          Coq 8.8.1
+  * To build the library:          Coq 8.9
 
 ## Compiling and running the code
   * To build the core library: `make bedrock narcissus`

@@ -9,9 +9,6 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
@@ -27,7 +24,7 @@ Require Import
 
 Require Import Bedrock.Word.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Open Scope format_scope.
 Opaque pow2. (* Don't want to be evaluating this. *)
 Opaque natToWord. (* Or this. *)
@@ -111,7 +108,6 @@ Arguments Vector.nth : simpl never.
 Definition ARP_Packet_Header_decoder
   : CorrectAlignedDecoderFor ARP_Packet_OK ARPPacket_Format.
 Proof.
-  unfold ARP_Packet_OK.
   synthesize_aligned_decoder.
 Defined.
 

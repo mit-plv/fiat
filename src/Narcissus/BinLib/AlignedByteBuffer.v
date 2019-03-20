@@ -19,7 +19,6 @@ Require Import
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
@@ -37,11 +36,11 @@ Section AlignedList.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
 
-  Definition bytebuffer_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : { n & ByteBuffer.t n } :=
+  Definition bytebuffer_of_bytebuffer_range {sz: nat} (from: nat) (len: nat) (v: ByteBuffer.t sz) : { n : _ & ByteBuffer.t n } :=
     let l := List.firstn len (List.skipn from (Vector.to_list v)) in
     existT ByteBuffer.t _ (Vector.of_list l).
 
-  Definition ByteBufferAlignedDecodeM {m : nat} (len: nat) : @AlignedDecodeM cache {n & ByteBuffer.t n} m :=
+  Definition ByteBufferAlignedDecodeM {m : nat} (len: nat) : @AlignedDecodeM cache {n : _ & ByteBuffer.t n} m :=
     fun (v: ByteBuffer.t m) idx env =>
       let lastidx := idx + len in
       if NPeano.leb lastidx m then
@@ -81,8 +80,8 @@ Section AlignedList.
 
   Lemma AlignedDecodeByteBufferM {C : Type}
         (n : nat)
-    : forall (t : { n & ByteBuffer.t n } -> DecodeM (C * _) ByteString)
-        (t' : { n & ByteBuffer.t n } -> forall {numBytes}, AlignedDecodeM C numBytes),
+    : forall (t : { n : _ & ByteBuffer.t n } -> DecodeM (C * _) ByteString)
+        (t' : { n : _ & ByteBuffer.t n } -> forall {numBytes}, AlignedDecodeM C numBytes),
       (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
       -> DecodeMEquivAlignedDecodeM
           (fun v cd => `(b, bs, cd') <- decode_bytebuffer n v cd;
@@ -220,7 +219,7 @@ Section AlignedList.
     else None.
 
   Definition AlignedEncodeByteBuffer
-    : forall sz, AlignedEncodeM (S := { n & ByteBuffer.t n }) sz :=
+    : forall sz, AlignedEncodeM (S := { n : _ & ByteBuffer.t n }) sz :=
     fun sz2 (dst: ByteBuffer.t sz2) idx src env =>
       let '(existT len src) := src in
       match buffer_blit_buffer idx src dst with
@@ -233,17 +232,35 @@ Section AlignedList.
   Variable addE_0 :
     forall ce, addE ce 0 = ce.
 
-  Lemma CorrectAlignedEncoderForFormatByteBuffer :
-    CorrectAlignedEncoder format_bytebuffer AlignedEncodeByteBuffer.
+  Lemma CorrectAlignedEncoderForFormatByteBuffer
+    (encode_word_OK : forall (a : word (1 * 8)) (l : list (word (1 * 8))) (env : CacheFormat)
+              (tenv' tenv'' : ByteString * CacheFormat),
+            format_word a env ∋ tenv' ->
+            format_list format_word l (snd tenv') ∋ tenv'' ->
+            exists tenv3 tenv4 : ByteString * CacheFormat,
+              projT1 (CorrectAlignedEncoderForFormatNChar addE_addE_plus addE_0) a env = Some tenv3 /\
+              format_list format_word l (snd tenv3) ∋ tenv4)
+    : CorrectAlignedEncoder format_bytebuffer AlignedEncodeByteBuffer.
   Proof.
     eapply refine_CorrectAlignedEncoder
       with (format' := fun s env => format_list format_word (ByteBuffer.to_list (projT2 s)) env);
       [ | eapply CorrectAlignedEncoder_morphism with
               (encode := fun sz v idx w c => AlignedEncodeList (@SetCurrentByte _ _) sz v idx (ByteBuffer.to_list (projT2 w)) c)].
-    - intros [? ?]; clear; induction t; simpl; intros.
-      + reflexivity.
-      + unfold format_bytebuffer in *; simpl in *; apply refine_under_bind; intros.
-        unfold Bind2; rewrite IHt; reflexivity.
+    - intros [? ?]; clear; split.
+      + revert env; induction t; simpl; intros.
+        * reflexivity.
+        * unfold format_bytebuffer in *; simpl in *; apply refine_under_bind; intros.
+          unfold Bind2; rewrite IHt; reflexivity.
+      + unfold format_bytebuffer, Bind2 in *.
+        intros; intro; eapply (H v).
+        clear H; revert env v H0; induction t; simpl; intros.
+        * eapply H0.
+        * unfold Bind2 in *.
+          computes_to_inv.
+          computes_to_econstructor; eauto.
+          computes_to_econstructor; eauto.
+          rewrite H0''; eauto.
+    - apply EquivFormat_reflexive.
     - intros ? ? ? [n t]; revert sz v idx; induction t.
       + simpl; intros.
         unfold buffer_blit_buffer.
@@ -280,10 +297,10 @@ Section AlignedList.
     - eexists (fun s env => _); repeat apply conj; intros;
         try eapply ((projT2 (CorrectAlignedEncoderForFormatList
                                _ _
-                               (CorrectAlignedEncoderForFormatNChar (sz := 1) addE_addE_plus addE_0)))); eauto.
+                               (CorrectAlignedEncoderForFormatNChar (sz := 1) addE_addE_plus addE_0) encode_word_OK))); eauto.
       pose proof (proj2 (proj2 ((projT2 (CorrectAlignedEncoderForFormatList
                                            _ _
-                                           (CorrectAlignedEncoderForFormatNChar (sz := 1) addE_addE_plus addE_0)))))).
+                                           (CorrectAlignedEncoderForFormatNChar (sz := 1) addE_addE_plus addE_0) encode_word_OK))))).
       unfold EncodeMEquivAlignedEncodeM in *; intros ? [? ?] ?; simpl in *.
       intuition.
       eapply H; eauto.

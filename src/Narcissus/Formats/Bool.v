@@ -1,7 +1,10 @@
 Require Import
         Fiat.Common
         Fiat.Computation.Notations
-        Fiat.Narcissus.Common.Specs.
+        Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.Common.WordFacts
+        Fiat.Narcissus.Formats.WordOpt
+        Fiat.Narcissus.BaseFormats.
 
 Unset Implicit Arguments.
 
@@ -24,25 +27,19 @@ Section Bool.
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     :
       CorrectDecoder monoid (fun _ => True)
-                              (fun _ _ => True)
-                              format_bool decode_bool P.
+                     (fun _ => True)
+                     eq
+                     format_bool decode_bool P format_bool.
   Proof.
-    unfold CorrectDecoder, format_bool, decode_bool; split.
-    - intros env env' xenv w w' ext ? Eeq _ _ Penc.
-      computes_to_inv; injections.
-      unfold If_Opt_Then_Else.
-      erewrite dequeue_mappend_opt;
-      try apply dequeue_head_opt.
-      rewrite mempty_left.
-      injections; eexists; split; eauto using add_correct.
-    - intros;
-        destruct (dequeue_opt bin) as [ [? ?] | ] eqn: ? ;
-        simpl in *; try discriminate; injections; intuition.
-     eexists; eexists; repeat split.
-     eapply dequeue_opt_inj; eauto.
-     rewrite <- (mempty_left ext) at -1;
-       auto using dequeue_mappend_opt, dequeue_head_opt.
-     apply add_correct; eauto.
+    eapply format_decode_correct_EquivFormatAndView with (fun b => format_word (WS b WO)).
+    unfold flip, EquivFormat. reflexivity.
+
+    apply_bijection_rule with (whd (sz:=_));
+      intuition eauto using Word_decode_correct.
+    rewrite <- (natToWord_wordToNat v).
+    destruct (wordToNat v) eqn:?; reflexivity.
+
+    unfold decode_word, decode_word'; derive_decoder_equiv.
   Qed.
 
 End Bool.

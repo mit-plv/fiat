@@ -46,9 +46,11 @@
 /src/Bellmania
 /src/Common/Coq__8_4__8_5__Compat.v
 /src/Common/Tactics/Makefile
+/src/Common/Tactics/hint_db_extra_plugin.ml
 /src/Common/Tactics/hint_db_extra_plugin.ml4
 /src/Common/Tactics/hint_db_extra_plugin.mlg
 /src/Common/Tactics/hint_db_extra_tactics.ml
+/src/Common/Tactics/transparent_abstract_plugin.ml
 /src/Common/Tactics/transparent_abstract_plugin.ml4
 /src/Common/Tactics/transparent_abstract_plugin.mlg
 /src/Common/Tactics/transparent_abstract_tactics.ml

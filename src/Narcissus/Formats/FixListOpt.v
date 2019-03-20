@@ -3,7 +3,9 @@ Require Import
         Fiat.Narcissus.Common.Notations
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
-        Fiat.Narcissus.BaseFormats.
+        Fiat.Narcissus.BaseFormats
+        Fiat.Narcissus.Formats.Base.FixFormat.
+
 Require Export
         Coq.Lists.List.
 
@@ -16,45 +18,16 @@ Section FixList.
   Context {monoid : Monoid T}.
 
   Variable A_predicate : A -> Prop.
-  Variable A_predicate_rest : A -> T -> Prop.
   Variable format_A : A -> CacheFormat -> Comp (T * CacheFormat).
   Variable A_decode : T -> CacheDecode -> option (A * T * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
-  Variable A_decode_pf : CorrectDecoder monoid A_predicate A_predicate_rest format_A A_decode A_cache_inv.
+  Variable A_decode_pf : CorrectDecoder monoid A_predicate A_predicate
+                                        eq format_A A_decode A_cache_inv
+                                        format_A.
 
   Open Scope vector_scope.
 
-  (* Definition format_list'
-    : FormatM (list A) T :=
-    Fix_Format
-      (fun rec : FormatM (list A) T =>
-         Union_Format [(fun (_ : unit) s => s = nil) <$> StrictTerminal_Format;
-                         (fun as' s => s = cons (fst as') (snd as')) <$> Projection_Format fst format_A
-                                                                     ++ Projection_Format snd rec]%format).
-
-  Fixpoint FixList_predicate_rest
-           (As : list A)
-           (b : T)
-    : Prop :=
-    match As with
-    | nil => True
-    | cons a As' =>
-      (forall b' ce ce',
-          computes_to (format_list' As' ce) (b', ce')
-          -> A_predicate_rest a (mappend b' b))
-      /\ FixList_predicate_rest As' b
-    end.
-
-  Theorem FixList_decode_correct sz
-    : {decode_list : _ &
-                     CorrectDecoder_simpl
-                       (Restrict_Format (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
-                                        format_list')
-                       (decode_list sz)}.
-  Proof.
-  Abort. *)
-
-  (* Ten: Should we do this with a FixComp instead? *)
+  (* Could do this with a FixComp instead? *)
   Fixpoint format_list (xs : list A) (ce : CacheFormat)
     : Comp (T * CacheFormat) :=
     match xs with
@@ -83,31 +56,20 @@ Section FixList.
               Some (x :: xs, b2, e2)
     end.
 
-  Fixpoint FixList_predicate_rest
-           (As : list A)
-           (b : T)
-    : Prop :=
-    match As with
-    | nil => True
-    | cons a As' =>
-      (forall b' ce ce',
-          computes_to (format_list As' ce) (b', ce')
-          -> A_predicate_rest a (mappend b' b))
-      /\ FixList_predicate_rest As' b
-    end.
-
-  Theorem FixList_decode_correct'
+  Theorem FixList_decode_correct
     :
     forall sz ,
       CorrectDecoder
          monoid
-        (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
-        FixList_predicate_rest
-        format_list (decode_list sz) A_cache_inv.
+         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
+         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
+         eq
+         format_list (decode_list sz) A_cache_inv
+         format_list.
   Proof.
     split.
     {
-      intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.
+      intros env env' xenv l l' ext ? Eeq Ppred Penc.
       intuition; subst.
       revert H0.
       generalize dependent env. generalize dependent env'.
@@ -116,95 +78,41 @@ Section FixList.
       { intros.
         simpl in *; intuition; computes_to_inv;
           injections; simpl.
-        rewrite mempty_left; eexists; eauto. }
+        rewrite mempty_left; eexists _, _; intuition eauto.
+        simpl; computes_to_econstructor.
+      }
       { intros; simpl in *.
         assert (A_predicate a) by eauto.
         unfold Bind2 in Penc; computes_to_inv; subst.
         destruct v; destruct v0; simpl in *.
         injections.
-        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (mappend t0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
+        destruct (proj1 A_decode_pf _ _ _ _ _ (mappend t0 ext) env_OK Eeq H Penc) as [ ? [? [? xenv_OK] ] ].
         intuition; destruct_ex.
-        eapply H1; eauto.
         setoid_rewrite <- mappend_assoc; setoid_rewrite H1;
-          simpl.
-        destruct (IHl (proj2 Ppred_rest) t0 xenv x xenv_OK c); intuition eauto.
-        setoid_rewrite H6; simpl.
-        eexists; intuition.
+          simpl; subst.
+        destruct (IHl t0 xenv _ H6 c) as [? [? ?] ];
+          intuition eauto; subst.
+        setoid_rewrite H5; simpl.
+        eexists _, _; intuition.
+        simpl; unfold Bind2; eauto.
       }
     }
     { induction sz; simpl; intros.
-      - injections; simpl; repeat eexists; intuition eauto.
+      - injections; simpl; repeat eexists; simpl; intuition eauto.
         symmetry; apply mempty_left.
-      - destruct (A_decode bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+      - destruct (A_decode t env') as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate.
-        destruct (decode_list sz t c) as [ [ [? ?] ?] | ] eqn: ? ;
+        destruct (decode_list sz t0 c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
         eapply (proj2 A_decode_pf) in Heqo; eauto;
           destruct Heqo; destruct_ex; intuition; subst;
             eapply IHsz in Heqo0; eauto; destruct Heqo0;
               destruct_ex; intuition; subst.
         simpl.
-        eexists; eexists; intuition eauto.
+        eexists _, _; simpl; unfold id; intuition eauto.
         computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
-        rewrite mappend_assoc; reflexivity.
-        subst; eauto.
-    }
-  Qed.
-
-  Theorem FixList_decode_correct
-          (A_decode_pf' : CorrectDecoder monoid A_predicate (fun _ _ => True) format_A A_decode A_cache_inv)
-    :
-    forall sz ,
-      CorrectDecoder
-         monoid
-         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
-         (fun _ _ => True)
-        format_list (decode_list sz) A_cache_inv.
-  Proof.
-    split.
-    {
-      intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.
-      intuition; subst.
-      revert H0.
-      generalize dependent env. generalize dependent env'.
-      generalize dependent xenv.
-      generalize dependent l'. induction l.
-      { intros.
-        simpl in *; intuition; computes_to_inv;
-          injections; simpl.
-        rewrite mempty_left; eexists; eauto. }
-      { intros; simpl in *.
-        assert (A_predicate a) by eauto.
-        unfold Bind2 in Penc; computes_to_inv; subst.
-        destruct v; destruct v0; simpl in *.
-        injections.
-        destruct (fun H' => proj1 A_decode_pf' _ _ _ _ _ (mappend t0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
-        intuition; destruct_ex.
-
-        setoid_rewrite <- mappend_assoc; setoid_rewrite H1;
-          simpl.
-        destruct (IHl t0 xenv x xenv_OK c); intuition eauto.
-        setoid_rewrite H4; simpl.
-        eexists; intuition.
-      }
-    }
-    { induction sz; simpl; intros.
-      - injections; simpl; repeat eexists; intuition eauto.
-        symmetry; apply mempty_left.
-      - destruct (A_decode bin env') as [ [ [? ?] ?] | ] eqn: ? ;
-          simpl in *; try discriminate.
-        destruct (decode_list sz t c) as [ [ [? ?] ?] | ] eqn: ? ;
-          simpl in *; try discriminate; injections.
-        eapply (proj2 A_decode_pf') in Heqo; eauto;
-          destruct Heqo; destruct_ex; intuition; subst;
-            eapply IHsz in Heqo0; eauto; destruct Heqo0;
-              destruct_ex; intuition; subst.
-        simpl.
-        eexists; eexists; intuition eauto.
-        computes_to_econstructor; eauto.
-        computes_to_econstructor; eauto.
-        rewrite mappend_assoc; reflexivity.
+        simpl. rewrite mappend_assoc; reflexivity.
         subst; eauto.
     }
   Qed.
@@ -216,7 +124,6 @@ Section FixList.
                                        let (b1, env1) := A_format_Impl x env in
                                        (mappend bacc b1, env1)).
 
-  Require Import Fiat.Narcissus.Formats.Base.FixFormat.
   Import Fiat.Computation.FixComp.LeastFixedPointFun.
 
   Definition format_list' : FormatM (store := cache) (list A) T :=
@@ -278,13 +185,3 @@ Section FixList.
   Qed.
 
 End FixList.
-
-Lemma FixedList_predicate_rest_True {A T}
-      {cache : Cache}
-      {monoid : Monoid T}
-      (format_A : A -> CacheFormat -> Comp (T * CacheFormat))
-  : forall (l : list A) (b : T),
-    FixList_predicate_rest (fun a b => True) format_A l b.
-Proof.
-  induction l; simpl; eauto.
-Qed.

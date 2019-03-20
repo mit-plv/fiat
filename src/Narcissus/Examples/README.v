@@ -8,6 +8,99 @@ The following section presents the Narcissus framework through a series of incre
 We start with an extremely simple record, and a correspondingly simple format:
 **)
 
+(*Module Example.
+
+Require Import ilist
+        SumType.
+
+Definition instr : Type := SumType [word 8 : Type; word 8 : Type].
+
+Definition instr_codes : t (word 8) 2 :=
+  [ natToWord 8 5; natToWord 8 43].
+
+Let invariant (i : instr) := True.
+
+Definition format_instr : FormatM instr ByteString :=
+  format_enum instr_codes ◦ (SumType_index _) ++ (* Format the tag for the instructions *)
+  format_SumType _ (icons format_word (icons format_word inil)) ◦ (@id _) (* Format the argment for the instructions *)
+.
+
+Let no_align_decode : CorrectDecoderFor invariant format_instr.
+ Proof.
+   Solver.start_synthesizing_decoder.
+   NormalizeFormats.normalize_format; apply_rules.
+   last_failing_goal.
+   revert H.
+   match goal with
+     | |- context [ CorrectDecoder (T := ?B) _ _ _ _ (format_SumType (m := ?n)  ?types _) _ _ _ ] =>
+          let cache_inv_H := fresh in
+          intros cache_inv_H; (first
+           [ let types' := eval unfold types in types in
+             ilist_of_evar (fun T : Type => T -> CacheFormat -> Comp (B * CacheFormat)) types'
+              ltac:(fun formatrs' =>
+                      ilist_of_evar (fun T : Type => B -> CacheDecode -> option (T * B * CacheDecode)) types'
+                       ltac:(fun decoders' =>
+                               ilist_of_evar (fun T : Type => Ensembles.Ensemble T) types'
+                                ltac:(fun invariants' =>
+                                        ilist_of_evar (fun T : Type => T -> B -> Prop) types'
+                                                  ltac:(fun cache_invariants' =>
+                                                          eapply (SumType_decode_correct types) with
+                                                            (formatrs := formatrs') (
+                                                           decoders := decoders') (invariants := invariants')
+                                                           (cache_invariants := cache_invariants')))));
+              apply_rules
+           | ilist_of_evar (fun T : Type => T -> CacheFormat -> Comp (B * CacheFormat)) types
+              ltac:(fun formatrs' =>
+                      ilist_of_evar (fun T : Type => B -> CacheDecode -> option (T * B * CacheDecode)) types
+                       ltac:(fun decoders' =>
+                               ilist_of_evar (fun T : Type => Ensembles.Ensemble T) types
+                                ltac:(fun invariants' =>
+                                                 Vector_of_evar n (Ensembles.Ensemble (CacheDecode -> Prop))
+                                                  ltac:(fun cache_invariants' =>
+                                                          eapply (SumType_decode_correct types) with
+                                                            (formatrs := formatrs') (
+                                                              decoders := decoders') (invariants := invariants')
+                                                            (cache_invariants := cache_invariants'))))) ]);
+          [ simpl; repeat (apply IterateBoundedIndex.Build_prim_and; intros ** ); try exact I; apply_rules
+                          | apply cache_inv_H ]; intros
+             end.
+            intros; simpl.
+            unfold IsProj in H1.
+            intuition eauto.
+            destruct s; simpl; eauto.
+            intros; apply_rules.
+            simpl; intros;
+              eapply CorrectDecoderEmpty.
+            unfold Basics.compose in *;
+              simpl in *;
+              let a' := fresh in
+              intros a'; repeat destruct a' as [? a'];
+                (* Show that it is determined by the constraints (equalities) *)
+  (* inferred during parsing. *)
+                simpl in *; intros;
+                  (* Decompose data predicate *)
+                  decompose_source_predicate;
+                  (* Substitute any inferred equalities; decomposing *)
+                  (* any product types that might have been built up *)
+                  (* along the way *)
+                  subst_projections.
+            eapply H1.
+            decide_data_invariant.
+            simpl.
+            instantiate (1 := fun _ => True).
+            instantiate (1 := fun _ => True).
+            apply unfold_cache_inv_Property; compute; intuition.
+            cbv beta; unfold decode_nat, sequence_Decode; optimize_decoder_impl.
+            Defined.
+
+
+Inductive instr : Type :=
+  | ADDI: word 8 -> instr    (* 05 iw *)
+  | SUBI: word 8 -> instr.   (* 2D iw *)
+
+
+Definition *)
+
 Module Sensor0.
   Record sensor_msg :=
     { stationID: word 8; data: word 16 }.
@@ -20,13 +113,13 @@ Module Sensor0.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. Defined.
+  Proof. derive_encoder_decoder_pair.  Defined.
 
   Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-     (stationID ▹ SetCurrentByte ≫
-      data ▹ (low_bits 8 ▹ SetCurrentByte ≫
-                     shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
+     (stationID ⋙ SetCurrentByte ≫
+      data ⋙ (low_bits 8 ⋙ SetCurrentByte ≫
+      shift_right 8 ⋙ SetCurrentByte)) v 0 r tt *)
   Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
      (b <- GetCurrentByte;
@@ -57,10 +150,10 @@ Module Sensor1.
 
   Let encode := encoder_impl enc_dec.
   (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-    (stationID ▹ SetCurrentByte ≫
-     const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
-     data ▹ (low_bits 8 ▹ SetCurrentByte ≫
-                    shift_right 8 ▹ SetCurrentByte)) v 0 r tt *)
+    (stationID ⋙ SetCurrentByte ≫
+     const WO~0~0~0~0~0~0~0~0 ⋙ SetCurrentByte ≫
+     data ⋙ (low_bits 8 ⋙ SetCurrentByte ≫
+             shift_right 8 ⋙ SetCurrentByte)) v 0 r tt *)
 
   Let decode := decoder_impl enc_dec.
   (* fun (sz : nat) (v : t Core.char sz) =>
@@ -76,6 +169,7 @@ End Sensor1.
 
 (** Our next enhancement is to introduce a version number field in our packet, and to tag each measurement with a `kind`, `"TEMPERATURE"` or `"HUMIDITY"`.  To save space, we allocate 2 bits for the `kind` tag, and 14 bits to the actual measurement. **)
 
+(* The rules for higher-order types (lists, sums, sequences. *)
 Module Sensor2.
 
   Let kind :=
@@ -88,14 +182,14 @@ Module Sensor2.
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_enum [WO~0~0; WO~0~1] ◦ (Basics.compose fst data)
-    ++ format_word ◦ (Basics.compose snd data).
+    ++ format_enum [WO~0~0; WO~0~1] ◦ fst ◦ data
+    ++ format_word ◦ snd ◦ data.
 
   Let invariant (msg: sensor_msg) :=
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. Defined.
+  Proof. derive_encoder_decoder_pair.  Defined.
 
   Let encode := encoder_impl enc_dec.
   (* (stationID ▹ SetCurrentByte ≫
@@ -128,7 +222,7 @@ Module Sensor2.
   else fail)) v 0 tt *)
 End Sensor2.
 
-(** The use of `format_const` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
+(** The use of `format_const _` in the specification forces conforming encoders must write out the value 0x7e2, encoded over 16 bits.  Accordingly, the generated decoder throws an exception if its input does not contain that exact sequence.  The argument passed to `format_enum` specifies which bit patterns to use to represent each tag (`0b00` for `"TEMPERATURE"`, `0b01` for `"HUMIDITY"`), and the decoder uses this mapping to reconstruct the appropriate enum member. **)
 
 (** We use the next iteration to illustrate data dependencies and input restrictions.  To do so, we replace our single data point with a list of measurements (for conciseness, we remove tags and use 16-bit words).  We start as before, but we quickly run into an issue : **)
 
@@ -146,21 +240,14 @@ Module Sensor3.
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. all:simpl. Abort.
+  Proof.
+    derive_encoder_decoder_pair.
+    last_failing_goal.
+    all:simpl.
+  Abort.
 End Sensor3.
 
-(** The derivation fails, leaving multiple Coq goals unsolved.  The most relevant is equivalent to the following:
-
-<<
-forall msg : sensor_msg,
-  stationID msg = sid ->
-  length msg.(data) = ?Goal
->>
-
-It shows one of the side-conditions build by Narcissus as it generates the decoder.  On the left of the arrow is all that is known about an abstract incoming packet after decoding its stationID to the abstract value `sID`; on the right what needs to be known about the packet to be able to decode the list of measurements; namely, that this list has a known length, equal to some undetermined value `?Goal` (an “evar” in Coq parlance). In brief: we forgot to encode the length of the `data` list, and this prevents Narcissus from generating a decoder.
-
-Our attempted fix, unfortunately, only gets us half of the way there (`format_nat 16 ◦ length` specifies that the length of the list should be truncated to 16 bits and written out):
-**)
+(** The derivation fails, leaving multiple Coq goals unsolved.  We forgot to encode the length of the `data` list, and this prevents Narcissus from generating a decoder.  Our attempted fix, unfortunately, only gets us half of the way there (`format_nat 8 ◦ length` specifies that the length of the list should be truncated to 8 bits and written out): **)
 
 Module Sensor4.
   Record sensor_msg :=
@@ -168,27 +255,21 @@ Module Sensor4.
 
   Let format :=
        format_word ◦ stationID
-    ++ format_unused_word 8
-    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_nat 8 ◦ length ◦ data
+    ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
     ++ format_list format_word ◦ data.
 
   Let invariant (msg: sensor_msg) :=
     True.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. all:simpl. Abort.
+  Proof. derive_encoder_decoder_pair.
+         last_failing_goal.
+         all:simpl.
+  Abort.
 End Sensor4.
 
-(** Again, decoder generation fails and spills out an unsolvable goal:
-
-<<
-forall data : sensor_msg,
-  invariant data /\ stationID data = proj ->
-  length data.(data) < pow2 16
->>
-
-The problem is that, since we encode the list's length on 16 bits, the round-trip property that Narcissus attempts to prove only holds if the list has less than \(2^{16}\) elements: larger lists have their length truncated, and it becomes impossible for the decoder to know for cetain how many elements it should decode.  What we need is an input restriction: a predicate defining which messages we may encode; to this end, we update our example as follows:
+(** Again, decoder generation fails and produces an unsolvable goal. The problem is that, since we encode the list's length on 8 bits, the round-trip property that Narcissus attempts to prove only holds if the list has less than \(2^{8}\) elements: larger lists have their length truncated, and it becomes impossible for the decoder to know for cetain how many elements it should decode.  What we need is an input restriction: a predicate defining which messages we may encode; to this end, we update our example as follows:
 **)
 
 Module Sensor5.
@@ -197,9 +278,8 @@ Module Sensor5.
 
   Let format :=
        format_word ◦ stationID
-    ++ format_unused_word 8
+    ++ format_nat 8 ◦ length ◦ data
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 8 ◦ (Basics.compose length data)
     ++ format_list format_word ◦ data.
 
   Let invariant :=
@@ -210,32 +290,30 @@ Module Sensor5.
   Proof. derive_encoder_decoder_pair. Defined.
 
   Let encode := encoder_impl enc_dec.
-  (* fun (sz : nat) (r : sensor_msg) (v : t Core.char sz) =>
-     (stationID ▹ SetCurrentByte ≫
-      const WO~0~0~0~0~0~0~0~0 ▹ SetCurrentByte ≫
-      const WO~0~0~0~0~0~1~1~1 ▹ SetCurrentByte ≫
-      const WO~1~1~1~0~0~0~1~0 ▹ SetCurrentByte ≫
-      data ▹ Datatypes.length ▹ natToWord 8 ▹ SetCurrentByte ≫
-      data ▹ AlignedEncodeList (fun n => low_bits 8 ▹ SetCurrentByte ≫
-                                                 shift_right 8 ▹ SetCurrentByte) sz) v 0 r tt *)
+  (* fun (sz : nat) (r : sensor_msg) (v : ByteBuffer.t sz) =>
+     (stationID ⋙ SetCurrentByte ≫
+      data ⋙ Datatypes.length ⋙ natToWord 8 ⋙ SetCurrentByte ≫
+      const WO~0~0~0~0~0~1~1~1 ⋙ SetCurrentByte ≫
+      const WO~1~1~1~0~0~0~1~0 ⋙ SetCurrentByte ≫
+      data ⋙ AlignedEncodeList (fun n : nat => low_bits 8 ⋙ SetCurrentByte ≫
+                                               shift_right 8 ⋙ SetCurrentByte) sz) v 0 r tt *)
 
   Let decode := decoder_impl enc_dec.
-  (* fun (sz : nat) (v : t Core.char sz) =>
+  (* fun (sz : nat) (v : ByteBuffer.t sz) =>
      (b <- GetCurrentByte;
-      _ <- SkipCurrentByte;
+      b0 <- GetCurrentByte;
       b1 <- GetCurrentByte;
       b' <- GetCurrentByte;
       w <- return b1⋅b';
       (if weq w WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
        then
-        b2 <- GetCurrentByte;
         l <- ListAlignedDecodeM
                (fun numBytes : nat =>
                 w0 <- GetCurrentByte;
                 w' <- w1 <- GetCurrentByte;
                       w' <- return WO;
                       return w1⋅w';
-                return w0⋅w') (wordToNat b2);
+                return w0⋅w') (wordToNat b0);
         return {| stationID := b; data := l |}
        else fail)) v 0 tt *)
 End Sensor5.
@@ -266,7 +344,8 @@ Module Sensor6.
     2: eapply CorrectAlignedEncoderForFormatMChar_f; eauto.
     intros; destruct s; simpl;
       rewrite refine_Projection_Format;
-      reflexivity.
+      split; try reflexivity;
+        intros; eapply format_word_inhabited'; intros; eauto.
   Qed.
 
   Let dec_reading :=
@@ -278,31 +357,37 @@ Module Sensor6.
               Some (Humidity (split2 2 14 w), rest, ctx')
             else None).
 
+  Transparent weqb.
+
   Lemma dec_readingCorrect
-    : CorrectDecoder _ (fun _ => True) (fun _ _ => True) format_reading dec_reading (fun _ => True).
+    : CorrectDecoder _ (fun _ => True) (fun _ => True) eq format_reading dec_reading (fun _ => True)
+                     format_reading.
   Proof.
-    unfold format_reading, dec_reading; split; intros.
-    - destruct data; eapply encode_Word_decode_correct in H2; eauto;
-        destruct_ex; intuition; try rewrite H3; simpl;
-          eexists; rewrite split2_combine; eauto.
-    - eapply DecodeBindOpt2_inv in H1; destruct_ex; intuition.
-      destruct (weqb (split1 2 14 x) WO~0~0) eqn:? .
-      + destruct (shatter_word_S x) as [? [x' ?] ];
-          destruct (shatter_word_S x') as [? [x'' ?] ];
-          subst; apply weqb_true_iff in Heqb; injections;
-            unfold split2; simpl.
-        eapply (@encode_Word_decode_correct _ _ _ _ _ _ (fun _ => True)) in H2;
-          unfold cache_inv_Property; intuition eauto.
-      + destruct (weqb (split1 2 14 x) WO~0~1) eqn:? ; try discriminate;
-          destruct (shatter_word_S x) as [? [x' ?] ];
-          destruct (shatter_word_S x') as [? [x'' ?] ];
-          subst.
-        apply weqb_true_iff in Heqb0; injections;
-          unfold split2; simpl;
-            eapply (@encode_Word_decode_correct _ _ _ _ _ _ (fun _ => True)) in H2;
-          unfold cache_inv_Property; intuition eauto.
+    eapply format_decode_correct_EquivFormatAndView
+        with (fun m => format_word (match m with
+                                 | Temperature t => Word.combine WO~0~0 t
+                                 | Humidity h => Word.combine WO~0~1 h
+                                 end)); eauto.
+    unfold flip, EquivFormat, format_reading. intros; destruct s; reflexivity.
+
+    apply_bijection_rule' with (fun w =>
+                                  if weqb (split1 2 14 w) WO~0~0
+                                  then Some (Temperature (split2 2 14 w))
+                                  else (if weqb (split1 2 14 w) WO~0~1 then
+                                          Some (Humidity (split2 2 14 w))
+                                        else None));
+      intuition eauto.
+    - apply Word_decode_correct. try apply unfold_cache_inv_Property; intuition eauto.
+    - destruct s; simpl; rewrite split2_combine; auto.
+    - destruct weqb eqn:?; injections. apply weqb_true_iff in Heqb.
+      rewrite <- Heqb. apply Word.combine_split.
+      destruct (weqb _ WO~0~1) eqn:?; try discriminate; injections. apply weqb_true_iff in Heqb0.
+      rewrite <- Heqb0. apply Word.combine_split.
+    - intuition eauto.
+    - derive_decoder_equiv; easy.
   Qed.
 
+  Opaque weqb.
   Record sensor_msg :=
     { stationID: word 8; data: list reading }.
 
@@ -310,7 +395,7 @@ Module Sensor6.
        format_word ◦ stationID
     ++ format_unused_word 8
     ++ format_const WO~0~0~0~0~0~1~1~1~1~1~1~0~0~0~1~0
-    ++ format_nat 8 ◦ (Basics.compose length data)
+    ++ format_nat 8 ◦ length ◦ data
     ++ format_list format_reading ◦ data.
 
   Let invariant :=
@@ -318,11 +403,13 @@ Module Sensor6.
       length (msg.(data)) < pow2 8.
 
   Ltac new_encoder_rules ::= apply enc_readingCorrect.
-  Ltac new_decoder_rules ::= apply dec_readingCorrect.
+  Ltac apply_new_base_rule ::= apply dec_readingCorrect.
 
   Let enc_dec : EncoderDecoderPair format invariant.
-  Proof. derive_encoder_decoder_pair. Defined.
+  Proof. derive_encoder_decoder_pair.
+  Defined.
 
   Let encode := encoder_impl enc_dec.
   Let decode := decoder_impl enc_dec.
+
 End Sensor6.

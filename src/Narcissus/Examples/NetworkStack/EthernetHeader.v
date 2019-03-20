@@ -9,9 +9,6 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
@@ -27,7 +24,7 @@ Require Import
 
 Require Import Bedrock.Word.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Open Scope format_scope.
 Opaque pow2. (* Don't want to be evaluating this. *)
 Opaque natToWord. (* Or this. *)
@@ -48,7 +45,7 @@ Section EthernetPacketDecoder.
     ].
 
   Variable packet_len : nat. (* The length of the ethernet packet, *)
-  (* which is a parameter to the formatr and decoder. *)
+  (* which is a parameter to the format and decoder. *)
   Variable packet_len_OK : lt packet_len 1501.
 
   Definition EthernetHeader_Format
@@ -56,11 +53,11 @@ Section EthernetPacketDecoder.
     format_Vector format_word ◦ Destination
    ++ format_Vector format_word ◦ Source
    ++ Either
-   format_nat 16 ◦ (fun _ => packet_len)
-   ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-   ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-   ++ format_word ◦ (fun _ => WO~1~1~0~0~0~0~0~0)
-   ++ format_word ◦ (fun _ => wzero 24)
+   format_nat 16 ◦ constant packet_len
+   ++ format_word ◦ constant WO~0~1~0~1~0~1~0~1
+   ++ format_word ◦ constant WO~0~1~0~1~0~1~0~1
+   ++ format_word ◦ constant WO~1~1~0~0~0~0~0~0
+   ++ format_word ◦ constant wzero 24
    ++ format_enum EtherTypeCodes ◦ EthType
    Or format_enum EtherTypeCodes ◦ EthType.
 
@@ -77,158 +74,154 @@ Section EthernetPacketDecoder.
 
   Definition ethernet_Header_OK (e : EthernetHeader) := True.
 
-  Definition v1042_test (b : ByteString) : bool :=
-    match monoid_get_word 16 b with
-    | Some w => if wlt_dec w (natToWord 16 1501) then true else false
-    | _ => false
-    end.
-
-  Opaque natToWord.
-
-  Lemma v1042_OKT
-    : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
-      ((   format_nat 16 ◦ (fun _ => packet_len)
-        ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-        ++ format_word ◦ (fun _ => WO~0~1~0~1~0~1~0~1)
-        ++ format_word ◦ (fun _ => WO~1~1~0~0~0~0~0~0)
-        ++ format_word ◦ (fun _ => wzero 24)
-        ++ format_enum EtherTypeCodes ◦ EthType
-        ++ empty_Format ) data env) ↝ (bin, xenv)
-      -> v1042_test (mappend bin ext) = true.
+  Lemma derive_distinguishing_word v0 v1
+    : forall
+      P (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b))),
+      CorrectRefinedDecoder ByteStringQueueMonoid
+       (fun s : EthernetHeader => (ethernet_Header_OK s /\ IsProj Destination v1 s) /\ IsProj Source v0 s)
+    (constant True) (constant (constant True))
+    (Either format_nat 16 ◦ constant packet_len ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~1~1~0~0~0~0~0~0 ++
+            format_word ◦ constant wzero 24 ++ format_enum EtherTypeCodes ◦ EthType ++ empty_Format
+            Or format_enum EtherTypeCodes ◦ EthType ++ empty_Format)
+    (format_unused_word 16)
+    (fun t env =>
+    `(w, t', env') <- decode_word t env;
+      if (wlt_dec w (natToWord 16 1501) : bool) then
+         Some (true, t', env') else Some (false, t', env')) P
+    (fun (bs : bool) (env : CacheFormat) (t : ByteString * CacheFormat) =>
+     forall (s : EthernetHeader) (t' : ByteString) (env' : CacheFormat),
+       (fun s : EthernetHeader => (ethernet_Header_OK s /\ IsProj Destination v1 s) /\ IsProj Source v0 s) s ->
+     ((format_nat 16 ◦ constant packet_len ++
+       format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+       format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+       format_word ◦ constant WO~1~1~0~0~0~0~0~0 ++
+       format_word ◦ constant wzero 24 ++ format_enum EtherTypeCodes ◦ EthType ++ empty_Format) s env
+        (mappend (fst t) t', env') -> bs = true) /\
+     ((format_enum EtherTypeCodes ◦ EthType ++ empty_Format) s env (mappend (fst t) t', env') -> bs = false)).
   Proof.
-    intros.
-    unfold sequence_Format, compose at 1, Bind2 in H;
-      computes_to_inv; destruct v; destruct v0.
-        injections.
-    pose proof mappend_assoc as H'''; simpl in H'''; rewrite <- H'''.
-    unfold v1042_test.
-    pose proof (monoid_get_encode_word' 16 (natToWord 16 packet_len)) as H''''.
-    apply EquivFormat_Projection_Format in H.
-    unfold format_nat, format_word in H; computes_to_inv.
-    apply (f_equal fst) in H; simpl in H.
-    rewrite <- H.
-    simpl mappend in *.
-    rewrite H''''.
-    find_if_inside; eauto.
-    destruct n.
-    eapply natToWord_wlt; eauto; try reflexivity.
-    etransitivity.
-    unfold BinNat.N.lt; rewrite <- Nnat.Nat2N.inj_compare.
-    eapply Compare_dec.nat_compare_lt; eassumption.
-    reflexivity.
+    intros. apply composeIf_subformat_correct_low; intros.
+    - unfold format_unused_word, Compose_Format in H2.
+      rewrite unfold_computes in H2; destruct_conjs.
+      eapply @Word_decode_correct with (P := P) in H5; eauto. destruct_conjs.
+      rewrite H8; simpl; subst.
+      destruct wlt_dec; simpl; eauto.
+    - destruct decode_word as [ [ [? ?] ?] | ] eqn: ? ; simpl in H1;
+        try discriminate.
+      generalize Heqo; intros.
+      eapply @Word_decode_correct with (P := P) in Heqo; try eassumption.
+      destruct wlt_dec eqn: ?; simpl in H1;
+        try discriminate; injections; intuition eauto 1;
+          destruct_conjs; subst; eexists _, _; intuition eauto 1.
+      + unfold sequence_Format, Projection_Format, Compose_Format,
+        ComposeOpt.compose, Bind2 in H8. computes_to_inv; subst.
+        rewrite unfold_computes in H8; destruct_conjs; subst; injections.
+        eapply @Word_decode_correct with (P := P) in H4; try eassumption.
+        eapply @Enum_decode_correct with (P := P) in H11; try eassumption.
+        destruct_conjs; subst.
+        unfold decode_enum in H19. simpl in *.
+        rewrite <- H12 in H13.
+        rewrite H13 in H19; simpl in H19.
+        unfold word_indexed in H19; simpl in H19.
+        repeat match type of H19 with
+                 context[weqb ?a ?b] =>
+                 let H := fresh in destruct (weqb a b) eqn : H;
+                                     try apply weqb_sound in H; subst
+               end; simpl in H10; try discriminate.
+        Discharge_NoDupVector.
+      + unfold sequence_Format at 1, Projection_Format, Compose_Format,
+        ComposeOpt.compose, Bind2 in H8. computes_to_inv; subst.
+        clear H8'.
+        rewrite unfold_computes in H8; destruct_conjs; subst; injections.
+        eapply @Word_decode_correct with (P := P) in H4; try eassumption.
+        eapply @Nat_decode_correct with (P := P) in H11; try eassumption.
+        destruct_conjs; subst; simpl in *.
+        unfold decode_nat in H20.
+        rewrite <- H13 in H14.
+        rewrite H14 in H20; simpl in H20; injections.
+        destruct n.
+        unfold wlt.
+        rewrite !wordToN_nat, wordToNat_natToWord_idempotent.
+        eapply Nomega.Nlt_in.
+        rewrite !Nnat.Nat2N.id.
+        eauto.
+        reflexivity.
+        etransitivity; try eassumption.
+        rewrite <- Nnat.Nat2N.id.
+        rewrite <- (Nnat.Nat2N.id 1501).
+        apply Nomega.Nlt_out.
+        admit. (* reflexivity works in later versions. *)
+        Grab Existential Variables.
+        eauto.
+        eauto.
   Qed.
 
-  Hint Resolve v1042_OKT : bin_split_hints.
+  Lemma distinguishing_word_prefix
+    : Prefix_Format _
+    (Either format_nat 16 ◦ constant packet_len ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~0~1~0~1~0~1~0~1 ++
+            format_word ◦ constant WO~1~1~0~0~0~0~0~0 ++
+            format_word ◦ constant wzero 24 ++ format_enum EtherTypeCodes ◦ EthType ++ empty_Format
+            Or format_enum EtherTypeCodes ◦ EthType ++ empty_Format)
+    (format_unused_word 16).
+    Proof.
+      unfold Prefix_Format, composeIf, Union_Format; intros.
+      rewrite unfold_computes in H.
+      destruct_ex; revert H; pattern x;
+        apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl;
+          econstructor; [intros | econstructor; intros; eauto].
+      Opaque natToWord.
+      + unfold Vector.nth in H; simpl in H.
+        unfold sequence_Format at 1 in H.
+        unfold Projection_Format, empty_Format,
+        Compose_Format, ComposeOpt.compose, Bind2 in H.
+        computes_to_inv.
+        rewrite unfold_computes in H; destruct_ex; split_and;
+          subst; eauto.
+        unfold format_nat, format_word in H0; computes_to_inv; subst.
+        injections; eexists _, _, _; intuition eauto.
+        unfold format_unused_word, Compose_Format.
+        apply unfold_computes; eexists _; intuition eauto;
+          try computes_to_econstructor.
+        apply unfold_computes; eauto.
+      + unfold Vector.nth in H; simpl in H.
+        unfold sequence_Format at 1 in H.
+        unfold Projection_Format, empty_Format,
+        Compose_Format, ComposeOpt.compose, Bind2 in H.
+        computes_to_inv.
+        rewrite unfold_computes in H; destruct_ex; split_and;
+          subst; eauto.
+        unfold format_enum, format_word in H0; computes_to_inv; subst.
+        injections; eexists _, _, _; intuition eauto.
+        unfold format_unused_word, Compose_Format.
+        apply unfold_computes; eexists _; intuition eauto;
+          try computes_to_econstructor.
+        apply unfold_computes; eauto.
+    Qed.
 
-    Lemma v1042_OKE
-    : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheFormat) (ext : ByteString),
-      (   format_enum EtherTypeCodes ◦ EthType
-       ++ empty_Format) data env ↝ (bin, xenv)
-      -> v1042_test (mappend bin ext) = false.
-  Proof.
-    intros.
-    apply NormalizeFormats.EquivFormat_Projection_Format_Empty_Format in H.
-    apply EquivFormat_Projection_Format in H.
-    unfold compose, Bind2, format_enum, format_word in H; computes_to_inv; subst.
-    injections.
-    (*pose proof (f_equal fst H'') as H'; unfold fst in H'; rewrite <- H'. *)
-    unfold v1042_test.
-    pose monoid_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
-    revert w; clear.
+    Lemma valid_packet_len_OK_good_Len
+      : lt packet_len (pow2 16).
+    Proof.
+      intros.
+      etransitivity; eauto.
+      rewrite <- (wordToNat_natToWord_idempotent 16 1501).
+      eapply wordToNat_bound.
+      simpl; eapply BinNat.N.ltb_lt; reflexivity.
+    Qed.
+
+  Hint Extern 4 => eapply valid_packet_len_OK_good_Len : data_inv_hints.
+
+  Ltac apply_new_combinator_rule ::=
     match goal with
-      |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear
-    end.
-    eapply forall_Vector_P; repeat econstructor;
-      unfold wlt; compute; intros; discriminate.
-  Qed.
-
-  Hint Resolve v1042_OKE : bin_split_hints.
-
-  Lemma valid_packet_len_OK_good_Len
-    : lt packet_len (pow2 16).
-  Proof.
-    intros.
-    etransitivity; eauto.
-    rewrite <- (wordToNat_natToWord_idempotent 16 1501).
-    eapply wordToNat_bound.
-    simpl; eapply BinNat.N.ltb_lt; reflexivity.
-  Qed.
-
-  Hint Resolve valid_packet_len_OK_good_Len : data_inv_hints.
-
-  Definition aligned_v1042_test
-        {sz : nat}
-        (v : t Core.char sz)
-        (idx : nat)
-    : bool :=
-    match nth_opt v idx, nth_opt v (S idx) with
-    | Some w1, Some w2 =>
-      if wlt_dec (combine w2 w1) (natToWord 16 1501) then true else false
-    | _, _ => false
-    end.
-
-  Lemma aligned_v1042_test_OK_1 {sz}
-    : forall (v : t Core.char sz),
-      v1042_test (build_aligned_ByteString v) =
-      aligned_v1042_test v 0.
-  Proof.
-    destruct v.
-    reflexivity.
-    destruct v.
-    reflexivity.
-    unfold v1042_test.
-    replace (monoid_get_word 16 (build_aligned_ByteString (h :: h0 :: v)))
-      with
-        (Some (combine h0 h)).
-    reflexivity.
-    replace (build_aligned_ByteString (h :: h0 :: v))
-      with (mappend (build_aligned_ByteString (h :: h0 :: Vector.nil _)) (build_aligned_ByteString v)).
-    rewrite <- (monoid_get_encode_word' _ (combine h0 h) (build_aligned_ByteString v)).
-    f_equal.
-    f_equal.
-    simpl.
-    unfold Core.char in *.
-    shatter_word h.
-    shatter_word h0.
-    simpl.
-    rewrite build_aligned_ByteString_cons; simpl.
-    unfold ByteString_enqueue_ByteString; simpl.
-    unfold ByteString_enqueue_char.
-    simpl.
-    repeat f_equal.
-    unfold build_aligned_ByteString; simpl.
-    erewrite (ByteString_enqueue_simpl x6); simpl.
-    erewrite (ByteString_enqueue_simpl x5); simpl.
-    erewrite (ByteString_enqueue_simpl x4); simpl.
-    erewrite (ByteString_enqueue_simpl x3); simpl.
-    erewrite (ByteString_enqueue_simpl x2); simpl.
-    erewrite (ByteString_enqueue_simpl x1); simpl.
-    erewrite (ByteString_enqueue_simpl x0); simpl.
-    unfold ByteString_enqueue; simpl.
-    f_equal.
-    eapply Core.le_uniqueness_proof.
-    simpl.
-    rewrite <- build_aligned_ByteString_append.
-    reflexivity.
-    Grab Existential Variables.
-    simpl; omega.
-    simpl; omega.
-    simpl; omega.
-    simpl; omega.
-    simpl; omega.
-    simpl; omega.
-    simpl; omega.
-  Qed.
-
-  Lemma aligned_v1042_test_OK_2 {sz}
-    : forall (v : ByteBuffer.t (S sz)) (idx : nat),
-      aligned_v1042_test v (S idx) = aligned_v1042_test (Vector.tl v) idx.
-  Proof.
-    intros; pattern sz, v; eapply Vector.caseS; higher_order_reflexivity.
-  Qed.
-
-  Hint Resolve aligned_v1042_test_OK_1.
-  Hint Resolve aligned_v1042_test_OK_2.
+    | H : cache_inv_Property ?mnd _
+      |- context[CorrectRefinedDecoder] =>
+      split;
+      [ eapply (@derive_distinguishing_word _ _ _ H); eauto
+      | eapply distinguishing_word_prefix ]
+  end.
 
   Definition EthernetHeader_decoder
     : CorrectAlignedDecoderFor ethernet_Header_OK EthernetHeader_Format.

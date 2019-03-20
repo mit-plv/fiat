@@ -11,7 +11,7 @@ Section ilist2_pair.
 
   (* Lists of elements whose types depend on two indexing sets.  *)
 
-  Import Vectors.VectorDef.VectorNotations.
+  Import Vectors.Vector.VectorNotations.
 
   Context {A A' : Type}. (* The indexing type. *)
   Context {B : A -> Type}. (* The type of indexed elements. *)

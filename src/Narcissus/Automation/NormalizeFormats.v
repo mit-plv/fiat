@@ -8,9 +8,6 @@ Require Import
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Common.IterateBoundedIndex
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib.Core
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
@@ -54,6 +51,22 @@ Lemma sequence_mempty
 Proof.
   unfold sequence_Format, EquivFormat; intros.
   apply refineEquiv_compose_Done.
+Qed.
+
+Lemma sequence_mempty'
+      {S T : Type}
+      {store : Cache}
+      {m : Monoid T}
+  : forall (format : FormatM S T),
+    EquivFormat (format ++ empty_Format) format.
+Proof.
+  unfold sequence_Format, EquivFormat, empty_Format; intros.
+  split; unfold compose, Bind2; intros v Comp_v.
+  - computes_to_econstructor; eauto. destruct_conjs; simpl.
+    computes_to_econstructor; eauto. simpl.
+    rewrite mempty_right; eauto.
+  - computes_to_inv; subst; destruct_conjs. simpl.
+    rewrite mempty_right; eauto.
 Qed.
 
 Lemma EquivFormat_ComposeIf
@@ -101,29 +114,6 @@ Proof.
   destruct c; simpl; eauto.
 Qed.
 
-Add Parametric Morphism
-    A B
-    (cache : Cache)
-    (monoid : Monoid B)
-    (predicate : A -> Prop)
-    rest_predicate
-    (decode : B -> CacheDecode -> option (A * B * CacheDecode))
-    (decode_inv : CacheDecode -> Prop)
-  : (fun format =>
-       @CorrectDecoder A B cache monoid predicate
-                       rest_predicate format decode decode_inv)
-    with signature (EquivFormat --> impl)
-      as format_decode_correct_refineEquiv.
-Proof.
-  unfold EquivFormat, impl, pointwise_relation, CorrectDecoder;
-    intuition eauto; intros.
-  - eapply H1; eauto; apply H; eauto.
-  - eapply H2; eauto.
-  - destruct (H2 _ _ _ _ _ _ H0 H3 H4) as [ ? [? [? ?] ] ];
-      intuition.
-    repeat eexists; intuition eauto; apply H; eauto.
-Qed.
-
 Lemma EquivFormat_Projection_Format_Empty_Format
       {S S' T : Type}
       {monoid : Monoid T}
@@ -151,20 +141,108 @@ Proof.
   etransitivity; eauto.
 Qed.
 
+Lemma EquivFormat_compose_map {S S' S'' T}
+      (format_S'' : FormatM S'' T)
+      (f : S -> S')
+      (g : S' -> S'')
+  : EquivFormat (Projection_Format (Projection_Format format_S'' g) f)
+                (Projection_Format format_S'' (Basics.compose g f)).
+Proof.
+  unfold EquivFormat, refineEquiv, Projection_Format, Compose_Format, compose, Bind2; split;
+    intros ? ?.
+  - rewrite unfold_computes in *.
+    destruct_ex; split_and; eexists.
+    rewrite unfold_computes;  eauto.
+  - rewrite unfold_computes in *.
+    destruct_ex; split_and; eexists; intuition eauto.
+    rewrite unfold_computes in H0.
+    destruct_ex.
+    intuition eauto.
+    subst.
+    apply H0.
+Qed.
+
+Lemma EquivFormat_UnderSequence'
+      {S T : Type}
+      {monoid : Monoid T}
+  : forall (format1 format1' format2 format2' : FormatM S T),
+    EquivFormat format1 format1'
+    -> EquivFormat format2 format2'
+    -> EquivFormat (format1 ++ format2)
+                   (format1' ++ format2').
+Proof.
+  unfold EquivFormat; intros.
+  rewrite refine_sequence_Format.
+  rewrite refine_sequence_Format.
+  eapply refineEquiv_bind_Proper; eauto.
+  unfold pointwise_relation; intros;
+    eapply refineEquiv_bind_Proper; eauto.
+  reflexivity.
+Qed.
+
+Lemma EquivFormat_Projection_Format_Empty_Format'
+      {S S' S'' T : Type}
+      {monoid : Monoid T}
+  : forall (format : FormatM S' T)
+           (format' : FormatM S'' T)
+           (f : S -> S')
+           (g : S -> S''),
+    EquivFormat (format ◦ f) (format' ◦ g)
+    -> EquivFormat (format ◦ f) (format' ◦ g ++ empty_Format).
+Proof.
+  intros.
+  eapply EquivFormat_trans; try eassumption.
+  eapply EquivFormat_Projection_Format_Empty_Format.
+Qed.
+
 Ltac normalize_step BitStringT :=
-  (first [ eapply EquivFormat_trans; [apply (@sequence_assoc _ _ BitStringT) | ]
-         | eapply EquivFormat_trans; [apply sequence_mempty with (monoid := BitStringT) | ]
-         | eapply EquivFormat_ComposeIf; intros
-         | eapply EquivFormat_trans; [apply EquivFormat_If_Then_Else with (monoid := BitStringT) | ]
-         | apply EquivFormat_If_Then_Else_Proper
-         | eapply (@EquivFormat_UnderSequence _ _ BitStringT)
-         | eapply EquivFormat_Projection_Format_Empty_Format
-         | unfold EquivFormat; intros; reflexivity]; intros).
+  (first
+     [ (* Always solve the goal if the first format is an evar *)
+       match goal with
+         |- EquivFormat ?z ?x =>
+         is_evar z; apply EquivFormat_reflexive
+       end
+     | eapply EquivFormat_trans; [ apply sequence_assoc |  ]
+     | eapply EquivFormat_trans; [ apply sequence_mempty with (monoid := BitStringT) |  ]
+     | eapply EquivFormat_ComposeIf; intros
+     | eapply EquivFormat_trans; [ apply EquivFormat_If_Then_Else with (monoid := BitStringT) |  ]
+     | apply EquivFormat_If_Then_Else_Proper
+     | eapply EquivFormat_UnderSequence';
+       [ repeat (eapply EquivFormat_trans; [ eapply EquivFormat_compose_map |  ]); apply EquivFormat_reflexive
+       |  ]
+     | eapply EquivFormat_Projection_Format_Empty_Format';
+       [ repeat eapply EquivFormat_compose_map; apply EquivFormat_reflexive ]
+     | unfold EquivFormat; intros; reflexivity ]); intros.
+
+Add Parametric Morphism
+    S T
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
+    (decode : DecodeM (S * T) T)
+    (decode_inv : CacheDecode -> Prop)
+  : (fun format =>
+       @CorrectDecoder S T cache S monoid Source_Predicate Source_Predicate
+                       eq format decode decode_inv format)
+    with signature (EquivFormat --> impl)
+      as format_decode_correct_refineEquiv.
+Proof.
+  unfold EquivFormat, impl, pointwise_relation; intros.
+  eapply format_decode_correct_alt_Proper; eauto; try reflexivity.
+Qed.
 
 Ltac normalize_format :=
   (* Normalize formats by performing algebraic simplification. *)
-  match goal with
-  | |- CorrectDecoder ?monoid _ _ _ _ _ =>
-    intros; eapply format_decode_correct_refineEquiv; unfold flip;
-    repeat (normalize_step monoid)
-  end.
+  intros;
+  repeat progress
+         match goal with
+         | |- CorrectDecoder ?monoid _ _ _ _ _ _ _ =>
+           intros; eapply format_decode_correct_refineEquiv; unfold flip;
+           repeat (normalize_step monoid)
+         | |- Prefix_Format ?monoid _ _ =>
+           intros; eapply prefix_format_refineEquiv; unfold flip;
+           repeat (normalize_step monoid)
+         | |- CorrectRefinedDecoder ?monoid _ _ _ _ _ _ _ _ =>
+           intros; eapply format_decode_refined_correct_refineEquiv; unfold flip;
+           repeat (normalize_step monoid)
+         end.

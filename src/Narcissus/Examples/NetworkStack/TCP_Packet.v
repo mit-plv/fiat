@@ -9,9 +9,6 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.WordFacts
@@ -26,7 +23,7 @@ Require Import
 
 Require Import Bedrock.Word.
 
-Import Vectors.VectorDef.VectorNotations.
+Import Vectors.Vector.VectorNotations.
 Open Scope format_scope.
 
 Section TCPPacketDecoder.
@@ -48,7 +45,7 @@ Section TCPPacketDecoder.
      WindowSize : word 16;
      UrgentPointer : option (word 16);
      Options : list (word 32);
-     Payload : { n & ByteBuffer.t n }}.
+     Payload : { n : _ & ByteBuffer.t n }}.
 
   (* These values are provided by the IP header for checksum calculation.*)
 
@@ -63,12 +60,12 @@ Section TCPPacketDecoder.
           ++ format_word ◦ DestPort
           ++ format_word ◦ SeqNumber
           ++ format_word ◦ AckNumber
-          ++ format_nat 4 ◦ (Basics.compose (plus 5) (Basics.compose (@length _) Options))
+          ++ format_nat 4 ◦ (plus 5) ◦ (@length _) ◦ Options
           ++ format_unused_word 3 (* These bits are reserved for future use. *)
           ++ format_bool ◦ NS
           ++ format_bool ◦ CWR
           ++ format_bool ◦ ECE
-          ++ format_bool ◦ (Basics.compose (fun urg_opt => Ifopt urg_opt as urg Then true Else false) UrgentPointer)
+          ++ format_bool ◦ (fun urg_opt => Ifopt urg_opt as urg Then true Else false) ◦ UrgentPointer
           ++ format_bool ◦ ACK
           ++ format_bool ◦ PSH
           ++ format_bool ◦ RST
@@ -76,7 +73,7 @@ Section TCPPacketDecoder.
           ++ format_bool ◦ FIN
           ++ format_word ◦ WindowSize)
           ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr tcpLength (natToWord 8 6)) OfSize 16
-          ThenCarryOn (Option.format_option format_word (@format_unused_word 16 _ _ _ _ _ _) ◦ UrgentPointer
+          ThenCarryOn (format_option format_word (format_unused_word 16) ◦ UrgentPointer
                                             ++ format_list format_word ◦ Options
                                             ++ format_bytebuffer ◦ Payload).
 
@@ -90,17 +87,22 @@ Section TCPPacketDecoder.
   Local Arguments NPeano.modulo : simpl never.
 
   Definition TCP_Length :=
-    (fun _ : ByteString => wordToNat tcpLength * 8).
+    (fun _ : ByteString => wordToNat tcpLength).
 
   Ltac new_encoder_rules ::=
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
-    [ | | intros; calculate_length_ByteString'].
+    [ normalize_encoder_format
+    | normalize_encoder_format
+    | intros; calculate_length_ByteString'].
 
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition TCP_encoder :
     CorrectAlignedEncoderFor TCP_Packet_Format.
   Proof.
     synthesize_aligned_encoder.
+    Grab Existential Variables.
+    eauto.
+    eauto.
   Defined.
 
   (* Step Two: Extract the encoder function, and have it start encoding
@@ -108,132 +110,33 @@ Section TCPPacketDecoder.
   Definition TCP_encoder_impl r {sz} v :=
     Eval simpl in (projT1 TCP_encoder sz v 0 r tt).
 
-(* Step Two and a Half: Add some simple facts about correct packets
+  (* Step Two and a Half: Add some simple facts about correct packets
    for the decoder automation. *)
 
-Lemma TCP_Packet_Len_OK
-  : forall tcp,
-    TCP_Packet_OK tcp ->
-    (lt (5 + (| Options tcp |)) (pow2 4)).
-Proof.
-  unfold TCP_Packet_OK; simpl; intros.
-  intuition; intros.
-  unfold pow2, mult; simpl.
-  omega.
-Qed.
-
-Opaque pow2.
-Arguments andb : simpl never.
-
-Hint Resolve TCP_Packet_Len_OK : data_inv_hints.
-
-Arguments GetCurrentBytes : simpl never.
-
-Lemma TCP_Packet_Header_Len_OK
-      : forall (a : TCP_Packet) (ctx ctx' ctx'' : CacheFormat) (c : word 16) (b b'' ext : ByteString),
-  (format_word ◦ SourcePort ++
-   format_word ◦ DestPort ++
-   format_word ◦ SeqNumber ++
-   format_word ◦ AckNumber ++
-   format_nat 4 ◦ Init.Nat.add 5 ∘ (Datatypes.length (A:=word 32) ∘ Options) ++
-   format_unused_word 3 ++
-   format_bool ◦ NS ++
-   format_bool ◦ CWR ++
-   format_bool ◦ ECE ++
-   format_bool ◦ (fun urg_opt : option (word 16) => Ifopt urg_opt as _ Then true Else false) ∘ UrgentPointer ++
-   format_bool ◦ ACK ++
-   format_bool ◦ PSH ++ format_bool ◦ RST ++ format_bool ◦ SYN ++ format_bool ◦ FIN ++ format_word ◦ WindowSize) a ctx ∋
-  (b, ctx') ->
-  (Option.format_option format_word (format_unused_word 16) ◦ UrgentPointer ++
-   format_list format_word ◦ Options ++ format_bytebuffer ◦ Payload) a ctx' ∋ (b'', ctx'') ->
-  TCP_Packet_OK a ->
-  (fun _ : TCP_Packet => 16 + (16 + (32 + (32 + (4 + (3 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + 16))))))))))))))) a +
-  (fun a' : TCP_Packet => 16 + ((| Options a' |) * 32 + 8 * projT1 (Payload a'))) a + 16 =
-  TCP_Length
-    (mappend
-       (mappend b
-          (mappend (format_checksum ByteString AlignedByteString.ByteStringQueueMonoid ByteString_QueueMonoidOpt 16 c) b'')) ext).
-Proof.
-  intros.
-  unfold TCP_Length; rewrite (proj2 H1).
-  omega.
-Qed.
-
-Definition aligned_TCP_Packet_checksum {sz} :=
-  @aligned_Pseudo_checksum srcAddr destAddr tcpLength (natToWord 8 6) sz.
-
-Ltac new_decoder_rules ::=
-  match goal with
-  | |- _ => intros; eapply unused_word_decode_correct; eauto
-  | H : cache_inv_Property ?mnd _
-    |- CorrectDecoder _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ =>
-      eapply compose_PseudoChecksum_format_correct;
-    [ repeat calculate_length_ByteString
+  Ltac apply_new_combinator_rule ::=
+    match goal with
+    | H : cache_inv_Property ?mnd _
+      |- CorrectDecoder _ _ _ _ (?fmt1 ThenChecksum _ OfSize _ ThenCarryOn ?format2) _ _ _ =>
+      eapply compose_PseudoChecksum_format_correct';
+      [ repeat calculate_length_ByteString
       | repeat calculate_length_ByteString
       | exact H
       | solve_mod_8
       | solve_mod_8
-      | apply TCP_Packet_Header_Len_OK
-      | intros; NormalizeFormats.normalize_format ]
-  end.
+      | normalize_format; apply_rules
+      | normalize_format; apply_rules
+      | solve_Prefix_Format ]
+    end.
 
-(* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
-Definition TCP_Packet_Header_decoder
-  : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
-Proof.
-  start_synthesizing_decoder.
-  NormalizeFormats.normalize_format.
-  repeat apply_rules.
-  eapply (format_sequence_correct H4).
-  apply Nat_decode_correct.
-  simpl; intros;
-    unfold Basics.compose.
-  eapply TCP_Packet_Len_OK; intuition eauto.
-  intros; repeat apply_rules.
-  eapply (format_sequence_correct H16).
-  intros; repeat apply_rules.
-  intros; apply_rules.
-  intros; intuition.
-  unfold Basics.compose in *.
-  instantiate (1 := s'7).
-  destruct s; simpl in *.
-  destruct UrgentPointer0; simpl in *; subst; simpl; eauto.
-  congruence.
-  destruct s; destruct UrgentPointer0; eauto.
-  intros; eapply (format_sequence_correct H16).
-  intros; repeat apply_rules.
-  intros; instantiate (1 := s'3 - 5); simpl; intuition.
-  unfold Basics.compose in H32; omega.
-  intros; eapply (format_sequence_correct); eauto.
-  intros; eapply ByteBuffer_decode_correct
-            with (n := wordToNat tcpLength - (20 + 4 * (s'3 - 5))).
-  simpl; eauto.
-  intros; intuition.
-  destruct H22.
-  rewrite H22.
-  rewrite <- H35.
-  unfold Basics.compose.
-  omega.
-  intros; repeat apply_rules.
-  cbv beta; synthesize_cache_invariant.
-  (* Perform algebraic simplification of the decoder implementation. *)
-  Opaque ByteString2ListOfChar.
-  cbv beta; unfold decode_nat; optimize_decoder_impl.
-  unfold Basics.compose; simpl.
-  cbv beta; align_decoders.
-  Opaque DecodeMEquivAlignedDecodeM.
-  eapply @AlignedDecode_ifb_dep.
-  intros; eapply (aligned_Pseudo_checksum_OK_1 _ _ _ _
-                                               (fun sz v => TCP_Length (build_aligned_ByteString v))); eauto.
-  intros; eapply aligned_Pseudo_checksum_OK_2; eauto.
-  cbv beta; align_decoders.
-  intros; eapply @AlignedDecodeByteBufferM; intros; eauto.
-  align_decoders.
-  align_decoders.
-  Grab Existential Variables.
-  eauto.
-  eauto.
-Defined.
+  (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
+  Definition TCP_Packet_Header_decoder
+    : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
+  Proof.
+    synthesize_aligned_decoder.
+    Grab Existential Variables.
+    eauto.
+    eauto.
+  Defined.
 
 Definition TCP_decoder_impl {sz} v :=
   Eval simpl in (projT1 TCP_Packet_Header_decoder sz v 0 ()).
@@ -241,6 +144,9 @@ Definition TCP_decoder_impl {sz} v :=
 End TCPPacketDecoder.
 
 Print TCP_decoder_impl.
+
+Local Transparent weqb.
+Local Transparent natToWord.
 
 Definition tcp_decode_input :=
   Vector.map

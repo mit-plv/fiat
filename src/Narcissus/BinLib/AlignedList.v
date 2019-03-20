@@ -19,7 +19,6 @@ Require Import
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
@@ -292,24 +291,32 @@ Section AlignedList.
   Lemma CorrectAlignedEncoderForFormatList {A}
         format_A
         encode_A
-    : (CorrectAlignedEncoder format_A encode_A)
-      -> CorrectAlignedEncoder (format_list format_A)
+        (encode_A_OK : CorrectAlignedEncoder format_A encode_A)
+        (encode_A_OK' :
+           forall (a : A) l (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
+            format_A a env ∋ tenv' ->
+            format_list format_A l (snd tenv') ∋ tenv'' ->
+            exists tenv3 tenv4 : _ * CacheFormat,
+              projT1 encode_A_OK a env = Some tenv3
+              /\ format_list format_A l (snd tenv3) ∋ tenv4)
+    : CorrectAlignedEncoder (format_list format_A)
                                (@AlignedEncodeList A encode_A).
   Proof.
     unfold CorrectAlignedEncoder; intros.
+    rename encode_A_OK into X.
     eexists ((fix AlignedEncodeList (As : list A) env :=
                match As with
                | nil => Some (mempty, env)
                | a :: As' => `(t1, env') <- projT1 X a env;
                              `(t2, env'') <- AlignedEncodeList As' env';
                              Some (mappend t1 t2, env'')
-               end)); split; [ | split ].
-    - induction s; intros; simpl; eauto.
+               end)); split; [ split | split ].
+    - revert env; induction s; intros; simpl; eauto.
       + injections; reflexivity.
       + destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
         destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
         unfold Bind2.
-        rewrite r, refineEquiv_bind_unit; eauto.
+        rewrite (proj1 (a0 _ _)), refineEquiv_bind_unit; eauto.
         destruct ((fix AlignedEncodeList (As : list A) (env : CacheFormat) {struct As} :
                           option (ByteString * CacheFormat) :=
                           match As with
@@ -321,6 +328,23 @@ Section AlignedList.
                           end)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
         rewrite IHs, refineEquiv_bind_unit; simpl; eauto.
         injections; reflexivity.
+    - revert env; induction s; intros; simpl; eauto; try discriminate.
+      destruct X as [encode_A' [? [? ?] ] ]; simpl in *.
+      destruct (encode_A' a env) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate;
+        unfold Bind2; intros ?; computes_to_inv.
+      + destruct (encode_A_OK' _ _ _ _ _ H0 H0') as [ [? ?] [ [? ?] [? ?] ] ].
+        rewrite H1 in Heqo; injections.
+        destruct ((fix AlignedEncodeList (As : list A) (env : CacheFormat) {struct As} :
+                     option (ByteString * CacheFormat) :=
+                     match As with
+                     | [] => Some (ByteString_id, env)
+                     | a :: As' =>
+                       `(t1, env') <- encode_A' a env;
+                       `(t2, env'') <- AlignedEncodeList As' env';
+                       Some (ByteString_enqueue_ByteString t1 t2, env'')
+                     end) s c) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+        eapply IHs; eauto.
+      + eapply a0; eauto.
     - induction s; intros; simpl; eauto.
       + injections; reflexivity.
       + destruct X as [encode_A' [? [? ?] ] ]; simpl in *.

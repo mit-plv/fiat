@@ -22,9 +22,17 @@ Ltac start_synthesizing_decoder :=
   (* pose_string_hyps; *)
   eapply Start_CorrectAlignedDecoderFor; simpl; intros.
 
+Ltac eapply_formatnchars_thm_simplified thm sz :=
+  let tm := constr:(fun cache cacheAddNat p1 p2 => thm cache cacheAddNat p1 p2 sz) in
+  let tm_t := type of tm in
+  let tm_t := (eval unfold GetCurrentBytes, SetCurrentBytes in tm_t) in
+  let tm_t := (eval simpl in tm_t) in
+  eapply (tm: tm_t).
+
 Ltac align_decoders_step :=
   first [
       eapply @AlignedDecodeNatM; intros
+    | eapply @AlignedDecodeByteBufferM; intros; eauto
     | eapply @AlignedDecodeBind2CharM; intros; eauto
     | eapply @AlignedDecodeBindCharM; intros; eauto
     | eapply @AlignedDecodeBind3CharM; intros; eauto
@@ -51,6 +59,12 @@ Ltac align_decoders_step :=
     | eapply @Return_DecodeMEquivAlignedDecodeM
     | eapply @AlignedDecode_Sumb
     | eapply AlignedDecode_ifopt; intros
+    | match goal with
+      |- DecodeMEquivAlignedDecodeM (fun b c => If_Opt_Then_Else _ _ _) _ =>
+      eapply DecodeMEquivAlignedDecodeM_trans;
+        [ eapply AlignedDecode_ifopt | intros; reflexivity | intros; higher_order_reflexivity ];
+        intros
+    end
     | let H := fresh in pose proof @AlignedDecode_if_Sumb_dep as H;
                         eapply H; clear H;
                         [ solve [eauto] | solve [eauto] | | ]
@@ -66,24 +80,44 @@ Ltac align_decoders_step :=
       decode_word_eq_decode_bool,
       decode_word_eq_decode_nat,
       decode_word_eq_decode_word
+    | eapply @AlignedDecodeBindDuplicate;
+      [ simpl; intros;
+        f_equiv; apply functional_extensionality; intros;
+        repeat (apply functional_extensionality; intros);
+        symmetry;
+        repeat match goal with
+                 |- (if ?b then ?tt else ?te) = ?t' (?f ?d) ?a ?v' ?cd =>
+                 etransitivity;
+                   [ eapply (FindFuncIf a v' cd b d f tt te);
+                     [ try higher_order_reflexivity | higher_order_reflexivity | higher_order_reflexivity]
+                   | higher_order_reflexivity ]
+               |  |- (`(a, t'', cd'') <- ?decode_A' ?v' ?cd'; @?t' a t'' cd'') = _ ?d' _ _ _ =>
+                  etransitivity;
+                    [eapply FindFuncBind with (decode_A := decode_A')
+                                              (v0 := v') (cd0 := cd')
+                                              (t := t')
+                                              (d := d'); intros
+                    | higher_order_reflexivity ]
+               end
+        | simpl; intros
+        | intros; eapply functional_extensionality_dep; intros; eauto
+        | intros; eapply functional_extensionality_dep; intros; eauto ]
     ].
 
 Ltac align_decoders := repeat align_decoders_step.
 
 Ltac synthesize_aligned_decoder :=
-  first [ start_synthesizing_decoder;
-          [ NormalizeFormats.normalize_format; repeat apply_rules
-          |
-          |
-          | ];
-          [ cbv beta; synthesize_cache_invariant
-          | cbv beta; unfold decode_nat, Sequence.sequence_Decode; optimize_decoder_impl
-          | cbv beta; align_decoders]
-        | start_synthesizing_decoder;
-          [ NormalizeFormats.normalize_format; repeat apply_rules
-          |
-          |
-          | ] ].
+  sequence_four_tactics
+    ltac:(start_synthesizing_decoder)
+           ltac:(NormalizeFormats.normalize_format; apply_rules)
+                  ltac:(cbv beta; synthesize_cache_invariant)
+                         ltac:(cbv beta; unfold decode_nat, sequence_Decode;
+                               optimize_decoder_impl)
+                                ltac:(cbv beta; align_decoders)
+    continue_on_fail_2
+    continue_on_fail_1
+    continue_on_fail
+.
 
 Lemma length_encode_word' sz :
   forall (w : word sz) (b : ByteString),
@@ -214,12 +248,63 @@ Proof.
   eauto using length_ByteString_word.
 Qed.
 
-Ltac calculate_length_ByteString' :=
-  repeat first [ apply_in_hyp @length_ByteString_map_word
+Lemma length_ByteString_Projection_compose {S S' S''}:
+    forall (format1 : FormatM S ByteString)
+           (f : S'' -> S')
+           (g : S' -> S)
+           (b : ByteString) s (ctx ctx' : CacheFormat)
+           (n : nat),
+      (Projection_Format (Projection_Format format1 g) f) s ctx ↝ (b, ctx') ->
+      (forall (ctx0 : CacheFormat) (b0 : ByteString) (ctx'0 : CacheFormat),
+          (Projection_Format format1 (Basics.compose g f)) s ctx0 ↝ (b0, ctx'0)
+          -> length_ByteString b0 = n) ->
+      length_ByteString b = n.
+  Proof.
+    intros.
+    eapply H0.
+    eapply EquivFormat_Projection_Format in H.
+    eapply EquivFormat_Projection_Format in H.
+    eapply EquivFormat_Projection_Format; eauto.
+  Qed.
+
+  Lemma encoder_empty_cache_OK {S1 S2}
+        (format_A : FormatM S1 ByteString)
+        (format_B : FormatM S2 ByteString)
+        (encode_B : forall sz, AlignedEncodeM sz)
+        (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+    : forall (s1 : S1) (s2 : S2) (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
+      format_B s2 env ∋ tenv' ->
+      format_A s1 (snd tenv') ∋ tenv'' ->
+      exists tenv3 tenv4 : _ * CacheFormat,
+        projT1 encoder_B_OK s2 env = Some tenv3
+        /\ format_A s1 (snd tenv3) ∋ tenv4.
+  Proof.
+    intros.
+    destruct tenv'; destruct tenv''; simpl in *.
+    match goal with
+      |- exists _ _, ?b = _ /\ _ =>  destruct b as [ [? ?] | ] eqn: ?
+    end.
+    - eexists _, _; simpl in *; split; intros; eauto.
+      simpl in *.
+      destruct c; destruct c1; eauto.
+    - eapply (proj1 (projT2 encoder_B_OK)) in Heqo.
+      eapply Heqo in H; intuition.
+  Qed.
+
+  Ltac calculate_length_ByteString' :=
+    repeat first [ apply_in_hyp @length_ByteString_map_word
+               | apply_in_hyp
                | apply_in_hyp @length_ByteString_map_bool
                | apply_in_hyp @length_ByteString_word
                | apply_in_hyp @length_ByteString_unused_word
                | apply_in_hyp @length_ByteString_bool
+               | eapply_in_hyp;
+                 [ | clear; intros | .. | clear; intros ]
+               | match goal with
+                 | H :_ ↝ _ |- _  =>
+                   eapply (length_ByteString_Projection_compose _ _ _ _ _ _ _ _ H);
+                   clear H; intros ? ? ? H
+                 end
                | eapply_in_hyp @length_ByteString_map_option;
                  [ | clear; intros | .. | clear; intros ]
                | apply_in_hyp @length_ByteString_map_nat
@@ -329,6 +414,26 @@ Proof.
   apply EquivFormat_Projection_Format in H0; eauto.
 Qed.
 
+Lemma refine_format_compose_map sz {S S' S''}
+      (format_S'' : FormatM S'' _)
+      (f : S -> S')
+      (g : S' -> S'')
+      (f' : S -> word sz)
+      (refine_proj : forall (s : S) (env : CacheFormat),
+          refine (FMapFormat.Projection_Format format_S'' (Basics.compose g f) s env)
+                 ((format_word ◦ f') s env))
+  : forall s ce,
+    refine (FMapFormat.Projection_Format (FMapFormat.Projection_Format format_S'' g) f s ce)
+           (FMapFormat.Projection_Format format_word f' s ce).
+Proof.
+  intros; rewrite <- refine_proj.
+  intros; unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format; intros ? ?.
+  rewrite unfold_computes in H; destruct_ex; intuition.
+  apply unfold_computes; eexists; split; eauto; subst.
+  apply unfold_computes.
+  eauto.
+Qed.
+
 Lemma refine_format_nat_map {S}
       {sz}
       (f : S -> nat)
@@ -339,6 +444,7 @@ Proof.
   intros; unfold FMapFormat.Projection_Format, FMapFormat.Compose_Format, format_nat; intros ? ?.
   rewrite unfold_computes in H; destruct_ex; intuition.
   apply unfold_computes; eexists; split; eauto; subst.
+  try rewrite <- plus_n_O with (n := f s).
   eauto.
 Qed.
 
@@ -410,7 +516,7 @@ Proof.
   eapply EquivFormat_Projection_Format; eauto.
 Qed.
 
-Ltac calculate_length_ByteString :=
+  Ltac calculate_length_ByteString :=
   intros;
   match goal with
   | H:_ ↝ _
@@ -423,6 +529,8 @@ Ltac calculate_length_ByteString :=
        | eapply (length_ByteString_compose _ _ _ _ _ _ _ H);
          try (simpl mempty; rewrite length_ByteString_ByteString_id)
        | eapply (length_ByteString_Projection _ _ _ _ _ _ _ H)
+       | eapply (length_ByteString_Projection_compose _ _ _ _ _ _ _ _ H);
+         clear H; intros ? ? ? H; calculate_length_ByteString
        | eapply (fun H' H'' => length_ByteString_format_option _ _ _ _ _ _ _ H' H'' H)
        | eapply (length_ByteString_unused_word _ _ _ _ _ H)
        | eapply (length_ByteString_bool _ _ _ _ H)
@@ -434,73 +542,183 @@ Ltac calculate_length_ByteString :=
     clear H
   end.
 
-Ltac collapse_unaligned_words :=
-  intros; eapply refine_CorrectAlignedEncoder;
-  [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
-   unfold format_nat;
-   repeat first [eapply refine_format_option_map; intros
-                | eapply refine_format_bool_map
-                | eauto using refine_format_bool, refine_format_unused_word_map,
-                  refine_format_bool_map, refine_format_unused_word,
-                  refine_format_option_map, refine_format_enum_map,
-                  refine_format_nat_map];
-   reflexivity
-  | ].
+  Lemma format_word_inhabited' {S} (P : Prop)
+        {sz : nat}
+        (f : S -> word sz)
+        s env
+    : (forall (v : ByteString * CacheFormat), (format_word ◦ f) s env ∌ v) ->
+      P.
+  Proof.
+    intros; elimtype False.
+    eapply H.
+    eapply refine_Projection_Format.
+    unfold format_word.
+    eauto.
+  Qed.
 
-Ltac start_synthesizing_encoder :=
-  lazymatch goal with
-  | |- CorrectAlignedEncoderFor ?Spec =>
-    try unfold Spec
-  end;
-  (* Memoize any string constants *)
-  (*pose_string_hyps; *)
-  eexists; simpl; intros.
+  Lemma format_word_inhabited {S}
+        {sz : nat}
+        (f : S -> word sz)
+        (format_S : FormatM S ByteString)
+        s env
+    : (forall (v : ByteString * CacheFormat), (format_word ◦ f) s env ∌ v) ->
+      forall v : ByteString * CacheFormat,
+        format_S s env ∌ v.
+  Proof.
+    intros; intro.
+    eapply H.
+    eapply refine_Projection_Format.
+    unfold format_word.
+    eauto.
+  Qed.
+
+  Ltac collapse_unaligned_words :=
+    intros;
+    eapply refine_CorrectAlignedEncoder;
+    [ split;
+      [repeat (eauto ; intros; eapply refine_CollapseFormatWord'; eauto);
+       unfold format_nat;
+       repeat first [ eapply refine_format_compose_map; intros
+                    | eapply refine_format_option_map; intros
+                    | eapply refine_format_bool_map
+                    | eauto using refine_format_bool, refine_format_unused_word_map,
+                      refine_format_bool_map, refine_format_unused_word,
+                      refine_format_option_map, refine_format_enum_map,
+                      refine_format_nat_map];
+       reflexivity
+      | eapply format_word_inhabited ]
+    | ].
+
+
+  Ltac start_synthesizing_encoder :=
+    lazymatch goal with
+    | |- CorrectAlignedEncoderFor ?Spec =>
+      try unfold Spec
+    end;
+    (* Memoize any string constants *)
+    (*pose_string_hyps; *)
+    eexists; simpl; intros.
 
 (* Redefine this tactic to implement new encoder rules *)
 Ltac new_encoder_rules := fail.
 
 Ltac align_encoder_step :=
   first
-    [
-     match goal with
-        |- CorrectAlignedEncoder (_ ++ _ ++ _)%format _ => associate_for_ByteAlignment
-      end
-    | match goal with
-        |- CorrectAlignedEncoder (Either _ Or _)%format _ =>
-        eapply CorrectAlignedEncoderEither_E
-      end
-    (* Here is the hook for new encoder rules: *)
-    | new_encoder_rules
-    | apply CorrectAlignedEncoderForFormatList; eauto
-    | apply CorrectAlignedEncoderForFormatVector
-    | apply CorrectAlignedEncoderForFormatChar; eauto
-    | apply CorrectAlignedEncoderForFormatNat
-    | apply CorrectAlignedEncoderForFormat2Nat; eauto
-    | apply CorrectAlignedEncoderForFormatEnum
-    | eapply CorrectAlignedEncoderForFormatByteBuffer; eauto
-    | eapply CorrectAlignedEncoderProjection
-    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2);
-      [ solve [ eauto ]
-      | solve [ eauto ] ]
-    | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 3);
-      [ solve [ eauto ]
-      | solve [ eauto ] ]
-    | eapply CorrectAlignedEncoderForFormatUnusedWord
-    | eapply CorrectAlignedEncoderForFormatOption
-    | intros; try collapse_unaligned_words;
-      eapply CorrectAlignedEncoderProjection;
-      solve [eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto]
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto
-    | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto
-    | match goal with
-        |- CorrectAlignedEncoder (_ ++ _)%format  _ =>
-        apply @CorrectAlignedEncoderForThenC;
-        [ | try collapse_unaligned_words ]
-      end
-    ].
+    [ match goal with
+    | |- CorrectAlignedEncoder (_ ++ _ ++ _) _ => associate_for_ByteAlignment
+    end
+  | match goal with
+    | |- CorrectAlignedEncoder (Either _ Or _) _ =>
+      eapply CorrectAlignedEncoderEither_E;
+      unshelve (instantiate (1 := _));
+      [ repeat align_encoder_step
+      | eexists; reflexivity ]
+    end
+  | new_encoder_rules
+  | eapply CorrectAlignedEncoderForFormatList; unshelve (instantiate (1 := _));
+    eauto using encoder_empty_cache_OK
+  | eapply CorrectAlignedEncoderForFormatVector; unshelve (instantiate (1 := _));
+    eauto using encoder_empty_cache_OK
+  | apply CorrectAlignedEncoderForFormatChar; eauto
+  | apply CorrectAlignedEncoderForFormatNat
+  | apply CorrectAlignedEncoderForFormat2Nat; eauto
+  | apply CorrectAlignedEncoderForFormatEnum
+  | eapply CorrectAlignedEncoderForFormatByteBuffer; eauto using encoder_empty_cache_OK
+  | eapply CorrectAlignedEncoderProjection
+  | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 2); [ solve [ eauto ] | solve [ eauto ] ]
+  | eapply (fun H H' => CorrectAlignedEncoderForFormatNEnum H H' 3); [ solve [ eauto ] | solve [ eauto ] ]
+  | eapply CorrectAlignedEncoderForFormatUnusedWord
+  | eapply CorrectAlignedEncoderForFormatOption
+  | intros; try collapse_unaligned_words; eapply CorrectAlignedEncoderProjection; (solve
+     [ eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto ])
+  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
+  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
+  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto
+  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto
+  | match goal with
+    | |- CorrectAlignedEncoder empty_Format _ =>
+      eapply CorrectAlignedEncoderForDoneC
+    end
+  | match goal with
+    | |- CorrectAlignedEncoder (_ ++ _) _ =>
+      eapply @CorrectAlignedEncoderForThenC; [  | unshelve (instantiate (1 := _));
+                                                  [try collapse_unaligned_words
+                                                  | try eauto using encoder_empty_cache_OK ] ]
+    end ].
+
+Ltac normalize_encoder_format :=
+  eapply CorrectAlignedEncoder_morphism;
+  [ repeat (normalize_step ByteStringQueueMonoid)
+  | intros; reflexivity
+  | idtac ].
 
 Ltac synthesize_aligned_encoder :=
   start_synthesizing_encoder;
+  normalize_encoder_format;
   repeat align_encoder_step.
+
+
+Global Opaque cache_inv_Property.
+Global Opaque CorrectDecoder.
+Global Arguments andb : simpl never.
+Global Arguments pow2 : simpl never.
+Arguments word_indexed : simpl never.
+Arguments weqb : simpl never.
+
+Ltac encoder_reflexivity :=
+  match goal with
+  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
+              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d ?e ?f), ?store' ?a ?b ?c ?d ?e ?f)) =>
+    let encoder'' := (eval pattern a, b, c, d, e, f in encoder) in
+    let encoder'' := (match encoder'' with ?encoder _ _ _ _ _ _ => encoder end) in
+    let store'' := (eval pattern a, b, c, d, e, f in store) in
+    let store'' := (match store'' with ?store _ _ _ _ _ _ => store end) in
+    unify encoder' encoder''; unify store' store'';
+    reflexivity
+  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
+              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d ?e), ?store' ?a ?b ?c ?d ?e)) =>
+    let encoder'' := (eval pattern a, b, c, d, e in encoder) in
+    let encoder'' := (match encoder'' with ?encoder _ _ _ _ _ => encoder end) in
+    let store'' := (eval pattern a, b, c, d, e in store) in
+    let store'' := (match store'' with ?store _ _ _ _ _ => store end) in
+    unify encoder' encoder''; unify store' store'';
+    reflexivity
+  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
+              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c ?d), ?store' ?a ?b ?c ?d)) =>
+    let encoder'' := (eval pattern a, b, c, d in encoder) in
+    let encoder'' := (match encoder'' with ?encoder _ _ _ _ => encoder end) in
+    let store'' := (eval pattern a, b, c, d in store) in
+    let store'' := (match store'' with ?store _ _ _ _ => store end) in
+    unify encoder' encoder''; unify store' store'';
+    reflexivity
+  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
+              (ret (build_aligned_ByteString (?encoder' ?a ?b ?c), ?store' ?a ?b ?c)) =>
+    let encoder'' := (eval pattern a, b, c in encoder) in
+    let encoder'' := (match encoder'' with ?encoder _ _ _ => encoder end) in
+    let store'' := (eval pattern a, b, c in store) in
+    let store'' := (match store'' with ?store _ _ _ => store end) in
+    unify encoder' encoder''; unify store' store'';
+    reflexivity
+  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
+              (ret (build_aligned_ByteString (?encoder' ?a ?b), ?store' ?a ?b)) =>
+    let encoder'' := (eval pattern a, b in encoder) in
+    let encoder'' := (match encoder'' with ?encoder _ _ => encoder end) in
+    let store'' := (eval pattern a, b in store) in
+    let store'' := (match store'' with ?store _ _ => store end) in
+    unify encoder' encoder''; unify store' store'';
+    reflexivity
+  | |- refine (ret (build_aligned_ByteString ?encoder, ?store))
+              (ret (build_aligned_ByteString (?encoder' ?p), ?store' ?p)) =>
+    let encoder'' := (eval pattern p in encoder) in
+    let encoder'' := (match encoder'' with ?encoder p => encoder end) in
+    let store'' := (eval pattern p in store) in
+    let store'' := (match store'' with ?store p => store end) in
+    unify encoder' encoder''; unify store' store'';
+    reflexivity
+  end.
+
+  Ltac rewrite_DecodeOpt2_fmap :=
+    set_refine_evar;
+    progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
+    ?DecodeOpt2_fmap_if_bool;
+    subst_refine_evar.

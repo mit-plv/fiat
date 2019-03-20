@@ -30,33 +30,6 @@ Section UnionFormat.
              (idx : S -> Fin.t m)
     : EncodeM S T := fun s => Vector.nth encoders (idx s) s.
 
-  Lemma CorrectDecoder_Union {m}
-        (formats : Vector.t (FormatM S T) m)
-        (decoders : Vector.t (DecodeM S T) m)
-        (correct_decoders :
-           Iterate_Ensemble_BoundedIndex'
-             (fun idx =>
-                CorrectDecoder_simpl (Vector.nth formats idx) (Vector.nth decoders idx)))
-        (idx : Fin.t m)
-        (unique_format :
-           forall s env t env',
-             (Union_Format formats s env ∋ (t, env') ->
-              Vector.nth formats idx s env ∋ (t, env')))
-    : CorrectDecoder_simpl (Union_Format formats) (Union_Decode decoders idx).
-  Proof.
-    unfold CorrectDecoder_simpl, Union_Decode, Union_Format in *; split; intros.
-    { eapply unique_format in H0.
-      eapply Iterate_Ensemble_equiv' in correct_decoders.
-      eapply correct_decoders in H0; eauto.
-    }
-    { eapply Iterate_Ensemble_equiv' in correct_decoders.
-      eapply correct_decoders in H0; eauto.
-      destruct_ex; intuition; eexists; split; eauto.
-      apply unfold_computes.
-      eexists; intuition eauto.
-    }
-  Qed.
-
   Lemma CorrectEncoder_Union {m}
         (formats : Vector.t (FormatM S T) m)
         (encoders : Vector.t (EncodeM S T) m)
