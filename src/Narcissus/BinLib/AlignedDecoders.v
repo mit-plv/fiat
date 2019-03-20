@@ -24,7 +24,6 @@ Require Import
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.EnumOpt
-        Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Narcissus.Formats.IPChecksum
@@ -389,7 +388,7 @@ Section AlignedDecoders.
           destruct_ex; intuition; subst.
           destruct encode_S_OK.
           destruct a.
-          destruct a0.          
+          destruct a0.
           unfold CorrectAlignedEncoderProjection; simpl in *.
           eexists _, _; split.
           unfold Basics.compose; eauto.
@@ -557,6 +556,25 @@ Section AlignedDecoders.
       omega.
   Qed.
 
+    Lemma Decode_w_Measure_le_eq'
+    : forall (A B : Type) (cache : Cache) (monoid : Monoid B)
+             (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (b : B) (cd : CacheDecode)
+             (A_decode_le : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+                 A_decode b0 cd0 = Some (a, b', cd') -> le_B b' b0)
+             (a' : A) (b' : B) (cd' : CacheDecode)
+             pf,
+      Decode_w_Measure_le A_decode b cd A_decode_le = Some (a', pf, cd')
+      -> A_decode b cd = Some (a', `pf , cd').
+  Proof.
+    unfold Decode_w_Measure_le; intros.
+    revert pf H.
+    generalize (A_decode_le b cd).
+    destruct (A_decode b cd) as [ [ [? ?] ?] | ]; simpl; intros;
+      try discriminate.
+    injections; reflexivity.
+  Qed.
+
   Lemma ByteAlign_Decode_w_Measure_le {A}
     : forall (dec_a : ByteString -> CacheDecode -> option (A * ByteString * CacheDecode))
              (n m : nat)
@@ -679,6 +697,25 @@ Section AlignedDecoders.
     | EmptyString => Vector.nil _
     | String a s' => Vector.cons _ (NToWord 8 (Ascii.N_of_ascii a)) _ (StringToBytes s')
     end.
+
+  Lemma Decode_w_Measure_lt_eq'
+    : forall (A B : Type) (cache : Cache) (monoid : Monoid B)
+             (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (b : B) (cd : CacheDecode)
+             (A_decode_lt : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+                 A_decode b0 cd0 = Some (a, b', cd') -> lt_B b' b0)
+             (a' : A) (b' : B) (cd' : CacheDecode)
+             pf,
+      Decode_w_Measure_lt A_decode b cd A_decode_lt = Some (a', pf, cd')
+      -> A_decode b cd = Some (a', `pf , cd').
+  Proof.
+    unfold Decode_w_Measure_lt; intros.
+    revert pf H.
+    generalize (A_decode_lt b cd).
+    destruct (A_decode b cd) as [ [ [? ?] ?] | ]; simpl; intros;
+      try discriminate.
+    injections; reflexivity.
+  Qed.
 
   Lemma ByteAlign_Decode_w_Measure_lt {A}
     : forall (dec_a : nat -> ByteString -> CacheDecode -> option (A * ByteString * CacheDecode))

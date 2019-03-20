@@ -114,7 +114,6 @@ src/Computation/SetoidMorphisms.v
 src/Computation/Refinements/General.v
 src/Computation/Refinements/Iterate_Decide_Comp.v
 src/Computation/Refinements/Tactics.v
-src/Examples/QueryStructure/BookstoreOcaml.v
 src/Narcissus/BaseFormats.v
 src/Narcissus/BinLib.v
 src/Narcissus/Formats.v
@@ -164,7 +163,6 @@ src/Narcissus/Formats/ASN1.v
 src/Narcissus/Formats/AsciiOpt.v
 src/Narcissus/Formats/Bool.v
 src/Narcissus/Formats/ByteBuffer.v
-src/Narcissus/Formats/DomainNameOpt.v
 src/Narcissus/Formats/Empty.v
 src/Narcissus/Formats/EnumOpt.v
 src/Narcissus/Formats/FixListOpt.v
@@ -188,7 +186,6 @@ src/Narcissus/Formats/Base/StrictTerminalFormat.v
 src/Narcissus/Formats/Base/UnionFormat.v
 src/Narcissus/OCamlExtraction/Extraction.v
 src/Narcissus/Stores/Cache.v
-src/Narcissus/Stores/DomainNameStore.v
 src/Narcissus/Stores/EmptyStore.v
 src/Common/Coq__8_4__8_5__Compat.v
 src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@
