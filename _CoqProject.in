@@ -114,6 +114,7 @@ src/Computation/SetoidMorphisms.v
 src/Computation/Refinements/General.v
 src/Computation/Refinements/Iterate_Decide_Comp.v
 src/Computation/Refinements/Tactics.v
+src/Examples/QueryStructure/BookstoreOcaml.v
 src/Narcissus/BaseFormats.v
 src/Narcissus/BinLib.v
 src/Narcissus/Formats.v
