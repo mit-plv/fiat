@@ -641,7 +641,656 @@ Hint Extern 4 (IPChecksum_Valid_check _ _ = _ ) =>
 rewrite aligned_IPChecksum_OK_1; higher_order_reflexivity.
 Hint Extern 4  => eapply aligned_IPChecksum_OK_2.
 
-(* We admit alignment rules for encoding IP checksums. *)
+Lemma Vector_append_destruct {A n1 n2}
+      (v : Vector.t A (n1+n2))
+  : exists v1 v2, v = v1 ++ v2.
+Proof.
+  eauto using Vector_split_append.
+Qed.
+
+Lemma Vector_append_destruct3 {A n1 n2 n3}
+      (v : Vector.t A (n1+(n2+n3)))
+  : exists v1 v2 v3, v = v1 ++ v2 ++ v3.
+Proof.
+  destruct (Vector_append_destruct v) as [v1 [v23 ?]].
+  destruct (Vector_append_destruct v23) as [v2 [v3 ?]].
+  exists v1, v2, v3. subst. reflexivity.
+Qed.
+
+Lemma AlignedEncoder_some_inv'
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall sz (t : Vector.t Core.char sz) n1 (s : S) v ni ce ce',
+    enc _ t n1 s ce = Some (v, ni, ce') ->
+    exists b ce', enc' s ce = Some (b, ce').
+Proof.
+  intros. destruct (enc' s ce) eqn:?; destruct_conjs; eauto.
+  eapply enc_OK in Heqo. rewrite Heqo in H. discriminate.
+Qed.
+
+Lemma AlignedEncoder_sz_destruct'
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall sz (t : Vector.t Core.char sz) n1 (s : S) v ni ce ce',
+    enc _ t n1 s ce = Some (v, ni, ce') ->
+    forall b ce', enc' s ce = Some (b, ce') ->
+    sz = n1 + (numBytes b + (sz-(n1+numBytes b))).
+Proof.
+  intros.
+  destruct (Nat.le_decidable (1 + sz) (numBytes b + n1)).
+  edestruct enc_OK as [_ [? _]]. erewrite H2 in H; eauto. discriminate.
+  rewrite length_ByteString_no_padding by eauto. omega. omega.
+Qed.
+
+Lemma AlignedEncoder_sz_destruct
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      n2
+      (enc'_sz_eq : forall s ce t ce',
+          enc' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall sz (t : Vector.t Core.char sz) n1 (s : S) v ni ce ce',
+    enc _ t n1 s ce = Some (v, ni, ce') ->
+    sz = n1 + ((ni-n1) + (sz-ni)) /\
+    n2 = ni - n1.
+Proof.
+  intros. edestruct @AlignedEncoder_some_inv' as [b [? ?]]; eauto.
+  assert (sz = n1 + (numBytes b + (sz-(n1+numBytes b)))) by eauto using AlignedEncoder_sz_destruct'.
+  revert dependent t. revert v. rewrite H1.
+  intros. destruct (Vector_append_destruct3 t) as [t1 [t2 [t3 ?]]]. subst.
+  edestruct enc_OK as [? _]. edestruct H2; eauto. clear H2. destruct_conjs.
+  rewrite H2 in H. injections.
+  split. omega.
+  erewrite enc'_sz_eq; eauto. omega.
+Qed.
+
+Lemma AlignedEncoder_some_inv
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall sz (t : Vector.t Core.char sz) n1 (s : S) v ni ce ce',
+    enc _ t n1 s ce = Some (v, ni, ce') ->
+    exists b , enc' s ce = Some (b, ce').
+Proof.
+  intros. edestruct @AlignedEncoder_some_inv' as [b [? ?]]; eauto.
+  assert (sz = n1 + (numBytes b + (sz-(n1+numBytes b)))) by eauto using AlignedEncoder_sz_destruct'.
+  revert dependent t. revert v. rewrite H1.
+  intros. destruct (Vector_append_destruct3 t) as [t1 [t2 [t3 ?]]]. subst.
+  edestruct enc_OK as [? _]. edestruct H2; eauto. clear H2. destruct_conjs.
+  rewrite H2 in H. injections.
+  rewrite H0. eexists. repeat f_equal.
+Qed.
+
+Lemma AlignedEncoder_inv
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      n1 n2 n3
+      (enc'_sz_eq : forall s ce t ce',
+          enc' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall idx (t1 : Vector.t Core.char n1) (t2 : Vector.t Core.char n2) (t3 : Vector.t Core.char n3)
+      (s : S) v ce ce',
+    enc _ (t1++t2++t3) n1 s ce = Some (v, idx, ce') ->
+    exists v2,
+      enc n2 t2 0 s ce = Some (v2, n2, ce') /\
+      v = t1 ++ v2 ++ t3 /\
+      idx = n1 + n2 /\
+      (forall b ce'', enc' s ce = Some (b, ce'') ->
+                 b = build_aligned_ByteString v2 /\ ce'' = ce').
+Proof.
+  intros. edestruct @AlignedEncoder_some_inv' as [b [? Heqo]]; eauto.
+  specialize (enc'_sz_eq _ _ _ _ Heqo). subst.
+  edestruct enc_OK as [? _].
+  edestruct H0; eauto. clear H0. destruct_conjs.
+  rewrite H0 in H. injections.
+  edestruct enc_OK with (idx:=0) as [? _].
+  edestruct H with (m:=0) (v0:=t2) (v1:=Vector.nil Core.char) (v2:=Vector.nil Core.char); eauto.
+  clear H. simpl in *. destruct_conjs.
+  revert H. rewrite Vector_append_nil_r'. generalize (plus_n_O (numBytes b)).
+  destruct e. simpl. intros.
+  eexists; intuition eauto.
+  apply build_aligned_ByteString_inj.
+  rewrite !build_aligned_ByteString_append.
+  rewrite <- H1. repeat f_equal.
+  rewrite <- H2.
+  rewrite !build_aligned_ByteString_nil.
+  eauto using mempty_left.
+  rewrite H3 in Heqo. injections.
+  rewrite <- H2.
+  rewrite !build_aligned_ByteString_nil.
+  eauto using mempty_left.
+  rewrite H3 in Heqo. injections. auto.
+Qed.
+
+Lemma AlignedEncoder_dist
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      n1 n2 n3
+      (enc'_sz_eq : forall s ce t ce',
+          enc' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall idx (t1 : Vector.t Core.char n1) (t2 : Vector.t Core.char n2) (t3 : Vector.t Core.char n3)
+      (s : S) v ce ce',
+    enc _ (t1++t2) n1 s ce = Some (v, idx, ce') ->
+    enc _ ((t1++t2)++t3) n1 s ce = Some (v++t3, idx, ce').
+Proof.
+  intros. edestruct @AlignedEncoder_some_inv' as [b [? Heqo]]; eauto.
+  assert (n2 = numBytes b + (n2-numBytes b)). {
+    eapply AlignedEncoder_sz_destruct' in H; eauto.
+    omega.
+  } revert dependent t2. revert dependent v. rewrite H0. intros.
+  rename t2 into t23. rename t3 into t4.
+  destruct (Vector_append_destruct t23) as [t2 [t3 ?]]. subst.
+  edestruct @AlignedEncoder_inv; try apply H; eauto. intuition eauto.
+  erewrite enc'_sz_eq; eauto. erewrite enc'_sz_eq; eauto. destruct_conjs.
+  subst.
+  match goal with
+  | |- enc (?n1 + (?n2 + ?n3) + ?n4) ((?t1 ++ ?t2 ++ ?t3) ++ ?t4) ?a ?b ?c =
+    Some ((?t1' ++ ?t2' ++ ?t3') ++ ?t4', ?d, ?e)=>
+    assert (enc (n1 + (n2 + (n3 + n4))) (t1 ++ t2 ++ (t3 ++ t4)) a b c =
+            Some ((t1' ++ t2' ++ (t3' ++ t4')), d, e))
+  end.
+  edestruct enc_OK as [? _]. edestruct H2; eauto. clear H2. destruct_conjs.
+  rewrite H2.
+  edestruct @AlignedEncoder_inv; try apply H2; eauto. intuition eauto.
+  erewrite enc'_sz_eq; eauto. erewrite enc'_sz_eq; eauto. destruct_conjs.
+  subst. rewrite H1 in H5. injections. eauto.
+  clear H1 H H4.
+  revert t1 t2 t3 t4 x0 H2. generalize (n2-numBytes b). generalize (numBytes b).
+  clear. intros. rename n into n2. rename n3 into n4. rename n0 into n3.
+
+  assert (n1 + (n2 + n3) + n4 = n1 + (n2 + (n3 + n4))) by omega.
+  assert (forall {A}
+            (t1 : Vector.t A n1) (t2 : Vector.t A n2) (t3 : Vector.t A n3) (t4 : Vector.t A n4),
+             t1 ++ t2 ++ t3 ++ t4 = eq_rect _ (Vector.t A) ((t1 ++ t2 ++ t3) ++ t4) _ H) as L. {
+    clear. intros.
+    assert (n2 + n3 + n4 = n2 + (n3 + n4)) by omega.
+    rewrite <- (Vector_append_assoc' _ _ _ _ H0). f_equal.
+    apply Vector_append_assoc.
+  }
+  revert H2. rewrite !L. clear. destruct H. simpl. eauto.
+Qed.
+
+Corollary AlignedEncoder_dist0
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      n2 n3
+      (enc'_sz_eq : forall s ce t ce',
+          enc' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall idx  (t2 : Vector.t Core.char n2) (t3 : Vector.t Core.char n3)
+      (s : S) v ce ce',
+    enc _ t2 0 s ce = Some (v, idx, ce') ->
+    enc _ (t2++t3) 0 s ce = Some (v++t3, idx, ce').
+Proof.
+  intros. eapply AlignedEncoder_dist with (t1:=[]); eauto.
+Qed.
+
+Corollary AlignedEncoder_invl
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      n1 n2 n23
+      (enc'_sz_eq : forall s ce t ce',
+          enc' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall idx (t1 : Vector.t Core.char n1) (t23 : Vector.t Core.char n23)
+      (s : S) v ce ce',
+    enc _ (t1++t23) n1 s ce = Some (v, idx, ce') ->
+    exists v2,
+      enc _ t23 0 s ce = Some (v2, n2, ce') /\
+      v = t1 ++ v2 /\
+      idx = n1 + n2.
+Proof.
+  intros.
+  assert (n23 = (idx - n1 + (n1 + n23 - idx)) /\ n2 = idx - n1). {
+    eapply AlignedEncoder_sz_destruct in H; eauto.
+    omega.
+  } destruct_conjs.
+  revert dependent t23. revert dependent v. rewrite H0. intros.
+  destruct (Vector_append_destruct t23) as [t2 [t3 ?]].
+  subst. edestruct @AlignedEncoder_inv; try apply H; eauto.
+  eexists. intuition eauto.
+  eapply AlignedEncoder_dist0; eauto.
+Qed.
+
+Corollary AlignedEncoder_invr
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      n2 n3
+      (enc'_sz_eq : forall s ce t ce',
+          enc' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall idx (t2 : Vector.t Core.char n2) (t3 : Vector.t Core.char n3)
+      (s : S) v ce ce',
+    enc _ (t2++t3) 0 s ce = Some (v, idx, ce') ->
+    exists v2,
+      enc _ t2 0 s ce = Some (v2, n2, ce') /\
+      v = v2 ++ t3 /\
+      idx = n2 /\
+      (forall b ce'', enc' s ce = Some (b, ce'') ->
+                 b = build_aligned_ByteString v2 /\
+                 ce'' = ce').
+Proof.
+  intros.
+  eapply AlignedEncoder_inv with (t1:=[]); eauto.
+Qed.
+
+Lemma AlignedEncoder_fixed
+      {S} {cache : Cache}
+      (enc' : EncodeM S ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc'_aligned : forall s ce t ce', enc' s ce = Some (t, ce') -> padding t = 0)
+      n1 n2
+      (enc'_sz_eq : forall s ce t ce',
+          enc' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall sz idx (t : Vector.t Core.char sz)
+      (s : S) v ce ce',
+    enc _ t n1 s ce = Some (v, idx, ce') ->
+    enc _ v n1 s ce = Some (v, idx, ce').
+Proof.
+  intros.
+  pose proof H. eapply AlignedEncoder_sz_destruct in H0; eauto. destruct_conjs.
+  revert dependent t. revert dependent v. rewrite H0. intros.
+  edestruct (Vector_append_destruct3 t) as [t1 [t2 [t3 ?]]].
+  subst. edestruct @AlignedEncoder_inv; try apply H; eauto. destruct_conjs.
+  edestruct @AlignedEncoder_some_inv' as [b [? Heqo]]; eauto.
+  match goal with
+  | |- ?x = _ => destruct x eqn:?
+  end. destruct_conjs.
+  subst. edestruct @AlignedEncoder_inv; try apply Heqo0; eauto. destruct_conjs.
+  subst. edestruct H4; eauto. edestruct H7; eauto. subst.
+  repeat f_equal; eauto. apply build_aligned_ByteString_inj. eauto.
+  specialize (enc'_sz_eq _ _ _ _ Heqo). subst. destruct enc'_sz_eq.
+  edestruct enc_OK as [? _]. edestruct H2; eauto. clear H2. destruct_conjs.
+  rewrite H2 in Heqo0. discriminate.
+Qed.
+
+Definition EncodeAt {S : Type} {cache : Cache}
+           {sz} (idx : nat) (enc : forall {n}, @AlignedEncodeM _ S n) : @AlignedEncodeM _ S sz :=
+  fun v idx' s c => Ifopt enc v idx s c as a Then Some ((fst (fst a)), idx', (snd a)) Else None.
+
+Lemma EncodeMEquivAlignedEncodeMDep
+      {S A}
+      (enc1' : EncodeM S ByteString)
+      (enc2' : A -> EncodeM S ByteString)
+      (f' : ByteString -> A)
+      (enc1 : forall sz, AlignedEncodeM sz)
+      (enc2 : A -> forall sz, AlignedEncodeM sz)
+      (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> A)
+      (l : nat)
+      (enc1_OK : EncodeMEquivAlignedEncodeM enc1' enc1)
+      (enc2_OK : forall a, EncodeMEquivAlignedEncodeM (enc2' a) (enc2 a))
+      (enc1'_aligned : forall s ce t ce', enc1' s ce = Some (t, ce') -> padding t = 0)
+      (enc2'_aligned : forall a s ce t ce', enc2' a s ce = Some (t, ce') -> padding t = 0)
+      (enc1_sz_eq : forall s ce t ce',
+          enc1' s ce = Some (t, ce') ->
+          numBytes t = l)
+      (enc2_sz_eq : forall a s ce t ce',
+          enc2' a s ce = Some (t, ce') -> numBytes t = l)
+      (f_OK : forall (b : ByteString)
+                idx (v1 : Vector.t Core.char idx)
+                m (v2 : Vector.t Core.char m)
+                (v : Vector.t Core.char (idx + ((numBytes b) + m))),
+          ByteString_enqueue_ByteString (build_aligned_ByteString v1)
+                                        (ByteString_enqueue_ByteString b (build_aligned_ByteString v2))
+          = build_aligned_ByteString v ->
+          f' b = f (numBytes b) v idx)
+  : EncodeMEquivAlignedEncodeM
+      (fun s ce =>
+         `(p, ce) <- enc1' s ce;
+           enc2' (f' p) s ce)
+      (fun sz => enc1 sz >>
+                   (fun v idx s => let a := f l v (idx-l) in
+                                EncodeAt (idx-l) (enc2 a) v idx s))%AlignedEncodeM.
+Proof.
+  repeat split; intros; simpl in *. {
+    destruct enc1' eqn:?; [| discriminate]; destruct_conjs; simpl in *.
+    specialize (enc1_sz_eq _ _ _ _ Heqe).
+    specialize (enc2_sz_eq _ _ _ _ _ H).
+    specialize (enc1'_aligned _ _ _ _ Heqe).
+    assert (numBytes b = numBytes t) as L1 by (subst; eauto).
+
+    edestruct enc1_OK as [? _]. specialize (H1 _ _ Heqe).
+    revert H1. rewrite L1. intros.
+    edestruct (H1 enc1'_aligned v1 v _ v2); eauto. clear H1. destruct_conjs.
+
+    assert (exists v, v1 ++ v ++ v2 = x) as L2. {
+      symmetry in H2. destruct (build_aligned_ByteString_split' _ _ _ H2).
+      symmetry in H3. destruct (build_aligned_ByteString_split _ _ _ H3).
+      replace (idx + (numBytes t + m) - idx - m) with (numBytes t) in * by omega.
+      eexists. apply build_aligned_ByteString_inj. rewrite !build_aligned_ByteString_append.
+      rewrite H2. rewrite H4. repeat f_equal.
+    } destruct L2 as [v' L2].
+
+    edestruct enc2_OK as [? _]. specialize (H3 _ _ H).
+    edestruct H3; eauto. clear H3. destruct_conjs.
+    rewrite L2 in H3.
+
+    eexists. split; eauto. unfold AppendAlignedEncodeM.
+    rewrite H1. simpl. unfold EncodeAt.
+    replace (idx + numBytes t - l) with idx by omega.
+    match goal with
+    | H : enc2 ?a _ _ _ _ _ = _ |- context[enc2 ?a' _ _ _ _ _] =>
+      replace a' with a
+    end.
+    rewrite H3. simpl. reflexivity.
+    destruct L1. rewrite <- enc1_sz_eq. eauto.
+  } {
+    destruct enc1' eqn:?; [| discriminate]; destruct_conjs; simpl in *.
+    edestruct enc1_OK as [_ [? _]]. eapply H1 in Heqe.
+    unfold AppendAlignedEncodeM. rewrite Heqe. reflexivity.
+    assert (numBytes b = numBytes t) as L1. {
+      erewrite enc1_sz_eq; eauto.
+      erewrite enc2_sz_eq; eauto.
+    }
+    rewrite length_ByteString_no_padding in *; eauto. omega.
+  } {
+    destruct enc1' eqn:?; [| discriminate]; destruct_conjs; simpl in *.
+    exfalso. eauto.
+  } {
+    destruct enc1' eqn:?; destruct_conjs; simpl in *; unfold AppendAlignedEncodeM. {
+      destruct (Nat.le_decidable (1 + numBytes') (numBytes b + idx)).
+      edestruct enc1_OK as [_ [? _]]. erewrite H1; eauto.
+      rewrite length_ByteString_no_padding by eauto. omega.
+      assert (exists m, numBytes' = idx + (numBytes b + m)). {
+        exists (numBytes' - (idx + numBytes b)). omega.
+      } destruct H1 as [m ?]. subst.
+      edestruct (enc1_OK env s idx) as [? _]; eauto.
+      edestruct H1; eauto. destruct_conjs.
+      match goal with
+      | H : enc1 _ ?v' _ _ _ = _ |- _ => replace v with v'
+      end. rewrite H2. simpl. unfold EncodeAt.
+      edestruct enc2_OK as [_ [_ [_ ?]]]. rewrite H4; eauto.
+      specialize (enc1_sz_eq _ _ _ _ Heqe).
+      replace (idx + numBytes b - l) with idx by omega.
+      rewrite <- enc1_sz_eq. erewrite <- f_OK; eauto.
+      repeat (rewrite Vector_split_append; f_equal).
+    } {
+      edestruct (enc1_OK env s idx) as [_ [_ [_ ?]]]; eauto. eapply H0 in Heqe; eauto.
+      rewrite Heqe. reflexivity.
+    }
+  }
+Qed.
+
+Lemma sequence_Encoding_padding_0
+      {cache : Cache} {S : Type}
+      enc1 enc2
+      (enc1_aligned : forall s ce t ce', enc1 s ce = Some (t, ce') -> padding t = 0)
+      (enc2_aligned : forall s ce t ce', enc2 s ce = Some (t, ce') -> padding t = 0)
+  : forall s ce b ce',
+    @sequence_Encode ByteString cache _ S enc1 enc2 s ce = Some (b, ce') -> padding b = 0.
+Proof.
+  unfold sequence_Encode. intros.
+  destruct enc1 eqn:?; destruct_conjs; [| discriminate]; simpl in *.
+  destruct enc2 eqn:?; destruct_conjs; [| discriminate]; simpl in *.
+  injections. apply enc1_aligned in Heqo. apply enc2_aligned in Heqo0.
+  rewrite ByteString_enqueue_ByteString_padding_eq. rewrite Heqo. rewrite Heqo0.
+  reflexivity.
+Qed.
+
+Lemma sequence_Encoding_size
+      {cache : Cache} {S : Type}
+      enc1 enc2 n1 n2
+      (enc1_sz : forall s ce t ce', enc1 s ce = Some (t, ce') -> length_ByteString t = n1)
+      (enc2_sz : forall s ce t ce', enc2 s ce = Some (t, ce') -> length_ByteString t = n2)
+  : forall s ce b ce',
+    @sequence_Encode ByteString cache _ S enc1 enc2 s ce = Some (b, ce') -> length_ByteString b = n1 + n2.
+Proof.
+  unfold sequence_Encode. intros.
+  destruct enc1 eqn:?; destruct_conjs; [| discriminate]; simpl in *.
+  destruct enc2 eqn:?; destruct_conjs; [| discriminate]; simpl in *.
+  injections. apply enc1_sz in Heqo. apply enc2_sz in Heqo0.
+  rewrite length_ByteString_enqueue_ByteString. omega.
+Qed.
+
+Lemma EncodeMEquivAlignedEncodeMForChecksum
+      {S A}
+      (enc1' enc2' enc3' : EncodeM S ByteString)
+      (encA' : A -> EncodeM S ByteString)
+      (f' : ByteString -> A)
+      (enc1 enc2 enc3 : forall sz, AlignedEncodeM sz)
+      (encA : A -> forall sz, AlignedEncodeM sz)
+      (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> A)
+      n1 n2 n3
+      (enc1_OK : EncodeMEquivAlignedEncodeM enc1' enc1)
+      (enc2_OK : EncodeMEquivAlignedEncodeM enc2' enc2)
+      (enc3_OK : EncodeMEquivAlignedEncodeM enc3' enc3)
+      (encA_OK : forall a, EncodeMEquivAlignedEncodeM (encA' a) (encA a))
+      (enc1'_aligned : forall s ce t ce', enc1' s ce = Some (t, ce') -> padding t = 0)
+      (enc2'_aligned : forall s ce t ce', enc2' s ce = Some (t, ce') -> padding t = 0)
+      (enc3'_aligned : forall s ce t ce', enc3' s ce = Some (t, ce') -> padding t = 0)
+      (encA'_aligned : forall a s ce t ce', encA' a s ce = Some (t, ce') -> padding t = 0)
+      (enc1_sz_eq : forall s ce t ce',
+          enc1' s ce = Some (t, ce') -> numBytes t = n1)
+      (enc2_sz_eq : forall s ce t ce',
+          enc2' s ce = Some (t, ce') -> numBytes t = n2)
+      (enc3_sz_eq : forall s ce t ce',
+          enc3' s ce = Some (t, ce') -> numBytes t = n3)
+      (encA_sz_eq : forall a s ce t ce',
+          encA' a s ce = Some (t, ce') -> numBytes t = n2)
+      (f_OK : forall (b : ByteString)
+                idx (v1 : Vector.t Core.char idx)
+                m (v2 : Vector.t Core.char m)
+                (v : Vector.t Core.char (idx + ((numBytes b) + m))),
+          ByteString_enqueue_ByteString (build_aligned_ByteString v1)
+                                        (ByteString_enqueue_ByteString b (build_aligned_ByteString v2))
+          = build_aligned_ByteString v ->
+          f' b = f (numBytes b) v idx)
+  : EncodeMEquivAlignedEncodeM
+      (fun s ce =>
+         `(p, ce) <- sequence_Encode enc1' (sequence_Encode enc2' enc3') s ce;
+           (fun a => (sequence_Encode enc1' (sequence_Encode (encA' a) enc3'))) (f' p) s ce)
+      (fun sz => (enc1 sz >> enc2 sz >> enc3 sz) >>
+                   (fun v idx s => let a := f (n1+n2+n3) v (idx-(n1+n2+n3)) in
+                                EncodeAt (idx-(n1+n2+n3))
+                                         ((fun a sz => enc1 sz >> encA a sz >> enc3 sz) a)
+                                         v idx s))%AlignedEncodeM.
+Proof.
+  apply EncodeMEquivAlignedEncodeMDep; eauto; intros;
+    repeat (apply Append_EncodeMEquivAlignedEncodeM; eauto).
+  - eapply sequence_Encoding_padding_0 in H; eauto. intros.
+    eapply sequence_Encoding_padding_0 in H0; eauto.
+  - eapply sequence_Encoding_padding_0 in H; eauto. intros.
+    eapply sequence_Encoding_padding_0 in H0; eauto.
+  - pose proof H. eapply sequence_Encoding_size in H0.
+    2 : {
+      intros. rewrite length_ByteString_no_padding; eauto.
+    }
+    2 : {
+      intros. eapply sequence_Encoding_size in H1; eauto.
+      intros. rewrite length_ByteString_no_padding; eauto.
+      intros. rewrite length_ByteString_no_padding; eauto.
+    }
+    rewrite length_ByteString_no_padding in H0; eauto. omega.
+    eapply sequence_Encoding_padding_0 in H; eauto. intros.
+    eapply sequence_Encoding_padding_0 in H1; eauto.
+  - pose proof H. eapply sequence_Encoding_size in H0.
+    2 : {
+      intros. rewrite length_ByteString_no_padding; eauto.
+    }
+    2 : {
+      intros. eapply sequence_Encoding_size in H1; eauto.
+      intros. rewrite length_ByteString_no_padding; eauto.
+      intros. rewrite length_ByteString_no_padding; eauto.
+    }
+    rewrite length_ByteString_no_padding in H0; eauto. omega.
+    eapply sequence_Encoding_padding_0 in H; eauto. intros.
+    eapply sequence_Encoding_padding_0 in H1; eauto.
+Qed.
+
+Lemma CorrectAlignedEncoderForChecksum
+      {S}
+      checksum_sz (checksum_valid : nat -> ByteString -> Prop)
+      (format_A format_B : FormatM S ByteString)
+      (encode_A : forall sz, AlignedEncodeM sz)
+      (encode_B : forall sz, AlignedEncodeM sz)
+      (encode_C' : forall sz, AlignedEncodeM sz)
+      (encode_C : word checksum_sz -> forall sz, AlignedEncodeM sz)
+      (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+      (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+      (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> word checksum_sz)
+      n1 n2 n3
+
+      (enc2' : EncodeM S ByteString)
+      (f' : ByteString -> word checksum_sz)
+      (enc2_OK : EncodeMEquivAlignedEncodeM enc2' encode_C')
+      (encA_OK : forall a, EncodeMEquivAlignedEncodeM
+                        ((fun a _ ce => Some (format_checksum _ _ _ _ a, ce)) a) (encode_C a))
+      (enc2'_aligned : forall s ce t ce', enc2' s ce = Some (t, ce') -> padding t = 0)
+      (format_B_sz_eq : forall s ce t ce',
+          format_B s ce ∋ (t, ce') -> numBytes t = n1)
+      (enc2_sz_eq : forall s ce t ce',
+          enc2' s ce = Some (t, ce') -> numBytes t = n2)
+      (format_A_sz_eq : forall s ce t ce',
+          format_A s ce ∋ (t, ce') -> numBytes t = n3)
+      (f_OK : forall (b : ByteString)
+                idx (v1 : Vector.t Core.char idx)
+                m (v2 : Vector.t Core.char m)
+                (v : Vector.t Core.char (idx + ((numBytes b) + m))),
+          ByteString_enqueue_ByteString (build_aligned_ByteString v1)
+                                        (ByteString_enqueue_ByteString b (build_aligned_ByteString v2))
+          = build_aligned_ByteString v ->
+          f' b = f (numBytes b) v idx)
+      (checksum_sz_OK : checksum_sz mod 8 = 0)
+      (checksum_sz_OK' : checksum_sz = 8 * n2)
+      (* TODO: no f': f' bs = f  |bs| (bs) 0 *)
+      (checksum_OK : forall s ce b' ce',
+          enc2' s ce = Some (b', ce') ->
+          forall b1 b3 ext,
+            let a := f' (mappend b1 (mappend b' b3)) in
+            let b2 := format_checksum _ _ _ checksum_sz a in
+            checksum_valid
+              (bin_measure (mappend b1 (mappend b2 b3)))
+              (mappend (mappend b1 (mappend b2 b3)) ext))
+      (checksum_OK' : forall s ce,
+          enc2' s ce = None ->
+          forall b1 b2 b3 ext,
+            ~checksum_valid
+              (bin_measure (mappend b1 (mappend b2 b3)))
+              (mappend (mappend b1 (mappend b2 b3)) ext))
+  : CorrectAlignedEncoder
+      (format_B ThenChecksum checksum_valid OfSize checksum_sz ThenCarryOn format_A)
+      (fun sz => encode_B sz >> encode_C' sz >> encode_A sz >>
+                       (fun v idx s => let a := f (n1+n2+n3) v (idx-(n1+n2+n3)) in
+                                    EncodeAt (idx-(n2+n3))
+                                             (fun sz => encode_C a sz)
+                                             v idx s))%AlignedEncodeM.
+Proof.
+  destruct encoder_A_OK as [enc3' [HA1 [HA2 HA3]]].
+  destruct encoder_B_OK as [enc1' [HB1 [HB2 HB3]]].
+  exists (fun s ce =>
+       `(p, ce) <- sequence_Encode enc1' (sequence_Encode enc2' enc3') s ce;
+       (fun a => (sequence_Encode enc1' (sequence_Encode
+                                        ((fun a _ ce => Some (format_checksum _ _ _ _ a, ce)) a)
+                                        enc3'))) (f' p) s ce).
+  split; [| split]; intros.
+  - unfold composeChecksum, sequence_Encode. split; intros; simpl in *.
+    + intros [? ?]. intros.
+      computes_to_inv. injections.
+      destruct enc1' eqn:Henc1; [| discriminate]; destruct_conjs; simpl in *.
+      destruct enc2' eqn:Henc2; [| discriminate]; destruct_conjs; simpl in *.
+      destruct enc3' eqn:Henc3; [| discriminate]; destruct_conjs; simpl in *.
+      destruct env, c, c1. rewrite Henc1 in H. simpl in *.
+      destruct c0. rewrite Henc3 in H. simpl in *. injections.
+      repeat computes_to_econstructor; eauto.
+      edestruct HB1. apply H in Henc1. apply Henc1.
+      repeat computes_to_econstructor; eauto. simpl.
+      edestruct HA1. apply H in Henc3. apply Henc3.
+      repeat computes_to_econstructor; eauto.
+      simpl. apply eq_ret_compute. repeat f_equal.
+    + intro. unfold Bind2 in H0.
+      computes_to_inv. destruct_conjs. injections. simpl in *.
+      destruct env, u0. destruct enc1' eqn:Henc1; destruct_conjs; simpl in *.
+      destruct c. destruct enc2' eqn:Henc2; destruct_conjs; simpl in *.
+      destruct c. destruct enc3' eqn:Henc3; destruct_conjs; simpl in *.
+      destruct c. rewrite Henc1 in H. simpl in *.
+      rewrite Henc3 in H. simpl in *. discriminate.
+      edestruct HA1. intuition eauto. intuition eauto.
+      edestruct HB1. intuition eauto.
+  - destruct sequence_Encode; [| discriminate]; destruct_conjs; simpl in *.
+    eapply sequence_Encoding_padding_0; try apply H; eauto.
+    intros.
+    eapply sequence_Encoding_padding_0; try apply H0; eauto.
+    intros. simpl in *. injections.
+    unfold format_checksum. rewrite encode_word'_padding. eauto.
+  - eapply EncodeMEquivAlignedEncodeM_morphism; cycle 1.
+    apply EncodeMEquivAlignedEncodeMForChecksum
+      with (encA' := (fun a _ ce => Some (format_checksum _ _ _ _ a, ce))); eauto.
+    + intros. injections.
+      unfold format_checksum. rewrite encode_word'_padding. eauto.
+    + intros. eapply format_B_sz_eq. eapply HB1; eauto.
+    + intros. eapply format_A_sz_eq. eapply HA1; eauto.
+    + intros. injections. unfold format_checksum.
+      match goal with
+      | |- ?a = ?b => assert (8*a = 8*b)
+      end.
+      rewrite <- length_ByteString_no_padding.
+      rewrite length_encode_word'. rewrite measure_mempty. omega.
+      rewrite encode_word'_padding. eauto. omega.
+    + intros. simpl. unfold AppendAlignedEncodeM.
+      destruct encode_B eqn:?; destruct_conjs; simpl in *; eauto.
+      destruct encode_C' eqn:?; destruct_conjs; simpl in *; eauto.
+      destruct encode_A eqn:?; destruct_conjs; simpl in *; eauto.
+      unfold EncodeAt.
+      destruct (encode_B sz t1 _ _ _) eqn:?; destruct_conjs; simpl in *; eauto.
+      assert (t1 = t2). {
+        destruct (enc1' w c2) eqn:?; destruct_conjs; simpl in *; eauto.
+        2 : {
+          edestruct HB3 as [_ [_ [_ ?]]]. eapply H in Heqo0. rewrite Heqo in Heqo0.
+          easy.
+        }
+        assert (exists m, sz = (n4-(n1+n2+n3)) + (n1 + m)). {
+          exists (sz + n2 + n3 - n4).
+          assert (n1+n2+n3 <= n4)%nat. {
+            admit.
+          }
+          assert (n4 <= sz)%nat. {
+            admit.
+          }
+          omega.
+        } destruct H as [m ?].
+
+        assert (numBytes b = n1) as L1. {
+          eapply format_B_sz_eq. eapply HB1; eauto.
+        }
+        subst.
+
+        edestruct HB3 as [? _]. edestruct H; eauto. clear H. destruct_conjs.
+        match goal with
+        | H1 : encode_B _ ?a _ _ _ = _,
+               H2 : encode_B _ ?a' _ _ _ = _ |- _ => assert (a' = a) as Lv
+        end.
+        repeat (rewrite Vector_split_append; f_equal).
+        rewrite <- Lv in Heqo. rewrite Heqo in H.
+        injections.
+        apply build_aligned_ByteString_inj.
+        rewrite <- Lv. rewrite <- H0.
+        rewrite !build_aligned_ByteString_append.
+        repeat f_equal. rewrite <- Lv.
+        rewrite Vector_append_split_snd.
+        rewrite Vector_append_split_fst.
+      }
+
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
       (srcAddr : Vector.t (word 8) 4)
