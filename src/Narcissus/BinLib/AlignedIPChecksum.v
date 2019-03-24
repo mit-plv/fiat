@@ -1203,6 +1203,10 @@ Proof.
   substss. injections. eauto.
 Qed.
 
+Definition f_bit_aligned_free {A} (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> A)
+  : ByteString -> A :=
+  fun bs => f (numBytes bs) (byteString bs) 0.
+
 Lemma CorrectAlignedEncoderForChecksum
       {S}
       checksum_sz (checksum_valid : nat -> ByteString -> Prop)
@@ -1213,8 +1217,10 @@ Lemma CorrectAlignedEncoderForChecksum
       (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
       (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
       (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> word checksum_sz)
+      (f_OK : forall idx n m (t : Vector.t Core.char n)
+                (v1 : Vector.t Core.char idx) (v2 : Vector.t Core.char m),
+         f n t 0 = f n (v1 ++ t ++ v2) idx)
       (enc2' : EncodeM S ByteString)
-      (f' : ByteString -> word checksum_sz)
       (enc2_OK : EncodeMEquivAlignedEncodeM enc2' encode_C')
       (encode_C_OK : forall a, EncodeMEquivAlignedEncodeM
                             ((fun a _ ce => Some (format_checksum _ _ _ _ a, ce)) a) (encode_C a))
@@ -1222,22 +1228,13 @@ Lemma CorrectAlignedEncoderForChecksum
       n1
       (format_B_sz_eq : forall s ce t ce',
           format_B s ce ∋ (t, ce') -> numBytes t = n1)
-      (f_OK : forall (b : ByteString)
-                idx (v1 : Vector.t Core.char idx)
-                m (v2 : Vector.t Core.char m)
-                (v : Vector.t Core.char (idx + ((numBytes b) + m))),
-          ByteString_enqueue_ByteString (build_aligned_ByteString v1)
-                                        (ByteString_enqueue_ByteString b (build_aligned_ByteString v2))
-          = build_aligned_ByteString v ->
-          f' b = f (numBytes b) v idx)
       (checksum_sz_OK : checksum_sz mod 8 = 0)
       (checksum_sz_OK' : forall s ce t ce', enc2' s ce = Some (t, ce') ->
                                        checksum_sz = bin_measure t)
-      (* TODO: no f': f' bs = f  |bs| (bs) 0 *)
       (checksum_OK : forall s ce b' ce',
           enc2' s ce = Some (b', ce') ->
           forall b1 b3 ext,
-            let a := f' (mappend b1 (mappend b' b3)) in
+            let a := (f_bit_aligned_free f) (mappend b1 (mappend b' b3)) in
             let b2 := format_checksum _ _ _ checksum_sz a in
             checksum_valid
               (bin_measure (mappend b1 (mappend b2 b3)))
@@ -1260,7 +1257,7 @@ Proof.
        `(p, _) <- sequence_Encode enc1' (sequence_Encode enc2' enc3') s ce;
        (fun a => (sequence_Encode enc1' (sequence_Encode
                                         ((fun a _ ce => Some (format_checksum _ _ _ _ a, ce)) a)
-                                        enc3'))) (f' p) s ce).
+                                        enc3'))) ((f_bit_aligned_free f) p) s ce).
   split; [| split]; intros.
   - unfold composeChecksum, sequence_Encode. split; intros; simpl in *.
     + intros [? ?]. intros.
@@ -1298,6 +1295,26 @@ Proof.
     + intros. injections. unfold format_checksum.
       rewrite length_encode_word'. rewrite measure_mempty.
       apply checksum_sz_OK' in H. omega.
+    + unfold f_bit_aligned_free. instantiate (1:=f). intros.
+      assert (padding b = 0) as L1. {
+        apply (f_equal padding) in H. simpl in H.
+        rewrite padding_ByteString_enqueue_aligned_ByteString in H; eauto.
+        rewrite ByteString_enqueue_ByteString_padding_eq in H. simpl padding in H.
+        rewrite (Nat.mod_add _ 0 8) in H; eauto.
+        rewrite Nat.mod_small in H; eauto.
+        destruct b. simpl in *. auto.
+      }
+      assert (b = build_aligned_ByteString (byteString b)) as L2. {
+        revert L1. clear. intros.
+        destruct b. simpl. unfold build_aligned_ByteString. simpl in *.
+        subst. f_equal. eauto using shatter_word_0.
+        apply Core.le_uniqueness_proof.
+      }
+      revert L2 H. revert v.
+      generalize (byteString b). generalize (numBytes b). intros. rewrite L2 in H.
+      rewrite <- !build_aligned_ByteString_append in H.
+      apply build_aligned_ByteString_inj in H. subst.
+      eauto.
     + intros. unfold EncodeAgain.
       set (fun sz => encode_C' sz >> encode_A sz)%AlignedEncodeM as enc'.
       set (fun sz => encode_B sz >> enc' sz)%AlignedEncodeM as enc.
@@ -1380,6 +1397,70 @@ Proof.
       } rewrite H11. simpl. reflexivity.
       Grab Existential Variables.
       eauto.
+Qed.
+
+Definition encode_word_16_const
+           {S : Type}
+  : word (2*8) -> forall sz, AlignedEncodeM (S:=S) sz :=
+  fun w sz v idx _ ce => SetCurrentBytes v idx w ce.
+
+Definition encode_word_16_0 {S : Type} := @encode_word_16_const S (wzero 16).
+
+Lemma AlignedEncoder_const
+      {S A} {cache : Cache}
+      (enc' : EncodeM A ByteString)
+      (enc : forall sz, AlignedEncodeM sz)
+      (enc_OK : EncodeMEquivAlignedEncodeM enc' enc)
+  : forall a, EncodeMEquivAlignedEncodeM (S:=S)
+           (fun _ ce => enc' a ce)
+           (fun sz v n _ ce => enc sz v n a ce).
+Proof.
+  intros.
+  Admitted.
+
+Lemma CorrectAlignedEncoderForChecksum'
+      {S}
+      (checksum_valid : nat -> ByteString -> Prop)
+      (format_A format_B : FormatM S ByteString)
+      (encode_A encode_B : forall sz, AlignedEncodeM sz)
+      (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
+      (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+      (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> word 16)
+      (f_OK : forall idx n m (t : Vector.t Core.char n)
+                (v1 : Vector.t Core.char idx) (v2 : Vector.t Core.char m),
+         f n t 0 = f n (v1 ++ t ++ v2) idx)
+      n1
+      (format_B_sz_eq : forall s ce t ce',
+          format_B s ce ∋ (t, ce') -> numBytes t = n1)
+      (checksum_OK :
+         forall b1 b3 ext,
+           let a := (f_bit_aligned_free f)
+                      (mappend b1 (mappend (format_checksum _ _ _ _ (wzero 16)) b3)) in
+           let b2 := format_checksum _ _ _ 16 a in
+           checksum_valid
+             (bin_measure (mappend b1 (mappend b2 b3)))
+             (mappend (mappend b1 (mappend b2 b3)) ext))
+  : CorrectAlignedEncoder
+      (format_B ThenChecksum checksum_valid OfSize 16 ThenCarryOn format_A)
+      (fun sz => EncodeAgain (encode_B sz >> encode_word_16_0 sz >> encode_A sz)
+                          (fun idx' v idx s =>
+                             encode_word_16_const (f (idx'-idx) v idx) sz v (idx+n1) s))%AlignedEncodeM.
+Proof.
+  destruct CorrectAlignedEncoderForFormatNChar
+    with (sz:=2) as [enc' [Hc1 [Hc2 Hc3]]]; eauto.
+  eapply CorrectAlignedEncoderForChecksum; intros; eauto. {
+    eapply AlignedEncoder_const in Hc3. apply Hc3.
+  } {
+    admit.
+  } {
+    admit.
+  } {
+    admit.
+  } {
+    admit.
+  } {
+    admit.
+  }
 Qed.
 
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
