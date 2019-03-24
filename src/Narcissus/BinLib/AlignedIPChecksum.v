@@ -1348,24 +1348,42 @@ Proof.
       match goal with
       | H : encode_C ?a _ _ _ _ _ = _ |- _ =>
         edestruct @AlignedEncoder_inv with (enc:=(encode_C a))
+          as [nC' [n3' [t1C [tC' [tC3 [vC' ?]]]]]]
       end; eauto.
       intros. simpl in *. injections.
       unfold format_checksum. rewrite encode_word'_padding. eauto.
+      destruct_conjs.
 
-      (*   as [nC [n3 [t1 [t23 [v23 ?]]]]]; try apply Heqa. *)
-      (* apply Append_EncodeMEquivAlignedEncodeM. 2 : eauto. eauto. *)
-      (* apply Append_EncodeMEquivAlignedEncodeM. 2 : eauto. eauto. eauto. *)
-      (* solve_seq_padding. *)
-      (* destruct_conjs. subst. simpl in *. *)
+      assert (nC = nC'). {
+        injections.
+        assert (checksum_sz = 8 * nC').
+        eapply (f_equal bin_measure) in H12. simpl in *.
+        unfold format_checksum in H12.
+        rewrite length_encode_word' in H12. rewrite measure_mempty in H12.
+        unfold length_ByteString in H12. simpl in H12. omega.
+        assert (checksum_sz = 8 * nC).
+        epose proof AlignedEncoder_inv0 as L. eapply L in H4; eauto. clear L.
+        apply checksum_sz_OK' in H4.
+        unfold length_ByteString in H4. simpl in H4. omega.
+        omega.
+      } subst nC'.
 
-      (* assert (encode_A (idx + (nB + (nC + nC3))) (t1 ++ vB ++ vC3) idx w c = *)
-      (*         Some (t1 ++ vB ++ vC3, idx+nB, ce)). { *)
-      (*   assert (idx + nB + (nC + nC3) = idx + (nB + (nC + nC3))) as L by omega. *)
-      (*   rewrite Vector_append_assoc with (H:=L). destruct L. simpl. *)
-      (*   epose proof AlignedEncoder_extr as H'. eapply H'; eauto. clear H'. *)
-      (*   eapply @AlignedEncoder_fixed; eauto. *)
-      (*   eapply AlignedEncoder_extl; eauto. *)
-      (* } rewrite H. simpl. *)
+      assert (n3' = nA + nA3) as L by omega. subst n3'.
+      assert (encode_A (idx + (nB + (nC + (nA + nA3)))) t n w c =
+              Some (t, n+nA, c)). {
+        rewrite (Vector_append_assoc _ _ _ H3) in H8.
+        clear Heqa0. destruct H3. simpl in *.
+        subst. apply Vector_append_inj in H8. destruct_conjs.
+        apply Vector_append_inj in H7. destruct_conjs. subst.
+        assert (idx + nB + nC + (nA + nA3) = idx + nB + (nC + (nA + nA3))) as L by omega.
+        rewrite (Vector_append_assoc _ _ _ L). destruct L. simpl.
+        epose proof AlignedEncoder_extl as L. eapply L; eauto. clear L.
+        destruct_unit.
+        eapply @AlignedEncoder_fixed; eauto.
+      } rewrite H11. simpl. reflexivity.
+      Grab Existential Variables.
+      eauto.
+Qed.
 
 Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
