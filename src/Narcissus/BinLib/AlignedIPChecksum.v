@@ -1471,6 +1471,15 @@ Proof.
   eauto using format_word_is_encode_word.
 Qed.
 
+Definition AlignedEncoderForChecksum
+      {S}
+      (encode_B encode_A : forall sz, AlignedEncodeM sz)
+      (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> word 16)
+      n1
+  := (fun sz => EncodeAgain (encode_B sz >> encode_word_16_0 sz >> encode_A sz)
+                         (fun idx' v idx (s : S) =>
+                            encode_word_16_const (f (idx'-idx) v idx) sz v (idx+n1/8) s))%AlignedEncodeM.
+
 Local Opaque encode_word'.
 Lemma CorrectAlignedEncoderForChecksum'
       {S}
@@ -1498,10 +1507,9 @@ Lemma CorrectAlignedEncoderForChecksum'
              (mappend (mappend b1 (mappend b2 b3)) ext))
   : CorrectAlignedEncoder
       (format_B ThenChecksum checksum_valid OfSize 16 ThenCarryOn format_A)
-      (fun sz => EncodeAgain (encode_B sz >> encode_word_16_0 sz >> encode_A sz)
-                          (fun idx' v idx s =>
-                             encode_word_16_const (f (idx'-idx) v idx) sz v (idx+n1/8) s))%AlignedEncodeM.
+      (AlignedEncoderForChecksum encode_B encode_A f n1).
 Proof.
+  unfold AlignedEncoderForChecksum.
   eapply CorrectAlignedEncoderForChecksum; intros;
     eauto using (EncodeMEquivAlignedEncodeM_word_const (n:=2));
     simpl in H; match goal with
@@ -1668,7 +1676,7 @@ Definition calculate_aligned_IPchecksum
          (v : t Core.char sz) (idx : nat)
   := wnot (calculate_aligned_IPchecksum' m v idx).
 
-Lemma CorrectAlignedEncoderForIPChecksumThenC'
+Lemma CorrectAlignedEncoderForIPChecksumThenC
       {S}
       (format_A format_B : FormatM S ByteString)
       (encode_A : forall sz, AlignedEncodeM sz)
@@ -1682,13 +1690,14 @@ Lemma CorrectAlignedEncoderForIPChecksumThenC'
           format_B s env ∋ (b, env') -> bin_measure b mod 16 = 0)
       (format_A_sz_OK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
           format_A s env ∋ (b, env') -> bin_measure b mod 16 = 0)
-  : CorrectAlignedEncoderFor
-      (format_B ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_A).
+  : CorrectAlignedEncoder
+      (format_B ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_A)
+      (AlignedEncoderForChecksum encode_B encode_A calculate_aligned_IPchecksum n1).
 Proof.
   edestruct encoder_B_OK as [? [_ [HB _]]].
   edestruct encoder_A_OK as [? [_ [HA _]]].
-  eexists. apply CorrectAlignedEncoderForChecksum' with (f:=calculate_aligned_IPchecksum);
-             unfold calculate_aligned_IPchecksum; eauto; intros.
+  eapply CorrectAlignedEncoderForChecksum';
+    unfold calculate_aligned_IPchecksum; eauto; intros.
   - rewrite calculate_aligned_IPchecksum_front.
     rewrite calculate_aligned_IPchecksum_tail. reflexivity.
   - unfold f_bit_aligned_free, IPChecksum_Valid, onesComplement. simpl in *.
@@ -1746,7 +1755,7 @@ Proof.
                    unfold format_checksum; rewrite encode_word'_padding
                  | _ => eauto using CorrectAlignedEncoder_padding
                  end.
-Qed.
+Defined.
 
 
 Definition calculate_aligned_Pseudochecksum'
@@ -1844,7 +1853,7 @@ Definition calculate_aligned_Pseudochecksum
            {sz} (v : ByteBuffer.t sz) (idx : nat) :=
   wnot (calculate_aligned_Pseudochecksum' srcAddr destAddr udpLength protoCode m v idx).
 
-Lemma CorrectAlignedEncoderForPseudoChecksumThenC'
+Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       {S}
       (srcAddr : Vector.t (word 8) 4)
       (destAddr : Vector.t (word 8) 4)
@@ -1862,14 +1871,17 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC'
           format_B s env ∋ (b, env') -> bin_measure b mod 16 = 0)
       (format_A_sz_OK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
           format_A s env ∋ (b, env') -> bin_measure b mod 16 = 0)
-  : CorrectAlignedEncoderFor
-      (format_B ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_A).
+  : CorrectAlignedEncoder
+      (format_B ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16
+                ThenCarryOn format_A)
+      (AlignedEncoderForChecksum encode_B encode_A
+                                 (calculate_aligned_Pseudochecksum srcAddr destAddr udpLength protoCode)
+                                 n1).
 Proof.
   edestruct encoder_B_OK as [? [_ [HB _]]].
   edestruct encoder_A_OK as [? [_ [HA _]]].
-  eexists. apply CorrectAlignedEncoderForChecksum'
-             with (f:=calculate_aligned_Pseudochecksum srcAddr destAddr udpLength protoCode);
-             unfold calculate_aligned_Pseudochecksum; eauto with nocore; intros.
+  apply CorrectAlignedEncoderForChecksum';
+    unfold calculate_aligned_Pseudochecksum; eauto with nocore; intros.
   - rewrite calculate_aligned_Pseudochecksum_front.
     rewrite calculate_aligned_Pseudochecksum_tail. reflexivity.
   - unfold f_bit_aligned_free, Pseudo_Checksum_Valid, onesComplement.
@@ -1958,44 +1970,3 @@ Proof.
                  | _ => eauto using CorrectAlignedEncoder_padding
                  end.
 Qed.
-
-Lemma CorrectAlignedEncoderForPseudoChecksumThenC
-      {S}
-      (srcAddr : Vector.t (word 8) 4)
-      (destAddr : Vector.t (word 8) 4)
-      (udpLength : word 16)
-      (protoCode : word 8)
-      (idx : nat)
-      (format_A format_B : FormatM S ByteString)
-      (encode_A : forall sz, AlignedEncodeM sz)
-      (encode_B : forall sz, AlignedEncodeM sz)
-      (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
-      (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
-      (idxOK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
-          format_B s env ∋ (b, env') -> length_ByteString b = idx)
-  : CorrectAlignedEncoder
-      (format_B ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16 ThenCarryOn format_A)
-      (fun sz => encode_B sz >>
-                          (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
-                          (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
-                          encode_A sz >>
-                          calculate_PseudoChecksum srcAddr destAddr (wordToNat udpLength) udpLength protoCode (NPeano.div idx 8))% AlignedEncodeM.
-Proof.
-Admitted.
-
-Lemma CorrectAlignedEncoderForIPChecksumThenC
-      {S}
-      (format_A format_B : FormatM S ByteString)
-      (encode_A : forall sz, AlignedEncodeM sz)
-      (encode_B : forall sz, AlignedEncodeM sz)
-      (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
-      (encoder_A_OK : CorrectAlignedEncoder format_A encode_A)
-  : CorrectAlignedEncoder
-      (format_B ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_A)
-      (fun sz => encode_B sz >>
-                          (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
-                          (fun v idx s => SetCurrentByte v idx (wzero 8)) >>
-                          encode_A sz >>
-                          calculate_IPChecksum)% AlignedEncodeM.
-Proof.
-Admitted.
