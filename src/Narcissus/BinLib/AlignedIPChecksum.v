@@ -1589,11 +1589,9 @@ Qed.
 Lemma checksum_app_0
   : forall l, checksum (wzero 8 :: wzero 8 :: l)%list = checksum l.
 Proof.
-  intros. simpl. unfold add_bytes_into_checksum, add_w16_into_checksum.
-  replace (wzero 8 +^+ wzero 8) with (wzero 16) by reflexivity.
-  rewrite OneC_plus_comm.
-  unfold OneC_plus.
-  reflexivity.
+  intros. replace (wzero 8 :: (wzero 8 :: l))%list with ([wzero 8; wzero 8] ++ l)%list by reflexivity.
+  rewrite checksum_split; simpl; eauto.
+  exists 1. reflexivity.
 Qed.
 
 Lemma ByteString2ListOfChar_format_checksum
@@ -1685,7 +1683,7 @@ Lemma CorrectAlignedEncoderForIPChecksumThenC
       (len_format_A : S -> nat)
       (format_A_sz_OK' : forall (s : S) (b : ByteString) (env env' : CacheFormat),
           format_A s env ∋ (b, env') -> bin_measure b = len_format_A s)
-      (format_A_sz_OK : forall (s : S), len_format_A s mod 16 = 0)
+      (format_A_sz_OK : forall (s : S), len_format_A s mod 8 = 0)
   : CorrectAlignedEncoder
       (format_B ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_A)
       (AlignedEncoderForChecksum n1 encode_B encode_A calculate_aligned_IPchecksum).
@@ -1696,7 +1694,7 @@ Proof.
     rewrite calculate_aligned_IPchecksum_tail. reflexivity.
   - destruct_conjs.
     assert (bin_measure b1 mod 16 = 0) as L1 by (erewrite format_B_sz_OK'; eauto).
-    assert (bin_measure b3 mod 16 = 0) as L2 by (erewrite format_A_sz_OK'; eauto).
+    assert (padding b3 = 0) as L2 by (rewrite padding_eq_mod_8; erewrite format_A_sz_OK'; eauto).
     unfold f_bit_aligned_free, IPChecksum_Valid, onesComplement. simpl in *.
     rewrite <- InternetChecksum_To_ByteBuffer_Checksum'.
     rewrite ByteString2ListOfChar_Over.
@@ -1718,30 +1716,35 @@ Proof.
       rewrite ByteString2ListOfChar_len. eauto.
     }
     destruct L with (n:=bin_measure b1) (b:=b1) as [x1 ?]; eauto.
-    destruct L with (n:=bin_measure b3) (b:=b3) as [x3 ?]; eauto.
     clear L.
     set (ByteString2ListOfChar (bin_measure b1) b1) as l1 in *.
     set (ByteString2ListOfChar (bin_measure b3) b3) as l3 in *.
 
     unfold hi8, lo8.
     rewrite split1_wzero, split2_wzero.
-    assert (forall l2, (exists x, |l2| = 2 * x) -> checksum (l1++l2++l3) = checksum (l2++l3++l1)) as L. {
-      intros.
-      rewrite checksum_app; eauto.
-      rewrite <- app_assoc. reflexivity.
-      destruct H9 as [x' ?].
-      rewrite app_length. rewrite H8, H9.
-      exists (x'+x3). omega.
-    }
     match goal with
     | |- context [wnot (checksum ?a)] =>
-      assert (checksum a = checksum (l3 ++ l1))%list as L'
+      assert (checksum a = checksum (l1 ++ l3))%list as L
     end. {
-      rewrite L. simpl app. rewrite checksum_app_0. reflexivity.
-      simpl.
-      exists 1. omega.
-    } rewrite L'. clear L'.
-    rewrite L. apply checksum_correct.
+      rewrite !checksum_split; eauto. exists 1. reflexivity.
+    } rewrite L. clear L.
+    rewrite checksum_split; eauto.
+    rewrite checksum_split; eauto.
+    match goal with
+    | |- context [?a ^1+ (?b ^1+ ?c)] =>
+        assert (a ^1+ (b ^1+ c) = b ^1+ a ^1+ c) as L
+    end. {
+      rewrite <- !OneC_plus_assoc.
+      rewrite OneC_plus_comm.
+      rewrite <- !OneC_plus_assoc.
+      f_equal.
+      rewrite OneC_plus_comm.
+      reflexivity.
+    } rewrite L. clear L.
+    rewrite <- !checksum_split; eauto.
+    apply checksum_correct.
+    simpl. exists (1+x1). unfold Core.char in *. rewrite H7. omega.
+    simpl. exists 1. omega.
     simpl. exists 1. omega.
     all : destruct_conjs; simpl.
     all : repeat match goal with
@@ -1867,7 +1870,7 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       (len_format_A : S -> nat)
       (format_A_sz_OK' : forall (s : S) (b : ByteString) (env env' : CacheFormat),
           format_A s env ∋ (b, env') -> bin_measure b = len_format_A s)
-      (format_A_sz_OK : forall (s : S), len_format_A s mod 16 = 0)
+      (format_A_sz_OK : forall (s : S), len_format_A s mod 8 = 0)
   : CorrectAlignedEncoder
       (format_B ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16
                 ThenCarryOn format_A)
@@ -1880,7 +1883,7 @@ Proof.
     rewrite calculate_aligned_Pseudochecksum_tail. reflexivity.
   - destruct_conjs.
     assert (bin_measure b1 mod 16 = 0) as L1 by (erewrite format_B_sz_OK'; eauto).
-    assert (bin_measure b3 mod 16 = 0) as L2 by (erewrite format_A_sz_OK'; eauto).
+    assert (padding b3 = 0) as L2 by (rewrite padding_eq_mod_8; erewrite format_A_sz_OK'; eauto).
     unfold f_bit_aligned_free, Pseudo_Checksum_Valid, onesComplement.
     rewrite calculate_aligned_Pseudochecksum_equiv.
     unfold calculate_aligned_Pseudochecksum''.
@@ -1916,7 +1919,6 @@ Proof.
       rewrite ByteString2ListOfChar_len. eauto.
     }
     destruct L with (n:=bin_measure b1) (b:=b1) as [x1 ?]; eauto.
-    destruct L with (n:=bin_measure b3) (b:=b3) as [x3 ?]; eauto.
     clear L.
     set (ByteString2ListOfChar (bin_measure b1) b1) as l1 in *.
     set (ByteString2ListOfChar (bin_measure b3) b3) as l3 in *.
@@ -1935,28 +1937,38 @@ Proof.
     match goal with
     | |- context [(?a ++ l1)%list] => set (a ++ l1)%list as l1'
     end.
-    rewrite <- !app_assoc.
-    assert (forall l2, (exists x, |l2| = 2 * x) -> checksum (l1'++l2++l3) = checksum (l2++l3++l1')) as L. {
-      intros.
-      rewrite checksum_app; eauto.
-      rewrite <- app_assoc. reflexivity.
-      subst l1'. rewrite !app_length.
-      rewrite <- !ByteBuffer.to_list_length. rewrite H7.
+    assert (exists x, | l1' | = 2 * x) as L'. {
+      subst l1'. simpl.
+      rewrite !app_length. rewrite <- !ByteBuffer.to_list_length. rewrite H7.
       exists (6+x1). omega.
-      destruct H9 as [x' ?].
-      rewrite app_length. rewrite H8, H9.
-      exists (x'+x3). omega.
-    }
+    } destruct L' as [x L'].
+    rewrite <- !app_assoc.
     match goal with
     | |- context [wnot (checksum ?a)] =>
-      assert (checksum a = checksum (l3 ++ l1'))%list as L'
+      assert (checksum a = checksum (l1' ++ l3))%list as L
     end. {
-      rewrite L. simpl app. rewrite checksum_app_0. reflexivity.
-      simpl.
-      exists 1. omega.
-    } rewrite L'. clear L'.
-    rewrite L. apply checksum_correct.
+      rewrite !checksum_split; eauto.
+      exists 1. reflexivity.
+    } rewrite L. clear L.
+    rewrite checksum_split; eauto.
+    rewrite checksum_split; eauto.
+    match goal with
+    | |- context [?a ^1+ (?b ^1+ ?c)] =>
+        assert (a ^1+ (b ^1+ c) = b ^1+ a ^1+ c) as L
+    end. {
+      rewrite <- !OneC_plus_assoc.
+      rewrite OneC_plus_comm.
+      rewrite <- !OneC_plus_assoc.
+      f_equal.
+      rewrite OneC_plus_comm.
+      reflexivity.
+    } rewrite L. clear L.
+    rewrite <- !checksum_split; eauto.
+    apply checksum_correct.
+    rewrite !app_length. rewrite L'. simpl. exists (1+x). omega.
     simpl. exists 1. omega.
+    simpl. exists 1. omega.
+
     all : destruct_conjs; simpl.
     all : repeat match goal with
                  | |- padding (ByteString_enqueue_ByteString _ _) = _ =>
