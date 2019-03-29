@@ -56,7 +56,11 @@ Section UDP_Decoder.
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
     [ normalize_encoder_format
     | normalize_encoder_format
-    | intros; calculate_length_ByteString'].
+    | intros; calculate_length_ByteString'
+    | solve_mod_16
+    | repeat calculate_length_ByteString
+    | (* solve_mod_16 *)
+    ].
 
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition UDP_encoder :

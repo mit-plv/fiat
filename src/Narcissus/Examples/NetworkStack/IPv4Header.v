@@ -71,7 +71,14 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
 Ltac new_encoder_rules ::=
   match goal with
     |- CorrectAlignedEncoder (_ ThenChecksum _ OfSize _ ThenCarryOn _) _ =>
-    eapply @CorrectAlignedEncoderForIPChecksumThenC
+    eapply @CorrectAlignedEncoderForIPChecksumThenC;
+    [ normalize_encoder_format
+    | normalize_encoder_format
+    | repeat calculate_length_ByteString
+    | solve_mod_16
+    | repeat calculate_length_ByteString
+    | solve_mod_16
+    ]
   end.
 
 Definition IPv4_encoder :

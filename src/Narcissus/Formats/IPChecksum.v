@@ -1369,6 +1369,57 @@ Ltac solve_mod_8 :=
          | rewrite <- plus_n_O
          | reflexivity ].
 
+Lemma plus_32_mod_16 :
+  forall n, NPeano.modulo (32 + n) 16 = NPeano.modulo n 16.
+Proof.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+Qed.
+
+Lemma plus_16_mod_16 :
+  forall n, NPeano.modulo (16 + n) 16 = NPeano.modulo n 16.
+Proof.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+Qed.
+
+Lemma mult_32_mod_16 :
+  forall n n', NPeano.modulo (n' * 32 + n) 16 = NPeano.modulo n 16.
+Proof.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+  destruct (NPeano.Nat.mod_divides (n' * 32) 16); eauto.
+  rewrite H0; eauto.
+  eexists (2 * n'); omega.
+Qed.
+
+Lemma mult_16_mod_16 :
+  forall n n', NPeano.modulo (n' * 16 + n) 16 = NPeano.modulo n 16.
+Proof.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+  destruct (NPeano.Nat.mod_divides (n' * 16) 16); eauto.
+  rewrite H0; eauto.
+  eexists (n'); omega.
+Qed.
+
+Lemma mult_32_mod_16'
+  : forall n,  (n * 32) mod 16 = 0.
+Proof.
+  intros.
+  pose proof (mult_32_mod_16 0 n);
+    rewrite <- plus_n_O in H; eauto.
+Qed.
+
+Ltac solve_mod_16 :=
+  intros; cbv beta; simpl mempty;
+  repeat first [
+           rewrite plus_32_mod_16
+         | rewrite plus_16_mod_16
+         | rewrite length_ByteString_ByteString_id
+         | rewrite (NPeano.Nat.mod_mul _ 16 (NPeano.Nat.neq_succ_0 15))
+         | rewrite mult_32_mod_16
+         | rewrite mult_16_mod_16
+         | rewrite mult_32_mod_16'
+         | rewrite <- plus_n_O
+         | reflexivity ].
+
 Lemma refineEquiv_ThenC_no_dep {B Env}
       {monoid : Monoid B}
   : forall (format1 : Env -> Comp (B * Env))
