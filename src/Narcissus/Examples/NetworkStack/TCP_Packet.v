@@ -96,7 +96,11 @@ Section TCPPacketDecoder.
     eapply @CorrectAlignedEncoderForPseudoChecksumThenC;
     [ normalize_encoder_format
     | normalize_encoder_format
-    | intros; calculate_length_ByteString'].
+    | repeat calculate_length_ByteString
+    | solve_mod_16
+    | repeat calculate_length_ByteString
+    | (* solve_mod_16 *)
+    ].
 
   (* Step One: Synthesize an encoder and a proof that it is correct. *)
   Definition TCP_encoder :

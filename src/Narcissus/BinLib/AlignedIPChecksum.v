@@ -1473,9 +1473,9 @@ Qed.
 
 Definition AlignedEncoderForChecksum
       {S}
+      n1
       (encode_B encode_A : forall sz, AlignedEncodeM sz)
       (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> word 16)
-      n1
   := (fun sz => EncodeAgain (encode_B sz >> encode_word_16_0 sz >> encode_A sz)
                          (fun idx' v idx (s : S) =>
                             encode_word_16_const (f (idx'-idx) v idx) sz v (idx+n1/8) s))%AlignedEncodeM.
@@ -1507,7 +1507,7 @@ Lemma CorrectAlignedEncoderForChecksum'
              (mappend (mappend b1 (mappend b2 b3)) ext))
   : CorrectAlignedEncoder
       (format_B ThenChecksum checksum_valid OfSize 16 ThenCarryOn format_A)
-      (AlignedEncoderForChecksum encode_B encode_A f n1).
+      (AlignedEncoderForChecksum n1 encode_B encode_A f).
 Proof.
   unfold AlignedEncoderForChecksum.
   eapply CorrectAlignedEncoderForChecksum; intros;
@@ -1619,15 +1619,10 @@ Proof.
 Qed.
 
 Local Arguments Nat.modulo : simpl never.
-Lemma CorrectAlignedEncoder_padding
-      {S}
-      (format : FormatM S ByteString)
-      (format_sz_OK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
-          format s env ∋ (b, env') -> bin_measure b mod 16 = 0)
-  : forall s ce b ce', format s ce ∋ (b, ce') -> padding b = 0.
+Lemma ByteString_mod_16_padding
+  : forall b, bin_measure b mod 16 = 0 -> padding b = 0.
 Proof.
   intros.
-  apply format_sz_OK in H.
   rewrite padding_eq_mod_8. simpl in *.
   apply Nat.mod_divides; eauto.
   apply Nat.mod_divides in H; eauto.
@@ -1686,21 +1681,23 @@ Lemma CorrectAlignedEncoderForIPChecksumThenC
       n1
       (format_B_sz_OK' : forall (s : S) (b : ByteString) (env env' : CacheFormat),
           format_B s env ∋ (b, env') -> bin_measure b = n1)
-      (format_B_sz_OK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
-          format_B s env ∋ (b, env') -> bin_measure b mod 16 = 0)
-      (format_A_sz_OK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
-          format_A s env ∋ (b, env') -> bin_measure b mod 16 = 0)
+      (format_B_sz_OK : n1 mod 16 = 0)
+      (len_format_A : S -> nat)
+      (format_A_sz_OK' : forall (s : S) (b : ByteString) (env env' : CacheFormat),
+          format_A s env ∋ (b, env') -> bin_measure b = len_format_A s)
+      (format_A_sz_OK : forall (s : S), len_format_A s mod 16 = 0)
   : CorrectAlignedEncoder
       (format_B ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn format_A)
-      (AlignedEncoderForChecksum encode_B encode_A calculate_aligned_IPchecksum n1).
+      (AlignedEncoderForChecksum n1 encode_B encode_A calculate_aligned_IPchecksum).
 Proof.
-  edestruct encoder_B_OK as [? [_ [HB _]]].
-  edestruct encoder_A_OK as [? [_ [HA _]]].
   eapply CorrectAlignedEncoderForChecksum';
     unfold calculate_aligned_IPchecksum; eauto; intros.
   - rewrite calculate_aligned_IPchecksum_front.
     rewrite calculate_aligned_IPchecksum_tail. reflexivity.
-  - unfold f_bit_aligned_free, IPChecksum_Valid, onesComplement. simpl in *.
+  - destruct_conjs.
+    assert (bin_measure b1 mod 16 = 0) as L1 by (erewrite format_B_sz_OK'; eauto).
+    assert (bin_measure b3 mod 16 = 0) as L2 by (erewrite format_A_sz_OK'; eauto).
+    unfold f_bit_aligned_free, IPChecksum_Valid, onesComplement. simpl in *.
     rewrite <- InternetChecksum_To_ByteBuffer_Checksum'.
     rewrite ByteString2ListOfChar_Over.
     rewrite !build_aligned_ByteString_byteString_idem.
@@ -1720,7 +1717,6 @@ Proof.
       subst.
       rewrite ByteString2ListOfChar_len. eauto.
     }
-    destruct_conjs.
     destruct L with (n:=bin_measure b1) (b:=b1) as [x1 ?]; eauto.
     destruct L with (n:=bin_measure b3) (b:=b3) as [x3 ?]; eauto.
     clear L.
@@ -1747,15 +1743,15 @@ Proof.
     } rewrite L'. clear L'.
     rewrite L. apply checksum_correct.
     simpl. exists 1. omega.
-    all : destruct_conjs.
+    all : destruct_conjs; simpl.
     all : repeat match goal with
                  | |- padding (ByteString_enqueue_ByteString _ _) = _ =>
                    rewrite !padding_ByteString_enqueue_aligned_ByteString
                  | |- padding (format_checksum _ _ _ _ _) = _ =>
                    unfold format_checksum; rewrite encode_word'_padding
-                 | _ => eauto using CorrectAlignedEncoder_padding
+                 | _ => eauto using ByteString_mod_16_padding
                  end.
-Defined.
+Qed.
 
 
 Definition calculate_aligned_Pseudochecksum'
@@ -1867,24 +1863,25 @@ Lemma CorrectAlignedEncoderForPseudoChecksumThenC
       n1
       (format_B_sz_OK' : forall (s : S) (b : ByteString) (env env' : CacheFormat),
           format_B s env ∋ (b, env') -> bin_measure b = n1)
-      (format_B_sz_OK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
-          format_B s env ∋ (b, env') -> bin_measure b mod 16 = 0)
-      (format_A_sz_OK : forall (s : S) (b : ByteString) (env env' : CacheFormat),
-          format_A s env ∋ (b, env') -> bin_measure b mod 16 = 0)
+      (format_B_sz_OK : n1 mod 16 = 0)
+      (len_format_A : S -> nat)
+      (format_A_sz_OK' : forall (s : S) (b : ByteString) (env env' : CacheFormat),
+          format_A s env ∋ (b, env') -> bin_measure b = len_format_A s)
+      (format_A_sz_OK : forall (s : S), len_format_A s mod 16 = 0)
   : CorrectAlignedEncoder
       (format_B ThenChecksum (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode) OfSize 16
                 ThenCarryOn format_A)
-      (AlignedEncoderForChecksum encode_B encode_A
-                                 (calculate_aligned_Pseudochecksum srcAddr destAddr udpLength protoCode)
-                                 n1).
+      (AlignedEncoderForChecksum n1 encode_B encode_A
+                                 (calculate_aligned_Pseudochecksum srcAddr destAddr udpLength protoCode)).
 Proof.
-  edestruct encoder_B_OK as [? [_ [HB _]]].
-  edestruct encoder_A_OK as [? [_ [HA _]]].
   apply CorrectAlignedEncoderForChecksum';
     unfold calculate_aligned_Pseudochecksum; eauto with nocore; intros.
   - rewrite calculate_aligned_Pseudochecksum_front.
     rewrite calculate_aligned_Pseudochecksum_tail. reflexivity.
-  - unfold f_bit_aligned_free, Pseudo_Checksum_Valid, onesComplement.
+  - destruct_conjs.
+    assert (bin_measure b1 mod 16 = 0) as L1 by (erewrite format_B_sz_OK'; eauto).
+    assert (bin_measure b3 mod 16 = 0) as L2 by (erewrite format_A_sz_OK'; eauto).
+    unfold f_bit_aligned_free, Pseudo_Checksum_Valid, onesComplement.
     rewrite calculate_aligned_Pseudochecksum_equiv.
     unfold calculate_aligned_Pseudochecksum''.
     unfold calculate_aligned_IPchecksum'.
@@ -1918,7 +1915,6 @@ Proof.
       subst.
       rewrite ByteString2ListOfChar_len. eauto.
     }
-    destruct_conjs.
     destruct L with (n:=bin_measure b1) (b:=b1) as [x1 ?]; eauto.
     destruct L with (n:=bin_measure b3) (b:=b3) as [x3 ?]; eauto.
     clear L.
@@ -1967,6 +1963,6 @@ Proof.
                    rewrite !padding_ByteString_enqueue_aligned_ByteString
                  | |- padding (format_checksum _ _ _ _ _) = _ =>
                    unfold format_checksum; rewrite encode_word'_padding
-                 | _ => eauto using CorrectAlignedEncoder_padding
+                 | _ => eauto using ByteString_mod_16_padding
                  end.
 Qed.
