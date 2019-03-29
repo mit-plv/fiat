@@ -77,7 +77,7 @@ Ltac new_encoder_rules ::=
     | repeat calculate_length_ByteString
     | solve_mod_16
     | repeat calculate_length_ByteString
-    | solve_mod_16
+    | solve_mod_8
     ]
   end.
 
