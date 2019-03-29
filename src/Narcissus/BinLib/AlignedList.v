@@ -371,7 +371,7 @@ Section AlignedList.
           revert v1; rewrite <- (plus_n_O idx); intro; reflexivity.
           pose proof mempty_left as H'; simpl in H'; rewrite H', build_aligned_ByteString_append;
             reflexivity.
-        * injections; rewrite IPChecksum.length_ByteString_ByteString_id in H0.
+        * injections; rewrite length_ByteString_ByteString_id in H0.
           unfold AlignedEncodeList; simpl.
           destruct (NPeano.Nat.ltb idx (S numBytes')) eqn: ?; eauto.
           apply PeanoNat.Nat.ltb_lt in Heqb; Omega.omega.
@@ -385,7 +385,7 @@ Section AlignedList.
              revert v1; rewrite <- (plus_n_O idx); intro; reflexivity.
              pose proof mempty_left as H'; simpl in H'; rewrite H', build_aligned_ByteString_append;
                reflexivity.
-          -- injections; rewrite IPChecksum.length_ByteString_ByteString_id in H0.
+          -- injections; rewrite length_ByteString_ByteString_id in H0.
              unfold AlignedEncodeList; simpl.
              destruct (NPeano.Nat.ltb idx (S numBytes')) eqn: ?; eauto.
              apply PeanoNat.Nat.ltb_lt in Heqb; Omega.omega.
