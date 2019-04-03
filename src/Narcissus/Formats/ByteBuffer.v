@@ -32,6 +32,8 @@ Module ByteBuffer.
     Vector.append b1 b2.
   Definition fold_left {B: Type} (f: B -> char -> B) (b: B) {n} (v: t n): B :=
     Vector.fold_left f b v.
+  Definition fold_right {B: Type} (f: char -> B -> B) {n} (v: t n) (b: B): B :=
+    Vector.fold_right f v b.
   Definition to_list {n} (b: t n): list char :=
     Vector.to_list b.
   Definition of_list (l: list char): t (List.length l) :=
