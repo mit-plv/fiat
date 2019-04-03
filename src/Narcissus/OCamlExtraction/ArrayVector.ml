@@ -96,7 +96,7 @@ let array_of_range _ (from: int) (len: int) (arr: 'a storage_t) =
   throw_if_stale "array_of_range" arr;
   of_array (Array.sub arr.data from (min len (length arr - from)))
 
-let rec blit_arr_unsafe start len src dst =
+let blit_arr_unsafe start len src dst =
   for idx = 0 to len do
     Array.unsafe_set dst (start + idx) (Array.unsafe_get src idx)
   done
