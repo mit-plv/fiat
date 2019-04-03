@@ -1,0 +1,4 @@
+(executable
+ (name guard)
+ (modes exe)
+ (libraries cstruct core_bench))
