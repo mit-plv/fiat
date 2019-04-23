@@ -26,6 +26,6 @@ ocamlfind ocamlopt -fPIC -linkpkg -thread -package unix -package cstruct -packag
           ../Narcissus/OCamlExtraction/StackVector.ml \
           ../Narcissus/OCamlExtraction/CstructBytestring.ml \
           ../Narcissus/OCamlExtraction/OCamlNativeInt.ml \
-          ListVector.ml tcpfilter.mli tcpfilter.ml guard.ml \
+          ../Narcissus/OCamlExtraction/ListVector.ml tcpfilter.mli tcpfilter.ml guard.ml \
           -o guard || exit 1
 ./guard "$@"
