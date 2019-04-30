@@ -1,7 +1,7 @@
 Require Import Fiat.QueryStructure.Automation.MasterPlan.
 Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
 Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
-Require Import ByteBuffer.
+Require Import Fiat.Narcissus.Formats.ByteBuffer.
 
 Definition GuardDataSchema :=
   Query Structure Schema [
@@ -120,23 +120,40 @@ Notation IndexType sch :=
                         list (string * Attributes (rawSchemaHeading sch)))
            (numRawQSschemaSchemas sch) (qschemaSchemas sch)).
 
+(* Definition empty_index : IndexType GuardDataSchema := *)
+(*   {| prim_fst := []; *)
+(*      prim_snd := () |}. *)
+
+Definition slow_index : IndexType GuardDataSchema :=
+  {| prim_fst := [("EqualityIndex", "src_port" # "connections" ## GuardDataSchema);
+                  ("EqualityIndex", "dst_port" # "connections" ## GuardDataSchema)];
+     prim_snd := () |}.
+
+Definition fast_index : IndexType GuardDataSchema :=
+  {| prim_fst := [("EqualityIndex", "src_addr" # "connections" ## GuardDataSchema);
+                  ("EqualityIndex", "dst_addr" # "connections" ## GuardDataSchema)];
+     prim_snd := () |}.
+
+Definition indexes := slow_index.
+
+Ltac FindAttributeUses := EqExpressionAttributeCounter.
+Ltac BuildEarlyIndex := ltac:(LastCombineCase6 BuildEarlyEqualityIndex).
+Ltac BuildLastIndex := ltac:(LastCombineCase5 BuildLastEqualityIndex).
+Ltac IndexUse := EqIndexUse.
+Ltac createEarlyTerm := createEarlyEqualityTerm.
+Ltac createLastTerm := createLastEqualityTerm.
+Ltac IndexUse_dep := EqIndexUse_dep.
+Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
+Ltac createLastTerm_dep := createLastEqualityTerm_dep.
+Ltac BuildEarlyBag := BuildEarlyEqualityBag.
+Ltac BuildLastBag := BuildLastEqualityBag.
+Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist').
+
+
 Theorem SharpenedGuard :
   FullySharpened GuardSpec.
+
 Proof.
-  (* Definition empty_index : IndexType GuardDataSchema := *)
-  (*   {| prim_fst := []; *)
-  (*      prim_snd := () |}. *)
-
-  Definition slow_index : IndexType GuardDataSchema :=
-    {| prim_fst := [("EqualityIndex", "src_port" # "connections" ## GuardDataSchema);
-                   ("EqualityIndex", "dst_port" # "connections" ## GuardDataSchema)];
-       prim_snd := () |}.
-
-  Definition fast_index : IndexType GuardDataSchema :=
-    {| prim_fst := [("EqualityIndex", "src_addr" # "connections" ## GuardDataSchema);
-                   ("EqualityIndex", "dst_addr" # "connections" ## GuardDataSchema)];
-       prim_snd := () |}.
-
   start sharpening ADT.
 
   match goal with
@@ -278,21 +295,6 @@ Proof.
                      finish honing.
 
   -
-
-    Definition indexes := slow_index.
-    Ltac FindAttributeUses := EqExpressionAttributeCounter.
-    Ltac BuildEarlyIndex := ltac:(LastCombineCase6 BuildEarlyEqualityIndex).
-    Ltac BuildLastIndex := ltac:(LastCombineCase5 BuildLastEqualityIndex).
-    Ltac IndexUse := EqIndexUse.
-    Ltac createEarlyTerm := createEarlyEqualityTerm.
-    Ltac createLastTerm := createLastEqualityTerm.
-    Ltac IndexUse_dep := EqIndexUse_dep.
-    Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
-    Ltac createLastTerm_dep := createLastEqualityTerm_dep.
-    Ltac BuildEarlyBag := BuildEarlyEqualityBag.
-    Ltac BuildLastBag := BuildLastEqualityBag.
-    Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist').
-
     PickIndex ltac:(fun attrlist =>
                       make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
 
