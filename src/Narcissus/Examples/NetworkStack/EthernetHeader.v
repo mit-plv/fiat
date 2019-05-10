@@ -152,7 +152,7 @@ Section EthernetPacketDecoder.
         rewrite <- Nnat.Nat2N.id.
         rewrite <- (Nnat.Nat2N.id 1501).
         apply Nomega.Nlt_out.
-        admit. (* reflexivity works in later versions. *)
+        reflexivity.
         Grab Existential Variables.
         eauto.
         eauto.
