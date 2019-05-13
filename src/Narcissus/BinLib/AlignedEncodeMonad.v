@@ -920,7 +920,7 @@ Definition SetByteAt (* Sets the bytes at the specified index and sets the curre
            {n : nat}
            (idx' : nat)
   : AlignedEncodeM n :=
-  fun v idx s ce => if (NPeano.ltb idx' n) then Some (set_nth' v idx' s, Datatypes.S idx', addE ce 8) else None.
+  fun v idx s ce => if (Coq.Init.Nat.ltb idx' n) then Some (set_nth' v idx' s, Datatypes.S idx', addE ce 8) else None.
 
 Delimit Scope AlignedEncodeM_scope with AlignedEncodeM.
 Notation "y >> z" := (AppendAlignedEncodeM y z) : AlignedEncodeM_scope.

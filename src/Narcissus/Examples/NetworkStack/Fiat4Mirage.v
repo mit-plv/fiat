@@ -1,8 +1,8 @@
 Require Import Fiat.Narcissus.Examples.NetworkStack.TestInfrastructure.
 
-(* Require Import *)
-(*         Fiat.Narcissus.BinLib.AlignedDecodeMonad *)
-(*         Fiat.Narcissus.BinLib.AlignedEncodeMonad. *)
+Require Import
+        Fiat.Narcissus.BinLib.AlignedDecodeMonad
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad.
 
 Open Scope string_scope.
 

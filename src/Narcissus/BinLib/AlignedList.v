@@ -276,7 +276,7 @@ Section AlignedList.
            As
            env :=
       match As with
-      | nil => if NPeano.ltb idx (S sz) then @ReturnAlignedEncodeM _ (list A) _ v idx nil env else None
+      | nil => if Coq.Init.Nat.ltb idx (S sz) then @ReturnAlignedEncodeM _ (list A) _ v idx nil env else None
       | a :: As' => Ifopt (A_format_align sz v idx a env) as a' Then
                                                                 AlignedEncodeList' A_format_align sz (fst (fst a'))
                                                               (snd (fst a'))
