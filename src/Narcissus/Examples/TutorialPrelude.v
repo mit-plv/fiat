@@ -139,8 +139,8 @@ Ltac eta_reduce :=
            change (fun x => ?h x) with h
          end.
 
-Ltac cleanup_single_encoder := simpl.
-(*lazymatch goal with
+Ltac cleanup_single_encoder :=
+  lazymatch goal with
   | [  |- forall v idx s ce, @?f v idx s ce = @?g v idx s ce ] =>
     change (forall v idx s ce, f v idx s ce = g v idx s ce); intros;
     eta_reduce;
@@ -152,7 +152,7 @@ Ltac cleanup_single_encoder := simpl.
         (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2);
     change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g1 (?g2 (?g3 s)))) with
         (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2) g3)
-  end. *)
+  end.
 
 Lemma AlignedEncodeList_morphism {cache: Cache} {A: Type}:
   forall (encA encA': forall sz, AlignedEncodeM sz) sz,
@@ -217,6 +217,7 @@ Ltac derive_clean_encoder :=
   | [ |- _ ?v ?idx ?r ?ch = _ ] => refine (eq_trans (y := (_: AlignedEncodeM _) v idx r ch) _ _)
   end;
   [ derive_clean_encoder_do_projections | derive_clean_encoder_do_postprocess ];
+  eta_reduce;
   higher_order_reflexivity.
 
 Notation "x ⋙ y" :=
