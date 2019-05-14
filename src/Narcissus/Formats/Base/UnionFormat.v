@@ -12,6 +12,9 @@ Section UnionFormat.
   Context {T : Type}. (* Target Type *)
   Context {cache : Cache}. (* State Type *)
 
+  (* We use a vector to represent a more general unbiased union here. If the
+     length of the vector is 2, we have the binary-union definition in the
+     paper *)
   Definition Union_Format {m}
              (formats : Vector.t (FormatM S T) m)
     : FormatM S T :=

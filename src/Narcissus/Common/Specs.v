@@ -17,6 +17,7 @@ Section Specifications.
 
   (* Formats are a quaternary relation on an source value, initial store,
      target value, and final store. *)
+  (* This definition is isomorphic to (S * CacheFormat * T * CacheFormat) -> Prop *)
   Definition FormatM : Type :=
     S -> CacheFormat -> Comp (T * CacheFormat).
 
@@ -1032,6 +1033,54 @@ Proof.
   destruct decoder_OK as [_ decoder_OK].
   eapply decoder_OK in H1; eauto.
   intuition; destruct_ex; intuition eauto.
+Qed.
+
+Lemma CorrectDecodeEncode'
+      {S T} {cache : Cache}
+      {monoid : Monoid T}
+  : forall P cache_inv
+      (format : FormatM S T)
+      (encode : EncodeM S T)
+      (encode_OK : CorrectEncoder format encode)
+      (decode : DecodeM (S*T) T)
+      (decode_OK : CorrectDecoder_id monoid P format decode cache_inv),
+    forall a envE envD b envE',
+      Equiv envE envD
+      -> P a
+      -> cache_inv envD
+      -> encode a envE = Some (b, envE')
+      -> exists envD',
+          decode b envD = Some (a, mempty, envD').
+Proof.
+  intros.
+  destruct decode_OK as [decode_OK _].
+  destruct encode_OK as [encode_OK _].
+  apply encode_OK in H2.
+  eapply decode_OK  with (ext := mempty) in H2; eauto.
+  destruct_conjs. rewrite mempty_right in H3. eauto.
+Qed.
+
+Lemma CorrectEncodeDecode'
+      {S T} {cache : Cache}
+      {monoid : Monoid T}
+  : forall P cache_inv
+      (format : FormatM S T)
+      (encode : EncodeM S T)
+      (encode_OK : CorrectEncoder format encode)
+      (decode : DecodeM (S*T) T)
+      (decode_OK : CorrectDecoder_id monoid P format decode cache_inv),
+    forall a envE envD b envD',
+      Equiv envE envD
+      -> cache_inv envD
+      -> decode b envD = Some (a, mempty, envD')
+      -> exists b' envE', encode a envE = Some (b', envE').
+Proof.
+  intros.
+  destruct decode_OK as [_ decode_OK].
+  destruct encode_OK as [encode_OK encode_OK'].
+  eapply decode_OK in H0; eauto. destruct_conjs.
+  destruct (encode a envE) eqn:?. destruct_conjs. eauto.
+  exfalso. eapply encode_OK'; eauto.
 Qed.
 
 Lemma Start_CorrectDecoderFor

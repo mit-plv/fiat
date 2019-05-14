@@ -1,14 +1,20 @@
 Set Implicit Arguments.
 
 Class Monoid (bin : Type) :=
-  { mappend : bin -> bin -> bin;
+  {
+    (* ⋅ *)
+    mappend : bin -> bin -> bin;
+    (* ι *)
     mempty : bin;
     bin_measure : bin -> nat;
     mappend_measure :
       forall b b', bin_measure (mappend b b') =
                    bin_measure b + bin_measure b';
+    (* left_id *)
     mempty_left : forall l, mappend mempty l = l;
+    (* right_id *)
     mempty_right : forall l, mappend l mempty = l;
+    (* assoc *)
     mappend_assoc : forall l m n, mappend l (mappend m n) = mappend (mappend l m) n }.
 
 Class MonoidUnit (bin : Type) (trans : Monoid bin) (T : Type) :=
@@ -45,7 +51,9 @@ Class MonoidUnitOpt (bin : Type) (trans : Monoid bin) (T : Type) :=
 Class QueueMonoidOpt (bin : Type) (trans : Monoid bin) (B : Type) :=
   { B_measure : B -> nat;
     B_measure_gt_0 : forall b, 0 < B_measure b;
+    (* snoc *)
     enqueue_opt : B -> bin -> bin;
+    (* unfold *)
     dequeue_opt : bin -> option (B * bin);
     measure_enqueue :
       forall b b',
@@ -54,18 +62,23 @@ Class QueueMonoidOpt (bin : Type) (trans : Monoid bin) (B : Type) :=
       forall b' t b,
         dequeue_opt b = Some (t, b')
         -> bin_measure b = bin_measure b' + B_measure t;
+    (* unfold_app *)
     dequeue_mappend_opt :
       forall t b b' b'',
         dequeue_opt b = Some (t, b')
         -> dequeue_opt (mappend b b'') = Some (t, mappend b' b'');
+    (* snoc_app *)
     enqueue_mappend_opt :
       forall b b' b'',
         enqueue_opt b (mappend b' b'') = mappend b' (enqueue_opt b b'');
+    (* unfd_snoc *)
     dequeue_head_opt :
       forall t,
         dequeue_opt (enqueue_opt t mempty) = Some (t, mempty);
+    (* unfd_id *)
     dequeue_None :
         dequeue_opt mempty = None;
+    (* unfd_inj *)
     dequeue_opt_inj :
       forall t m b b',
         dequeue_opt b = Some (t, m) ->

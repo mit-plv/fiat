@@ -13,6 +13,9 @@ Section SequenceFormat.
   Context {cache : Cache}. (* State Type *)
   Context {monoid : Monoid T}. (* Target type is a monoid. *)
 
+  (* Defined in monadic pointed style. It is equivalent to the set-theoretic
+     definition show in paper. Also note that the `compose` here is defined in
+     src/Narcissus/Common/ComposeOpt.v, not the usual function composition. *)
   Definition sequence_Format
              {S : Type}
              (format1 format2 : FormatM S T)
