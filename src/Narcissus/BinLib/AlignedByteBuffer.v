@@ -43,7 +43,7 @@ Section AlignedList.
   Definition ByteBufferAlignedDecodeM {m : nat} (len: nat) : @AlignedDecodeM cache {n : _ & ByteBuffer.t n} m :=
     fun (v: ByteBuffer.t m) idx env =>
       let lastidx := idx + len in
-      if NPeano.leb lastidx m then
+      if Coq.Init.Nat.leb lastidx m then
         Some ((bytebuffer_of_bytebuffer_range idx len v, lastidx, addD env (8 * len)))
       else
         None.
@@ -95,13 +95,13 @@ Section AlignedList.
                                       t (existT ByteBuffer.t _ (ByteBuffer.of_list l)) bs cd'))
         (byte_decoder1 := (fun numBytes => l <- ListAlignedDecodeM (fun numBytes : nat => GetCurrentByte) n;
                                            fun v idx cd =>
-                                             if (NPeano.leb idx numBytes) then
+                                             if (Coq.Init.Nat.leb idx numBytes) then
                                                t' (existT ByteBuffer.t _ (ByteBuffer.of_list l)) _ v idx cd
                                              else None
                           )%AlignedDecodeM%list).
     - eapply AlignedDecodeListM; eauto using AlignedDecodeCharM.
       intros; repeat (eapply conj; intros).
-      + simpl; destruct (NPeano.Nat.leb n0 (numBytes_hd)) eqn: ? ;
+      + simpl; destruct (Coq.Init.Nat.leb n0 (numBytes_hd)) eqn: ? ;
           repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
           try Omega.omega; simpl; eauto.
@@ -110,12 +110,12 @@ Section AlignedList.
       + eapply H in H0; eauto.
       + rewrite (proj1 (proj2 (proj2 (H _)) _ _ _)) in H0; rewrite H0;
           find_if_inside; reflexivity.
-      + destruct (NPeano.Nat.leb 0 n0) eqn: ? ;
+      + destruct (Coq.Init.Nat.leb 0 n0) eqn: ? ;
         repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
           try Omega.omega; simpl; eauto.
         apply (proj2 (proj2 (H _)) _ _ _) in H0; eauto.
-      + destruct (NPeano.Nat.leb 0 n0) eqn: ? ;
+      + destruct (Coq.Init.Nat.leb 0 n0) eqn: ? ;
         repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
           try Omega.omega; simpl; eauto.
@@ -153,7 +153,7 @@ Section AlignedList.
         { instantiate (1 := (a <- GetCurrentByte;
                              l <- ListAlignedDecodeM (fun numBytes : nat => GetCurrentByte) n;
                              (fun (v0 : ByteBuffer.t n0) (idx0 : nat) (cd : CacheDecode) =>
-                                if NPeano.Nat.leb idx0 n0
+                                if Coq.Init.Nat.leb idx0 n0
                                 then t' (existT ByteBuffer.t (| (a :: l) |) (ByteBuffer.of_list (a :: l))) n0 v0 idx0 cd
                                 else None))%AlignedDecodeM).
           intros ? ? ?; f_equal; apply functional_extensionality; intros.
@@ -163,7 +163,7 @@ Section AlignedList.
         }
         unfold AlignedDecodeMEquiv, ByteBufferAlignedDecodeM, BindAlignedDecodeM in *; simpl in *; intros.
         unfold GetCurrentByte at 1.
-        destruct (NPeano.Nat.leb (idx0 + S n) n0) as [ | ] eqn: ?; simpl;
+        destruct (Coq.Init.Nat.leb (idx0 + S n) n0) as [ | ] eqn: ?; simpl;
           repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
           try Omega.omega; simpl; eauto.
@@ -197,7 +197,7 @@ Section AlignedList.
                  (skipn (S idx0) (to_list v0)) by reflexivity.
              rewrite H; reflexivity.
         * destruct (nth_opt v0 idx0); simpl; eauto.
-          assert (NPeano.Nat.leb (S idx0 + n) n0 = false)
+          assert (Coq.Init.Nat.leb (S idx0 + n) n0 = false)
             by (apply Compare_dec.leb_correct_conv; Omega.omega).
           pose proof (fun t' => IHn addD_addD_plus addD_0 _ (S idx0) v0 t' (addD c0 8)).
           rewrite H in H0; simpl in H0.
@@ -214,7 +214,7 @@ Section AlignedList.
 
   Definition buffer_blit_buffer {sz1 sz2} start (src: ByteBuffer.t sz1) (dst: ByteBuffer.t sz2) :=
     let idx' := start + sz1 in
-    if NPeano.leb idx' sz2 then
+    if Coq.Init.Nat.leb idx' sz2 then
       Some (buffer_blit_buffer' start src dst, idx')
     else None.
 
@@ -264,7 +264,7 @@ Section AlignedList.
     - intros ? ? ? [n t]; revert sz v idx; induction t.
       + simpl; intros.
         unfold buffer_blit_buffer.
-        destruct (NPeano.Nat.leb (idx + 0) sz) eqn: ?; intros.
+        destruct (Coq.Init.Nat.leb (idx + 0) sz) eqn: ?; intros.
         * eapply PeanoNat.Nat.leb_le in Heqb.
           rewrite (proj2 (PeanoNat.Nat.ltb_lt idx (S sz))) by Omega.omega.
           unfold ReturnAlignedEncodeM.
@@ -275,14 +275,14 @@ Section AlignedList.
           reflexivity.
       + simpl; intros.
         unfold buffer_blit_buffer.
-        destruct (NPeano.Nat.leb (idx + (S n)) sz) eqn: ?; intros.
+        destruct (Coq.Init.Nat.leb (idx + (S n)) sz) eqn: ?; intros.
         * eapply PeanoNat.Nat.leb_le in Heqb.
           unfold SetCurrentByte at 1.
           rewrite (proj2 (PeanoNat.Nat.ltb_lt idx sz)) by Omega.omega; simpl.
           rewrite <- IHt.
           simpl.
           unfold buffer_blit_buffer.
-          destruct (NPeano.Nat.leb (S idx + n) sz) eqn: ?; intros.
+          destruct (Coq.Init.Nat.leb (S idx + n) sz) eqn: ?; intros.
           eapply PeanoNat.Nat.leb_le in Heqb0; simpl;
             rewrite addE_addE_plus; repeat (f_equal; try Omega.omega).
           eapply PeanoNat.Nat.leb_gt in Heqb0; Omega.omega.
@@ -291,7 +291,7 @@ Section AlignedList.
           destruct (PeanoNat.Nat.ltb idx sz) eqn: ? ; simpl; auto.
           rewrite <- IHt.
           unfold AlignedEncodeByteBuffer, buffer_blit_buffer.
-          destruct (NPeano.Nat.leb (S idx + n) sz) eqn: ? ; simpl; auto.
+          destruct (Coq.Init.Nat.leb (S idx + n) sz) eqn: ? ; simpl; auto.
           eapply PeanoNat.Nat.leb_le in Heqb0;
             eapply PeanoNat.Nat.leb_le in Heqb1; Omega.omega.
     - eexists (fun s env => _); repeat apply conj; intros;

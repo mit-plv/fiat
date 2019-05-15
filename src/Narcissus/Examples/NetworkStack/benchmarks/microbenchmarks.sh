@@ -15,5 +15,6 @@ ocamlfind ocamlopt -linkpkg -thread -package cstruct -package core -package core
           Fiat4Mirage.ml \
           benchmarks/microbenchmarks.ml \
           -o microbenchmarks || exit 1
-./microbenchmarks -save -quota 60 -width 2000 -ci-absolute +time
+./microbenchmarks -sexp -save -quota 60 -width 2000 -ci-absolute +time | tee microbenchmarks.out
+mkdir -p benchmarks/outputs
 mv ./*.txt benchmarks/outputs

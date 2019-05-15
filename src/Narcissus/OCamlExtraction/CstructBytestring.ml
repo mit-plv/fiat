@@ -121,7 +121,7 @@ let compare_chksum bytes =
 
 let checksum_bound n _ (arr: storage_t) =
   throw_if_stale "checksum_bound" arr;
-  Int64Word.of_int (0xffff - !checksum (Cstruct.set_len (to_cstruct arr) (min n (length arr))))
+  Int64Word.of_int (!checksum (Cstruct.set_len (to_cstruct arr) (min n (length arr))))
 
 let slice_range _ (from: int) (len: int) (arr: storage_t) =
   sub arr from len

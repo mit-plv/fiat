@@ -275,7 +275,7 @@ Section AlignedDecoders.
            (Ss : Vector.t S sz)
            env :=
     match n with
-    | 0 => if NPeano.ltb idx (1 + numBytes) then @ReturnAlignedEncodeM _ (Vector.t S 0) _ v idx (Vector.nil _) env else None
+    | 0 => if Coq.Init.Nat.ltb idx (1 + numBytes) then @ReturnAlignedEncodeM _ (Vector.t S 0) _ v idx (Vector.nil _) env else None
     | S n'' =>  Ifopt (Vector_nth_opt Ss n') as s Then (Ifopt (S_format_align numBytes v idx s env)
         as a'
              Then
@@ -1073,18 +1073,18 @@ Section AlignedDecoders.
                      = a_opt'
                          (build_aligned_ByteString (Guarded_Vector_split n sz v)))
       -> a_opt (build_aligned_ByteString v) =
-         If NPeano.leb n sz Then
+         If Coq.Init.Nat.leb n sz Then
             a_opt' (build_aligned_ByteString (Guarded_Vector_split n sz v))
             Else None.
   Proof.
-    intros; destruct (NPeano.leb n sz) eqn: ?.
-    - apply NPeano.leb_le in Heqb.
+    intros; destruct (Coq.Init.Nat.leb n sz) eqn: ?.
+    - apply Nat.leb_le in Heqb.
       rewrite <- H0.
       simpl; rewrite <- build_aligned_ByteString_eq_split'; eauto.
       eauto.
     - rewrite H; simpl; eauto.
       intro.
-      rewrite <- NPeano.leb_le in H1; congruence.
+      rewrite <- Nat.leb_le in H1; congruence.
   Qed.
 
   Lemma AlignedDecode4Char {C}
@@ -1665,18 +1665,18 @@ Section AlignedDecoders.
                      = a_opt'
                          (build_aligned_ByteString (Guarded_Vector_split n sz v)))
       -> a_opt (build_aligned_ByteString v) =
-         If NPeano.leb n sz Then
+         If Coq.Init.Nat.leb n sz Then
             a_opt' (build_aligned_ByteString (Guarded_Vector_split n sz v))
             Else c.
   Proof.
-    intros; destruct (NPeano.leb n sz) eqn: ?.
-    - apply NPeano.leb_le in Heqb.
+    intros; destruct (Coq.Init.Nat.leb n sz) eqn: ?.
+    - apply Nat.leb_le in Heqb.
       rewrite <- H0.
       simpl; rewrite <- build_aligned_ByteString_eq_split'; eauto.
       eauto.
     - rewrite H; simpl; eauto.
       intro.
-      rewrite <- NPeano.leb_le in H1; congruence.
+      rewrite <- Nat.leb_le in H1; congruence.
   Qed.
 
   Lemma AlignedDecode_shift_if_bool {A B C : Type}
