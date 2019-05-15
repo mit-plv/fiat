@@ -34,13 +34,13 @@ synthesizing binary encoders and decoders from specifications.
   |------------------------|--------------------------------------|------------------------------|
   | Booleans               | src/Narcissus/Formats/Bool.v         | format_bool                  |
   | Peano Numbers          | src/Narcissus/Formats/NatOpt.v       | format_nat                   |
-  | Variable-Length List   |                                      |                              |
+  | Variable-Length List   | src/Narcissus/Formats/FixListOpt.v   | format_list                  |
   | Variable-Length String | src/Narcissus/Formats/StringOpt.v    | format_string_with_term_char |
   | Option Type            | src/Narcissus/Formats/Option.v       | format_option                |
   | Enumerated Types       | src/Narcissus/Formats/EnumOpt.v      | format_enum                  |
   | Fixed-Length Words     | src/Narcissus/Formats/WordOpt.v      | format_word                  |
   | Unspecified BitString  | src/Narcissus/Formats/ByteBuffer.v   | format_bytebuffer            |
-  | Fixed-Length List      | src/Narcissus/Formats/FixListOpt.v   | format_list                  |
+  | Fixed-Length List      | src/Narcissus/Formats/Vector.v       | format_Vector                |
   | Fixed-Length String    | src/Narcissus/Formats/FixStringOpt.v | format_string                |
   | Ascii Character        | src/Narcissus/Formats/AsciiOpt.v     | format_ascii                 |
   | Variant Types          | src/Narcissus/Formats/SumTypeOpt.v   | format_SumType               |
@@ -82,7 +82,7 @@ synthesizing binary encoders and decoders from specifications.
   |----------|---------------------------------------------|----------------------------------|
   | EncSeq   | src/Narcissus/Formats/Base/SequenceFormat.v | CorrectEncoder_sequence          |
   | EncComp  | src/Narcissus/Formats/Base/FMapFormat.v     | CorrectEncoder_Projection_Format |
-  | EncEmpty |                                             |                                  |
+  | EncEmpty | src/Narcissus/Formats/Empty.v               | CorrectEncoderEmpty              |
   | EncRest  | src/Narcissus/Formats/Base/FMapFormat.v     | CorrectEncoder_Restrict_Format   |
   | EncUnion | src/Narcissus/Formats/Base/UnionFormat.v    | CorrectEncoder_Union             |
 
@@ -132,7 +132,7 @@ synthesizing binary encoders and decoders from specifications.
 
   | Rule           | File                                      | Name                              |
   |----------------|-------------------------------------------|-----------------------------------|
-  | AlignDecSeq    | src/Narcissus/BinLib/AlignedDecodeMonad.v |                                   |
+  | AlignDecSeq    | src/Narcissus/BinLib/AlignedDecodeMonad.v | Bind_DecodeMEquivAlignedDecodeM   |
   | AlignDecThrow  | src/Narcissus/BinLib/AlignedDecodeMonad.v | AlignedDecode_Throw               |
   | AlignDecByte   | src/Narcissus/BinLib/AlignWord.v          | AlignedDecodeCharM                |
   | AlignDecReturn | src/Narcissus/BinLib/AlignedDecodeMonad.v | Return_DecodeMEquivAlignedDecodeM |
