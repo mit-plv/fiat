@@ -13,6 +13,17 @@ Definition empty_Format
            {cache : Cache}
   : FormatM S T := fun s ce => ret (mempty, ce).
 
+Lemma CorrectEncoderEmpty {S T}
+  : forall (cache : Cache)
+      (monoid : Monoid T),
+    CorrectEncoder (S:=S) (T:=T) empty_Format (fun _ env => Some (mempty, env)).
+Proof.
+  intros. unfold empty_Format.
+  split; intros; eauto.
+  - injections. eauto.
+  - discriminate.
+Qed.
+
 Lemma ExtractViewFrom {S V T}
   : forall (cache : Cache)
            (monoid : Monoid T)
