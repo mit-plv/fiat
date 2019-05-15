@@ -140,19 +140,20 @@ Ltac eta_reduce :=
          end.
 
 Ltac cleanup_single_encoder :=
-  lazymatch goal with
-  | [  |- forall v idx s ce, @?f v idx s ce = @?g v idx s ce ] =>
-    change (forall v idx s ce, f v idx s ce = g v idx s ce); intros;
-    eta_reduce;
-    change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx ?cst) with
-        (fun (v : Tv) (idx : Tidx) (s : Ts) => f v idx ((const cst) s));
-    change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g s)) with
-        (Projection_AlignedEncodeM' f g);
-    change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g1 (?g2 s))) with
-        (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2);
-    change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g1 (?g2 (?g3 s)))) with
-        (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2) g3)
-  end.
+  simpl.
+  (* lazymatch goal with *)
+  (* | [  |- forall v idx s ce, @?f v idx s ce = @?g v idx s ce ] => *)
+  (*   change (forall v idx s ce, f v idx s ce = g v idx s ce); intros; *)
+  (*   eta_reduce; *)
+  (*   change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx ?cst) with *)
+  (*       (fun (v : Tv) (idx : Tidx) (s : Ts) => f v idx ((const cst) s)); *)
+  (*   change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g s)) with *)
+  (*       (Projection_AlignedEncodeM' f g); *)
+  (*   change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g1 (?g2 s))) with *)
+  (*       (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2); *)
+  (*   change (fun (v : ?Tv) (idx : ?Tidx) (s : ?Ts) => ?f v idx (?g1 (?g2 (?g3 s)))) with *)
+  (*       (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' (Projection_AlignedEncodeM' f g1) g2) g3) *)
+  (* end. *)
 
 Lemma AlignedEncodeList_morphism {cache: Cache} {A: Type}:
   forall (encA encA': forall sz, AlignedEncodeM sz) sz,

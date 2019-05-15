@@ -82,8 +82,6 @@ Module Sensor2.
     ltac:(derive_encoder_decoder_pair).
 
   Let encode := encoder_impl enc_dec.
-  (* Some `>>>` operations are unfolded in the actual generated code.
-     In the paper, we still keep `>>>` to make it more readable. *)
   Print encode.
 
   Let decode := decoder_impl enc_dec.

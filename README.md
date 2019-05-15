@@ -19,7 +19,9 @@ synthesizing binary encoders and decoders from specifications.
     - We also generate a checking (`AlignedEncode_Nil`) at the end of an encoder
       to make sure the buffer size is big enough, which we omitted in the paper
       for brevity.
-      
+    - The `>>>` notation is unfolded and reduced in the generated encoder. We
+      still keep `>>>` in the paper to make it more readable.
+
   * The definitions of format, encoder, and decoder, in Section 2 (Naricssus, Formally):
 
   | Definition | File                         | Name    |
