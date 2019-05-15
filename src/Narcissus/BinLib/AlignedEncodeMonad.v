@@ -5,6 +5,7 @@ Require Import
         Coq.Arith.Arith
         Coq.Numbers.Natural.Peano.NPeano
         Coq.Logic.Eqdep_dec
+        Fiat.Common.BoundedLookup
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Common.ComposeIf
@@ -925,7 +926,7 @@ Definition SetByteAt (* Sets the bytes at the specified index and sets the curre
 Delimit Scope AlignedEncodeM_scope with AlignedEncodeM.
 Notation "y >> z" := (AppendAlignedEncodeM y z) : AlignedEncodeM_scope.
 
-Import Vectors.Vector.VectorNotations.
+Local Open Scope vector_scope.
 
 Lemma AlignedEncoder_some_inv'
       {S} {cache : Cache}
