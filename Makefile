@@ -47,6 +47,7 @@ STRICT_COQDEP ?= 1
 
 UPDATE_COQPROJECT = yes # always update _CoqProject, since we sometimes switch between ml4 and mlg
 EXTRA_PIPE_SED_FOR_COQPROJECT = | sed s'/\.@ML4_OR_MLG@/.$(ML4_OR_MLG)/g'
+DONT_USE_ADMIT_AXIOM = yes
 
 include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
