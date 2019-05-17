@@ -137,8 +137,6 @@ clean::
 
 clean-doc::
 	rm -rf html
-	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
-	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
 
 HASNATDYNLINK = true
 
@@ -333,25 +331,6 @@ endif
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
 	$(SHOW)'COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@'
 	$(HIDE)$(COQC) $(COQDEBUG) $(COQFLAGS) $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@
-
-pdf: Overview/ProjectOverview.pdf Overview/library.pdf
-
-doc: pdf html
-
-Overview/library.tex: all.pdf
-	cp "$<" "$@"
-
-Overview/coqdoc.sty: all.pdf
-	cp coqdoc.sty "$@"
-
-Overview/library.pdf: Overview/library.tex Overview/coqdoc.sty
-	cd Overview; pdflatex library.tex
-
-Overview/ProjectOverview.pdf: $(shell find Overview -name "*.tex" -o -name "*.sty" -o -name "*.cls" -o -name "*.bib") Overview/library.pdf
-	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
-	cd Overview; bibtex ProjectOverview
-	cd Overview; pdflatex -interaction=batchmode -synctex=1 ProjectOverview.tex || true
-	cd Overview; pdflatex -synctex=1 ProjectOverview.tex
 
 
 src/Examples/QueryStructure/classifier.cmxa: src/Examples/QueryStructure/ClassifierExtraction.vo
