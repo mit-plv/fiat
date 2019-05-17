@@ -49,14 +49,14 @@ coqide src/Narcissus/Examples/README.v
 emacs src/Narcissus/Examples/README.v
 ```
 
-Stepping through `README.v` shows the generated encoders and decoders. For
-presentation purposes, we may show them in a more succinct and readable form in
-the paper. See also section (Paper-to-artifact correspondence guide) for more
-details.
+Stepping through `README.v` shows the generated encoders and decoders. You can
+compare the output with the ones shown in the paper. For presentation purposes,
+we may show them in a more succinct and readable form in the paper. See also
+section (Paper-to-artifact correspondence guide) for more details.
 
 You can add `Print Assumptions enc_dec` (or replace `enc_dec` with the
 definition in question) to the Coq file and process it, to make sure there is no
-unproved hypotheses or undesirable axioms. The only axioms we use is
+unproved hypotheses or undesirable axioms. The only axiom we use is
 `functional_extensionality_dep`, a well-known axiom proved to be consistent with
 Coq's logic.
 
@@ -77,8 +77,8 @@ noisy.
 
 These benchmarks are explained in our paper, Section 6.1 (Benchmarking)
 
-This benchmark outputs a plot similar to the one in Figure 12. The results
-should be in the order of a few microseconds per packet.
+It outputs a plot similar to the one in Figure 12. The results should be in the
+order of a few microseconds per packet.
 
 Running this benchmark could take around 40 minutes to finish.
 
