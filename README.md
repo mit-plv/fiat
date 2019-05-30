@@ -393,7 +393,7 @@ opam install coq=8.7.2
 - Clone Fiat
 ```
 cd ~
-git clone --recursive https://github.com/jonathye/fiat.git --depth 1 -b icfp2019 ~/fiat
+git clone --recursive https://github.com/mit-plv/fiat.git --depth 1 -b narcissus-icfp2019 ~/fiat
 opam install core_bench=v0.9.0
 ```
 
