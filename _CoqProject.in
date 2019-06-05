@@ -312,6 +312,8 @@ src/FiniteSetADTs/FiniteSetADTMethodLaws.v
 src/FiniteSetADTs/FiniteSetRefinement.v
 src/FiniteSetADTs/NatWord.v
 src/FiniteSetADTs/WordInterface.v
+src/Guard/TcpFilter.v
+src/Guard/TcpFilterOCaml.v
 src/Narcissus/BaseFormats.v
 src/Narcissus/BinLib.v
 src/Narcissus/Formats.v
@@ -348,6 +350,8 @@ src/Narcissus/Common/WordFacts.v
 src/Narcissus/ComplementaryFormats/ComplementaryFormat.v
 src/Narcissus/Examples/ByteAlignedExample.v
 src/Narcissus/Examples/ICMP_Packet.v
+src/Narcissus/Examples/IPTables.v
+src/Narcissus/Examples/IPTablesPorts.v
 src/Narcissus/Examples/README.v
 src/Narcissus/Examples/Toy.v
 src/Narcissus/Examples/Toy2.v
