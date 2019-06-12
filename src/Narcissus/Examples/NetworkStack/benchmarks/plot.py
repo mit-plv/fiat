@@ -1,35 +1,35 @@
 #!/usr/bin/env python3
-"""
-Parse and plot the output of microbenchmarks.ml
-
-Because of a bug in Core_bench, this script must deal with prettified output
-(requesting raw output crashes Core_bench).  It expects a series of
-'│'-separated values, with one input line per test.
-"""
+"""Parse and plot the output of microbenchmarks.ml."""
 
 import argparse
 from collections import OrderedDict
+
 from matplotlib import pyplot, rcParams, patches
 import mpl_toolkits.axisartist as axisartist
 import matplotlib.ticker as plticker
+import sexpdata
 
-def parsetime(time):
-    if time.endswith("ns"):
-        return float(time.replace("_", "")[:-2]) / 1000 # µs
-    else:
-        raise ValueError(time)
-
-def readline(line):
-    line = line.strip()
-    fields = (s.strip() for s in line.split("│"))
-    _, name, _r2, time, ci, *_ = fields
-    ci_low, ci_high = (parsetime(t) for t in ci.split(" "))
-    time = parsetime(time)
+def read_experiment(b):
+    b = dict(b)
+    name = b['benchmark_name_with_index']
+    time = b['time_per_run_nanos'] / 1000 # µs
+    ci_low = b['ci95_lower_bound']
+    ci_high = b['ci95_upper_bound']
     return name, time, ci_low, ci_high
+
+def remove_symbols(sexp):
+    if isinstance(sexp, sexpdata.SExpBase):
+        return sexp.value()
+    if isinstance(sexp, (int, float, str)):
+        return sexp
+    assert isinstance(sexp, list)
+    return [remove_symbols(s) for s in sexp]
 
 def readbench(fname):
     with open(fname) as f:
-        return [readline(line) for line in f]
+        sexp_str = next(l for l in f if l.startswith('('))
+        sexp_experiments = remove_symbols(sexpdata.loads(sexp_str, nil=None, true=None, false=None))
+        return [read_experiment(b) for b in sexp_experiments]
 
 def groupbench(bench):
     grouped = OrderedDict()
@@ -102,21 +102,21 @@ def plotbench(grouped):
                 width_acc = 0
                 linum = (len(ylabels) - 1) * LINE_HEIGHT
                 for proto, width, dwlow, dwhigh in measurements:
-                    print(width, dwlow, dwhigh)
+                    # print(width, dwlow, dwhigh)
                     color = HEX[colors[proto]]
                     bottom = -linum
-                    pyplot.errorbar([width_acc + width], [bottom] , xerr=[[-dwlow], [dwhigh]],
+                    pyplot.errorbar([width_acc + width], [bottom], # xerr=[[-dwlow], [dwhigh]],
                                     ecolor=color[2], fmt='')
-                    pyplot.barh(bottom - THICKNESS / 2, [width], THICKNESS, left=[width_acc],
+                    pyplot.barh(bottom, [width], THICKNESS, left=[width_acc],
                                 color=color[0], edgecolor=color[2], linewidth=0.5, label=proto)
                     width_acc += width
 
     ax.set_ylim((-len(ylabels) * LINE_HEIGHT, 0))
-    ax.set_xlim((0, 4.75))
+    # ax.set_xlim((0, 4.75))
     ax.set_yticks([-n * LINE_HEIGHT for n in range(len(ylabels))])
     ax.set_yticklabels(ylabels)
     ax.set_xlabel("Single-packet processing time (µs)")
-    ax.set_xticks([x * 0.5 for x in range(5 * 2)])
+    # ax.set_xticks([x * 0.5 for x in range(5 * 2)])
     ax.axis["left"].major_ticklabels.set_ha("left")
     ax.axis["left"].major_ticks.set_visible(False)
     ax.axis["top"].major_ticks.set_visible(False)
@@ -142,7 +142,9 @@ def main():
     grouped = groupbench(bench)
     fig = plotbench(grouped)
     fig.tight_layout()
-    pyplot.savefig(args.fname + ".pdf")
+    pdf_path = args.fname + ".pdf"
+    pyplot.savefig(pdf_path)
+    print("Figure written to {}".format(pdf_path))
     # from pprint import pprint
     # pprint(grouped)
 

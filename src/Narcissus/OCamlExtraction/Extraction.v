@@ -7,8 +7,9 @@ Extract Inductive nat => "OCamlNativeInt.t" [ "0" "Pervasives.succ" ]
 Extract Inductive prod => "(*)"  [ "(,)" ].
 
 
-Extract Constant Nat.ltb => "(<)".
-Extract Constant Nat.leb => "(<=)".
+Extract Constant Coq.Init.Nat.ltb => "(<)".
+Extract Constant Coq.Init.Nat.leb => "(<=)".
+
 (* ExtrOCamlNatInt uses Pervasives.max, which is slow *)
 Extract Constant Nat.sub =>
   "fun (x: OCamlNativeInt.t) (y: OCamlNativeInt.t) ->
