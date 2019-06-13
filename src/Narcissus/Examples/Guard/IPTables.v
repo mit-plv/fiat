@@ -244,7 +244,7 @@ Definition iptables :=
 
 (** Here are some simple demos: **)
 
-Require Export IPTablesPorts.
+Require Export Fiat.Narcissus.Examples.IPTables.Ports.
 
 Example drop_messages_192_10 :=
   iptables -A FORWARD

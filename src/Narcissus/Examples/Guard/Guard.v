@@ -1,14 +1,10 @@
 Require Import Fiat.ADT Fiat.ADTNotation Fiat.ADTRefinement Fiat.ADTRefinement.BuildADTRefinements.
-Require Import Fiat.Narcissus.Examples.IPTables.
+Require Import Fiat.Narcissus.Examples.IPTables.Core.
 
 Definition GuardSig : ADTSig := ADTsignature {
   Constructor "Init" : rep,
   Method "ProcessPacket" : rep * bytes -> rep * result
 }.
-
-(* Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header. *)
-(* Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet. *)
-(* Require Import Fiat.Narcissus.Formats.ByteBuffer. *)
 
 Require Import Narcissus.OCamlExtraction.Extraction.
 
