@@ -223,15 +223,20 @@ Notation "cf '-j' result" :=
   (invocation_of_condition cf.(cf_cond) result)
     (at level 41, left associativity).
 
-Notation "n , m" :=
+Notation "n * m" :=
   ((n * (N.of_nat 256) + m)%N)
-    (at level 38, format "n , m", left associativity)
+    (at level 40, format "n * m", left associativity)
   : addr_scope.
+
+(* Notation "'ipv4:' a : b : c : d" := *)
+(*   (NToWord 32 (a * (Npow2 24) + b * (Npow2 16) + c * (Npow2 8) + d)) *)
+(*     (at level 38, left associativity) *)
+(*   : addr_scope. *)
 
 Notation "cf !" :=
   {| cf_cond := cf.(cf_cond);
      cf_negate_next := negb cf.(cf_negate_next) |}
-    (at level 42, left associativity).
+    (at level 41, left associativity).
 
 Definition iptables :=
   {| cf_cond := fun i: input => true;
@@ -239,26 +244,26 @@ Definition iptables :=
 
 (** Here are some simple demos: **)
 
-Require Import IPTablesPorts.
+Require Export IPTablesPorts.
 
 Example drop_messages_192_10 :=
   iptables -A FORWARD
-           --source 192,0,0,0/8
-           --destination 10,0,0,0/8
+           --source 192*0*0*0/8
+           --destination 10*0*0*0/8
            -j DROP.
 
 Example drop_dhcp_serverport_from_nonserver :=
   iptables -A FORWARD
            --protocol "UDP"
            --source-port bootps
-           ! --source 192,168,0,1
+           ! --source 192*168*0*1
            -j DROP.
 
 Example accept_dhcp_client_broadcast :=
   iptables -A FORWARD
            --protocol "UDP"
            --source-port bootpc
-           --destination 255,255,255,255
+           --destination 255*255*255*255
            -j ACCEPT.
 
 Example drop_dhcp_messages_to_wrong_port :=
@@ -272,7 +277,7 @@ Example drop_dhcp_messages_to_wrong_address :=
   iptables -A FORWARD
            --protocol "UDP"
            --source-port bootpc
-           ! --destination 255,255,255,255/32
+           ! --destination 255*255*255*255/32
            -j DROP.
 
 (** We can apply these filters to packets: *)
@@ -373,5 +378,6 @@ Ltac simp x :=
 Eval cbv zeta in ltac:(simp (iptables -A FORWARD
                               --protocol "UDP"
                               --source-port bootpc
-                              --destination 255255,255,255
+                              --destination 255*255*255*255
                               -j ACCEPT)).
+
