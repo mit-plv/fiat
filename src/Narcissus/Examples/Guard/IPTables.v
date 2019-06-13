@@ -1,28 +1,15 @@
-(** This files implements a stateless Guard whose policies are expressed using a
-    limited form of iptables syntax. **)
+(** This file implements a limited form of iptables syntax. **)
 
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-Require Import BinNat.
-
-Require Import Bedrock.Word.
-
-Require Import Fiat.Common.EnumType.
-Require Import Fiat.Narcissus.Formats.ByteBuffer.
-Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
-Require Import Fiat.Narcissus.Examples.NetworkStack.UDP_Packet.
-Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
-
-Require Import List.
+Require Import Coq.Lists.List.
 Import ListNotations.
+
+Require Import Fiat.Narcissus.Examples.Guard.Core.
 
 (** We start with some definitions: **)
 
-Definition bytes := { n: nat & ByteBuffer.t n }. (* FIXME *)
-
 (* Although we can add rules to each chain, FORWARD will be the only
    meaningful one for us. *)
-Inductive chain := INPUT | FORWARD | OUTPUT. (* FIXME *)
+Inductive chain := INPUT | FORWARD | OUTPUT.
 Scheme Equality for chain.
 
 (* The guard's filter functions take a decoded packet and a chain
@@ -33,11 +20,15 @@ Record input :=
     in_udp: option UDP_Packet;
     in_chn: chain }.
 
+Definition input_of_bytes (chn: chain) (bs: bytes) :=
+  let opt_hdr := ipv4_decode bs in
+  {| in_ip4 := opt_hdr;
+     in_tcp := Common.option_bind (fun hdr => tcp_decode hdr bs) opt_hdr;
+     in_udp := Common.option_bind (fun hdr => udp_decode hdr bs) opt_hdr;
+     in_chn := chn |}.
+
 (* Addresses are represented as machine words. *)
 Definition address := word 32.
-
-(* Results describe what the guard may do after processing a rule. *)
-Inductive result := ACCEPT | DROP. (* FIXME *)
 
 (* Conditions are the basic blocks of rules. *)
 (* FIXME: This should use props instead of bools *)
@@ -134,6 +125,9 @@ Definition cond_dstaddr (spec: address_spec)
   : condition IPv4_Packet :=
   fun pkt => match_address spec pkt.(DestAddress).
 Arguments cond_dstaddr spec%addr.
+
+Require Import Coq.Vectors.Vector.
+Import VectorNotations.
 
 (* Check if the packet encapsulates a given protocol *)
 Definition cond_proto (proto: EnumType ["ICMP"; "TCP"; "UDP"])
@@ -242,121 +236,7 @@ Definition iptables :=
   {| cf_cond := fun i: input => true;
      cf_negate_next := false |}.
 
-(** Here are some simple demos: **)
-
-Require Export Fiat.Narcissus.Examples.IPTables.Ports.
-
-Example drop_messages_192_10 :=
-  iptables -A FORWARD
-           --source 192*0*0*0/8
-           --destination 10*0*0*0/8
-           -j DROP.
-
-Example drop_dhcp_serverport_from_nonserver :=
-  iptables -A FORWARD
-           --protocol "UDP"
-           --source-port bootps
-           ! --source 192*168*0*1
-           -j DROP.
-
-Example accept_dhcp_client_broadcast :=
-  iptables -A FORWARD
-           --protocol "UDP"
-           --source-port bootpc
-           --destination 255*255*255*255
-           -j ACCEPT.
-
-Example drop_dhcp_messages_to_wrong_port :=
-  iptables -A FORWARD
-           --protocol "UDP"
-           --source-port bootpc
-           ! --destination-port bootps
-           -j DROP.
-
-Example drop_dhcp_messages_to_wrong_address :=
-  iptables -A FORWARD
-           --protocol "UDP"
-           --source-port bootpc
-           ! --destination 255*255*255*255/32
-           -j DROP.
-
-(** We can apply these filters to packets: *)
-
-Definition ipv4Split {A} (k: forall (w1 w2 w3 w4: word 8), A) (addr: word 32) : A :=
-  let w1 := split2 24 8 addr in
-  let w2 := split1 8 8 (split2 16 16 addr) in
-  let w3 := split1 8 16 (split2 8 24 addr) in
-  let w4 := split1 8 24 addr in
-  k w1 w2 w3 w4.
-
-Definition ipv4ToList :=
-  ipv4Split (fun w1 w2 w3 w4 => [w1; w2; w3; w4]).
-
-Definition ipv4ToByteBuffer :=
-  ipv4Split (fun w1 w2 w3 w4 => ByteBuffer.of_list [w1; w2; w3; w4]: ByteBuffer.t 4).
-
-Definition WrapDecoder {A B C} (f: forall n, ByteBuffer.t n -> option (A * B * C)) :=
-  fun (bs: bytes) =>
-    match f _ (projT2 bs) with
-    | Some pkt => Some (fst (fst pkt))
-    | None => None
-    end.
-
-Definition ipv4_decode (bs: bytes) :=
-  WrapDecoder (@IPv4_decoder_impl) bs.
-
-Open Scope nat_scope.
-
-Definition tcp_decode (hdr: IPv4_Packet) :=
-  let src := ipv4ToByteBuffer hdr.(SourceAddress) in
-  let dst := ipv4ToByteBuffer hdr.(DestAddress) in
-  let offset := 20 + 4 * List.length hdr.(IPv4Header.Options) in
-  let tcpLen := wordToNat hdr.(TotalLength) - offset in
-  fun (bs: bytes) =>
-    let bs' := AlignedByteBuffer.bytebuffer_of_bytebuffer_range offset tcpLen (projT2 bs) in
-    WrapDecoder (@TCP_decoder_impl src dst (natToWord 16 tcpLen)) bs'.
-
-Definition udp_decode (hdr: IPv4_Packet) :=
-  let src := ipv4ToByteBuffer hdr.(SourceAddress) in
-  let dst := ipv4ToByteBuffer hdr.(DestAddress) in
-  let offset := 20 + 4 * List.length hdr.(IPv4Header.Options) in
-  let tcpLen := wordToNat hdr.(TotalLength) - offset in
-  fun (bs: bytes) =>
-    let bs' := AlignedByteBuffer.bytebuffer_of_bytebuffer_range offset tcpLen (projT2 bs) in
-    WrapDecoder (@UDP_decoder_impl src dst (natToWord 16 tcpLen)) bs'.
-
-Require Import Option.
-
-Definition input_of_bytes (chn: chain) (bs: bytes) :=
-  let opt_hdr := ipv4_decode bs in
-  {| in_ip4 := opt_hdr;
-     in_tcp := Common.option_bind (fun hdr => tcp_decode hdr bs) opt_hdr;
-     in_udp := Common.option_bind (fun hdr => udp_decode hdr bs) opt_hdr;
-     in_chn := chn |}.
-
-Definition bytes_of_ByteBuffer {n} (bb: ByteBuffer.t n) : bytes :=
-  existT _ n bb.
-
-Import VectorNotations.
-Definition dhcp_offer : Vector.t (word 8) _ :=
-  Eval compute in Vector.map (@NToWord 8) [69; 0; 1; 72; 4; 69; 0; 0; 128; 17; 180; 4; 192; 168; 0; 1; 192; 168; 0; 10; 0; 67; 0; 68; 1; 52; 34; 51; 2; 1; 6; 0; 0; 0; 61; 29; 0; 0; 0; 0; 0; 0; 0; 0; 192; 168; 0; 10; 192; 168; 0; 1; 0; 0; 0; 0; 0; 11; 130; 1; 252; 66; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 99; 130; 83; 99; 53; 1; 2; 1; 4; 255; 255; 255; 0; 58; 4; 0; 0; 7; 8; 59; 4; 0; 0; 12; 78; 51; 4; 0; 0; 14; 16; 54; 4; 192; 168; 0; 1; 255; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0]%N.
-
-Definition dhcp_request : Vector.t (word 8) _ :=
-  Eval compute in Vector.map (@NToWord 8) [69; 0; 1; 44; 168; 55; 0; 0; 250; 17; 23; 138; 0; 0; 0; 0; 255; 255; 255; 255; 0; 68; 0; 67; 1; 24; 159; 189; 1; 1; 6; 0; 0; 0; 61; 30; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 11; 130; 1; 252; 66; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 99; 130; 83; 99; 53; 1; 3; 61; 7; 1; 0; 11; 130; 1; 252; 66; 50; 4; 192; 168; 0; 10; 54; 4; 192; 168; 0; 1; 55; 4; 1; 3; 6; 42; 255; 0]%N.
-
-Definition dhcp_offer_input :=
-  input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_offer).
-
-Definition dhcp_request_input :=
-  input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_request).
-
-(* The filter that accepts client DHCP broadcasts accepts dhcp_request (a client message): *)
-Compute (accept_dhcp_client_broadcast dhcp_request_input).
-(* But it doesn't say anything about dhcp_offer (a server message): *)
-Compute (accept_dhcp_client_broadcast dhcp_offer_input).
-
-(* We can also observe the implementation of a given filter: *)
-
+(* The following sets up unfolding to observe implementations of iptables filters *)
 Hint Unfold
      Common.option_bind
      rule_of_invocation rule_of_invocations policy_of_invocations
@@ -364,20 +244,3 @@ Hint Unfold
      match_address combine_conditions and_cf invocation_of_condition
      cond_proto cond_srcaddr cond_srcport cond_dstaddr cond_dstport
      tcp_or_udp : iptables.
-
-Ltac simp x :=
-  let xn := fresh in
-  let t := type of x in
-  pose x as xn;
-  repeat autounfold with iptables in xn;
-  cbn in xn;
-  compute [andb] in xn;
-  let xn := (eval unfold xn in xn) in
-  exact xn.
-
-Eval cbv zeta in ltac:(simp (iptables -A FORWARD
-                              --protocol "UDP"
-                              --source-port bootpc
-                              --destination 255*255*255*255
-                              -j ACCEPT)).
-

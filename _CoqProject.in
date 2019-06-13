@@ -359,9 +359,13 @@ src/Narcissus/Examples/DNS/SimpleDNSPacket.v
 src/Narcissus/Examples/DNS/SimpleDnsOpt.v
 src/Narcissus/Examples/DNS/SimpleRRecordTypes.v
 src/Narcissus/Examples/DNS/SimpleResourceRecord.v
-src/Narcissus/Examples/IPTables/Core.v
-src/Narcissus/Examples/IPTables/Guard.v
-src/Narcissus/Examples/IPTables/Ports.v
+src/Narcissus/Examples/Guard/Core.v
+src/Narcissus/Examples/Guard/Guard.v
+src/Narcissus/Examples/Guard/GuardExtraction.v
+src/Narcissus/Examples/Guard/IPTables.v
+src/Narcissus/Examples/Guard/IPTablesDemos.v
+src/Narcissus/Examples/Guard/IPTablesGuard.v
+src/Narcissus/Examples/Guard/Ports.v
 src/Narcissus/Examples/NetworkStack/ARPPacket.v
 src/Narcissus/Examples/NetworkStack/EthernetHeader.v
 src/Narcissus/Examples/NetworkStack/Fiat4Mirage.v

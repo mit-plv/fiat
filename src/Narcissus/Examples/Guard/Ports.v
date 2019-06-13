@@ -1,5 +1,5 @@
 Require Import BinNat.
-Open Scope N_scope.
+Local Open Scope N_scope.
 
 Notation tcpmux := 1.
 Notation echo := 7.
