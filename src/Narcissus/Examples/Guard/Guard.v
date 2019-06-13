@@ -8,15 +8,11 @@ Definition GuardSig : ADTSig := ADTsignature {
   Method "ProcessPacket" : rep * bytes -> rep * result
 }.
 
-Definition GuardSpec : ADT GuardSig :=
-  (IPGuard {{
-    iptables -P FORWARD DROP;;
-    iptables -A FORWARD
-             --protocol "UDP"
-             --source-port bootpc
-             --destination 255*255*255*255
-             -j ACCEPT
-          }}).
+Definition GuardSpec : ADT GuardSig := IPGuard {{
+    iptables -P FORWARD DROP;
+    iptables -A FORWARD --protocol "UDP" --source-port bootps --not --source 192*168*0*1 -j DROP;
+    iptables -A FORWARD --protocol "UDP" --source-port bootpc --not --destination 255*255*255*255 -j DROP
+}}.
 
 Arguments andb : simpl nomatch.
 Arguments Word.NToWord : simpl never.

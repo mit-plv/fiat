@@ -1,5 +1,8 @@
+Require Import Fiat.Narcissus.Examples.Guard.Core.
+Require Import Fiat.Narcissus.Examples.Guard.IPTables.
 Require Import Fiat.Narcissus.Examples.Guard.Ports.
-Require Export Fiat.Narcissus.Examples.Guard.Ports.
+
+Open Scope iptables_scope.
 
 Example drop_messages_192_10 :=
   iptables -A FORWARD

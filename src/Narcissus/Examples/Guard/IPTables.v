@@ -157,9 +157,11 @@ Definition cond_dstport (port: word 16)
 
 (** The following adds syntax for these conditions: **)
 
+Delimit Scope iptables_scope with iptables.
+
 Notation "cf '-P' chain policy" :=
   ((fun cf => Policy chain policy) cf)
-    (at level 41, left associativity, chain at level 9, policy at level 9).
+    (at level 41, left associativity, chain at level 9, policy at level 9) : iptables_scope.
 
 Record cond_and_flag {A} :=
   { cf_cond : condition A;
@@ -172,11 +174,11 @@ Definition and_cf {A} (cf: cond_and_flag) (c: condition A) :=
 
 Notation "cf '-A' c" :=
   (and_cf cf (lift_condition in_chn (cond_chain c)))
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--protocol' proto" :=
   (and_cf cf (lift_condition_opt in_ip4 (cond_proto (```proto))))
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
 
 Definition mask_of_nat (m: nat) : word (m + (32 - m)) :=
     wnot (@zext m (wones m) (32 - m)).
@@ -199,30 +201,30 @@ Notation "addr / mask" :=
 
 Notation "cf '--source' addr" :=
   (and_cf cf (lift_condition_opt in_ip4 (cond_srcaddr addr%addr)))
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--destination' addr" :=
   (and_cf cf (lift_condition_opt in_ip4 (cond_dstaddr addr%addr)))
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--source-port' port" :=
   (and_cf cf (cond_srcport (NToWord 16 port%N)))
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--destination-port' port" :=
   (and_cf cf (cond_dstport (NToWord 16 port%N)))
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '-j' result" :=
   (invocation_of_condition cf.(cf_cond) result)
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
 
 Notation "n * m" :=
   ((n * (N.of_nat 256) + m)%N)
     (at level 40, format "n * m", left associativity)
   : addr_scope.
 
-(* Notation "'ipv4:' a : b : c : d" := *)
+(* Notation "'ipv4:' a : b : c : d" := : iptables *)
 (*   (NToWord 32 (a * (Npow2 24) + b * (Npow2 16) + c * (Npow2 8) + d)) *)
 (*     (at level 38, left associativity) *)
 (*   : addr_scope. *)
@@ -230,7 +232,11 @@ Notation "n * m" :=
 Notation "cf !" :=
   {| cf_cond := cf.(cf_cond);
      cf_negate_next := negb cf.(cf_negate_next) |}
-    (at level 41, left associativity).
+    (at level 41, left associativity) : iptables_scope.
+
+Notation "cf '--not'" :=
+  (cf !)%iptables
+    (at level 41, left associativity) : iptables_scope.
 
 Definition iptables :=
   {| cf_cond := fun i: input => true;
