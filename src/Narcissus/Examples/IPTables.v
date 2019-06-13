@@ -13,6 +13,9 @@ Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
 Require Import Fiat.Narcissus.Examples.NetworkStack.UDP_Packet.
 Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
 
+Require Import List.
+Import ListNotations.
+
 (** We start with some definitions: **)
 
 Definition bytes := { n: nat & ByteBuffer.t n }. (* FIXME *)
@@ -25,7 +28,7 @@ Scheme Equality for chain.
 (* The guard's filter functions take a decoded packet and a chain
    identifier as input.  *)
 Record input :=
-  { in_ip4: IPv4_Packet;
+  { in_ip4: option IPv4_Packet;
     in_tcp: option TCP_Packet;
     in_udp: option UDP_Packet;
     in_chn: chain }.
@@ -38,17 +41,47 @@ Inductive result := ACCEPT | DROP. (* FIXME *)
 
 (* Conditions are the basic blocks of rules. *)
 (* FIXME: This should use props instead of bools *)
-(* Definition ip4condition := IPv4_Packet -> bool. *)
-(* Definition tcpcondition := TCP_Packet -> bool. *)
-(* Definition udpcondition := UDP_Packet -> bool. *)
 Definition condition (A: Type) := A -> bool.
 
 (* A rule takes a packet on a chain and makes a decision about that packet. *)
 Definition rule := input -> option result.
 
-(* (* Rules are placed in chains; when a rule does not match a packet (i.e. returns *)
-(*    [None], the next rule is evaluated. *) *)
-(* Definition rulechain := list rule. *)
+(* An iptables invocation either adds a new rule or sets a default policy *)
+Inductive invocation :=
+  | Rule (r: rule)
+  | Policy (c: chain) (p: result).
+
+(* Rules are placed in chains; when a rule does not match a packet (i.e. returns *)
+(*    [None], the next rule is evaluated. *)
+Definition rulechain := list rule.
+
+Fixpoint rule_of_rulechain (rc: rulechain) : rule :=
+  fun i =>
+    match rc with
+    | [] => None
+    | [r] => r i
+    | r :: rules =>
+      match r i with
+      | Some res => Some res
+      | None => rule_of_rulechain rules i
+      end
+    end.
+
+Definition rule_of_invocation (inv: invocation) : input -> option result :=
+  match inv with
+  | Rule r => r
+  | Policy _ _ => (fun _ => None)
+  end.
+Coercion rule_of_invocation : invocation >-> Funclass.
+
+Definition rule_of_invocations (invs: list invocation) : rule :=
+  rule_of_rulechain (map rule_of_invocation invs).
+
+Definition policy_of_invocations (ch: chain) (invs: list invocation) (default: result) : result :=
+  fold_left (fun acc inv => match inv with
+                         | Rule r => acc
+                         | Policy ch' p => if chain_beq ch' ch then p else acc
+                         end) invs default.
 
 (* Usual boolean operators can be lifted to conditions: *)
 Definition combine_conditions {A} (op: bool -> bool -> bool) (c1 c2: A -> bool) : A -> bool :=
@@ -70,8 +103,8 @@ Definition lift_condition_opt {A B} (fn: A -> option B) (cnd: B -> bool)
         end.
 
 (* Rules can be constructed from a condition and a result: *)
-Definition rule_from_condition {A} (c: condition A) (r: result) :=
-  fun a => if c a then Some r else None.
+Definition invocation_of_condition (c: condition input) (r: result) :=
+  Rule (fun i => if c i then Some r else None).
 
 (** Here are some concrete conditions: **)
 
@@ -128,14 +161,15 @@ Definition cond_dstport (port: word 16)
   let fn := tcp_or_udp TCP_Packet.DestPort UDP_Packet.DestPort in
   fun pkt => option_beq _ (@weqb 16) pkt.(fn) (Some port).
 
-(** The following adds syntax for these rules: **)
+(** The following adds syntax for these conditions: **)
+
+Notation "cf '-P' chain policy" :=
+  ((fun cf => Policy chain policy) cf)
+    (at level 41, left associativity, chain at level 9, policy at level 9).
 
 Record cond_and_flag {A} :=
   { cf_cond : condition A;
     cf_negate_next : bool }.
-
-(* Coercion cond_and_flag_of_cond {A} (c: condition A) := *)
-(*   {| cf_cond := c; cf_negate_next := false |}. *)
 
 Definition and_cf {A} (cf: cond_and_flag) (c: condition A) :=
   let c := if cf.(cf_negate_next) then cond_negate c else c in
@@ -147,7 +181,7 @@ Notation "cf '-A' c" :=
     (at level 41, left associativity).
 
 Notation "cf '--protocol' proto" :=
-  (and_cf cf (lift_condition in_ip4 (cond_proto (```proto))))
+  (and_cf cf (lift_condition_opt in_ip4 (cond_proto (```proto))))
     (at level 41, left associativity).
 
 Definition mask_of_nat (m: nat) : word (m + (32 - m)) :=
@@ -170,11 +204,11 @@ Notation "addr / mask" :=
   : addr_scope.
 
 Notation "cf '--source' addr" :=
-  (and_cf cf (lift_condition in_ip4 (cond_srcaddr addr%addr)))
+  (and_cf cf (lift_condition_opt in_ip4 (cond_srcaddr addr%addr)))
     (at level 41, left associativity).
 
 Notation "cf '--destination' addr" :=
-  (and_cf cf (lift_condition in_ip4 (cond_dstaddr addr%addr)))
+  (and_cf cf (lift_condition_opt in_ip4 (cond_dstaddr addr%addr)))
     (at level 41, left associativity).
 
 Notation "cf '--source-port' port" :=
@@ -186,7 +220,7 @@ Notation "cf '--destination-port' port" :=
     (at level 41, left associativity).
 
 Notation "cf '-j' result" :=
-  (rule_from_condition cf.(cf_cond) result)
+  (invocation_of_condition cf.(cf_cond) result)
     (at level 41, left associativity).
 
 Notation "n , m" :=
@@ -243,21 +277,6 @@ Example drop_dhcp_messages_to_wrong_address :=
 
 (** We can apply these filters to packets: *)
 
-Definition _must {A} (x: option A) : match x with Some _ => A | None => unit end :=
-  match x with
-  | Some a => a
-  | None => tt
-  end.
-
-Definition opt_map {A B} (f: A -> B) (o: option A) : option B :=
-  match o with
-  | Some a => Some (f a)
-  | None => None
-  end.
-
-Notation must x := ltac:(let x := (eval vm_compute in (_must x)) in
-                        exact x).
-
 Definition ipv4Split {A} (k: forall (w1 w2 w3 w4: word 8), A) (addr: word 32) : A :=
   let w1 := split2 24 8 addr in
   let w2 := split1 8 8 (split2 16 16 addr) in
@@ -267,9 +286,6 @@ Definition ipv4Split {A} (k: forall (w1 w2 w3 w4: word 8), A) (addr: word 32) : 
 
 Definition ipv4ToList :=
   ipv4Split (fun w1 w2 w3 w4 => [w1; w2; w3; w4]).
-
-Require Import List.
-Import ListNotations.
 
 Definition ipv4ToByteBuffer :=
   ipv4Split (fun w1 w2 w3 w4 => ByteBuffer.of_list [w1; w2; w3; w4]: ByteBuffer.t 4).
@@ -304,16 +320,14 @@ Definition udp_decode (hdr: IPv4_Packet) :=
     let bs' := AlignedByteBuffer.bytebuffer_of_bytebuffer_range offset tcpLen (projT2 bs) in
     WrapDecoder (@UDP_decoder_impl src dst (natToWord 16 tcpLen)) bs'.
 
-Definition input_of_bytes (chn: chain) (bs: bytes) :=
-  match ipv4_decode bs with
-  | Some hdr =>
-    Some {| in_ip4 := hdr;
-            in_tcp := tcp_decode hdr bs;
-            in_udp := udp_decode hdr bs;
-            in_chn := chn |}
-  | None => None
-  end.
+Require Import Option.
 
+Definition input_of_bytes (chn: chain) (bs: bytes) :=
+  let opt_hdr := ipv4_decode bs in
+  {| in_ip4 := opt_hdr;
+     in_tcp := Common.option_bind (fun hdr => tcp_decode hdr bs) opt_hdr;
+     in_udp := Common.option_bind (fun hdr => udp_decode hdr bs) opt_hdr;
+     in_chn := chn |}.
 
 Definition bytes_of_ByteBuffer {n} (bb: ByteBuffer.t n) : bytes :=
   existT _ n bb.
@@ -326,10 +340,10 @@ Definition dhcp_request : Vector.t (word 8) _ :=
   Eval compute in Vector.map (@NToWord 8) [69; 0; 1; 44; 168; 55; 0; 0; 250; 17; 23; 138; 0; 0; 0; 0; 255; 255; 255; 255; 0; 68; 0; 67; 1; 24; 159; 189; 1; 1; 6; 0; 0; 0; 61; 30; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 11; 130; 1; 252; 66; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 99; 130; 83; 99; 53; 1; 3; 61; 7; 1; 0; 11; 130; 1; 252; 66; 50; 4; 192; 168; 0; 10; 54; 4; 192; 168; 0; 1; 55; 4; 1; 3; 6; 42; 255; 0]%N.
 
 Definition dhcp_offer_input :=
-  must (input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_offer)).
+  input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_offer).
 
 Definition dhcp_request_input :=
-  must (input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_request)).
+  input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_request).
 
 (* The filter that accepts client DHCP broadcasts accepts dhcp_request (a client message): *)
 Compute (accept_dhcp_client_broadcast dhcp_request_input).
@@ -338,9 +352,13 @@ Compute (accept_dhcp_client_broadcast dhcp_offer_input).
 
 (* We can also observe the implementation of a given filter: *)
 
-Hint Unfold iptables cond_dstaddr lift_condition
-     match_address combine_conditions and_cf rule_from_condition
-  cond_srcaddr cond_srcport cond_dstaddr cond_dstport : iptables.
+Hint Unfold
+     Common.option_bind
+     rule_of_invocation rule_of_invocations policy_of_invocations
+     iptables cond_dstaddr lift_condition lift_condition_opt
+     match_address combine_conditions and_cf invocation_of_condition
+     cond_proto cond_srcaddr cond_srcport cond_dstaddr cond_dstport
+     tcp_or_udp : iptables.
 
 Ltac simp x :=
   let xn := fresh in
