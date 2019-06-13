@@ -16,6 +16,9 @@ let of_array (arr: 'a array) : 'a storage_t =
 let to_array (arr: 'a storage_t) : 'a array =
   arr.data
 
+let idx_eqb _ _ p q =
+  p = q
+
 let destruct_idx _ _ _ =
   failwith "Not implemented: ArrayVector.destruct_idx"
 

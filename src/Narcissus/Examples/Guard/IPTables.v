@@ -302,8 +302,8 @@ Definition WrapDecoder {A B C} (f: forall n, ByteBuffer.t n -> option (A * B * C
     | None => None
     end.
 
-Definition ipv4_decode :=
-  WrapDecoder (@IPv4_decoder_impl).
+Definition ipv4_decode (bs: bytes) :=
+  WrapDecoder (@IPv4_decoder_impl) bs.
 
 Open Scope nat_scope.
 
@@ -312,7 +312,7 @@ Definition tcp_decode (hdr: IPv4_Packet) :=
   let dst := ipv4ToByteBuffer hdr.(DestAddress) in
   let offset := 20 + 4 * List.length hdr.(IPv4Header.Options) in
   let tcpLen := wordToNat hdr.(TotalLength) - offset in
-  fun bs =>
+  fun (bs: bytes) =>
     let bs' := AlignedByteBuffer.bytebuffer_of_bytebuffer_range offset tcpLen (projT2 bs) in
     WrapDecoder (@TCP_decoder_impl src dst (natToWord 16 tcpLen)) bs'.
 
@@ -321,7 +321,7 @@ Definition udp_decode (hdr: IPv4_Packet) :=
   let dst := ipv4ToByteBuffer hdr.(DestAddress) in
   let offset := 20 + 4 * List.length hdr.(IPv4Header.Options) in
   let tcpLen := wordToNat hdr.(TotalLength) - offset in
-  fun bs =>
+  fun (bs: bytes) =>
     let bs' := AlignedByteBuffer.bytebuffer_of_bytebuffer_range offset tcpLen (projT2 bs) in
     WrapDecoder (@UDP_decoder_impl src dst (natToWord 16 tcpLen)) bs'.
 

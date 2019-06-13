@@ -6,21 +6,6 @@ Definition GuardSig : ADTSig := ADTsignature {
   Method "ProcessPacket" : rep * bytes -> rep * result
 }.
 
-Require Import Narcissus.OCamlExtraction.Extraction.
-
-Notation simplified x :=
-  ltac:(let xx := (eval simpl in x) in
-        exact xx).
-
-Notation zeta x :=
-  ltac:(let xx := (eval cbv zeta in x) in
-        exact xx).
-
-Require Import List.
-Import ListNotations.
-
-(* Require Import Fiat.Computation.Core. *)
-
 Definition protected_let {A B} (a: A) (k: A -> B) : B :=
   k a.
 
@@ -39,10 +24,7 @@ Notation "'IPGuard' {{ inv1 ;;  .. ;;  invn }}" :=
                         | Some res => res
                         | None => policy
                         end)))
-  }%methDefParsing : ADT GuardSig) : guard.
-
-Delimit Scope guard with guard.
-Open Scope guard.
+  }%methDefParsing : ADT GuardSig).
 
 Definition GuardSpec :=
   (IPGuard {{
@@ -53,6 +35,8 @@ Definition GuardSpec :=
              --destination 255*255*255*255
              -j ACCEPT
           }}).
+
+Require Import Narcissus.OCamlExtraction.Extraction.
 
 Arguments andb : simpl nomatch.
 Arguments Word.NToWord : simpl never.
@@ -97,36 +81,49 @@ Definition guard_init : ComputationalADT.cRep GuardImpl :=
 Definition guard_process_packet (bs: bytes) (rep: ComputationalADT.cRep GuardImpl) : (_ * result) :=
   simp (CallMethod GuardImpl "ProcessPacket" rep bs).
 
-Require Import Fiat.Common.String_as_OT.
-Require Import Coq.Structures.OrderedTypeEx.
+Require Import Word.
+Require Import Fiat.Common.EnumType.
+Definition make_tcp_syn_packet (src_addr dst_addr: word 32) (src_port dst_port: word 16) : option bytes :=
+  let ip_bs := AlignedByteString.initialize_Aligned_ByteString 20 in
+  let tcp_bs := AlignedByteString.initialize_Aligned_ByteString 20 in
+  match IPv4Header.IPv4_encoder_impl ip_bs
+                          {| IPv4Header.TotalLength := natToWord _ (40);
+                             IPv4Header.ID := wzero _;
+                             IPv4Header.DF := false; (* Don't fragment flag *)
+                             IPv4Header.MF := false; (*  Multiple fragments flag *)
+                             IPv4Header.FragmentOffset := wzero _;
+                             IPv4Header.TTL := natToWord _ 8;
+                             IPv4Header.Protocol := ```"TCP";
+                             IPv4Header.SourceAddress := src_addr;
+                             IPv4Header.DestAddress := dst_addr;
+                             IPv4Header.Options := [] |}
+  with
+  | None => None
+  | Some (hdr, _, _) =>
+    match TCP_Packet.TCP_encoder_impl (ipv4ToByteBuffer src_addr) (ipv4ToByteBuffer dst_addr) (natToWord _ 20)
+                           {| TCP_Packet.SourcePort := natToWord _ 42;
+                              TCP_Packet.DestPort := natToWord _ 42;
+                              TCP_Packet.SeqNumber := wzero _;
+                              TCP_Packet.AckNumber := wzero _;
+                              TCP_Packet.NS := false; (* ECN-nonce concealment protection flag *)
+                              TCP_Packet.CWR := false; (* Congestion Window Reduced (CWR) flag *)
+                              TCP_Packet.ECE := false; (* ECN-Echo flag *)
+                              (* We can infer the URG flag from the Urgent Pointer field *)
+                              TCP_Packet.ACK := false; (* Acknowledgment field is significant flag *)
+                              TCP_Packet.PSH := false; (* Push function flag *)
+                              TCP_Packet.RST := false; (* Reset the connection flag *)
+                              TCP_Packet.SYN := true; (* Synchronize sequence numbers flag *)
+                              TCP_Packet.FIN := false; (* No more data from sender flag*)
+                              TCP_Packet.WindowSize := natToWord _ 42;
+                              TCP_Packet.UrgentPointer := None;
+                              TCP_Packet.Options := [];
+                              TCP_Packet.Payload := existT _ 0 (AlignedByteString.initialize_Aligned_ByteString 0) |}
 
-Extraction Inline negb.
-Extract Inductive reflect => bool [ true false ].
+                           tcp_bs with
+    | None => None
+    | Some (pkt, _, _) =>
+      Some (existT _ 40 (ByteBuffer.ByteBuffer.append hdr pkt))
+    end
+  end.
 
-Extract Constant string_dec  => "(=)".
-Extract Constant String_as_OT.eq_dec  => "(=)".
-Extract Constant Nat_as_OT.eq_dec => "(=)".
-
-Extract Constant String_as_OT.compare => "fun a b -> let comp = compare a b in
-                                          if comp = 0 then EQ else if comp < 0 then LT else GT".
-Extract Constant Nat_as_OT.compare    => "fun (a: int) (b: int) -> let comp = compare a b in
-                                          if comp = 0 then EQ else if comp < 0 then LT else GT".
-Extract Constant String_as_OT.string_compare => "fun a b -> let comp = compare a b in
-                                                 if comp = 0 then Eq else if comp < 0 then Lt else Gt".
-
-Extract Constant Nat.ltb => "(<)".
-Extract Constant Nat.leb => "(<=)".
-
-Extract Inlined Constant Core.char => "Int64Word.t".
-
-(* Extract Inductive Vector.t => "ListVector.t" ["(ListVector.empty ())" "ListVector.cons"] "ListVector.destruct". *)
-(* Extract Inductive VectorDef.t => "ListVector.t" ["(ListVector.empty ())" "ListVector.cons"] "ListVector.destruct". *)
-(* Extract Inlined Constant Vector.nth => "ListVector.nth". *)
-(* Extract Inlined Constant AlignedDecodeMonad.Vector_nth_opt => "ListVector.nth_opt". *)
-(* Extract Inlined Constant ith => "ListVector.ith". *)
-(* Extract Inlined Constant ith2 => "ListVector.ith2". *)
-
-Require Import ExtrOcamlZInt.
-Extract Inlined Constant Word.NToWord => "Int64Word.of_n".
-Extraction "tcpfilter.ml" guard_init guard_process_packet.
-
+Extraction "tcpfilter.ml" guard_init guard_process_packet make_tcp_syn_packet.
