@@ -1061,10 +1061,11 @@ Proof.
   simpl.
   assert (refine (format_word w ()) (ret (build_aligned_ByteString ([hi8 w; lo8 w]), ()))). {
     etransitivity.
-    2 : {
+    Focus 2.
+    (* 2 : { *)
       pose proof AlignedFormat2Char.
       apply H; eauto. higher_order_reflexivity.
-    }
+    (* } *)
     autorewrite with monad laws.
     higher_order_reflexivity.
   }
