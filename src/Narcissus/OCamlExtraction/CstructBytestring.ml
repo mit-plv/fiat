@@ -126,6 +126,9 @@ let checksum_bound n _ (arr: storage_t) =
 let slice_range _ (from: int) (len: int) (arr: storage_t) =
   sub arr from len
 
+let drop (n: int) _ (arr: storage_t) : storage_t =
+  sub arr n (length arr - n)
+
 (* CPC why <=? *)
 let blit_buffer _ _ start src dst =
   throw_if_stale "blit_buffer" src;

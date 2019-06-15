@@ -970,7 +970,7 @@ Definition AlignedEncoderForChecksum
       {S}
       n1
       (encode_B encode_A : forall sz, AlignedEncodeM sz)
-      (f : nat -> forall {sz}, Vector.t (word 8) sz -> nat -> word 16)
+      (f : nat -> forall {sz}, ByteBuffer.t sz -> nat -> word 16)
   := (fun sz => EncodeAgain (encode_B sz >> encode_word_16_0 sz >> encode_A sz)
                          (fun idx' v idx (s : S) =>
                             encode_word_16_const (f (idx'-idx) v idx) sz v (idx+n1/8) s))%AlignedEncodeM.
@@ -1088,20 +1088,76 @@ Proof.
   exists (2*x). omega.
 Qed.
 
-Fixpoint calculate_aligned_IPchecksum'
+Fixpoint calculate_aligned_IPchecksum''
          m
          {sz}
-         (v : t Core.char sz) (idx : nat)
+         (v : ByteBuffer.t sz) (idx : nat)
          {struct idx}
   := match idx with
      | 0 =>
        InternetChecksum.ByteBuffer_checksum_bound m v
      | S idx' =>
        match v with
-       | Vector.cons _ _ v' => calculate_aligned_IPchecksum' m v' idx'
+       | Vector.cons _ _ v' => calculate_aligned_IPchecksum'' m v' idx'
        | _ => wzero _
        end
      end.
+
+Require AlignedByteBuffer.
+
+Definition calculate_aligned_IPchecksum'
+         m
+         {sz}
+         (v : ByteBuffer.t sz) (idx : nat)
+  := match idx with
+     | 0 =>
+       InternetChecksum.ByteBuffer_checksum_bound m v
+     | S idx' =>
+       InternetChecksum.ByteBuffer_checksum_bound m (ByteBuffer.drop idx v)
+     end.
+
+  (* := match idx with *)
+  (*    | 0 => *)
+  (*      InternetChecksum.ByteBuffer_checksum_bound m v *)
+  (*    | S idx' => *)
+  (*      let (_, v') := (AlignedByteBuffer.bytebuffer_of_bytebuffer_range idx (sz - idx) v) in *)
+  (*      InternetChecksum.ByteBuffer_checksum_bound m v' *)
+  (*    end. *)
+
+Lemma calculate_aligned_IPchecksum_eq
+      m
+      {sz}
+      (v : ByteBuffer.t sz) (idx : nat)
+  : calculate_aligned_IPchecksum' m v idx = calculate_aligned_IPchecksum'' m v idx.
+Proof.
+  unfold calculate_aligned_IPchecksum'.
+  revert v m. revert sz.
+  induction idx; simpl; intros; try easy.
+  destruct v; simpl;
+    rewrite <- Eqdep_dec.eq_rect_eq_dec; try apply Nat.eq_dec.
+  - destruct m. reflexivity. destruct m; reflexivity.
+  - destruct idx; eauto.
+    assert (n = n - 0) as L by omega.
+    replace (ByteBuffer.drop 0 v) with (eq_rect _ _ v _ L).
+    destruct L. simpl. reflexivity.
+    simpl.
+    f_equal. apply Eqdep_dec.UIP_dec.
+    apply Nat.eq_dec.
+
+  (* unfold calculate_aligned_IPchecksum'. *)
+  (* revert v. revert sz. revert m. *)
+  (* induction idx; simpl; intros; try easy. *)
+  (* Local Opaque to_list. *)
+  (* destruct v; simpl. *)
+  (* - destruct m. reflexivity. *)
+  (*   unfold ByteBuffer_checksum_bound, ByteBuffer_fold_left16. simpl. destruct m; reflexivity. *)
+  (* - rewrite <- IHidx. destruct idx; simpl. *)
+  (*   + f_equal. *)
+  (*     replace (to_list (h :: v)) with (h :: (to_list v))%list by reflexivity. *)
+  (*     replace (n - 0) with (length (to_list v)). *)
+  (*     rewrite firstn_all. *)
+  (*   + f_equal. *)
+Qed.
 
 Lemma calculate_aligned_IPchecksum_front
       m
@@ -1110,6 +1166,8 @@ Lemma calculate_aligned_IPchecksum_front
     calculate_aligned_IPchecksum' m (v'++v) idx =
     calculate_aligned_IPchecksum' m v 0.
 Proof.
+  intros.
+  rewrite calculate_aligned_IPchecksum_eq.
   induction v'; eauto.
 Qed.
 
@@ -1126,7 +1184,7 @@ Qed.
 Definition calculate_aligned_IPchecksum
          m
          {sz}
-         (v : t Core.char sz) (idx : nat)
+         (v : ByteBuffer.t sz) (idx : nat)
   := wnot (calculate_aligned_IPchecksum' m v idx).
 
 Lemma CorrectAlignedEncoderForIPChecksumThenC

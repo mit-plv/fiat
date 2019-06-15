@@ -89,6 +89,8 @@ Extract Inlined Constant WordOpt.SW_word => "Int64Word.SW_word".
 Extract Inlined Constant combine => "Int64Word.combine".
 Extract Inlined Constant Core.append_word => "Int64Word.append".
 
+Extract Inlined Constant PeanoNat.Nat.div => "(/)".
+
 Definition word_split_hd_test := WordOpt.word_split_hd (natToWord 5 30).
 Definition word_split_tl_test := wordToNat (WordOpt.word_split_tl (natToWord 5 30)).
 Definition alignword_split1'_test := wordToNat (AlignWord.split1' 2 3 (natToWord 5 30)).
@@ -144,6 +146,7 @@ Extract Inlined Constant ByteBuffer.of_vector => "CstructBytestring.of_vector".
 Extract Inlined Constant ByteBuffer.to_vector => "CstructBytestring.to_vector".
 Extract Inlined Constant ByteBuffer.fold_left => "CstructBytestring.fold_left".
 Extract Inlined Constant ByteBuffer.append => "CstructBytestring.append".
+Extract Inlined Constant ByteBuffer.drop => "CstructBytestring.drop".
 Extract Inlined Constant nth_opt => "CstructBytestring.nth_opt".
 Extract Inlined Constant set_nth' => "CstructBytestring.set_nth".
 Extract Inlined Constant initialize_Aligned_ByteString => "CstructBytestring.create".

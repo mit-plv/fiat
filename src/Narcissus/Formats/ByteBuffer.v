@@ -1,6 +1,7 @@
 Require Import
         Coq.Arith.Peano_dec
         Coq.Logic.Eqdep_dec
+        Coq.omega.Omega
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.Vector
@@ -42,6 +43,19 @@ Module ByteBuffer.
     b.
   Definition of_vector {n} (v: Vector.t char n): t n :=
     v.
+
+  Fixpoint drop n {sz} (v : t sz) : t (sz-n).
+  Proof.
+    refine
+      (match n with
+       | 0 => (eq_rect _ _ v _ _)
+       | S n' =>
+         match v with
+         | Vector.cons _ sz' v' => (eq_rect _ _ (drop n' sz' v') _ _)
+         | _ => (eq_rect _ _ (Vector.nil _) _ _)
+         end
+       end); abstract omega.
+  Defined.
 
   Lemma to_list_of_list_eq
     : forall (v : list _),
