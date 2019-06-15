@@ -555,31 +555,25 @@ Section DomainNameCache.
     injections.
     pose proof (H4 _ (eq_refl _)).
     eapply lt_le_trans; eauto.
+    assert (wordToNat w / 8 < pow2 14)%nat. {
+      eapply (mult_lt_compat_l' _ _ 8); try omega.
+      eapply le_lt_trans.
+      apply NPeano.Nat.mul_div_le; omega.
+      rewrite mult_pow2_8; simpl; omega.
+    }
     rewrite !pointerT2Nat_Nat2pointerT in *;
-      rewrite !wtl_div in *.
+      rewrite !wtl_div in *; auto.
     rewrite wordToNat_natToWord_idempotent.
     apply NPeano.Nat.div_le_mono; omega.
     apply Nomega.Nlt_in.
     rewrite Nnat.Nat2N.id, Npow2_nat; auto.
     eapply (mult_lt_compat_l' _ _ 8); try omega.
-    + eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite wordToNat_natToWord_idempotent.
-      rewrite mult_pow2_8; simpl; omega.
-      apply Nomega.Nlt_in.
-      rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
-      eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
+    eapply le_lt_trans.
+    apply NPeano.Nat.mul_div_le; omega.
+    rewrite wordToNat_natToWord_idempotent.
+    rewrite mult_pow2_8; simpl; omega.
+    apply Nomega.Nlt_in.
+    rewrite Nnat.Nat2N.id, Npow2_nat; auto.
   Qed.
 
   Lemma cacheIndependent_add_2
