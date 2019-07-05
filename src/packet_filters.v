@@ -36,7 +36,7 @@ Definition PacketHistorySchema :=
                        sPACKET :: Packet > ]
       enforcing [].
 
-Require Import Fiat.iptables2spec.
+(*Require Import Fiat.iptables2spec.*)
 (* Definition Packet := TupleDef PacketHistorySchema sHISTORY.
  *)
 Definition FilterSig : ADTSig :=
@@ -45,7 +45,7 @@ Definition FilterSig : ADTSig :=
         Method "Filter" : rep * Packet -> rep * bool
     }.
 
-
+(*
 Definition myrule := (-A FORWARD -p tcp -s [ 10 * 0 * 0 * 1 ] --dport 22 -j ACCEPT)%iptables.
 Definition myfirewall :=
   (
@@ -79,8 +79,11 @@ Proof.
   hone representation using StatelessEmpty_AbsR.
   - simplify with monad laws. unfold refine. reflexivity.
   - Transparent QSInsert. unfold QSInsert. Print freshIdx. simpl. unfold SuccessfulInsertSpec. unfold QSInsertSpec. simpl. intros. computes_to_econstructor.
+*)
 
-  
+(** spec examples **)
+
+(*
 (* Disallow all cross-domain SSH *)
 (* --> if dst-port == 22 and src-domain != dst-domain, fail, else pass *)
 Definition CrossDomain22FilterSpec : ADT FilterSig :=
@@ -114,11 +117,11 @@ Definition Trusted21FilterSpec : ADT FilterSig :=
               ])
             ]))
     }%methDefParsing.
-
+*)
 
 Record SimplePacket := 
   { id: nat }.
-  
+
 Definition SimpleFilterSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : rep,
@@ -200,9 +203,17 @@ Proof.
     intros. unfold refine in *. intros. computes_to_inv. subst. apply isIDHighestCompute, H.
   Qed.
 
+(*  Definition findHighestID (r_o: UnConstrQueryStructure SimplePacketHistorySchema) : option nat.
+    unfold UnConstrQueryStructure in r_o.
+    pose (ilist2_hd r_o). simpl in y. Transparent RawUnConstrRelation. unfold RawUnConstrRelation in y. Check y!sPACKET.*)
+
   start sharpening ADT.
-  hone representation using (@DropQSConstraints_AbsR SimplePacketHistorySchema).
-  - simplify with monad laws. unfold refine. intros. computes_to_econstructor.
+  hone representation using (@DropQSConstraints_AbsR SimplePacketHistorySchema); try simplify with monad laws; unfold refine.
+  - intros. computes_to_econstructor. unfold DropQSConstraints_AbsR. unfold DropQSConstraints. simpl. Transparent computes_to. apply H0.
+  - intros. computes_to_econstructor. apply isIDHighestCompute.
+
+
+    
     hone representation using repHighestID; unfold repHighestID in *.
   - simplify with monad laws. refine pick val (@None nat). subst H. reflexivity. reflexivity.
   - simplify with monad laws. rewrite isIDHighestRefine. simplify with monad laws.
