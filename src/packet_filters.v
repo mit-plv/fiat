@@ -8,7 +8,6 @@ Require Import Fiat.QueryStructure.Automation.MasterPlan.
 Require Import IndexedEnsembles.
 Require Import Fiat.Narcissus.Examples.IPTables.
 
-
 Definition sINPUT := "Input".
 Definition sHISTORY := "GlobalHistory".
 Definition PacketHistorySchema :=
@@ -127,6 +126,140 @@ Theorem SharpenNoIncomingFilter:
   FullySharpened NoIncomingConnectionsFilter.
 Proof.
   start sharpening ADT.
+  hone representation using (@DropQSConstraints_AbsR PacketHistorySchema).
+
+  - apply Constructor_DropQSConstraints.
+  - simplify with monad laws.
+    unfold Bind2.
+    simplify with monad laws.
+    Transparent QSInsert.
+    cbn.
+
+    + etransitivity.
+      eapply refine_bind.
+      reflexivity.
+      unfold pointwise_relation.
+      intros.
+
+      Lemma urgh {X1 X2 Y Z} :
+        forall (cx: Comp (X1 * X2)) (cy: X1 * X2 -> Comp Y) (f: Y -> Comp Z),
+          refine
+            (x <- cx;
+             y <- cy x;
+             f y)
+            (x0 <- (x <- cx;
+                   y <- cy x;
+                   ret (y, snd x));
+             f (fst x0)).
+      Proof.
+        intros.
+        unfold refine; intros.
+        computes_to_inv; subst.
+        eauto.
+      Qed.
+
+      etransitivity.
+      apply urgh.
+      unfold QSInsert.
+      rewrite QSInsertSpec_UnConstr_refine; eauto; cycle 1.
+      * refine pick val true.
+        reflexivity.
+        exact I.
+      * refine pick val true.
+        reflexivity.
+        cbv; intros; exact I.
+      * refine pick val true.
+        reflexivity.
+        cbv; intros; exact I.
+      * cbv -[refine].
+        refine pick val true.
+        simplify with monad laws.
+        reflexivity.
+        exact I.
+      * cbv -[refine].
+        intros; refine pick val true.
+        simplify with monad laws.
+        higher_order_reflexivity.
+        eauto.
+      * simplify with monad laws.
+        higher_order_reflexivity.
+      * Axiom FilterMethod_UnConstr :
+          UnConstrQueryStructure PacketHistorySchema -> input -> Comp (option result).
+        replace (FilterMethod r_o d) with (FilterMethod_UnConstr r_n d) by admit.
+        subst H.
+        higher_order_reflexivity.
+
+  -
+    Definition AllFinite {qs_schema} (r: UnConstrQueryStructure qs_schema) :=
+      forall idx, (FiniteEnsemble (GetUnConstrRelation r idx)).
+    
+    Definition FiniteTables_AbsR'
+               {qs_schema}
+               (r_o : UnConstrQueryStructure qs_schema)
+               (r_n : { r_n: UnConstrQueryStructure qs_schema | AllFinite r_n }) :=
+      r_o = proj1_sig r_n.
+
+    hone representation using (@FiniteTables_AbsR' PacketHistorySchema).
+    + simplify with monad laws.
+      unshelve refine pick val (exist _ (DropQSConstraints (QSEmptySpec _)) _).
+      * admit.
+      * subst H.
+        higher_order_reflexivity.
+      * reflexivity.
+    + simplify with monad laws.
+      eapply refine_bind.
+      * red in H0.
+        subst.
+        higher_order_reflexivity.
+      * red; intros.
+        Axiom pick_idx :
+          forall  {ElementType: Type} e,
+            FiniteEnsemble e ->
+            { idx: nat & @UnConstrFreshIdx ElementType e idx }.
+
+        red in H0.
+        subst.
+
+        refine pick val (projT1 (pick_idx _ ((proj2_sig r_n) Fin.F1))); [ | eauto using (projT2 (pick_idx _ ((proj2_sig r_n) Fin.F1))) ].
+
+        simplify with monad laws.
+        cbn.
+
+        Axiom urgh2 :
+          forall (qs_schema : RawQueryStructureSchema)
+            (r_n: { r_n: UnConstrQueryStructure qs_schema | AllFinite r_n })
+            idx tup,
+            AllFinite (UpdateUnConstrRelation (`r_n) idx (EnsembleInsert tup (GetUnConstrRelation (`r_n) idx))).
+        
+        Axiom FiniteTables_AbsR'_Insert :
+          forall (qs_schema : RawQueryStructureSchema) (r_o : UnConstrQueryStructure qs_schema)
+            r_n
+            (idx : Fin.t (numRawQSschemaSchemas qs_schema)) (tup : IndexedElement),
+            FiniteTables_AbsR' r_o r_n ->
+            UnConstrFreshIdx (ith2 r_o idx) (elementIndex tup) ->
+            refine
+              {r_n0 : { r_n: UnConstrQueryStructure qs_schema | AllFinite r_n } |
+               FiniteTables_AbsR'
+                 (UpdateUnConstrRelation r_o idx (EnsembleInsert tup (GetUnConstrRelation r_o idx))) r_n0}
+              (ret (exist
+                          AllFinite
+                          (UpdateUnConstrRelation (`r_n) idx
+                                                  (EnsembleInsert tup (GetUnConstrRelation (`r_n) idx)))
+                          (urgh2 _ _ _ _))).
+
+        rewrite FiniteTables_AbsR'_Insert; cbn; eauto.
+        simplify with monad laws.
+
+        Focus 2.
+        unfold FiniteTables_AbsR'.
+        reflexivity.
+        higher_order_reflexivity.
+
+        admit.
+        admit.
+
+        
+        
   hone representation using LessHistoryRelation; try simplify with monad laws.
   - refine pick val (QSEmptySpec PacketHistorySchema). unfold refine. intros. Transparent computes_to. apply H0. unfold LessHistoryRelation. intros. split; intros; inversion H1; inversion H2.
   - unfold Bind2. simplify with monad laws. cbn. Check InsertIfOutgoingRefinesFilter.
