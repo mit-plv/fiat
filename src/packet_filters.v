@@ -6,20 +6,134 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Fiat.QueryStructure.Automation.MasterPlan.
 Require Import IndexedEnsembles.
-(*Require Import Fiat.iptables2spec.*)
+Require Import Fiat.Narcissus.Examples.IPTables.
 
-Definition domain_of (addr: word 32) : word 8 :=
-  (split1 8 24 addr).
 
-Definition domain (d: nat) : word 8 := (natToWord 8 d).
-Definition port (p: nat) : word 16 := (natToWord 16 p).
+Definition sINPUT := "Input".
+Definition sHISTORY := "GlobalHistory".
+Definition PacketHistorySchema :=
+  Query Structure Schema
+        [ relation sHISTORY has
+                   schema < sINPUT :: input > ]
+        enforcing [].
 
-(* true = fail
-   false = pass *)
 
-Definition fail_if_all (conds: list bool) : bool := (fold_right andb true conds).
-Definition fail_if_any (conds: list bool) : bool := (fold_right orb false conds).
+Definition StatefulFilterSig : ADTSig :=
+  ADTsignature {
+      Constructor "Init" : rep,
+      Method "Filter" : rep * input -> rep * (option result)
+    }.
 
+
+(**
+we are 18.X.X.X
+outside world is all other IP addresses
+filter allows outside address to talk to us only if we have talked to it first
+**)
+
+Definition OutgoingRule :=
+  iptables -A FORWARD --source 18'0'0'0/24.
+
+Definition IncomingRule :=
+  iptables -A FORWARD --destination 18'0'0'0/24.
+
+Definition OutgoingToRule (dst: address) :=
+  and_cf OutgoingRule (lift_condition in_ip4 (cond_dstaddr {| saddr := dst; smask := mask_of_nat 32 |})).
+
+Lemma OutgoingToImpliesOutgoing:
+  forall inp dst,
+    (OutgoingToRule dst).(cf_cond) inp -> OutgoingRule.(cf_cond) inp.
+Proof.
+  intros. simpl in *. unfold combine_conditions in *. apply andb_prop in H. destruct H. rewrite H. constructor. Qed.
+
+Opaque OutgoingRule.
+Opaque IncomingRule.
+Opaque OutgoingToRule.
+
+Definition FilterMethod (r: QueryStructure PacketHistorySchema) (inp: input) : Comp (option result) :=
+  if (OutgoingRule.(cf_cond) inp) then ret (Some ACCEPT)
+  else if negb (IncomingRule.(cf_cond) inp) then ret None
+  else b <- { b: bool | decides b (exists pre,
+    IndexedEnsemble_In (GetRelation r Fin.F1) < sINPUT :: pre > /\
+    ((OutgoingToRule inp.(in_ip4).(SourceAddress)).(cf_cond) pre = true)) };
+    if b then ret (Some ACCEPT) else ret (Some DROP).
+
+Definition NoIncomingConnectionsFilter : ADT StatefulFilterSig :=
+  Eval simpl in Def ADT {
+    rep := QueryStructure PacketHistorySchema,
+    Def Constructor0 "Init" : rep := empty,,
+
+    Def Method1 "Filter" (r: rep) (inp: input) : rep * option result :=
+      res <- FilterMethod r inp;
+      `(r, _) <- Insert (< sINPUT :: inp >) into r!sHISTORY;
+      ret (r, res)
+  }%methDefParsing.
+
+Definition LessHistoryRelation (r_o r_n : QueryStructure PacketHistorySchema) :=
+  forall inp,
+    (OutgoingRule.(cf_cond) inp) ->
+    ((IndexedEnsemble_In (GetRelation r_n Fin.F1) < sINPUT :: inp >)
+     <-> IndexedEnsemble_In (GetRelation r_o Fin.F1) < sINPUT :: inp >).
+
+Lemma LessHistoryPreservesFilter:
+  forall inp r_o r_n val,
+    LessHistoryRelation r_o r_n ->
+    computes_to (FilterMethod r_o inp) val ->
+    computes_to (FilterMethod r_n inp) val.
+Proof.
+  intros. unfold FilterMethod in *. unfold LessHistoryRelation in H.
+  destruct (cf_cond OutgoingRule inp) eqn:outrule. apply H0.
+  destruct (negb (cf_cond IncomingRule inp)) eqn:ninrule; simpl in *. apply H0.
+  inversion H0. destruct H1. computes_to_econstructor. destruct x eqn:truefalse. assert (Hsol: computes_to { b: bool | decides b (exists pre: input, IndexedEnsemble_In (GetRelation r_n Fin.F1) (icons2 pre inil2) /\ cf_cond (OutgoingToRule (SourceAddress (in_ip4 inp))) pre = true) } true).
+  { computes_to_econstructor. unfold decides; simpl. destruct H1. destruct H1. exists x0. split. apply (H x0). apply (OutgoingToImpliesOutgoing x0 (SourceAddress (in_ip4 inp))). apply H3. apply H1. apply H3. } apply Hsol.
+  computes_to_econstructor; unfold decides; simpl. unfold not; intros. destruct H1. destruct H3. destruct H1. exists x0. split. apply (H x0). apply (OutgoingToImpliesOutgoing x0 (SourceAddress (in_ip4 inp))). apply H3. apply H1. apply H3.
+  apply H2.
+Qed.
+
+
+Lemma LessHistoryRelationRefl:
+  forall r_o, LessHistoryRelation r_o r_o.
+Proof.
+  unfold LessHistoryRelation; split; intros; assumption. Qed.
+
+Lemma SimplInBind:
+  forall (T U: Type) (x v : T) (y: U),
+    In T (`(r', _) <- ret (x, y); ret r') v -> x = v.
+Proof.
+  intros. apply Bind_inv in H. destruct H. destruct H. apply Return_inv in H. rewrite <- H in H0. simpl in H0. apply Return_inv in H0. assumption. Qed.
+
+Print FiniteTables_AbsR. Check QSInsertSpec_refine_opt.
+
+Print LessHistoryRelation.
+
+Lemma InsertIfOutgoingRefinesFilter:
+  forall (r_o: QueryStructure PacketHistorySchema) d,
+    refine
+      (r <- QSInsert r_o Fin.F1 (icons2 d inil2);
+       {r_n0 : QueryStructure PacketHistorySchema |
+            LessHistoryRelation (fst r) r_n0})
+      (r <- if cf_cond OutgoingRule d
+                  then QSInsert r_o Fin.F1 (icons2 d inil2)
+                  else ret (r_o, true);
+       ret (fst r)).
+Proof.
+  intros. destruct (cf_cond OutgoingRule d) eqn:outd; unfold refine; intros.
+  - inversion H. destruct H0. computes_to_econstructor. apply H0. computes_to_econstructor. rewrite H1. apply LessHistoryRelationRefl.
+  - pose proof (SimplInBind _ _ r_o v _ H). rewrite <- H0. subst. computes_to_econstructor. apply QSInsertSpec_refine_opt. simpl. computes_to_econstructor. unfold UnConstrFreshIdx. computes_to_econstructor. intros. Admitted.
+    
+
+
+Theorem SharpenNoIncomingFilter:
+  FullySharpened NoIncomingConnectionsFilter.
+Proof.
+  start sharpening ADT.
+  hone representation using LessHistoryRelation; try simplify with monad laws.
+  - refine pick val (QSEmptySpec PacketHistorySchema). unfold refine. intros. Transparent computes_to. apply H0. unfold LessHistoryRelation. intros. split; intros; inversion H1; inversion H2.
+  - unfold Bind2. simplify with monad laws. cbn. Check InsertIfOutgoingRefinesFilter.
+    
+
+
+(*
 Definition sID := "ID".
 Definition sPACKET := "Packet".
 
@@ -36,7 +150,6 @@ Definition PacketHistorySchema :=
                        sPACKET :: Packet > ]
       enforcing [].
 
-(*Require Import Fiat.iptables2spec.*)
 (* Definition Packet := TupleDef PacketHistorySchema sHISTORY.
  *)
 Definition FilterSig : ADTSig :=
@@ -45,45 +158,9 @@ Definition FilterSig : ADTSig :=
         Method "Filter" : rep * Packet -> rep * bool
     }.
 
-(*
-Definition myrule := (-A FORWARD -p tcp -s [ 10 * 0 * 0 * 1 ] --dport 22 -j ACCEPT)%iptables.
-Definition myfirewall :=
-  (
-    *filter
-       myrule
-  )%iptables.
-
-
-Theorem SharpenedMyFirewall:
-  FullySharpened myfirewall.
-Proof.
-  start sharpening ADT.
-
-  Definition StatelessEmpty_AbsR (oldrep: QueryStructure PacketHistorySchema) (newrep: unit) :=
-    True.
-
-(*  hone representation using (@FiniteTables_AbsR PacketHistorySchema). *)
-
-  (*
-  hone representation using (@DropQSConstraints_AbsR PacketHistorySchema).
-  - apply Constructor_DropQSConstraints.
-  - unfold Bind2. simplify with monad laws.
-
-             (UpdateUnConstrRelation qs Ridx
-                (BuildADT.EnsembleInsert tup
-                   (GetUnConstrRelation qs Ridx)), true)
-
-    
-    doAny simplify_queries master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    *)
-  hone representation using StatelessEmpty_AbsR.
-  - simplify with monad laws. unfold refine. reflexivity.
-  - Transparent QSInsert. unfold QSInsert. Print freshIdx. simpl. unfold SuccessfulInsertSpec. unfold QSInsertSpec. simpl. intros. computes_to_econstructor.
-*)
-
 (** spec examples **)
 
-(*
+
 (* Disallow all cross-domain SSH *)
 (* --> if dst-port == 22 and src-domain != dst-domain, fail, else pass *)
 Definition CrossDomain22FilterSpec : ADT FilterSig :=
@@ -135,8 +212,6 @@ Definition SimplePacketHistorySchema :=
       enforcing [].
 
 
-Locate "!".
-Locate IndexedEnsemble.
 
 Definition isIDHighest (r: QueryStructure SimplePacketHistorySchema) (p: SimplePacket) : Comp bool :=
 (*     vals <- For (pac in r!sHISTORY) Return ((pac!sPACKET).(id)); *)
@@ -208,18 +283,17 @@ Proof.
     pose (ilist2_hd r_o). simpl in y. Transparent RawUnConstrRelation. unfold RawUnConstrRelation in y. Check y!sPACKET.*)
 
   start sharpening ADT.
-  hone representation using (@DropQSConstraints_AbsR SimplePacketHistorySchema); try simplify with monad laws; unfold refine.
+(*  hone representation using (@DropQSConstraints_AbsR SimplePacketHistorySchema); try simplify with monad laws; unfold refine.
   - intros. computes_to_econstructor. unfold DropQSConstraints_AbsR. unfold DropQSConstraints. simpl. Transparent computes_to. apply H0.
-  - intros. computes_to_econstructor. apply isIDHighestCompute.
-
+  - intros. computes_to_econstructor. apply isIDHighestCompute.*)
 
     
     hone representation using repHighestID; unfold repHighestID in *.
   - simplify with monad laws. refine pick val (@None nat). subst H. reflexivity. reflexivity.
-  - simplify with monad laws. rewrite isIDHighestRefine. simplify with monad laws.
-    unfold refine. intros. computes_to_econstructor. computes_to_econstructor.
+  - simplify with monad laws. unfold refine. intros. computes_to_econstructor. apply isIDHighestCompute. apply H0. repeat computes_to_econstructor.
+Abort.
 
-
+(*
 Definition SYNFloodFilterSpec : ADT FilterSig :=
     Eval simpl in Def ADT {
         rep := QueryStructure PacketHistorySchema,
@@ -234,8 +308,8 @@ Definition SYNFloodFilterSpec : ADT FilterSig :=
                             Where (src_addr = pac.(ip_h)!SourceAddress)
                             Where (dst_addr = pac.(ip_h)!DestAddress)
                             Where (dst_port = pac.(tcp_p)!DestPort)
-                            Return ());
-    }%methDefParsing.
+                            Return ())
+    }%methDefParsing.*)
 
 
 (* spec a filter that ensures every packet has a higher id than previous
