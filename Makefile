@@ -221,11 +221,12 @@ EXTRACTION_UNMADE_VO := \
 	src/CertifiedExtraction/Benchmarks/DNS.vo \
 
 NARCISSUS_EXAMPLES_VO := \
-	src/Narcissus/Examples/IPTables.vo \
-	src/Narcissus/Examples/IPTablesPorts.vo \
 	src/Narcissus/Examples/ByteAlignedExample.vo \
 	src/Narcissus/Examples/ICMP_Packet.vo \
 	src/Narcissus/Examples/IntExample.vo \
+	src/Narcissus/Examples/Guard/IPTables.vo \
+	src/Narcissus/Examples/Guard/IPTablesPorts.vo \
+	src/Narcissus/Examples/Guard/PacketFiltersLemmas.vo \
 	src/Narcissus/Examples/NetworkStack/ARPPacket.vo \
 	src/Narcissus/Examples/NetworkStack/EthernetFrame.vo \
 	src/Narcissus/Examples/NetworkStack/EthernetHeader.vo \
