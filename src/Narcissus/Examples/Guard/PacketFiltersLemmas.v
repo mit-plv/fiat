@@ -67,34 +67,23 @@ Definition FiniteTables_AbsR'
 Lemma QSEmptyIsFinite {qs_schema}: AllFinite (DropQSConstraints (QSEmptySpec qs_schema)).
 Proof.
   unfold AllFinite. intros. exists []. exists [].
-  split. reflexivity. split. split; intros.
-(*  pose proof (FiniteEnsemble_QSEmptySpec idx) as Hfin. red in Hfin.
-  destruct Hfin as [l Hl]. red in Hl. destruct Hl as [l' [Hmap [Heqv Hdup]]]. *)
-  unfold In, GetUnConstrRelation, DropQSConstraints, QSEmptySpec in H. simpl in H.
+  split.
+  - reflexivity.
+  - split.
+    * split; intros.
+      + cbn in H. red in H. red in H.
+        change (Vector.map schemaRaw (QSschemaSchemas qs_schema))
+          with (qschemaSchemas qs_schema) in H. rewrite <- ith_imap2 in H.
+        remember (ith2 _ _) in *.
+        change (numQSschemaSchemas qs_schema)
+          with (numRawQSschemaSchemas (QueryStructureSchemaRaw qs_schema)) in Heqy.
+        change (fun x => ?f x) with f in Heqy.
 
-
-  Coercion mycoer {qs_schema idx t}
-           (y: @IndexedElement
-                 (@RawTuple
-                    (@GetNRelSchemaHeading
-                       (numRawQSschemaSchemas
-                          (QueryStructureSchemaRaw qs_schema))
-                       (qschemaSchemas (QueryStructureSchemaRaw qs_schema)) idx))) :
-    @IndexedRawTuple
-      (rawSchemaHeading
-         (@Vector.nth RawSchema (numQSschemaSchemas qs_schema) t idx)).
-  Admitted.
-
-  assert (Hscraw: qschemaSchemas qs_schema = Vector.map schemaRaw (QSschemaSchemas qs_schema)).
-  { reflexivity. }
-
-  replace x with (@mycoer _ _ (@Vector.map Schema RawSchema schemaRaw (numQSschemaSchemas _) (QSschemaSchemas _)) x) in H.
-  rewrite <- Hscraw in H. rewrite <- ith_imap2 in H.
-  Set Printing All. Check (Build_EmptyRelation_IsEmpty qs_schema idx). simpl in H. admit. admit.
-  (*replace (fun ns: RawSchema => RawRelation ns) with RawRelation in H. rewrite Build_EmptyRelation_IsEmpty in H.*)
-  inversion H. constructor.
-Admitted.
-Unset Printing All.
+        rewrite (Build_EmptyRelation_IsEmpty qs_schema idx) in Heqy.
+        subst y. cbn in H. inversion H.
+      + inversion H.
+    * constructor.
+Qed.
 
 Lemma FiniteTables_AbsR'_QSEmptySpec
       {qs_schema}
@@ -118,7 +107,7 @@ Proof.
 Qed.
 
 Lemma IncrMaxFreshIdx_Refine:
-  forall {qs_schema qidx} (r: sigT (@AllFinite qs_schema)),
+  forall {qs_schema} {qidx: Fin.t (numRawQSschemaSchemas qs_schema)} (r: sigT (@AllFinite qs_schema)),
     refine
       {idx: nat | UnConstrFreshIdx (GetUnConstrRelation (projT1 r) qidx) idx}
       (ret (@IncrMaxFreshIdx _ qidx r)).
@@ -130,10 +119,10 @@ Qed.
 Lemma insert_finite_helper:
   forall (qs_schema : RawQueryStructureSchema)
          (r_n: { r_n: UnConstrQueryStructure qs_schema & AllFinite r_n })
-         idx tup,
-    UnConstrFreshIdx (GetUnConstrRelation (projT1 r_n) idx) (elementIndex tup) ->
-    AllFinite (UpdateUnConstrRelation (projT1 r_n) idx
-                 (EnsembleInsert tup (GetUnConstrRelation (projT1 r_n) idx))).
+         qidx tup,
+    UnConstrFreshIdx (GetUnConstrRelation (projT1 r_n) qidx) (elementIndex tup) ->
+    AllFinite (UpdateUnConstrRelation (projT1 r_n) qidx
+                 (EnsembleInsert tup (GetUnConstrRelation (projT1 r_n) qidx))).
 Proof.
   red; intros qsc r_n idx tup Hfresh idx'. destruct (Fin.eqb idx idx') eqn:idxeq.
   - apply Fin.eqb_eq in idxeq. subst idx'.
@@ -170,23 +159,21 @@ Proof.
 Qed.
 
 Lemma FiniteTables_AbsR'_Insert :
-  forall (qs_schema : RawQueryStructureSchema) r_o r_n
-         (idx : Fin.t (numRawQSschemaSchemas qs_schema)) tup,
-    FiniteTables_AbsR' r_o r_n ->
-    UnConstrFreshIdx (ith2 r_o idx) (elementIndex tup) ->
-    forall (H: UnConstrFreshIdx (GetUnConstrRelation (projT1 r_n) idx) (elementIndex tup)),
+  forall (qs_schema : RawQueryStructureSchema) r_n
+         (idx : Fin.t (numRawQSschemaSchemas qs_schema)) tup
+         (H: UnConstrFreshIdx (GetUnConstrRelation (projT1 r_n) idx) (elementIndex tup)),
     refine
       {r_n0 : { r_n: UnConstrQueryStructure qs_schema & AllFinite r_n } |
        FiniteTables_AbsR'
-         (UpdateUnConstrRelation r_o idx (EnsembleInsert tup (GetUnConstrRelation r_o idx))) r_n0}
+         (UpdateUnConstrRelation (projT1 r_n) idx (EnsembleInsert tup (GetUnConstrRelation (projT1 r_n) idx))) r_n0}
       (ret (existT AllFinite
               (UpdateUnConstrRelation (projT1 r_n) idx
                  (EnsembleInsert tup (GetUnConstrRelation (projT1 r_n) idx)))
               (insert_finite_helper r_n idx tup H))).
 Proof.
-  intros qsc r_o r_n idx tup Hrel Hfresho Hfreshn.
+  intros qsc r_n idx tup Hfreshn.
   unfold refine; intros r_n' Hr_n'. apply Return_inv in Hr_n'. subst r_n'.
-  computes_to_econstructor. red; cbn. red in Hrel. subst r_o. reflexivity.
+  computes_to_econstructor. red; cbn. reflexivity.
 Qed.
 
 
@@ -198,56 +185,78 @@ Ltac drop_constraints_under_bind_insert :=
     try (cbv -[refine]; intros; refine pick val true; try eauto);
     try (simplify with monad laws; higher_order_reflexivity).
   
-Ltac drop_constraints_under_bind bound_meth_tac :=
-  [> apply Constructor_DropQSConstraints
-  | simplify with monad laws; unfold Bind2; simplify with monad laws;
-    cbn; etransitivity;
-    [ eapply refine_bind;
-      [ reflexivity
-      | intro a; etransitivity;
-        [ apply change_refine_form
-        | drop_constraints_under_bind_insert
-        ]
-      ]
-    | etransitivity;
-      [ eapply refine_bind;
-        [ bound_meth_tac
-        | red; intros; higher_order_reflexivity
-        ]
-      | match goal with [H: methodType _ _ _ |- _] =>
-          subst H; higher_order_reflexivity
-        end
-      ]
-    ]
-  |
-  ].
+Ltac drop_constraints_under_bind qs_schema bound_meth_tac :=
+  hone representation using (@DropQSConstraints_AbsR qs_schema);
+  repeat
+    (match goal with
+     | [H: constructorType _ _ |- _] =>
+       apply Constructor_DropQSConstraints
 
-Ltac finite_under_bind :=
-  try simplify with monad laws;
-  [> refine pick val
-       (existT _ (DropQSConstraints (QSEmptySpec _)) QSEmptyIsFinite);
-     [ match goal with [H: constructorType _ _ |- _] =>
-         subst H; higher_order_reflexivity
-       end
-     | apply FiniteTables_AbsR'_QSEmptySpec
-     ]
-  | eapply refine_bind;
-    [ match goal with
-        [H: FiniteTables_AbsR' _ _ |- _] =>
-        red in H; subst; higher_order_reflexivity
-      end
-    | red; intros;
-      match goal with
-        [H: FiniteTables_AbsR' _ _ |- _] =>
-        red in H; subst; eapply refine_under_bind_both;
-        [ apply IncrMaxFreshIdx_Refine
-        | intros; cbn; rewrite FiniteTables_AbsR'_Insert; cbn;
-          [ simplify with monad laws; higher_order_reflexivity
-          | red; reflexivity
-          | eauto
-          ]
-        ]
-      end
-    ]
-  |
-  ].
+     | [H: methodType _ _ _ |- _] =>
+       simplify with monad laws; unfold Bind2;
+       simplify with monad laws; cbn; etransitivity;
+       [ eapply refine_bind;
+         repeat
+           (match goal with
+            | [|- refine _ _] => reflexivity
+            | [|- pointwise_relation _ refine _ _] =>
+              intro a; etransitivity;
+              [ apply change_refine_form
+              | drop_constraints_under_bind_insert ]
+            end)
+       | etransitivity;
+         [ eapply refine_bind;
+           repeat
+             (match goal with
+              | [|- refine _ _] => bound_meth_tac
+              | [|- pointwise_relation _ refine _ _] =>
+                red; intros; higher_order_reflexivity
+              end)
+         | subst H; higher_order_reflexivity
+         ]
+       ]
+     end).
+
+
+
+Ltac hone_finite_under_bind_constructor :=
+  match goal with
+    [H: constructorType _ _ |- _] =>
+    simplify with monad laws;
+    refine pick val
+      (existT _ (DropQSConstraints (QSEmptySpec _)) QSEmptyIsFinite);
+    [ subst H; higher_order_reflexivity
+    | apply FiniteTables_AbsR'_QSEmptySpec ]
+  end.
+
+Ltac hone_finite_under_bind_insert qs_schema idx :=
+  match goal with
+    [H': FiniteTables_AbsR' _ _ |- _] =>
+    red; intros; red in H'; subst;
+    rewrite (@IncrMaxFreshIdx_Refine qs_schema idx);
+    simplify with monad laws; simpl;
+    rewrite (@FiniteTables_AbsR'_Insert
+               qs_schema _ idx
+               ({| elementIndex := IncrMaxFreshIdx _;
+                   indexedElement := icons2 _ inil2 |})
+               (IncrMaxFreshIdx_Prop _));
+    simplify with monad laws; higher_order_reflexivity
+  end.
+
+Ltac hone_finite_under_bind qs_schema idx :=
+  hone representation using (@FiniteTables_AbsR' qs_schema);
+  repeat
+    (match goal with
+     | [H: constructorType _ _ |- _] =>
+       hone_finite_under_bind_constructor
+         
+     | [H: methodType _ _ _, H': FiniteTables_AbsR' _ _ |- _] =>
+       simplify with monad laws; eapply refine_bind;
+       repeat
+         (match goal with
+          | [|- refine _ _] =>
+            red in H'; subst; higher_order_reflexivity
+          | [|- pointwise_relation _ refine _ _] =>
+            hone_finite_under_bind_insert qs_schema idx
+          end)
+  end).
