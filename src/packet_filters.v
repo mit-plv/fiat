@@ -171,17 +171,29 @@ Proof.
   intros. induction H; simpl; congruence.
 Qed.
 
-
-(*
- H1 : fold_right
-         (fun b a : Comp (list ()) =>
-          l <- b;
-          l' <- a;
-          ret (l ++ l')%list) (ret [])
-         (map
-            (fun t : RawTuple =>
-             {l : list () |
-             (P t -> ret [()] ↝ l) /\ (~ P t -> l = [])}) ltup) l' *)
+Lemma fold_comp_list_in:
+  forall (T: Type) (P: T -> bool) (ltup: list T) l inp,
+    fold_right
+      (fun b a : Comp (list ()) =>
+         l <- b;
+         l' <- a;
+         ret (l ++ l')%list) (ret [])
+      (map
+         (fun t : T =>
+            {l : list () |
+             (P t -> ret [()] ↝ l) /\ (~ P t -> l = [])}) ltup) l ->
+    List.In inp ltup ->
+    P inp ->
+    0 <? Datatypes.length l.
+Proof.
+  intros T P. induction ltup.
+  - intros; auto.
+  - intros l inp Hf Hin Hp. cbn in Hf.  destruct Hf as [x [Hx [y [Hy Happ]]]].
+    unfold In in *. inversion Happ. destruct Hin as [Hin | Hin].
+    * subst inp. inversion Hx. apply H0 in Hp. inversion Hp. auto.
+    * pose proof (IHltup y inp Hy Hin Hp) as Hind. rewrite app_length.
+      apply Nat.ltb_lt; apply Nat.lt_lt_add_l; apply Nat.ltb_lt; assumption.
+Qed.
 
 Lemma fold_comp_list_length:
   forall l l',
@@ -218,87 +230,43 @@ Lemma count_zero_iff:
                           Return ())))) count ->
     ((0 <? count) <-> (exists inp, IndexedEnsemble_In (GetUnConstrRelation r myqidx) < sINPUT :: inp > /\ P < sINPUT :: inp >)).
 Proof.
-  Transparent Query_For. Transparent Count.
+  Transparent Query_For. Transparent Count. Transparent QueryResultComp.
   unfold Count, Query_For, Query_Where, Query_Return, UnConstrQuery_In.
-  Transparent QueryResultComp. unfold QueryResultComp, FlattenCompList.flatten_CompList.
+  unfold QueryResultComp, FlattenCompList.flatten_CompList.
   intros r P count Hcount. destruct Hcount as [l [Hcount Htmp]].
-  unfold In in *. inversion Htmp. clear Htmp.
+  unfold In in *. inversion Htmp. rename H into Hlen. clear Htmp.
   destruct Hcount as [l' [Htmp Hperm]]. apply Pick_inv in Hperm.
   unfold In in *. destruct Htmp as [ltup [Hrel Hfold]].
   apply Pick_inv in Hrel. unfold In in *.
   pose proof (permutation_length l' l Hperm) as Hpermlen.
   rewrite <- Hpermlen in *. clear Hperm. clear Hpermlen. clear l.
-  generalize dependent r. generalize dependent l'. induction ltup.
+  split; intros H.
+  - pose proof (fold_comp_list_length l' _ Hfold H) as Hlin0.
+    destruct Hlin0 as [lin [Hlinm [lin' [Hll Hlinc]]]].
+    apply in_map_iff in Hlinm. destruct Hlinm as [x [Hpx Hlx]].
+    cbv in (type of x).
+    assert (Htuple: < sINPUT :: (prim_fst x) > = x).
+    { destruct x. cbv. destruct prim_snd. reflexivity. }
+    exists (prim_fst x). split.
+    * red in Hrel. destruct Hrel as [l [Hmap [Heql Hdup]]].
+      rewrite Htuple. red. rewrite <- Hmap in Hlx.
+      apply in_map_iff in Hlx.
+      destruct Hlx as [y [Hy1 Hy2]]. destruct y as [yidx yelem].
+      exists yidx. simpl in Hy1. subst x. apply Heql. apply Hy2.
+    * rewrite Htuple. subst lin. inversion Hll.
+      destruct (P x) eqn:Hpx. reflexivity.
+      assert (Hle: lin' = []) by (apply H1; congruence). subst lin'.
+      inversion Hlinc.
 
-  - intros l Hfold Hcount r Hrel.
-    simpl in Hfold. inversion Hfold. subst l.
-    split; intros. inversion H.
-    destruct H as [inp [Hinp1 Hinp2]]. red in Hinp1.
-    destruct Hinp1 as [idx Hinp1]. unfold In in Hinp1.
-    unfold UnIndexedEnsembleListEquivalence in Hrel.
-    destruct Hrel as [l [Hmap [Heql Hdup]]]. apply Heql in Hinp1.
-    assert (Hmapnil: forall (A B : Type) (l: list A) (f: A -> B),
-               map f l = [] -> l = []).
-    { intros. destruct l0. reflexivity. simpl in H. inversion H. }
-    apply Hmapnil in Hmap. subst l. inversion Hinp1.
-
-  - intros l Hfold Hcount r Hrel.
-    simpl in Hfold. destruct Hfold as [lp [Hp Hfold]]. unfold In in *.
-    inversion Hp. clear Hp.
-    assert (H0': P a -> lp = [()]) by (intros H0'; apply H in H0';
-                                       apply Return_inv in H0';
-                                       symmetry; assumption).
-    clear H.
-    destruct Hfold as [lp' [Hfold Happ]]. unfold In in *. inversion Happ.
-    clear Happ. rename H into Happ. split; intros.
-
-    * rewrite app_length in H.
-      unfold UnIndexedEnsembleListEquivalence in Hrel.
-      destruct Hrel as [l' [Hmap [Heql Hdup]]].
-      destruct (P a) eqn:Hpa.
-    + unfold attrType.
-      assert (Hmapex: forall (A B : Type) (l: list A) (f: A -> B) (a: B) a',
-                 map f l = a :: a' -> exists b, f b = a /\ List.In b l).
-      { intros. destruct l0. inversion H1. simpl in H1. inversion H1.
-        exists a1. split. reflexivity. left. reflexivity. }
-      pose proof (Hmapex _ _ l' _ a _ Hmap). destruct H1 as [b [Hb Hb']].
-
-      (*exists (indexedElement b). split. red. exists (elementIndex b).
-      unfold In. apply Heql.
-      assert (Hbb: {| elementIndex := elementIndex b;
-                      indexedElement := indexedElement b |} = b).
-      { destruct b. reflexivity. }
-      rewrite Hbb. apply Hb'. rewrite Hb. apply Hpa.
-    + rewrite H0 in H. simpl in H. rewrite Nat.add_0_l in H.
-      destruct l' as [|h' tl']. inversion Hmap.
-      pose (EnsembleDelete (GetUnConstrRelation r myqidx)
-                           (Singleton _ (indexedElement h'))) as r'.
-      assert (Hrel: UnIndexedEnsembleListEquivalence
-                       (GetUnConstrRelation r myqidx) (a :: ltup)).
-      { red. exists (h' :: tl'). split. assumption. split; assumption. }
-
-      assert (Hrel': UnIndexedEnsembleListEquivalence r' ltup).
-      { red. exists tl'. split.
-        inversion Hmap. reflexivity.
-        split. split; intros.
-        - inversion H1. apply Heql in H2. destruct H2 as [H2 | H2].
-          * subst x. cbv in H3. exfalso. apply H3. reflexivity.
-          * assumption.
-        - red. subst r'. cbv. constructor. cbv.
-          assert (Ht: (GetUnConstrRelation r myqidx) x).
-          { apply Heql. simpl; right; assumption. }
-          apply Ht.
-          cbv. intros. inversion H2. destruct x as [xind xelem].
-          destruct h' as [hind helem]. subst. admit.
-        - inversion Hdup. assumption. }
-
-      assert (Hd: Datatypes.length lp' = count).
-      { rewrite <- Happ in Hcount.
-      rewrite app_length in Hcount. rewrite H0 in Hcount.
-      rewrite Nat.add_0_l in Hcount. apply Hcount. congruence. }
-      Check IHltup.
-      pose proof (IHltup lp' Hfold Hd ({| prim_fst := r'; prim_snd := () |}) Hrel').*)
-Admitted.
+  - red in Hrel. destruct Hrel as [l [Hmap [Heql Hdup]]].
+    destruct H as [inp [Hinp Hpinp]]. red in Hinp. destruct Hinp as [idx Hinp].
+    apply Heql in Hinp.
+    assert (Hinp': List.In (< sINPUT :: inp >) ltup).
+    { rewrite <- Hmap. apply in_map_iff.
+      exists {| elementIndex := idx; indexedElement := < sINPUT :: inp > |}.
+      split. reflexivity. assumption. }
+    apply (fold_comp_list_in _ P ltup l' _ Hfold Hinp' Hpinp).
+Qed.    
 
 Lemma CompPreservesFilterMethod:
   forall r inp,
@@ -398,7 +366,6 @@ Proof.
     apply CompPreservesFilterMethod.
     intro. eapply refine_bind. simpl. refine pick eq. reflexivity.
     intro. simpl. higher_order_reflexivity.
-
 
     hone representation using (fun r_o r_n => DelegateToBag_AbsR (projT1 r_o) r_n).
     * simplify with monad laws. unfold DelegateToBag_AbsR. simpl.
