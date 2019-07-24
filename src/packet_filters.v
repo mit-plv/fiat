@@ -16,7 +16,9 @@ Definition PacketHistorySchema :=
         [ relation sHISTORY has
                    schema < sINPUT :: input > ]
         enforcing [].
-
+Definition myqidx:
+  Fin.t (numRawQSschemaSchemas PacketHistorySchema).
+  cbn. apply Fin.F1. Defined.
 
 Definition StatefulFilterSig : ADTSig :=
   ADTsignature {
@@ -98,18 +100,18 @@ Lemma simpl_in_bind:
 Proof.
   intros. apply Bind_inv in H. destruct H. destruct H. apply Return_inv in H. rewrite <- H in H0. simpl in H0. apply Return_inv in H0. assumption. Qed.
 
-Definition LessHistoryRelation (r_o r_n : sigT (@AllFinite PacketHistorySchema)) :=
+Definition LessHistoryRelation (r_o r_n : UnConstrQueryStructure PacketHistorySchema) :=
   forall inp,
     (OutgoingRule.(cf_cond) inp) ->
-    ((IndexedEnsemble_In (GetUnConstrRelation (projT1 r_n) Fin.F1) < sINPUT :: inp >)
-     <-> IndexedEnsemble_In (GetUnConstrRelation (projT1 r_o) Fin.F1) < sINPUT :: inp >).
+    ((IndexedEnsemble_In (GetUnConstrRelation r_n Fin.F1) < sINPUT :: inp >)
+     <-> IndexedEnsemble_In (GetUnConstrRelation r_o Fin.F1) < sINPUT :: inp >).
 
 Lemma LessHistoryPreservesFilter:
   forall inp r_o r_n,
     LessHistoryRelation r_o r_n ->
     refine
-      (FilterMethod_UnConstr (projT1 r_o) inp)
-      (FilterMethod_UnConstr (projT1 r_n) inp).
+      (FilterMethod_UnConstr r_o inp)
+      (FilterMethod_UnConstr r_n inp).
 Proof.
   red; intros. unfold FilterMethod_UnConstr in *.
   unfold LessHistoryRelation in H.
@@ -139,6 +141,187 @@ Proof.
 Qed.
 
 
+Definition UnConstrQuery_In {ResultT}
+           {qsSchema}
+           (qs : UnConstrQueryStructure qsSchema)
+           (R : Fin.t _)
+           (bod : RawTuple -> Comp (list ResultT))
+  := QueryResultComp (GetUnConstrRelation qs R) bod.
+
+Notation "( x 'in' r '%' Ridx ) bod" :=
+  (let qs_schema : QueryStructureSchema := _ in
+   let r' : UnConstrQueryStructure qs_schema := r in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
+   @UnConstrQuery_In _ qs_schema r' Ridx'
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) (at level 0, x at level 200, r at level 0, bod at level 0).
+
+Definition FilterMethod_UnConstr_Comp (r: UnConstrQueryStructure PacketHistorySchema) (inp: input) : Comp (option result) :=
+  if cf_cond OutgoingRule inp then ret (Some ACCEPT) else
+  if negb (cf_cond IncomingRule inp) then ret None else
+    c <- Count (For (t in r%sHISTORY)
+                Where (cf_cond (OutgoingToRule (SourceAddress (in_ip4 inp))) (t!sINPUT))
+                Return ());
+    if 0 <? c then ret (Some ACCEPT) else ret (Some DROP).
+
+
+Lemma permutation_length {A: Type}:
+  forall (l1 l2 : list A),
+    Permutation l1 l2 -> Datatypes.length l1 = Datatypes.length l2.
+Proof.
+  intros. induction H; simpl; congruence.
+Qed.
+
+
+(*
+ H1 : fold_right
+         (fun b a : Comp (list ()) =>
+          l <- b;
+          l' <- a;
+          ret (l ++ l')%list) (ret [])
+         (map
+            (fun t : RawTuple =>
+             {l : list () |
+             (P t -> ret [()] ↝ l) /\ (~ P t -> l = [])}) ltup) l' *)
+
+Lemma fold_comp_list_length:
+  forall l l',
+    fold_right
+      (fun b a : Comp (list ()) =>
+         l <- b;
+         l' <- a;
+         ret (l ++ l')%list) (ret [])
+      l' l ->
+    0 <? Datatypes.length l ->
+    exists lin, List.In lin l' /\
+                (exists lin', lin lin' /\ 0 <? Datatypes.length lin').
+Proof.
+  intros l l'. generalize dependent l. induction l'.
+  - simpl. intros. inversion H. subst l. inversion H0.
+  - simpl. intros. destruct H as [l1 [Hl1 Hl]]. red in Hl1. red in Hl.
+    destruct Hl as [l2 [Hl2 Hl]]. red in Hl2. red in Hl. inversion Hl.
+    destruct (0 <? Datatypes.length l2) eqn:Hlen2.
+    * pose proof (IHl' l2 Hl2 Hlen2) as IH.
+      destruct IH as [lin [Hlin1 Hlin2]]. exists lin. split.
+      right; assumption. assumption.
+    * apply Nat.ltb_ge in Hlen2. inversion Hlen2. rewrite <- H in H0.
+      rewrite app_length in H0. rewrite H2 in H0. rewrite Nat.add_0_r in H0.
+      exists a. split.
+      left; reflexivity. exists l1. split. assumption. rewrite H2. apply H0.
+Qed.
+
+Lemma count_zero_iff:
+  forall (r: UnConstrQueryStructure PacketHistorySchema)
+         (P: @RawTuple _ -> bool) count,
+    computes_to (Count (For (UnConstrQuery_In r myqidx
+                        (fun t =>
+                          Where (P t)
+                          Return ())))) count ->
+    ((0 <? count) <-> (exists inp, IndexedEnsemble_In (GetUnConstrRelation r myqidx) < sINPUT :: inp > /\ P < sINPUT :: inp >)).
+Proof.
+  Transparent Query_For. Transparent Count.
+  unfold Count, Query_For, Query_Where, Query_Return, UnConstrQuery_In.
+  Transparent QueryResultComp. unfold QueryResultComp, FlattenCompList.flatten_CompList.
+  intros r P count Hcount. destruct Hcount as [l [Hcount Htmp]].
+  unfold In in *. inversion Htmp. clear Htmp.
+  destruct Hcount as [l' [Htmp Hperm]]. apply Pick_inv in Hperm.
+  unfold In in *. destruct Htmp as [ltup [Hrel Hfold]].
+  apply Pick_inv in Hrel. unfold In in *.
+  pose proof (permutation_length l' l Hperm) as Hpermlen.
+  rewrite <- Hpermlen in *. clear Hperm. clear Hpermlen. clear l.
+  generalize dependent r. generalize dependent l'. induction ltup.
+
+  - intros l Hfold Hcount r Hrel.
+    simpl in Hfold. inversion Hfold. subst l.
+    split; intros. inversion H.
+    destruct H as [inp [Hinp1 Hinp2]]. red in Hinp1.
+    destruct Hinp1 as [idx Hinp1]. unfold In in Hinp1.
+    unfold UnIndexedEnsembleListEquivalence in Hrel.
+    destruct Hrel as [l [Hmap [Heql Hdup]]]. apply Heql in Hinp1.
+    assert (Hmapnil: forall (A B : Type) (l: list A) (f: A -> B),
+               map f l = [] -> l = []).
+    { intros. destruct l0. reflexivity. simpl in H. inversion H. }
+    apply Hmapnil in Hmap. subst l. inversion Hinp1.
+
+  - intros l Hfold Hcount r Hrel.
+    simpl in Hfold. destruct Hfold as [lp [Hp Hfold]]. unfold In in *.
+    inversion Hp. clear Hp.
+    assert (H0': P a -> lp = [()]) by (intros H0'; apply H in H0';
+                                       apply Return_inv in H0';
+                                       symmetry; assumption).
+    clear H.
+    destruct Hfold as [lp' [Hfold Happ]]. unfold In in *. inversion Happ.
+    clear Happ. rename H into Happ. split; intros.
+
+    * rewrite app_length in H.
+      unfold UnIndexedEnsembleListEquivalence in Hrel.
+      destruct Hrel as [l' [Hmap [Heql Hdup]]].
+      destruct (P a) eqn:Hpa.
+    + unfold attrType.
+      assert (Hmapex: forall (A B : Type) (l: list A) (f: A -> B) (a: B) a',
+                 map f l = a :: a' -> exists b, f b = a /\ List.In b l).
+      { intros. destruct l0. inversion H1. simpl in H1. inversion H1.
+        exists a1. split. reflexivity. left. reflexivity. }
+      pose proof (Hmapex _ _ l' _ a _ Hmap). destruct H1 as [b [Hb Hb']].
+
+      (*exists (indexedElement b). split. red. exists (elementIndex b).
+      unfold In. apply Heql.
+      assert (Hbb: {| elementIndex := elementIndex b;
+                      indexedElement := indexedElement b |} = b).
+      { destruct b. reflexivity. }
+      rewrite Hbb. apply Hb'. rewrite Hb. apply Hpa.
+    + rewrite H0 in H. simpl in H. rewrite Nat.add_0_l in H.
+      destruct l' as [|h' tl']. inversion Hmap.
+      pose (EnsembleDelete (GetUnConstrRelation r myqidx)
+                           (Singleton _ (indexedElement h'))) as r'.
+      assert (Hrel: UnIndexedEnsembleListEquivalence
+                       (GetUnConstrRelation r myqidx) (a :: ltup)).
+      { red. exists (h' :: tl'). split. assumption. split; assumption. }
+
+      assert (Hrel': UnIndexedEnsembleListEquivalence r' ltup).
+      { red. exists tl'. split.
+        inversion Hmap. reflexivity.
+        split. split; intros.
+        - inversion H1. apply Heql in H2. destruct H2 as [H2 | H2].
+          * subst x. cbv in H3. exfalso. apply H3. reflexivity.
+          * assumption.
+        - red. subst r'. cbv. constructor. cbv.
+          assert (Ht: (GetUnConstrRelation r myqidx) x).
+          { apply Heql. simpl; right; assumption. }
+          apply Ht.
+          cbv. intros. inversion H2. destruct x as [xind xelem].
+          destruct h' as [hind helem]. subst. admit.
+        - inversion Hdup. assumption. }
+
+      assert (Hd: Datatypes.length lp' = count).
+      { rewrite <- Happ in Hcount.
+      rewrite app_length in Hcount. rewrite H0 in Hcount.
+      rewrite Nat.add_0_l in Hcount. apply Hcount. congruence. }
+      Check IHltup.
+      pose proof (IHltup lp' Hfold Hd ({| prim_fst := r'; prim_snd := () |}) Hrel').*)
+Admitted.
+
+Lemma CompPreservesFilterMethod:
+  forall r inp,
+    refine (FilterMethod_UnConstr r inp)
+           (FilterMethod_UnConstr_Comp r inp).
+Proof.
+  unfold FilterMethod_UnConstr, FilterMethod_UnConstr_Comp. red; intros.
+  destruct (cf_cond OutgoingRule inp) eqn:outrule. assumption.
+  destruct (negb (cf_cond IncomingRule inp)) eqn:inrule. assumption.
+  inversion H as [c Hc]. destruct Hc as [Hcount Hres]. unfold In in *.
+
+  pose proof (count_zero_iff _ _ c Hcount) as Hcziff.
+  computes_to_econstructor. computes_to_econstructor.
+  instantiate (1:=(0 <? c)). red. destruct (0 <? c) eqn:Hzero; simpl.
+  - rewrite <- Hzero in Hcziff. apply Hcziff in Hzero.
+    destruct Hzero as [pre [Hin Hcond]].
+    exists pre. split; assumption.
+  - intro. rewrite <- Hzero in Hcziff. apply Hcziff in H0. inversion H0.
+    rewrite H2 in Hzero. inversion Hzero.
+  - apply Hres.
+Qed.
+
+
 Lemma LessHistoryRelationRefl:
   forall r_o, LessHistoryRelation r_o r_o.
 Proof.
@@ -157,17 +340,15 @@ Proof.
     end;
     apply Htemp).
 
-  Definition myqidx:
-    Fin.t (numRawQSschemaSchemas PacketHistorySchema).
-    cbn. apply Fin.F1. Defined. Print myqidx.
   hone_finite_under_bind PacketHistorySchema myqidx.
 
-  hone representation using LessHistoryRelation;
+  hone representation using (fun r_o r_n => LessHistoryRelation (projT1 r_o) (projT1 r_n));
     try simplify with monad laws.
   - refine pick val
-           (existT _ (DropQSConstraints (QSEmptySpec _)) QSEmptyIsFinite).
+      (existT _ (DropQSConstraints (QSEmptySpec _)) QSEmptyIsFinite).
     subst H; reflexivity. apply LessHistoryRelationRefl.
-  - etransitivity. eapply refine_under_bind.
+  - etransitivity. eapply refine_bind.
+    eapply LessHistoryPreservesFilter. apply H0.
     intros res Hres. cbn. eapply refine_bind.
 
     Definition RefinedInsert
@@ -181,12 +362,12 @@ Proof.
                                    {| elementIndex := IncrMaxFreshIdx r;
                                       indexedElement := icons2 d inil2 |}
                                    (IncrMaxFreshIdx_Prop r)).
-
+    
     refine pick val
            (if cf_cond OutgoingRule d
             then (RefinedInsert r_n d)
             else r_n).
-    reflexivity.
+    higher_order_reflexivity.
 
     destruct (cf_cond OutgoingRule d) eqn:outrule.
     red; intros inp Hinp. unfold RefinedInsert. split; intros.
@@ -208,14 +389,32 @@ Proof.
 
     red; intros. higher_order_reflexivity.
     simplify with monad laws. eapply refine_bind.
-    apply (LessHistoryPreservesFilter d r_o r_n H0).
+    reflexivity.
     red; intros. higher_order_reflexivity.
 
-
     
-  - hone representation using eq.
-        
-        
+  - hone method "Filter"; try (simplify with monad laws; subst r_o).
+    apply refine_bind.   
+    apply CompPreservesFilterMethod.
+    intro. eapply refine_bind. simpl. refine pick eq. reflexivity.
+    intro. simpl. higher_order_reflexivity.
+
+
+    hone representation using (fun r_o r_n => DelegateToBag_AbsR (projT1 r_o) r_n).
+    * simplify with monad laws. unfold DelegateToBag_AbsR. simpl.
+      Check GetIndexedRelation.
+      Search DelegateToBag_AbsR.
+    Locate finish_planning'.
+
+
+    eapply FullySharpened_Finish.
+
+    pose_headings_all.
+    Set Printing Implicit.
+    match goal with
+      | |- context[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
+      FullySharpenQueryStructure Schema Indexes
+    end.
 
 
         
