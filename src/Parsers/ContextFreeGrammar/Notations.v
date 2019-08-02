@@ -41,7 +41,7 @@ Module opt'.
   Definition list_of_string := Eval compute in @StringOperations.list_of_string.
   Definition pred := Eval compute in pred.
   Definition length := Eval compute in String.length.
-  Definition substring := Eval compute in substring.
+  Definition substring := Eval compute in String.substring.
 End opt'.
 
 (** single characters are terminals, anything wrapped with "'" is a
