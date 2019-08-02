@@ -100,7 +100,9 @@ Lemma simpl_in_bind:
 Proof.
   intros. apply Bind_inv in H. destruct H. destruct H. apply Return_inv in H. rewrite <- H in H0. simpl in H0. apply Return_inv in H0. assumption. Qed.
 
+Print FiniteTables_AbsR.
 Definition LessHistoryRelation (r_o r_n : UnConstrQueryStructure PacketHistorySchema) :=
+  FiniteTables_AbsR r_o r_o /\
   forall inp,
     (OutgoingRule.(cf_cond) inp) ->
     ((IndexedEnsemble_In (GetUnConstrRelation r_n Fin.F1) < sINPUT :: inp >)
@@ -114,7 +116,7 @@ Lemma LessHistoryPreservesFilter:
       (FilterMethod_UnConstr r_n inp).
 Proof.
   red; intros. unfold FilterMethod_UnConstr in *.
-  unfold LessHistoryRelation in H.
+  unfold LessHistoryRelation in H. destruct H as [Hfin H].
   destruct (cf_cond OutgoingRule inp) eqn:outrule;
     destruct (negb (cf_cond IncomingRule inp)) eqn:ninrule;
     simpl in *; try apply H0.
@@ -291,9 +293,94 @@ Qed.
 
 
 Lemma LessHistoryRelationRefl:
-  forall r_o, LessHistoryRelation r_o r_o.
+  forall r_o, FiniteTables_AbsR r_o r_o -> LessHistoryRelation r_o r_o.
 Proof.
-  unfold LessHistoryRelation; split; intros; assumption. Qed.
+  unfold LessHistoryRelation; split. assumption.
+  split; intros; assumption. Qed.
+
+
+Lemma QSEmptyFinite {qs_schema}:
+  forall idx, FiniteEnsemble (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qs_schema)) idx).
+Proof.
+  intros. red. exists []. red. exists [].
+  split.
+  - reflexivity.
+  - split.
+    * split; intros.
+      + cbn in H. red in H. red in H.
+        change (Vector.map schemaRaw (QSschemaSchemas qs_schema))
+          with (qschemaSchemas qs_schema) in H. rewrite <- ith_imap2 in H.
+        remember (ith2 _ _) in *.
+        change (numQSschemaSchemas qs_schema)
+          with (numRawQSschemaSchemas (QueryStructureSchemaRaw qs_schema)) in Heqy.
+        change (fun x => ?f x) with f in Heqy.
+
+        rewrite (Build_EmptyRelation_IsEmpty qs_schema idx) in Heqy.
+        subst y. cbn in H. inversion H.
+      + inversion H.
+    * constructor.
+Qed.
+
+Definition incrMaxFreshIdx {T: Type} (l: list (@IndexedElement T)) :=
+  S (fold_right (fun elem acc => max (elementIndex elem) acc) 0 l).
+
+Print UnIndexedEnsembleListEquivalence. Print FiniteEnsemble.
+Lemma incrMaxFreshIdx_computes:
+  forall {qs_schema} {qidx: Fin.t (numRawQSschemaSchemas qs_schema)}
+         (r: UnConstrQueryStructure qs_schema) l l',
+    map indexedElement l' = l /\
+    (forall x : IndexedElement,
+    In IndexedElement (GetUnConstrRelation r qidx) x <-> List.In x l') /\
+    NoDup (map elementIndex l') ->
+    computes_to
+      {idx: nat | UnConstrFreshIdx (GetUnConstrRelation r qidx) idx}
+      (incrMaxFreshIdx l').
+Proof.
+  intros qsc qidx r l l' [Hmap [Heqv Hdup]]. computes_to_econstructor.
+  red; intros elem Helem. apply Heqv in Helem.
+  unfold lt. apply le_n_S. apply fold_right_max_is_max. apply Helem. Qed.
+
+Lemma list_helper:
+  forall {T: Type} (l: list T) (f: T -> nat) (big: nat),
+    lt (fold_right (fun e acc => max (f e) acc) 0 l) big ->
+    ~ List.In big (map f l).
+Proof.
+  induction l.
+  - auto.
+  - unfold not; intros f big Hbig H. cbn in Hbig. cbn in H.
+    pose proof
+         (Nat.max_spec (f a)
+                       (fold_right (fun (e : T) (acc : nat) =>
+                                      Init.Nat.max (f e) acc) 0 l)) as Hmax.
+    destruct Hmax as [[Hlt Hmax] | [Hlt Hmax]]; rewrite Hmax in Hbig;
+      destruct H as [H | H].
+    + subst big. pose proof (lt_trans _ _ _ Hlt Hbig).
+      apply lt_irrefl in H. auto.
+    + apply (IHl f big Hbig H).
+    + subst big. apply lt_irrefl in Hbig. auto.
+    + pose proof (le_lt_trans _ _ _ Hlt Hbig). apply (IHl f big H0 H).
+Qed.
+
+Definition RefinedInsert r d :=
+  if cf_cond OutgoingRule d
+  then
+    (idx <- {idx: nat |
+             UnConstrFreshIdx (GetUnConstrRelation r myqidx) idx};
+     ret (UpdateUnConstrRelation r myqidx
+            (BuildADT.EnsembleInsert
+               {| elementIndex := idx;
+                  indexedElement := icons2 d inil2 |}
+               (GetUnConstrRelation r myqidx))))
+  else
+    ret r.
+
+Ltac comp_inv :=
+  match goal with
+  | [H: computes_to _ _ |- _] => inversion H; unfold In in *; clear H
+  | [H: _ /\ _ |- _] => destruct H
+  | [H: ret _ _ |- _] => inversion H; clear H
+  | [H: Bind _ _ _ |- _] => inversion H; unfold In in *; clear H
+  end.
 
 
 Theorem SharpenNoIncomingFilter:
@@ -308,83 +395,140 @@ Proof.
     end;
     apply Htemp).
 
-  hone_finite_under_bind PacketHistorySchema myqidx.
+  (* hone_finite_under_bind PacketHistorySchema myqidx. *)
 
-  hone representation using (fun r_o r_n => LessHistoryRelation (projT1 r_o) (projT1 r_n));
+
+  hone representation using LessHistoryRelation;
     try simplify with monad laws.
-  - refine pick val
-      (existT _ (DropQSConstraints (QSEmptySpec _)) QSEmptyIsFinite).
-    subst H; reflexivity. apply LessHistoryRelationRefl.
-  - etransitivity. eapply refine_bind.
-    eapply LessHistoryPreservesFilter. apply H0.
-    intros res Hres. cbn. eapply refine_bind.
-
-    Definition RefinedInsert
-               (r: sigT (@AllFinite PacketHistorySchema)) d :=
-      existT AllFinite (UpdateUnConstrRelation (projT1 r) Fin.F1
-                                               (EnsembleInsert
-                                                  {| elementIndex := IncrMaxFreshIdx r;
-                                                     indexedElement := icons2 d inil2 |}
-                                                  (GetUnConstrRelation (projT1 r) Fin.F1)))
-             (insert_finite_helper r Fin.F1
-                                   {| elementIndex := IncrMaxFreshIdx r;
-                                      indexedElement := icons2 d inil2 |}
-                                   (IncrMaxFreshIdx_Prop r)).
+  - refine pick val (DropQSConstraints (QSEmptySpec _));
+      subst H; [reflexivity | apply LessHistoryRelationRefl].
+    red; split; [reflexivity | apply QSEmptyFinite].
     
-    refine pick val
-           (if cf_cond OutgoingRule d
-            then (RefinedInsert r_n d)
-            else r_n).
-    higher_order_reflexivity.
+  - simpl. etransitivity. 2: (subst H; higher_order_reflexivity).
+    apply refine_bind.
+    apply (LessHistoryPreservesFilter d r_o r_n H0).
 
-    destruct (cf_cond OutgoingRule d) eqn:outrule.
-    red; intros inp Hinp. unfold RefinedInsert. split; intros.
+    red; intros;
+      instantiate (1:=(fun a => r <- RefinedInsert r_n d; ret (r, a)));
+      cbv beta; unfold RefinedInsert;
+      destruct (cf_cond OutgoingRule d) eqn:out; red; intros;
+      repeat comp_inv;
+      [ rename x0 into idx; rename H1 into Hidx;
+        rename v into r; rename H4 into Hr; rename H3 into Hret
+      | subst
+      ];
+      unfold LessHistoryRelation in H0; destruct H0 as [Hfin Hles];
+      destruct Hfin as [HH Hfin]; unfold FiniteEnsemble in Hfin;
+      pose proof Hfin as Hfinorig; specialize Hfin with Fin.F1;
+      destruct Hfin as [lfin [lfin' Hlfin]].
+      
+    1-4: computes_to_econstructor;
+      try apply (incrMaxFreshIdx_computes r_o lfin lfin' Hlfin);
+      computes_to_econstructor; try reflexivity;
+      computes_to_econstructor;
+      red; split.
 
-    cbn in H1. rewrite get_update_unconstr_eq in H1. red in H1. destruct H1. destruct H1.
-    { exists (@IncrMaxFreshIdx _ myqidx r_o). cbn. red. rewrite get_update_unconstr_eq. red. left. inversion H1. reflexivity. }
-    { cbn. rewrite get_update_unconstr_eq. red. unfold In. unfold EnsembleInsert. pose proof (H0 inp Hinp). unfold IndexedEnsemble_In in H2. unfold In in H2. assert (Hm: exists idx, GetUnConstrRelation (projT1 r_o) Fin.F1 {| elementIndex := idx; indexedElement := icons2 (value (ilist2_hd (icons2 (sINPUT :: inp)%Component inil2))) inil2 |}). { apply H2. exists x. apply H1. } destruct Hm. exists x0. right. apply H3. }
+    all: repeat match goal with
+      | [ |- FiniteTables_AbsR _ _ ] =>
+        red; split; try reflexivity;
+        intros finidx; destruct (Fin.eqb finidx myqidx) eqn:Hfeq
 
-    cbn in H1. rewrite get_update_unconstr_eq in H1. red in H1. destruct H1. destruct H1.
-    { exists (@IncrMaxFreshIdx _ myqidx r_n). cbn. red. rewrite get_update_unconstr_eq. red. left. inversion H1. reflexivity. }
-    { cbn. rewrite get_update_unconstr_eq. red. unfold In. unfold EnsembleInsert. pose proof (H0 inp Hinp). unfold IndexedEnsemble_In in H2. unfold In in H2. assert (Hm: exists idx, GetUnConstrRelation (projT1 r_n) Fin.F1 {| elementIndex := idx; indexedElement := icons2 (value (ilist2_hd (icons2 (sINPUT :: inp)%Component inil2))) inil2 |}). { apply H2. exists x. apply H1. } destruct Hm. exists x0. right. apply H3. }
+      | [Hfeq: Fin.eqb _ _ = false |- _] =>
+        rewrite get_update_unconstr_neq;
+        [ specialize Hfinorig with finidx; red; assumption
+        | intro; subst finidx; compute in Hfeq; inversion Hfeq ]
 
-    red; intros inp Hinp. split; intros.
+      | [ |- FiniteEnsemble _ ] =>
+        red; apply Fin.eqb_eq in Hfeq; rewrite Hfeq;
+        exists ((icons2 d inil2) :: lfin);
+        rewrite get_update_unconstr_eq;
+        red; exists (({| elementIndex := incrMaxFreshIdx lfin';
+                         indexedElement := icons2 d inil2 |}) :: lfin');
+        destruct Hlfin as [Hmap [Heqv Hdup]]; split; [ | split ]
 
-    apply (H0 inp Hinp) in H1. cbn. rewrite get_update_unconstr_eq. red. red in H1. destruct H1. exists x. red. red. right. apply H1.
+      | [ |- map _ _ = _ ] =>
+        simpl; rewrite <- Hmap; reflexivity
 
-    cbn in H1; rewrite get_update_unconstr_eq in H1. red in H1. destruct H1. red in H1. red in H1. destruct H1. inversion H1. rewrite <- H4 in outrule. rewrite outrule in Hinp. inversion Hinp. apply (H0 inp Hinp). red; exists x; red. apply H1.
+      | [ |- NoDup _ ] =>
+        cbn; constructor;
+        try (unfold incrMaxFreshIdx; intro;
+             apply (list_helper _ _ _ (Nat.lt_succ_diag_r _)) in H0);
+        solve [auto]
 
-
-    red; intros. higher_order_reflexivity.
-    simplify with monad laws. eapply refine_bind.
-    reflexivity.
-    red; intros. higher_order_reflexivity.
-
-    
-  - hone method "Filter"; try (simplify with monad laws; subst r_o).
-    apply refine_bind.   
-    apply CompPreservesFilterMethod.
-    intro. eapply refine_bind. simpl. refine pick eq. reflexivity.
-    intro. simpl. higher_order_reflexivity.
-
-    hone representation using (fun r_o r_n => DelegateToBag_AbsR (projT1 r_o) r_n).
-    * simplify with monad laws. unfold DelegateToBag_AbsR. simpl.
-      Check GetIndexedRelation.
-      Search DelegateToBag_AbsR.
-    Locate finish_planning'.
-
-
-    eapply FullySharpened_Finish.
-
-    pose_headings_all.
-    Set Printing Implicit.
-    match goal with
-      | |- context[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
-      FullySharpenQueryStructure Schema Indexes
+      | [ |- forall _, In _ _ _ <-> List.In _ _ ] =>
+        intros xelem; split; intros Hin; destruct Hin as [Hin | Hin];
+        solve [ left; auto | right; apply Heqv in Hin; auto ]
     end.
 
+    all: intros inp Hinp; split; repeat rewrite get_update_unconstr_eq;
+      intros Hoin; try destruct Hoin as [eid [Hoin | Hoin]].
+    * inversion Hoin; exists (incrMaxFreshIdx lfin');
+      red; red; left; auto.
+    * assert (Hoin': IndexedEnsemble_In
+                       (GetUnConstrRelation r_n myqidx)
+                       < sINPUT :: inp >) by (exists eid; apply Hoin).
+      apply (Hles inp Hinp) in Hoin'. red.
+      destruct Hoin' as [eid' Hoin']. exists eid'.
+      red; red; right. apply Hoin'.
+    * inversion Hoin; exists idx; red; red; left; auto.
+    * assert (Hoin': IndexedEnsemble_In
+                       (GetUnConstrRelation r_o myqidx)
+                       < sINPUT :: inp >) by (exists eid; apply Hoin).
+      apply (Hles inp Hinp) in Hoin'. red.
+      destruct Hoin' as [eid' Hoin']. exists eid'.
+      red; red; right. apply Hoin'.
+    * apply (Hles inp Hinp) in Hoin; red; destruct Hoin as [eid Hoin];
+      exists eid; red; red; right; auto.
+    * inversion Hoin; congruence.
+    * assert (Hoin': IndexedEnsemble_In
+                       (GetUnConstrRelation r_o myqidx)
+                       < sINPUT :: inp >) by (exists eid; apply Hoin).
+      apply (Hles inp Hinp) in Hoin'. red.
+      destruct Hoin' as [eid' Hoin']. exists eid'. apply Hoin'.
 
-        
+
+
+  - hone method "Filter".
+    subst r_o. refine pick eq. simplify with monad laws.
+    apply refine_bind. apply CompPreservesFilterMethod. intro.
+    apply refine_bind. reflexivity. intro. simpl. higher_order_reflexivity.
+
+
+Notation IndexType sch :=
+  (@ilist3 RawSchema (fun sch : RawSchema =>
+                        list (string * Attributes (rawSchemaHeading sch)))
+           (numRawQSschemaSchemas sch) (qschemaSchemas sch)).
+
+
+Definition indexes : IndexType PacketHistorySchema :=
+  {| prim_fst := [];
+     prim_snd := () |}.
+
+
+Ltac FindAttributeUses := EqExpressionAttributeCounter.
+Ltac BuildEarlyIndex := ltac:(LastCombineCase6 BuildEarlyEqualityIndex).
+Ltac BuildLastIndex := ltac:(LastCombineCase5 BuildLastEqualityIndex).
+Ltac IndexUse := EqIndexUse.
+Ltac createEarlyTerm := createEarlyEqualityTerm.
+Ltac createLastTerm := createLastEqualityTerm.
+Ltac IndexUse_dep := EqIndexUse_dep.
+Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
+Ltac createLastTerm_dep := createLastEqualityTerm_dep.
+Ltac BuildEarlyBag := BuildEarlyEqualityBag.
+Ltac BuildLastBag := BuildLastEqualityBag.
+Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist').
+
+
+    PickIndex ltac:(fun attrlist =>
+                      make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
+
+    * plan CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep.
+    * etransitivity.
+      red in H0. eapply refine_bind.
+      unfold Index in r_n.
+      unfold EnsembleIndexedListEquivalence in H0.
+      Search Query_Where. unfold FilterMethod_UnConstr_Comp.
+
 (*
 Definition sID := "ID".
 Definition sPACKET := "Packet".
