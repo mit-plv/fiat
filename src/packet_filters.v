@@ -158,12 +158,12 @@ Notation "( x 'in' r '%' Ridx ) bod" :=
             (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) (at level 0, x at level 200, r at level 0, bod at level 0).
 
 Definition FilterMethod_UnConstr_Comp (r: UnConstrQueryStructure PacketHistorySchema) (inp: input) : Comp (option result) :=
-  if cf_cond OutgoingRule inp then ret (Some ACCEPT) else
-  if negb (cf_cond IncomingRule inp) then ret None else
-    c <- Count (For (t in r%sHISTORY)
-                Where (cf_cond (OutgoingToRule (SourceAddress (in_ip4 inp))) (t!sINPUT))
-                Return ());
-    if 0 <? c then ret (Some ACCEPT) else ret (Some DROP).
+  If cf_cond OutgoingRule inp Then ret (Some ACCEPT) Else
+  If negb (cf_cond IncomingRule inp) Then ret None Else
+    (c <- Count (For (t in r%sHISTORY)
+                 Where (cf_cond (OutgoingToRule (SourceAddress (in_ip4 inp))) (t!sINPUT) = true)
+                 Return ());
+     If 0 <? c Then ret (Some ACCEPT) Else ret (Some DROP)).
 
 
 Lemma permutation_length {A: Type}:
@@ -362,8 +362,8 @@ Proof.
 Qed.
 
 Definition RefinedInsert r d :=
-  if cf_cond OutgoingRule d
-  then
+  If cf_cond OutgoingRule d
+  Then
     (idx <- {idx: nat |
              UnConstrFreshIdx (GetUnConstrRelation r myqidx) idx};
      ret (UpdateUnConstrRelation r myqidx
@@ -371,7 +371,7 @@ Definition RefinedInsert r d :=
                {| elementIndex := idx;
                   indexedElement := icons2 d inil2 |}
                (GetUnConstrRelation r myqidx))))
-  else
+  Else
     ret r.
 
 Ltac comp_inv :=
@@ -381,6 +381,61 @@ Ltac comp_inv :=
   | [H: ret _ _ |- _] => inversion H; clear H
   | [H: Bind _ _ _ |- _] => inversion H; unfold In in *; clear H
   end.
+
+
+Instance ByteBuffer_eq_dec:
+  forall n, Query_eq (ByteBuffer.ByteBuffer.t n).
+econstructor. revert n. unfold ByteBuffer.ByteBuffer.t.
+eapply Vector.rect2.
+- auto.
+- destruct 1.
+  * subst. intros; destruct (A_eq_dec a b).
+    + subst. auto.
+    + right. intro. inversion H. congruence.
+  * right. intro. inversion H.
+    apply Eqdep_dec.inj_pair2_eq_dec in H2. congruence. apply A_eq_dec.
+Defined.
+
+
+Instance word_eq_dec:
+  forall n, Query_eq (word n).
+econstructor. apply weq. Defined.
+
+Instance TCP_Packet_eq_dec:
+  Query_eq (TCP_Packet).
+econstructor. repeat decide equality; subst; try apply A_eq_dec.
+destruct Payload. destruct Payload0. destruct (A_eq_dec x x0).
+- subst; destruct (A_eq_dec t t0). subst; auto.
+  right; intro. apply Eqdep_dec.inj_pair2_eq_dec in H. congruence.
+  apply A_eq_dec.
+- right; intro. congruence.
+Defined.
+
+Instance UDP_Packet_eq_dec:
+  Query_eq (UDP_Packet.UDP_Packet).
+econstructor. repeat decide equality; subst; try apply A_eq_dec.
+destruct Payload. destruct Payload0. destruct (A_eq_dec x x0).
+- subst; destruct (A_eq_dec t t0). subst; auto.
+  right; intro. apply Eqdep_dec.inj_pair2_eq_dec in H. congruence.
+  apply A_eq_dec.
+- right; intro. congruence.
+Defined.
+
+Instance chain_eq_dec:
+  Query_eq chain.
+econstructor. intros; destruct a; destruct a';
+                try (left; solve [auto]); try (right; congruence).
+Defined.
+
+Instance Enum_eq_dec:
+  forall n T v, Query_eq (@EnumType.EnumType n T v).
+econstructor. unfold EnumType.EnumType. apply Fin.eq_dec. Defined.
+
+
+Instance input_Query_eq:
+  Query_eq input.
+econstructor; decide equality; try apply A_eq_dec;
+  decide equality; apply A_eq_dec. Defined.
 
 
 Theorem SharpenNoIncomingFilter:
@@ -410,7 +465,7 @@ Proof.
 
     red; intros;
       instantiate (1:=(fun a => r <- RefinedInsert r_n d; ret (r, a)));
-      cbv beta; unfold RefinedInsert;
+      cbv beta; unfold RefinedInsert; unfold If_Then_Else;
       destruct (cf_cond OutgoingRule d) eqn:out; red; intros;
       repeat comp_inv;
       [ rename x0 into idx; rename H1 into Hidx;
@@ -501,7 +556,7 @@ Notation IndexType sch :=
 
 
 Definition indexes : IndexType PacketHistorySchema :=
-  {| prim_fst := [];
+  {| prim_fst := [("EqualityIndex", sINPUT # sHISTORY ## PacketHistorySchema)];
      prim_snd := () |}.
 
 
@@ -519,16 +574,128 @@ Ltac BuildLastBag := BuildLastEqualityBag.
 Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist').
 
 
+Ltac mydrill_step :=
+  match goal with
+  | [|- refine (Bind _ _) _] => eapply refine_bind
+  end.
+Ltac mydrill := repeat mydrill_step.
+
+
     PickIndex ltac:(fun attrlist =>
                       make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
 
     * plan CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep.
-    * etransitivity.
-      red in H0. eapply refine_bind.
-      unfold Index in r_n.
-      unfold EnsembleIndexedListEquivalence in H0.
-      Search Query_Where. unfold FilterMethod_UnConstr_Comp.
+    * etransitivity. simplify with monad laws.
+      mydrill.
+      unfold FilterMethod_UnConstr_Comp.
+      eapply refine_If_Then_Else. reflexivity.
+      eapply refine_If_Then_Else. reflexivity.
 
+    match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
+                      _) _ ] =>
+    pose (@DecideableEnsembles.dec _ P _) as filter_dec;
+      pose (ith3 indices idx) as idx_search_update_term;
+      pose (BagSearchTermType idx_search_update_term) as search_term_type';
+      pose (BagMatchSearchTerm idx_search_update_term) as search_term_matcher; simpl in *
+    end.
+    
+(*  match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
+                 _) _ ] =>
+                    makeEvar search_term_type'
+                             ltac: (fun search_term =>
+                                      let eqv := fresh in
+                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv
+                                      [ find_search_term qs_schema idx filter_dec search_term
+                                      |
+                                                                                                          [ |
+  let H' := fresh in
+  pose proof (@refine_BagFindBagCount
+    _
+    qs_schema indices
+    idx r_o r_n search_term P f H eqv) as H';
+    fold_string_hyps_in H'; fold_heading_hyps_in H';
+    rewrite H'; clear H' eqv
+                                                                                                          )
+  end.*)
+
+  Ltac createTerm f fds tail fs EarlyIndex LastIndex k ::=
+  lazymatch fs with
+  | [ ] => k tail
+  | [{| KindIndexKind := ?kind;
+        KindIndexIndex := ?s|} ] =>
+    (findMatchingTerm
+       fds kind s
+       ltac:(fun X => k (Some X, tail)))
+    || k (@None (Domain f s), tail)
+  end.
+
+  Ltac find_simple_search_term
+     ClauseMatch EarlyIndex LastIndex
+     qs_schema idx filter_dec search_term :=
+  match type of search_term with
+  | BuildIndexSearchTerm ?indexed_attrs =>
+    let SC := constr:(GetNRelSchemaHeading (qschemaSchemas qs_schema) idx) in
+    findGoodTerm SC filter_dec indexed_attrs ClauseMatch
+                 ltac:(fun fds tail =>
+                         let tail := eval simpl in tail in
+                             makeTerm indexed_attrs SC fds tail EarlyIndex LastIndex ltac:(fun tm => pose tm (*unify tm search_term;
+                                                                                           unfold ExtensionalEq, MatchIndexSearchTerm;
+                                                                                           simpl; intro; try prove_extensional_eq*)
+                      )) end.
+
+
+  evar (x: search_term_type'). red in (type of x).
+  assert (ExtensionalEq filter_dec (search_term_matcher x)) as eqv.
+  ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex PacketHistorySchema myqidx filter_dec x).
+
+  unfold ExtensionalEq, MatchIndexSearchTerm; simpl; intro.
+  subst x. instantiate (1:=(None, filter_dec)). reflexivity.
+
+    match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
+                      _) _ ] =>
+    pose f; pose P; pose indices
+    end.
+
+    Check @refine_BagFindBagCount. pose (BagMatchSearchTerm (ith3 i myqidx) x). change (search_term_matcher x) with b in eqv. subst b.
+
+    assert (filter_dec_dec: forall a, filter_dec a = true <-> P a).
+    { intros. unfold filter_dec. rewrite !bool_dec_simpl.
+      unfold P. reflexivity. }
+    
+    pose {| dec := filter_dec; dec_decides_P := filter_dec_dec |} as P'.
+    
+    pose proof (@refine_BagFindBagCount
+                  _
+                  PacketHistorySchema i
+                  myqidx r_o r_n x P u P' H0 eqv) as H';
+      fold_string_hyps_in H'; fold_heading_hyps_in H'.
+    unfold P, u in H'.
+      rewrite H'; clear H' eqv.
+      simplify with monad laws.
+
+      reflexivity. red; intros.
+
+
+      unfold RefinedInsert. etransitivity.
+      apply refine_If_Then_Else_Bind.
+      apply refine_If_Then_Else.
+
+      simplify with monad laws. simpl.
+      insertion IndexUse createEarlyTerm createLastTerm IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
+      simplify with monad laws; simpl. refine pick val r_n.
+      simplify with monad laws; reflexivity. assumption.
+
+      subst H. higher_order_reflexivity.
+
+    * Locate "?[".
+
+      
 (*
 Definition sID := "ID".
 Definition sPACKET := "Packet".
