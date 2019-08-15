@@ -11,14 +11,63 @@ Require Import
   Fiat.Narcissus.Examples.Guard.IPTables.
 Import VectorNotations.
 
-(* Record packet :=
+(* comment-out to use IPTables input *)
+Record input :=
   { source: word 16;
     destination: word 16;
     payload: string;
-    flag: bool }. *)
+    flag: bool }.
 
-Definition f (inp: input) :=
-  (iptables -A FORWARD --source 18'0'0'0/8 -j ACCEPT) inp.
+Definition Complete_heading := < "Input" :: input >%Heading.
+Definition Complete_topkt (t: @Tuple Complete_heading) := t!"Input".
+Definition Complete_totup (i: input) := < "Input" :: i >.
+Lemma Complete_inverse :
+  forall i, i = Complete_topkt (Complete_totup i).
+Proof. reflexivity. Qed.
+Lemma Complete_inverse' :
+  forall t, t = Complete_totup (Complete_topkt t).
+Proof. destruct t. destruct prim_snd. reflexivity. Qed.
+
+Definition PacketHistorySchema (h: Heading) :=
+  Query Structure Schema
+        [ relation "History" has schema h ]
+        enforcing [].
+Definition CompletePacketHistorySchema := PacketHistorySchema Complete_heading.
+
+Notation "qs ! R" := (GetRelationBnd qs {| bindex := R; indexb := _ |}) : myqs_scope.
+Delimit Scope myqs_scope with myqs.
+
+Open Scope myqs.
+Definition Complete_Dropped_qs_equiv (h: Heading) (totup: input -> @Tuple h)
+           (r_o: QueryStructure CompletePacketHistorySchema)
+           (r_n: QueryStructure (PacketHistorySchema h)) :=
+  forall inp, IndexedEnsemble_In r_o!"History" (Complete_totup inp) <->
+         IndexedEnsemble_In r_n!"History" (totup inp).
+Definition FilterType := forall (h: Heading), (@Tuple h -> input) -> (input -> @Tuple h)
+  -> (QueryStructure (PacketHistorySchema h)) -> input -> Comp (option result).
+Definition Complete_filter (f: FilterType) :=
+  f Complete_heading Complete_topkt Complete_totup.
+
+Definition Complete_Dropped_equiv (h: Heading) (topkt: @Tuple h -> input)
+           (totup: input -> @Tuple h) (f: FilterType) :=
+  forall r_o r_n, Complete_Dropped_qs_equiv h totup r_o r_n ->
+  forall inp, refine (Complete_filter f r_o inp) (f h topkt totup r_n inp).
+
+Definition In_History {h: Heading} (totup: input -> @Tuple h)
+           (r: QueryStructure (PacketHistorySchema h)) (p: input) : Prop :=
+  IndexedEnsemble_In (r!"History")%myqs (totup p).
+Definition flag_true (p: input) : Prop := flag p = true.
+Definition and_prop {h: Heading} totup r p := @In_History h totup r p /\ flag_true p.
+(* Opaque In_History flag_true. *)
+
+Definition f (h: Heading) (topkt: @Tuple h -> input) (totup: input -> @Tuple h)
+           (r: QueryStructure (PacketHistorySchema h)) (inp: input) :=
+  If (weqb (wones 16) inp.(source))
+  Then ret (Some ACCEPT)
+  Else (b <- { b: bool | decides b (exists pre,
+                 and_prop totup r pre) };
+          if b then ret (Some ACCEPT) else ret (Some DROP)).
+
 (* Definition f (pkt: packet) := andb (weqb (pkt.(destination)) (wones 16))
                                    pkt.(flag). *)
 
@@ -30,7 +79,7 @@ Definition acc {T: Type} (t: input -> T) :=
 Notation "acc1 '//' acc2" :=
   (fun p => (acc2 (acc1 p))) (at level 90, no associativity).
 
-Definition acc2head : list (accessor * string) :=
+(* Definition acc2head : list (accessor * string) :=
   [ (acc (in_ip4 // TotalLength), "TotalLength");
     (acc (in_ip4 // ID), "Identifier");
     (acc (in_ip4 // DF), "DontFragment");
@@ -43,12 +92,12 @@ Definition acc2head : list (accessor * string) :=
     (acc (in_ip4 // IPv4Header.Options), "Options");
     (acc in_tcp, "optTCPpacket");
     (acc in_udp, "optUDPpacket");
-    (acc in_chn, "Chain") ].
-(* Definition acc2head : list (accessor * string) :=
+    (acc in_chn, "Chain") ]. *)
+Definition acc2head : list (accessor * string) :=
   [ (acc source, "source");
     (acc destination, "destination");
     (acc payload, "payload");
-    (acc flag, "flag") ]. *)
+    (acc flag, "flag") ].
 
 Open Scope list_scope.
 Ltac for_each_acc' acclist k :=
@@ -133,22 +182,33 @@ Ltac build_topkt heading :=
     clear tup fpkt
   end.
 
-(*
 Ltac destruct_packet pkt :=
-  pose Build_packet as pkt';
+  pose Build_input as pkt';
   for_each_acc ltac:(fun _ acc_fun _ =>
                        pose (pkt' (acc_fun pkt)) as p; subst pkt';
                        rename p into pkt');
   assert (Hpkt: pkt = pkt') by (destruct pkt; reflexivity);
   subst pkt'; rewrite Hpkt; clear Hpkt.
-*)
+
+
+Ltac comp_inv :=
+  match goal with
+  | [H: computes_to _ _ |- _] => inversion H; unfold Ensembles.In in *; clear H
+  | [H: _ /\ _ |- _] => destruct H
+  | [H: ret _ _ |- _] => inversion H; clear H
+  | [H: Bind _ _ _ |- _] => inversion H; unfold Ensembles.In in *; clear H
+  | [H: Bind2 _ _ _ |- _] => inversion H; unfold Ensembles.In in *; clear H
+  end.
+
 
 Theorem drop_fields:
-  exists h (totup: input -> @Tuple h) topkt, forall pkt,
-  f pkt = f (topkt (totup pkt)).
+  exists h (totup: input -> @Tuple h) topkt,
+    Complete_Dropped_equiv h topkt totup f.
 Proof.
-  repeat eexists.
-  intros. pose Build_input. pose Build_IPv4_Packet as pkt'.
+  eexists. eexists. eexists. red. intros r_o r_n Hrpre pkt.
+  destruct_packet pkt.
+
+(*  pose Build_input as pkt'. pose Build_IPv4_Packet as pkt'.
   for_each_acc ltac:(fun _ acc_fun _ =>
                        try (pose (pkt' (acc_fun pkt)) as p; subst pkt'; rename p into pkt')).
   pose (i pkt') as tmp; subst pkt'; rename tmp into pkt'.
@@ -156,11 +216,37 @@ Proof.
                        try (pose (pkt' (acc_fun pkt)) as p; subst pkt';
                        rename p into pkt')).
   assert (Hpkt: pkt = pkt') by (destruct pkt; destruct in_ip4; reflexivity);
-  subst pkt'; rewrite Hpkt; clear Hpkt. subst i.
+    subst pkt'; rewrite Hpkt; clear Hpkt. subst i. *)
+
+  unfold f.
+  match goal with
+  | [|- context c [fun p: input => ?cond p]] =>
+    idtac c
+  end.
 
   (*destruct_packet pkt.*)
   pose (Vector.nil Attribute) as attrs.
 
+  red in Hrpre. unfold f.
+  
+  (*  unfold Complete_f. unfold f. unfold Complete_topkt.
+  unfold Complete_Dropped_equiv. *)
+  Ltac mychange x :=
+    match x with
+    | context c [flag ?p] =>
+      let c' := dummy_type (flag p) ltac:(fun d => context c [d]) in
+      mychange c'
+    | _ => idtac x
+    end.
+
+  match goal with
+  | [|- ?P] => mychange P
+  end.
+  
+  {
+    intros r_o' r_n' res_o res_n H_o H_n. repeat comp_inv. subst. split.
+    - red in H0.
+    change_dummy ( pkt).
   for_each_acc change_dummy_else_tuple_heading.
 
   pose (BuildHeading attrs) as h.
