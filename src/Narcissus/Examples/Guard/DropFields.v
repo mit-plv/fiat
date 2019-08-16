@@ -1,10 +1,10 @@
 Require Import
   Bedrock.Word
-  Coq.Arith.Arith
-  Fiat.QueryStructure.Automation.MasterPlan
-  IndexedEnsembles
-  Fiat.Common.EnumType
   Coq.Vectors.Vector
+  IndexedEnsembles
+  Fiat.Common.ilist2
+  Fiat.Common.EnumType
+  Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
   Fiat.Narcissus.Examples.NetworkStack.IPv4Header
   Fiat.Narcissus.Examples.NetworkStack.TCP_Packet
   Fiat.Narcissus.Examples.NetworkStack.UDP_Packet
@@ -295,7 +295,8 @@ Ltac solve_drop_fields filter :=
   unfold filter, Complete_filter; get_to_the_point; assumption.
 
 
-(* a demo *)
+(** Demo! **)
+
 Definition flag_true (p: input) : Prop := p.(in_ip4).(DF) = true.
 Definition sent_to_me := (iptables -A FORWARD --destination 18'0'0'0/8).(cf_cond).
 
