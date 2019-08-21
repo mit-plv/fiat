@@ -227,6 +227,7 @@ NARCISSUS_EXAMPLES_VO := \
 	src/Narcissus/Examples/Guard/IPTables.vo \
 	src/Narcissus/Examples/Guard/IPTablesPorts.vo \
 	src/Narcissus/Examples/Guard/PacketFiltersLemmas.vo \
+	src/Narcissus/Examples/Guard/DropFields.vo \
 	src/Narcissus/Examples/NetworkStack/ARPPacket.vo \
 	src/Narcissus/Examples/NetworkStack/EthernetFrame.vo \
 	src/Narcissus/Examples/NetworkStack/EthernetHeader.vo \

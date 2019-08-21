@@ -362,6 +362,7 @@ src/Narcissus/Examples/DNS/SimpleDNSPacket.v
 src/Narcissus/Examples/DNS/SimpleDnsOpt.v
 src/Narcissus/Examples/DNS/SimpleRRecordTypes.v
 src/Narcissus/Examples/DNS/SimpleResourceRecord.v
+src/Narcissus/Examples/Guard/DropFields.v
 src/Narcissus/Examples/Guard/IPTables.v
 src/Narcissus/Examples/Guard/IPTablesPorts.v
 src/Narcissus/Examples/Guard/PacketFiltersLemmas.v
