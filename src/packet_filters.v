@@ -1,24 +1,15 @@
-Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
-Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
-Require Import Bedrock.Word.
-Require Import Coq.Arith.Arith.
-Require Import Coq.Lists.List.
+Require Import
+    Fiat.Narcissus.Examples.NetworkStack.IPv4Header
+    Fiat.Narcissus.Examples.NetworkStack.TCP_Packet
+    Bedrock.Word
+    Coq.Arith.Arith
+    Coq.Lists.List
+    Fiat.QueryStructure.Automation.MasterPlan
+    IndexedEnsembles
+    Fiat.Narcissus.Examples.Guard.IPTables
+    Fiat.Narcissus.Examples.Guard.PacketFiltersLemmas
+    Fiat.Narcissus.Examples.Guard.DropFields.
 Import ListNotations.
-Require Import Fiat.QueryStructure.Automation.MasterPlan.
-Require Import IndexedEnsembles.
-Require Import Fiat.Narcissus.Examples.Guard.IPTables.
-Require Import Fiat.Narcissus.Examples.Guard.PacketFiltersLemmas.
-
-Definition sINPUT := "Input".
-Definition sHISTORY := "GlobalHistory".
-Definition PacketHistorySchema :=
-  Query Structure Schema
-        [ relation sHISTORY has
-                   schema < sINPUT :: input > ]
-        enforcing [].
-Definition myqidx:
-  Fin.t (numRawQSschemaSchemas PacketHistorySchema).
-  cbn. apply Fin.F1. Defined.
 
 Definition StatefulFilterSig : ADTSig :=
   ADTsignature {
@@ -42,6 +33,9 @@ Definition IncomingRule :=
 Definition OutgoingToRule (dst: address) :=
   and_cf OutgoingRule (lift_condition in_ip4 (cond_dstaddr {| saddr := dst; smask := mask_of_nat 32 |})).
 
+Definition OutgoingToRule' (cur pre : input) : Prop :=
+  (OutgoingToRule cur.(in_ip4).(SourceAddress)).(cf_cond) pre = true.
+
 Lemma OutgoingToImpliesOutgoing:
   forall inp dst,
     (OutgoingToRule dst).(cf_cond) inp -> OutgoingRule.(cf_cond) inp.
@@ -52,45 +46,57 @@ Opaque OutgoingRule.
 Opaque IncomingRule.
 Opaque OutgoingToRule.
 
-Definition FilterMethod (r: QueryStructure PacketHistorySchema) (inp: input) : Comp (option result) :=
-  if (OutgoingRule.(cf_cond) inp) then ret (Some ACCEPT)
-  else if negb (IncomingRule.(cf_cond) inp) then ret None
-  else b <- { b: bool | decides b (exists pre,
-    IndexedEnsemble_In (GetRelation r Fin.F1) < sINPUT :: pre > /\
-    ((OutgoingToRule inp.(in_ip4).(SourceAddress)).(cf_cond) pre = true)) };
-    if b then ret (Some ACCEPT) else ret (Some DROP).
+Definition FilterMethod {h} (topkt: @Tuple h -> input)
+           (totup: input -> @Tuple h)
+           (r: QueryStructure (PacketHistorySchema h)) (inp: input) :=
+  If OutgoingRule.(cf_cond) inp
+  Then <ACCEPT>
+  Else (
+      If negb (IncomingRule.(cf_cond) inp)
+      Then ret None
+      Else with r totup,
+        if historically (OutgoingToRule' inp) then <ACCEPT> else <DROP>).
 
-Definition FilterMethod_UnConstr (r: UnConstrQueryStructure PacketHistorySchema) (inp: input) : Comp (option result) :=
-  if (OutgoingRule.(cf_cond) inp) then ret (Some ACCEPT)
-  else if negb (IncomingRule.(cf_cond) inp) then ret None
-  else b <- { b: bool | decides b (exists pre,
-    IndexedEnsemble_In (GetUnConstrRelation r Fin.F1) < sINPUT :: pre > /\
-    ((OutgoingToRule inp.(in_ip4).(SourceAddress)).(cf_cond) pre = true)) };
-    if b then ret (Some ACCEPT) else ret (Some DROP).
+Definition FilterMethod_UnConstr {h} (topkt: @Tuple h -> input)
+           (totup: input -> @Tuple h)
+           (r: UnConstrQueryStructure (PacketHistorySchema h)) (inp: input) :=
+  If OutgoingRule.(cf_cond) inp
+  Then <ACCEPT>
+  Else (
+      If negb (IncomingRule.(cf_cond) inp)
+      Then ret None
+      Else with unconstr r totup,
+        if historically (OutgoingToRule' inp) then <ACCEPT> else <DROP>).
 
-Lemma UnConstrPreservesFilterMethod: forall r_o r_n inp res,
+Lemma UnConstrPreservesFilterMethod: forall h topkt totup r_o r_n inp res,
   DropQSConstraints_AbsR r_o r_n ->
-  computes_to (FilterMethod r_o inp) res <->
-  computes_to (FilterMethod_UnConstr r_n inp) res.
+  computes_to (@FilterMethod h topkt totup r_o inp) res <->
+  computes_to (FilterMethod_UnConstr topkt totup r_n inp) res.
 Proof.
   intros. unfold FilterMethod, FilterMethod_UnConstr in *.
   destruct (OutgoingRule.(cf_cond) inp) eqn:out. reflexivity.
   destruct (negb (IncomingRule.(cf_cond) inp)) eqn:inc. reflexivity.
   split; intros; apply Bind_inv in H0; destruct H0 as [b [Hbin Hbres]];
-    unfold DropQSConstraints_AbsR in H; rewrite <- H in *; computes_to_econstructor;
-    [rewrite GetRelDropConstraints; apply Hbin | apply Hbres
-    | rewrite <- GetRelDropConstraints; apply Hbin | apply Hbres].
+    unfold DropQSConstraints_AbsR in H; rewrite <- H in *;
+    computes_to_econstructor; unfold In_History;
+    [ change (GetUnConstrRelationBnd (DropQSConstraints r_o) ``"History")
+        with (GetUnConstrRelation (DropQSConstraints r_o) Fin.F1);
+      rewrite GetRelDropConstraints; apply Hbin
+    | apply Hbres
+    |  change (GetRelationBnd r_o ``"History")
+        with (GetRelation r_o Fin.F1);
+      rewrite <- GetRelDropConstraints; apply Hbin
+    | apply Hbres].
 Qed.
-
 
 Definition NoIncomingConnectionsFilter : ADT StatefulFilterSig :=
   Eval simpl in Def ADT {
-    rep := QueryStructure PacketHistorySchema,
+    rep := QueryStructure Complete_PacketHistorySchema,
     Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "Filter" (r: rep) (inp: input) : rep * option result :=
-      res <- FilterMethod r inp;
-      `(r, _) <- Insert (< sINPUT :: inp >) into r!sHISTORY;
+      res <- FilterMethod Complete_topkt Complete_totup r inp;
+      `(r, _) <- Insert (Complete_totup inp) into r!"History";
       ret (r, res)
   }%methDefParsing.
 
@@ -100,20 +106,21 @@ Lemma simpl_in_bind:
 Proof.
   intros. apply Bind_inv in H. destruct H. destruct H. apply Return_inv in H. rewrite <- H in H0. simpl in H0. apply Return_inv in H0. assumption. Qed.
 
-Print FiniteTables_AbsR.
-Definition LessHistoryRelation (r_o r_n : UnConstrQueryStructure PacketHistorySchema) :=
+
+Definition LessHistoryRelation {h} totup
+           (r_o r_n : UnConstrQueryStructure (PacketHistorySchema h)) :=
   FiniteTables_AbsR r_o r_o /\
   forall inp,
     (OutgoingRule.(cf_cond) inp) ->
-    ((IndexedEnsemble_In (GetUnConstrRelation r_n Fin.F1) < sINPUT :: inp >)
-     <-> IndexedEnsemble_In (GetUnConstrRelation r_o Fin.F1) < sINPUT :: inp >).
+    (In_History totup r_n inp <-> In_History totup r_o inp).
+
 
 Lemma LessHistoryPreservesFilter:
-  forall inp r_o r_n,
-    LessHistoryRelation r_o r_n ->
+  forall inp h totup topkt r_o r_n,
+    LessHistoryRelation totup r_o r_n ->
     refine
-      (FilterMethod_UnConstr r_o inp)
-      (FilterMethod_UnConstr r_n inp).
+      (@FilterMethod_UnConstr h topkt totup r_o inp)
+      (FilterMethod_UnConstr topkt totup r_n inp).
 Proof.
   red; intros. unfold FilterMethod_UnConstr in *.
   unfold LessHistoryRelation in H. destruct H as [Hfin H].
@@ -143,6 +150,31 @@ Proof.
 Qed.
 
 
+Theorem DroppedFilterMethod : Drop_Fields (@FilterMethod_UnConstr).
+Proof. red. Transparent computes_to.
+       solve_drop_fields (@FilterMethod_UnConstr). Defined.
+
+(*
+  let d := (eval unfold d in d) in
+  let d := (eval unfold DroppedFilterMethod in d) in
+  match d with
+  | ex_intro _ ?x ?H =>
+    pose x as h; match H with
+    | ex_intro _ ?x ?H =>
+      pose x as topkt; match H with
+      | ex_intro _ ?x ?H =>
+        pose x as totup; pose proof H
+      end
+    end
+  end.
+  fold totup topkt h in H.
+
+  assert (H': forall tup, t (i tup) = tup).
+  { repeat (let f := fresh in destruct tup as [f tup]). reflexivity. }
+*)
+
+  
+
 Definition UnConstrQuery_In {ResultT}
            {qsSchema}
            (qs : UnConstrQueryStructure qsSchema)
@@ -157,13 +189,15 @@ Notation "( x 'in' r '%' Ridx ) bod" :=
    @UnConstrQuery_In _ qs_schema r' Ridx'
             (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) (at level 0, x at level 200, r at level 0, bod at level 0).
 
-Definition FilterMethod_UnConstr_Comp (r: UnConstrQueryStructure PacketHistorySchema) (inp: input) : Comp (option result) :=
-  If cf_cond OutgoingRule inp Then ret (Some ACCEPT) Else
+Definition FilterMethod_UnConstr_Comp {h} (topkt: @Tuple h -> input)
+           (totup: input -> @Tuple h)
+           (r: UnConstrQueryStructure (PacketHistorySchema h)) (inp: input) :=
+  If cf_cond OutgoingRule inp Then <ACCEPT> Else
   If negb (cf_cond IncomingRule inp) Then ret None Else
-    (c <- Count (For (t in r%sHISTORY)
-                 Where (cf_cond (OutgoingToRule (SourceAddress (in_ip4 inp))) (t!sINPUT) = true)
+    (c <- Count (For (t in r%"History")
+                 Where (cf_cond (OutgoingToRule (SourceAddress (in_ip4 inp))) (topkt t) = true)
                  Return ());
-     If 0 <? c Then ret (Some ACCEPT) Else ret (Some DROP)).
+     If 0 <? c Then <ACCEPT> Else <DROP>).
 
 
 Lemma permutation_length {A: Type}:
@@ -173,6 +207,7 @@ Proof.
   intros. induction H; simpl; congruence.
 Qed.
 
+Open Scope list.
 Lemma fold_comp_list_in:
   forall (T: Type) (P: T -> bool) (ltup: list T) l inp,
     fold_right
@@ -222,20 +257,26 @@ Proof.
       exists a. split.
       left; reflexivity. exists l1. split. assumption. rewrite H2. apply H0.
 Qed.
+Close Scope list.
 
 Lemma count_zero_iff:
-  forall (r: UnConstrQueryStructure PacketHistorySchema)
-         (P: @RawTuple _ -> bool) count,
-    computes_to (Count (For (UnConstrQuery_In r myqidx
+  forall h (topkt: @Tuple h -> input) totup
+    (r: UnConstrQueryStructure (PacketHistorySchema h))
+    (P: input -> bool) count,
+    (forall t, totup (topkt t) = t) ->
+    (forall inp, P inp = P (topkt (totup inp))) ->
+    computes_to (Count (For (UnConstrQuery_In r Fin.F1
                         (fun t =>
-                          Where (P t)
+                          Where (P (topkt t))
                           Return ())))) count ->
-    ((0 <? count) <-> (exists inp, IndexedEnsemble_In (GetUnConstrRelation r myqidx) < sINPUT :: inp > /\ P < sINPUT :: inp >)).
+    ((0 <? count) <-> (exists inp, In_History totup r inp /\ P inp)).
+(*IndexedEnsemble_In (GetUnConstrRelation r Fin.F1) inp /\ P (topkt inp))).*)
 Proof.
   Transparent Query_For. Transparent Count. Transparent QueryResultComp.
   unfold Count, Query_For, Query_Where, Query_Return, UnConstrQuery_In.
   unfold QueryResultComp, FlattenCompList.flatten_CompList.
-  intros r P count Hcount. destruct Hcount as [l [Hcount Htmp]].
+  intros h topkt totup r P count toinv Ptoinv Hcount.
+  destruct Hcount as [l [Hcount Htmp]].
   unfold In in *. inversion Htmp. rename H into Hlen. clear Htmp.
   destruct Hcount as [l' [Htmp Hperm]]. apply Pick_inv in Hperm.
   unfold In in *. destruct Htmp as [ltup [Hrel Hfold]].
@@ -246,54 +287,73 @@ Proof.
   - pose proof (fold_comp_list_length l' _ Hfold H) as Hlin0.
     destruct Hlin0 as [lin [Hlinm [lin' [Hll Hlinc]]]].
     apply in_map_iff in Hlinm. destruct Hlinm as [x [Hpx Hlx]].
-    cbv in (type of x).
-    assert (Htuple: < sINPUT :: (prim_fst x) > = x).
-    { destruct x. cbv. destruct prim_snd. reflexivity. }
-    exists (prim_fst x). split.
+    exists (topkt x). split.
     * red in Hrel. destruct Hrel as [l [Hmap [Heql Hdup]]].
-      rewrite Htuple. red. rewrite <- Hmap in Hlx.
+      red. rewrite <- Hmap in Hlx.
       apply in_map_iff in Hlx.
       destruct Hlx as [y [Hy1 Hy2]]. destruct y as [yidx yelem].
-      exists yidx. simpl in Hy1. subst x. apply Heql. apply Hy2.
-    * rewrite Htuple. subst lin. inversion Hll.
-      destruct (P x) eqn:Hpx. reflexivity.
-      assert (Hle: lin' = []) by (apply H1; congruence). subst lin'.
+      exists yidx. simpl in Hy1. subst x. apply Heql. rewrite toinv. apply Hy2.
+    * subst lin. inversion Hll.
+      destruct (P (topkt x)) eqn:Hpx. reflexivity.
+      assert (Hle: lin' = []%list) by (apply H1; congruence). subst lin'.
       inversion Hlinc.
 
   - red in Hrel. destruct Hrel as [l [Hmap [Heql Hdup]]].
     destruct H as [inp [Hinp Hpinp]]. red in Hinp. destruct Hinp as [idx Hinp].
     apply Heql in Hinp.
-    assert (Hinp': List.In (< sINPUT :: inp >) ltup).
+    assert (Hinp': List.In (totup inp) ltup).
     { rewrite <- Hmap. apply in_map_iff.
-      exists {| elementIndex := idx; indexedElement := < sINPUT :: inp > |}.
+      exists {| elementIndex := idx; indexedElement := (totup inp) |}.
       split. reflexivity. assumption. }
-    apply (fold_comp_list_in _ P ltup l' _ Hfold Hinp' Hpinp).
-Qed.    
+    pose (fun t => P (topkt t)) as P'. rewrite Ptoinv in Hpinp.
+    apply (fold_comp_list_in _ P' ltup l' _ Hfold Hinp' Hpinp).
+Qed.
 
 Lemma CompPreservesFilterMethod:
-  forall r inp,
-    refine (FilterMethod_UnConstr r inp)
-           (FilterMethod_UnConstr_Comp r inp).
+  exists h (topkt: @Tuple h -> input) totup, forall r inp,
+    refine (FilterMethod_UnConstr topkt totup r inp)
+           (FilterMethod_UnConstr_Comp topkt totup r inp).
 Proof.
-  unfold FilterMethod_UnConstr, FilterMethod_UnConstr_Comp. red; intros.
+  pose DroppedFilterMethod.
+  let d := (eval unfold d in d) in
+  let d := (eval unfold DroppedFilterMethod in d) in
+  match d with
+  | ex_intro _ ?x ?H =>
+    pose x as h; match H with
+    | ex_intro _ ?x ?H =>
+      pose x as totup; match H with
+      | ex_intro _ ?x ?H =>
+        pose x as topkt; pose proof H as Hdrop
+      end
+    end
+  end.
+  fold totup topkt h in Hdrop.
+
+  exists h, topkt, totup.
+  unfold FilterMethod_UnConstr, FilterMethod_UnConstr_Comp.
+  red; intros r inp v H.
   destruct (cf_cond OutgoingRule inp) eqn:outrule. assumption.
   destruct (negb (cf_cond IncomingRule inp)) eqn:inrule. assumption.
   inversion H as [c Hc]. destruct Hc as [Hcount Hres]. unfold In in *.
 
-  pose proof (count_zero_iff _ _ c Hcount) as Hcziff.
+  epose proof (count_zero_iff _ topkt totup _ _ c _ _ Hcount) as Hcziff.
   computes_to_econstructor. computes_to_econstructor.
   instantiate (1:=(0 <? c)). red. destruct (0 <? c) eqn:Hzero; simpl.
   - rewrite <- Hzero in Hcziff. apply Hcziff in Hzero.
-    destruct Hzero as [pre [Hin Hcond]].
-    exists pre. split; assumption.
-  - intro. rewrite <- Hzero in Hcziff. apply Hcziff in H0. inversion H0.
-    rewrite H2 in Hzero. inversion Hzero.
+    destruct Hzero as [pre [Hin Hcond]]. exists pre.
+    split; assumption.
+  - intro.
+    rewrite <- Hzero in Hcziff. apply Hcziff in H0. congruence.
   - apply Hres.
+
+    Unshelve.
+    * intros t. repeat (let f := fresh in destruct t as [f t]). reflexivity.
+    * reflexivity.
 Qed.
 
-
 Lemma LessHistoryRelationRefl:
-  forall r_o, FiniteTables_AbsR r_o r_o -> LessHistoryRelation r_o r_o.
+  forall h (totup: input -> @Tuple h) r_o,
+    FiniteTables_AbsR r_o r_o -> LessHistoryRelation totup r_o r_o.
 Proof.
   unfold LessHistoryRelation; split. assumption.
   split; intros; assumption. Qed.
@@ -302,7 +362,7 @@ Proof.
 Lemma QSEmptyFinite {qs_schema}:
   forall idx, FiniteEnsemble (GetUnConstrRelation (DropQSConstraints (QSEmptySpec qs_schema)) idx).
 Proof.
-  intros. red. exists []. red. exists [].
+  intros. red. exists []%list. red. exists []%list.
   split.
   - reflexivity.
   - split.
@@ -361,26 +421,20 @@ Proof.
     + pose proof (le_lt_trans _ _ _ Hlt Hbig). apply (IHl f big H0 H).
 Qed.
 
-Definition RefinedInsert r d :=
+Definition myqidx (h: Heading) : Fin.t (numRawQSschemaSchemas (PacketHistorySchema h)).
+apply Fin.F1. Defined.
+Definition RefinedInsert h totup r d :=
   If cf_cond OutgoingRule d
   Then
     (idx <- {idx: nat |
-             UnConstrFreshIdx (GetUnConstrRelation r myqidx) idx};
-     ret (UpdateUnConstrRelation r myqidx
+             UnConstrFreshIdx (r!"History")%QueryImpl idx};
+     ret (UpdateUnConstrRelation r (myqidx h)
             (BuildADT.EnsembleInsert
                {| elementIndex := idx;
-                  indexedElement := icons2 d inil2 |}
-               (GetUnConstrRelation r myqidx))))
+                  indexedElement := totup d |}
+               (r!"History")%QueryImpl)))
   Else
     ret r.
-
-Ltac comp_inv :=
-  match goal with
-  | [H: computes_to _ _ |- _] => inversion H; unfold In in *; clear H
-  | [H: _ /\ _ |- _] => destruct H
-  | [H: ret _ _ |- _] => inversion H; clear H
-  | [H: Bind _ _ _ |- _] => inversion H; unfold In in *; clear H
-  end.
 
 
 Instance ByteBuffer_eq_dec:
@@ -442,16 +496,97 @@ Theorem SharpenNoIncomingFilter:
   FullySharpened NoIncomingConnectionsFilter.
 Proof.
   start sharpening ADT. Transparent QSInsert.
-  drop_constraints_under_bind PacketHistorySchema ltac:(
+
+  pose DroppedFilterMethod.
+  let d := (eval unfold d in d) in
+  let d := (eval unfold DroppedFilterMethod in d) in
+  match d with
+  | ex_intro _ ?x ?H =>
+    pose x as h; match H with
+    | ex_intro _ ?x ?H =>
+      pose x as totup; match H with
+      | ex_intro _ ?x ?H =>
+        pose x as topkt; pose proof H as Hdrop
+      end
+    end
+  end.
+  fold totup topkt h in Hdrop.
+
+  drop_constraints_under_bind Complete_PacketHistorySchema ltac:(
     intro v; intros Htemp;
     match goal with
       [H: DropQSConstraints_AbsR _ _ |- _] =>
-      apply (UnConstrPreservesFilterMethod _ _ _ _ H)
+      apply (UnConstrPreservesFilterMethod _ Complete_topkt Complete_totup
+                                           _ _ _ _ H)
     end;
     apply Htemp).
 
   (* hone_finite_under_bind PacketHistorySchema myqidx. *)
+  hone representation using (Complete_Dropped_qs_equiv totup).
+  - simplify with monad laws.
+    refine pick val (DropQSConstraints (QSEmptySpec _)).
+    subst H; reflexivity. red. intros.
+    split; intros Htmp; cbv in Htmp; inversion Htmp.
+  - etransitivity. simplify with monad laws.
+    apply refine_bind. apply Hdrop. apply H0.
+    intro. cbn.
 
+    Definition tmpinsert h (totup: input -> @Tuple h)
+               (r_n: UnConstrQueryStructure (PacketHistorySchema h))
+               d (a: option result) idx :=
+      ret (UpdateUnConstrRelation r_n Fin.F1
+             (BuildADT.EnsembleInsert
+                {| elementIndex := idx;
+                   indexedElement := totup d |}
+                (GetUnConstrRelation r_n Fin.F1)), a).
+
+(*    instantiate (1:=(tmpinsert h totup r_n d0)). unfold tmpinsert. *)
+    etransitivity. eapply refine_under_bind. intros idx Hidx. comp_inv.
+    instantiate (1:=(tmpinsert h totup r_n d0 a)). unfold tmpinsert.
+
+    Lemma refine_pair: forall (T U: Type) (x: T) (y: U) (c: Comp T),
+      refine c (ret x) ->
+      refine
+        (x' <- c;
+         ret (x', y))
+        (ret (x, y)).
+    Proof.
+      intros. intro; intros. comp_inv. computes_to_econstructor.
+      red in H. apply H. auto. auto. Qed.
+
+    apply refine_pair. apply refine_pick. intros qs Hins. comp_inv.
+    subst qs. red. split; intros.
+    apply in_ensemble_insert_iff in H1. red in H1. red in H1.
+    destruct H1. inversion H1; subst. apply in_ensemble_insert_iff.
+    left; reflexivity.
+    
+    apply H0 in H1. apply in_ensemble_insert_iff.
+    right; apply H1.
+
+    (** stuck here **)
+    
+    red in H1. red in H1.
+    destruct H1. apply in_ensemble_insert_iff in H1. red in H1. red in H1.
+    destruct H1. inversion H1. subst. exists idx.
+    apply in_ensemble_insert_iff. left. admit.
+
+    assert (H2: In_History totup r_n inp).
+    { red. red. exists x. apply H1. }
+    apply H0 in H2. destruct H2. exists x0. apply in_ensemble_insert_iff.
+    right; apply H2.
+
+    Definition tmpinsert' h totup
+               (r_n: UnConstrQueryStructure (PacketHistorySchema h))
+               d0 (a: option result) :=
+      idx <- {idx: nat | UnConstrFreshIdx (GetUnConstrRelation r_n Fin.F1) idx};
+      tmpinsert h totup r_n d0 a idx.
+    instantiate (1 := (tmpinsert' h totup r_n d0)).
+    unfold tmpinsert'.
+    intro v; intros Hv. repeat comp_inv. apply Pick_inv in H1.
+    unfold tmpinsert in *. repeat comp_inv. subst.
+
+    
+    computes_to_constructor.
 
   hone representation using LessHistoryRelation;
     try simplify with monad laws.

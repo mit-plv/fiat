@@ -24,24 +24,28 @@ Definition PacketHistorySchema (h: Heading) :=
         [ relation "History" has schema h ]
         enforcing [].
 Definition Complete_PacketHistorySchema := PacketHistorySchema Complete_heading.
-(* for some reason this notation is only predefined for UnConstrQS *)
-Notation "qs ! R" := (GetRelationBnd qs {| bindex := R; indexb := _ |}) : myqs_scope.
-Delimit Scope myqs_scope with myqs.
+
+Open Scope QueryImpl.
+Definition In_History {h: Heading} (totup: input -> @Tuple h)
+           (r: UnConstrQueryStructure (PacketHistorySchema h)) (p: input) : Prop :=
+  IndexedEnsemble_In (r!"History") (totup p).
 
 (* a Complete_ history is equivalent to a history with dropped fields
    under some function from packets (with all fields) to Tuples (with some fields) *)
-Open Scope myqs.
 Definition Complete_Dropped_qs_equiv {h: Heading} (totup: input -> @Tuple h)
-           (r_o: QueryStructure Complete_PacketHistorySchema)
-           (r_n: QueryStructure (PacketHistorySchema h)) :=
-  forall inp, IndexedEnsemble_In r_o!"History" (Complete_totup inp) <->
-         IndexedEnsemble_In r_n!"History" (totup inp).
+           (r_o: UnConstrQueryStructure Complete_PacketHistorySchema)
+           (r_n: UnConstrQueryStructure (PacketHistorySchema h)) :=
+  forall inp idx, (r_o!"History") {| elementIndex := idx;
+                                indexedElement := (Complete_totup inp) |}
+          <-> (r_n!"History") {| elementIndex := idx;
+                                indexedElement := (totup inp) |}.
+Close Scope QueryImpl.
 
 (* we want the same filter body to operate on different schemas of history,
    i.e. Complete_ histories and histories with dropped fields,
    so the parameters of a filter include the packet-Tuple conversions *)
 Definition FilterType := forall (h: Heading), (@Tuple h -> input) -> (input -> @Tuple h)
-  -> (QueryStructure (PacketHistorySchema h)) -> input -> Comp (option result).
+  -> (UnConstrQueryStructure (PacketHistorySchema h)) -> input -> Comp (option result).
 Definition Complete_filter (f: FilterType) :=
   f Complete_heading Complete_topkt Complete_totup.
 
@@ -58,11 +62,6 @@ Definition Complete_Dropped_equiv (h: Heading) (topkt: @Tuple h -> input)
 Definition Drop_Fields (f: FilterType) :=
   exists h (totup: input -> @Tuple h) topkt,
     Complete_Dropped_equiv h topkt totup f.
-
-Definition In_History {h: Heading} (totup: input -> @Tuple h)
-           (r: QueryStructure (PacketHistorySchema h)) (p: input) : Prop :=
-  IndexedEnsemble_In (r!"History")%myqs (totup p).
-Close Scope myqs.
 
 
 (** Tactics **)
@@ -180,8 +179,8 @@ Ltac get_to_the_point_step :=
   | [ H: decides ?b _ |- decides ?b _ ] => unfold decides in *; destruct b; cbn in *
   | [ Hqs: Complete_Dropped_qs_equiv _ _ _,
       H: exists x, (In_History _ _ x) /\ _ |- exists x, (In_History _ _ x) /\ _ ] =>
-    let x := fresh in let Hx := fresh in
-    destruct H as [x [Hhist Hf]]; exists x; split; [ apply Hqs; apply Hhist | ]
+    destruct H as [pre [[idx Hpre] Hflag]]; exists pre; split;
+    [ exists idx; apply Hqs; apply Hpre | ]
   | [ H: ~ _ |- ~ _ ] => intro; apply H
   end.
 Ltac get_to_the_point := repeat get_to_the_point_step.
@@ -191,10 +190,11 @@ Ltac get_to_the_point := repeat get_to_the_point_step.
    without looking inside any existential predicates *)
 Ltac change_dummy_flat x pkt :=
   let x_pkt := (eval cbv beta in (x pkt)) in
-  match goal with
+  lazymatch goal with
   | [|- context c [x_pkt]] =>
     let c' := dummy_type x_pkt ltac:(fun d => context c [d]) in
-    change c'
+    change c'; change_dummy_flat x pkt
+  | [|- _] => idtac
   end.
 
 (* 1. change the packet field with dummy at surface level
@@ -212,7 +212,8 @@ Ltac change_dummy x pkt :=
   try (get_to_the_point;
        match goal with
        | [|- _ ?y] =>
-         destruct_packet y; tryif change_dummy_flat x y then fail 1 else fail 2
+         destruct_packet y;
+         tryif change_dummy_flat x y then fail 1 else fail 2
        end).
 
 (* existential vector constructor *)
@@ -295,12 +296,17 @@ Ltac solve_drop_fields filter :=
   unfold filter, Complete_filter; get_to_the_point; assumption.
 
 
+
 (** Demo! **)
 
 Definition flag_true (p: input) : Prop := p.(in_ip4).(DF) = true.
 Definition sent_to_me := (iptables -A FORWARD --destination 18'0'0'0/8).(cf_cond).
 
 Notation "'with' r totup ',' 'if' 'historically' cond 'then' iftrue 'else' iffalse" :=
+  (b <- { b: bool | decides b (exists pre,
+                 IndexedEnsemble_In (GetRelationBnd r {| bindex := "History"; indexb := _ |}) (totup pre) /\ cond pre) };
+     if b then iftrue else iffalse) (at level 65, r at level 9) : filter_scope.
+Notation "'with' 'unconstr' r totup ',' 'if' 'historically' cond 'then' iftrue 'else' iffalse" :=
   (b <- { b: bool | decides b (exists pre,
                  In_History totup r pre /\ cond pre) };
      if b then iftrue else iffalse) (at level 65, r at level 9) : filter_scope.
@@ -309,10 +315,10 @@ Notation "'<' res '>'" :=
 
 Open Scope filter_scope.
 Definition f (h: Heading) (topkt: @Tuple h -> input) (totup: input -> @Tuple h)
-           (r: QueryStructure (PacketHistorySchema h)) (inp: input) :=
+           (r: UnConstrQueryStructure (PacketHistorySchema h)) (inp: input) :=
   If sent_to_me inp
   Then <ACCEPT>
-  Else with r totup,
+  Else with unconstr r totup,
     if historically flag_true then <ACCEPT> else <DROP>.
 
 
