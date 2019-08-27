@@ -151,8 +151,9 @@ Qed.
 
 
 Theorem DroppedFilterMethod : Drop_Fields (@FilterMethod_UnConstr).
-Proof. red. Transparent computes_to.
-       solve_drop_fields (@FilterMethod_UnConstr). Defined.
+Proof.
+  red. Transparent computes_to.
+  solve_drop_fields @FilterMethod_UnConstr. Defined.
 
 (*
   let d := (eval unfold d in d) in
@@ -173,7 +174,6 @@ Proof. red. Transparent computes_to.
   { repeat (let f := fresh in destruct tup as [f tup]). reflexivity. }
 *)
 
-  
 
 Definition UnConstrQuery_In {ResultT}
            {qsSchema}
@@ -307,48 +307,6 @@ Proof.
       split. reflexivity. assumption. }
     pose (fun t => P (topkt t)) as P'. rewrite Ptoinv in Hpinp.
     apply (fold_comp_list_in _ P' ltup l' _ Hfold Hinp' Hpinp).
-Qed.
-
-Lemma CompPreservesFilterMethod:
-  exists h (topkt: @Tuple h -> input) totup, forall r inp,
-    refine (FilterMethod_UnConstr topkt totup r inp)
-           (FilterMethod_UnConstr_Comp topkt totup r inp).
-Proof.
-  pose DroppedFilterMethod.
-  let d := (eval unfold d in d) in
-  let d := (eval unfold DroppedFilterMethod in d) in
-  match d with
-  | ex_intro _ ?x ?H =>
-    pose x as h; match H with
-    | ex_intro _ ?x ?H =>
-      pose x as totup; match H with
-      | ex_intro _ ?x ?H =>
-        pose x as topkt; pose proof H as Hdrop
-      end
-    end
-  end.
-  fold totup topkt h in Hdrop.
-
-  exists h, topkt, totup.
-  unfold FilterMethod_UnConstr, FilterMethod_UnConstr_Comp.
-  red; intros r inp v H.
-  destruct (cf_cond OutgoingRule inp) eqn:outrule. assumption.
-  destruct (negb (cf_cond IncomingRule inp)) eqn:inrule. assumption.
-  inversion H as [c Hc]. destruct Hc as [Hcount Hres]. unfold In in *.
-
-  epose proof (count_zero_iff _ topkt totup _ _ c _ _ Hcount) as Hcziff.
-  computes_to_econstructor. computes_to_econstructor.
-  instantiate (1:=(0 <? c)). red. destruct (0 <? c) eqn:Hzero; simpl.
-  - rewrite <- Hzero in Hcziff. apply Hcziff in Hzero.
-    destruct Hzero as [pre [Hin Hcond]]. exists pre.
-    split; assumption.
-  - intro.
-    rewrite <- Hzero in Hcziff. apply Hcziff in H0. congruence.
-  - apply Hres.
-
-    Unshelve.
-    * intros t. repeat (let f := fresh in destruct t as [f t]). reflexivity.
-    * reflexivity.
 Qed.
 
 Lemma LessHistoryRelationRefl:
@@ -492,6 +450,20 @@ econstructor; decide equality; try apply A_eq_dec;
   decide equality; apply A_eq_dec. Defined.
 
 
+Lemma freshidxtemp:
+  forall h r_o (r_n: UnConstrQueryStructure (PacketHistorySchema h)) totup,
+    Complete_Dropped_qs_equiv totup r_o r_n ->
+    refine
+      {idx: nat | UnConstrFreshIdx (GetUnConstrRelation r_o Fin.F1) idx}
+      {idx: nat | UnConstrFreshIdx (GetUnConstrRelation r_n Fin.F1) idx}.
+Proof.
+  intros h r_o r_n totup H. red in H. intro v; intros Hv; comp_inv.
+  red in Hv. computes_to_econstructor. red; intros [idx [inp tmp]] Hinp.
+  cbn in inp; destruct tmp. apply (H inp idx) in Hinp. apply Hv in Hinp.
+  cbn in *. assumption.
+Qed.
+
+
 Theorem SharpenNoIncomingFilter:
   FullySharpened NoIncomingConnectionsFilter.
 Proof.
@@ -531,6 +503,9 @@ Proof.
     apply refine_bind. apply Hdrop. apply H0.
     intro. cbn.
 
+    eapply refine_bind. apply (freshidxtemp _ _ _ totup H0).
+    intro idx.
+
     Definition tmpinsert h (totup: input -> @Tuple h)
                (r_n: UnConstrQueryStructure (PacketHistorySchema h))
                d (a: option result) idx :=
@@ -539,10 +514,6 @@ Proof.
                 {| elementIndex := idx;
                    indexedElement := totup d |}
                 (GetUnConstrRelation r_n Fin.F1)), a).
-
-(*    instantiate (1:=(tmpinsert h totup r_n d0)). unfold tmpinsert. *)
-    etransitivity. eapply refine_under_bind. intros idx Hidx. comp_inv.
-    instantiate (1:=(tmpinsert h totup r_n d0 a)). unfold tmpinsert.
 
     Lemma refine_pair: forall (T U: Type) (x: T) (y: U) (c: Comp T),
       refine c (ret x) ->
@@ -555,53 +526,44 @@ Proof.
       red in H. apply H. auto. auto. Qed.
 
     apply refine_pair. apply refine_pick. intros qs Hins. comp_inv.
-    subst qs. red. split; intros.
-    apply in_ensemble_insert_iff in H1. red in H1. red in H1.
-    destruct H1. inversion H1; subst. apply in_ensemble_insert_iff.
-    left; reflexivity.
-    
-    apply H0 in H1. apply in_ensemble_insert_iff.
-    right; apply H1.
+    subst qs. instantiate (1 := (UpdateUnConstrRelation r_n Fin.F1
+                                   (BuildADT.EnsembleInsert
+                                      {| elementIndex := idx;
+                                         indexedElement := totup d0 |}
+                                      (GetUnConstrRelation r_n Fin.F1)))).
+    red; intros oinp oidx; split; intros Hoinp;
+      destruct Hoinp as [Hoinp | Hoinp].
 
-    (** stuck here **)
-    
-    red in H1. red in H1.
-    destruct H1. apply in_ensemble_insert_iff in H1. red in H1. red in H1.
-    destruct H1. inversion H1. subst. exists idx.
-    apply in_ensemble_insert_iff. left. admit.
+    apply in_ensemble_insert_iff.
+    left; inversion Hoinp; reflexivity.
+    right; apply H0 in Hoinp; apply Hoinp.
 
-    assert (H2: In_History totup r_n inp).
-    { red. red. exists x. apply H1. }
-    apply H0 in H2. destruct H2. exists x0. apply in_ensemble_insert_iff.
-    right; apply H2.
+    exists d0. split. apply in_ensemble_insert_iff.
+    left; inversion Hoinp; reflexivity.
+    unfold totup; inversion Hoinp; reflexivity.
 
-    Definition tmpinsert' h totup
-               (r_n: UnConstrQueryStructure (PacketHistorySchema h))
-               d0 (a: option result) :=
-      idx <- {idx: nat | UnConstrFreshIdx (GetUnConstrRelation r_n Fin.F1) idx};
-      tmpinsert h totup r_n d0 a idx.
-    instantiate (1 := (tmpinsert' h totup r_n d0)).
-    unfold tmpinsert'.
-    intro v; intros Hv. repeat comp_inv. apply Pick_inv in H1.
-    unfold tmpinsert in *. repeat comp_inv. subst.
+    pose proof (H0 oinp oidx). destruct H1 as [_ H1]. specialize (H1 Hoinp).
+    destruct H1 as [inp' [H1 H2]]. exists inp'. split. apply in_ensemble_insert_iff.
+    right. apply H1. apply H2.
 
-    
-    computes_to_constructor.
+    finish honing.
 
-  hone representation using LessHistoryRelation;
+
+
+ - hone representation using (LessHistoryRelation totup);
     try simplify with monad laws.
-  - refine pick val (DropQSConstraints (QSEmptySpec _));
-      subst H; [reflexivity | apply LessHistoryRelationRefl].
-    red; split; [reflexivity | apply QSEmptyFinite].
+   * refine pick val (DropQSConstraints (QSEmptySpec _));
+       subst H; [reflexivity | apply LessHistoryRelationRefl].
+     red; split; [reflexivity | apply QSEmptyFinite].
     
-  - simpl. etransitivity. 2: (subst H; higher_order_reflexivity).
-    apply refine_bind.
-    apply (LessHistoryPreservesFilter d r_o r_n H0).
+   * simpl. etransitivity. 2: (subst H; higher_order_reflexivity).
+     apply refine_bind.
+     apply (LessHistoryPreservesFilter d0 _ _ _ r_o r_n H0).
 
-    red; intros;
-      instantiate (1:=(fun a => r <- RefinedInsert r_n d; ret (r, a)));
+     red; intros;
+      instantiate (1:=(fun a => r <- RefinedInsert _ totup r_n d0; ret (r, a)));
       cbv beta; unfold RefinedInsert; unfold If_Then_Else;
-      destruct (cf_cond OutgoingRule d) eqn:out; red; intros;
+      destruct (cf_cond OutgoingRule d0) eqn:out; red; intros;
       repeat comp_inv;
       [ rename x0 into idx; rename H1 into Hidx;
         rename v into r; rename H4 into Hr; rename H3 into Hret
@@ -621,7 +583,7 @@ Proof.
     all: repeat match goal with
       | [ |- FiniteTables_AbsR _ _ ] =>
         red; split; try reflexivity;
-        intros finidx; destruct (Fin.eqb finidx myqidx) eqn:Hfeq
+        intros finidx; destruct (Fin.eqb finidx (myqidx h)) eqn:Hfeq
 
       | [Hfeq: Fin.eqb _ _ = false |- _] =>
         rewrite get_update_unconstr_neq;
@@ -630,10 +592,10 @@ Proof.
 
       | [ |- FiniteEnsemble _ ] =>
         red; apply Fin.eqb_eq in Hfeq; rewrite Hfeq;
-        exists ((icons2 d inil2) :: lfin);
+        exists ((totup d0) :: lfin)%list;
         rewrite get_update_unconstr_eq;
         red; exists (({| elementIndex := incrMaxFreshIdx lfin';
-                         indexedElement := icons2 d inil2 |}) :: lfin');
+                    indexedElement := totup d0 |}) :: lfin')%list;
         destruct Hlfin as [Hmap [Heqv Hdup]]; split; [ | split ]
 
       | [ |- map _ _ = _ ] =>
@@ -652,36 +614,61 @@ Proof.
 
     all: intros inp Hinp; split; repeat rewrite get_update_unconstr_eq;
       intros Hoin; try destruct Hoin as [eid [Hoin | Hoin]].
-    * inversion Hoin; exists (incrMaxFreshIdx lfin');
-      red; red; left; auto.
-    * assert (Hoin': IndexedEnsemble_In
-                       (GetUnConstrRelation r_n myqidx)
-                       < sINPUT :: inp >) by (exists eid; apply Hoin).
+    + exists (incrMaxFreshIdx lfin');
+      red; red; left. unfold totup. inversion Hoin; subst; reflexivity.
+    + assert (Hoin': IndexedEnsemble_In
+                       (GetUnConstrRelation r_n (myqidx h))
+                       (totup inp)) by (exists eid; apply Hoin).
       apply (Hles inp Hinp) in Hoin'. red.
       destruct Hoin' as [eid' Hoin']. exists eid'.
       red; red; right. apply Hoin'.
-    * inversion Hoin; exists idx; red; red; left; auto.
-    * assert (Hoin': IndexedEnsemble_In
-                       (GetUnConstrRelation r_o myqidx)
-                       < sINPUT :: inp >) by (exists eid; apply Hoin).
+    + exists idx; red; red; left; unfold totup; inversion Hoin; subst; auto.
+    + assert (Hoin': IndexedEnsemble_In
+                       (GetUnConstrRelation r_o (myqidx h))
+                       (totup inp)) by (exists eid; apply Hoin).
       apply (Hles inp Hinp) in Hoin'. red.
       destruct Hoin' as [eid' Hoin']. exists eid'.
       red; red; right. apply Hoin'.
-    * apply (Hles inp Hinp) in Hoin; red; destruct Hoin as [eid Hoin];
+    + apply (Hles inp Hinp) in Hoin; red; destruct Hoin as [eid Hoin];
       exists eid; red; red; right; auto.
-    * inversion Hoin; congruence.
-    * assert (Hoin': IndexedEnsemble_In
-                       (GetUnConstrRelation r_o myqidx)
-                       < sINPUT :: inp >) by (exists eid; apply Hoin).
+    + inversion Hoin. assert (Hrule: cf_cond OutgoingRule inp = cf_cond OutgoingRule d0).
+      { destruct inp, d0, in_ip4, in_ip0; cbn in *; subst. reflexivity. }
+      congruence.
+    + assert (Hoin': IndexedEnsemble_In
+                       (GetUnConstrRelation r_o (myqidx h))
+                       (totup inp)) by (exists eid; apply Hoin).
       apply (Hles inp Hinp) in Hoin'. red.
       destruct Hoin' as [eid' Hoin']. exists eid'. apply Hoin'.
 
 
+* assert (CompPreservesFilterMethod:
+            forall r inp,
+              refine (FilterMethod_UnConstr topkt totup r inp)
+                     (FilterMethod_UnConstr_Comp topkt totup r inp)).
+{
+  unfold FilterMethod_UnConstr, FilterMethod_UnConstr_Comp.
+  red; intros r inp v H.
+  destruct (cf_cond OutgoingRule inp) eqn:outrule. assumption.
+  destruct (negb (cf_cond IncomingRule inp)) eqn:inrule. assumption.
+  inversion H as [c Hc]. destruct Hc as [Hcount Hres]. unfold In in *.
 
-  - hone method "Filter".
+  epose proof (count_zero_iff _ topkt totup _ _ c _ _ Hcount) as Hcziff.
+  computes_to_econstructor. computes_to_econstructor.
+  instantiate (1:=(0 <? c)). red. destruct (0 <? c) eqn:Hzero; simpl.
+  - rewrite <- Hzero in Hcziff. apply Hcziff in Hzero.
+    destruct Hzero as [pre [Hin Hcond]]. exists pre.
+    split; assumption.
+  - intro.
+    rewrite <- Hzero in Hcziff. apply Hcziff in H0. congruence.
+  - apply Hres.
+}
+
+
+  hone method "Filter".
     subst r_o. refine pick eq. simplify with monad laws.
     apply refine_bind. apply CompPreservesFilterMethod. intro.
     apply refine_bind. reflexivity. intro. simpl. higher_order_reflexivity.
+
 
 
 Notation IndexType sch :=
@@ -690,9 +677,9 @@ Notation IndexType sch :=
            (numRawQSschemaSchemas sch) (qschemaSchemas sch)).
 
 
-Definition indexes : IndexType PacketHistorySchema :=
-  {| prim_fst := [("EqualityIndex", sINPUT # sHISTORY ## PacketHistorySchema)];
-     prim_snd := () |}.
+pose
+  {| prim_fst := [("EqualityIndex", "SourceAddress" # "History" ## (PacketHistorySchema h))]%list;
+     prim_snd := () |} as indexes.
 
 
 Ltac FindAttributeUses := EqExpressionAttributeCounter.
@@ -706,7 +693,7 @@ Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
 Ltac createLastTerm_dep := createLastEqualityTerm_dep.
 Ltac BuildEarlyBag := BuildEarlyEqualityBag.
 Ltac BuildLastBag := BuildLastEqualityBag.
-Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist').
+Ltac PickIndex := ltac:(fun indexes makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist').
 
 
 Ltac mydrill_step :=
@@ -716,15 +703,16 @@ Ltac mydrill_step :=
 Ltac mydrill := repeat mydrill_step.
 
 
-    PickIndex ltac:(fun attrlist =>
+    PickIndex indexes ltac:(fun attrlist =>
                       make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
 
-    * plan CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep.
-    * etransitivity. simplify with monad laws.
+    + plan CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep.
+    + etransitivity. simplify with monad laws.
       mydrill.
       unfold FilterMethod_UnConstr_Comp.
       eapply refine_If_Then_Else. reflexivity.
       eapply refine_If_Then_Else. reflexivity.
+Locate insertion.
 
     match goal with
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
@@ -735,6 +723,65 @@ Ltac mydrill := repeat mydrill_step.
       pose (BagSearchTermType idx_search_update_term) as search_term_type';
       pose (BagMatchSearchTerm idx_search_update_term) as search_term_matcher; simpl in *
     end.
+    evar (x: search_term_type').
+
+
+Open Scope list_scope.
+  Ltac createTerm f fds tail fs EarlyIndex LastIndex k ::=
+  lazymatch fs with
+  | [ ] => k tail
+  | [{| KindIndexKind := ?kind;
+        KindIndexIndex := ?s|} ] => idtac kind; idtac s
+  (*  (findMatchingTerm
+       fds kind s
+       ltac:(fun X => k (Some X, tail)))
+     || k (@None (Domain f s), tail) *)
+  end.
+    
+  Ltac find_simple_search_term
+     ClauseMatch EarlyIndex LastIndex
+     qs_schema idx filter_dec search_term :=
+  match type of search_term with
+  | BuildIndexSearchTerm ?indexed_attrs =>
+    let SC := constr:(GetNRelSchemaHeading (qschemaSchemas qs_schema) idx) in
+    findGoodTerm SC filter_dec indexed_attrs ClauseMatch
+                 ltac:(fun fds tail =>
+                         let tail := eval simpl in tail in
+                             makeTerm indexed_attrs SC fds tail EarlyIndex LastIndex ltac:(fun tm => pose tm (*; unify tm search_term;
+                                                                                           unfold ExtensionalEq, MatchIndexSearchTerm;
+                                                                                           simpl; intro; try prove_extensional_eq *)
+                      )) end.
+  red in (type of x).
+
+
+  find_simple_search_term CreateTerm EarlyIndex LastIndex (PacketHistorySchema h) (myqidx h) filter_dec x.
+
+    
+      lazymatch goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
+                 _) _ ] =>
+        let filter_dec := eval simpl in (@DecideableEnsembles.dec _ P _) in
+        let idx_search_update_term := eval simpl in (ith3 indices idx) in
+            let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
+                let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                    let eqv := fresh in
+                    assert (ExtensionalEq filter_dec (search_term_matcher x)) as eqv;
+                      [ find_simple_search_term CreateTerm EarlyIndex LastIndex (PacketHistorySchema h) (myqidx h) filter_dec x
+                      |
+                      let H' := fresh in
+                      pose proof (@refine_BagFindBagCount
+                                    _
+                                    (PacketHistorySchema h) indices
+                                    idx r_o r_n x P f H eqv) as H';
+                      fold_string_hyps_in H'; fold_heading_hyps_in H';
+                      rewrite H'; clear H' eqv
+]
+end.
+
+
+    implement_Count find_simple_search_term CreateTerm EarlyIndex LastIndex
+                (PacketHistorySchema h) (myqidx h) filter_dec x.
     
 (*  match goal with
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
@@ -757,6 +804,7 @@ Ltac mydrill := repeat mydrill_step.
                                                                                                           )
   end.*)
 
+  Open Scope list_scope.
   Ltac createTerm f fds tail fs EarlyIndex LastIndex k ::=
   lazymatch fs with
   | [ ] => k tail
@@ -768,24 +816,11 @@ Ltac mydrill := repeat mydrill_step.
     || k (@None (Domain f s), tail)
   end.
 
-  Ltac find_simple_search_term
-     ClauseMatch EarlyIndex LastIndex
-     qs_schema idx filter_dec search_term :=
-  match type of search_term with
-  | BuildIndexSearchTerm ?indexed_attrs =>
-    let SC := constr:(GetNRelSchemaHeading (qschemaSchemas qs_schema) idx) in
-    findGoodTerm SC filter_dec indexed_attrs ClauseMatch
-                 ltac:(fun fds tail =>
-                         let tail := eval simpl in tail in
-                             makeTerm indexed_attrs SC fds tail EarlyIndex LastIndex ltac:(fun tm => pose tm (*unify tm search_term;
-                                                                                           unfold ExtensionalEq, MatchIndexSearchTerm;
-                                                                                           simpl; intro; try prove_extensional_eq*)
-                      )) end.
 
 
   evar (x: search_term_type'). red in (type of x).
   assert (ExtensionalEq filter_dec (search_term_matcher x)) as eqv.
-  ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex PacketHistorySchema myqidx filter_dec x).
+  ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex (PacketHistorySchema h) (myqidx h) filter_dec x).
 
   unfold ExtensionalEq, MatchIndexSearchTerm; simpl; intro.
   subst x. instantiate (1:=(None, filter_dec)). reflexivity.
@@ -797,7 +832,7 @@ Ltac mydrill := repeat mydrill_step.
     pose f; pose P; pose indices
     end.
 
-    Check @refine_BagFindBagCount. pose (BagMatchSearchTerm (ith3 i myqidx) x). change (search_term_matcher x) with b in eqv. subst b.
+    Check @refine_BagFindBagCount. pose (BagMatchSearchTerm (ith3 i (myqidx h)) x). change (search_term_matcher x) with b in eqv. subst b.
 
     assert (filter_dec_dec: forall a, filter_dec a = true <-> P a).
     { intros. unfold filter_dec. rewrite !bool_dec_simpl.
@@ -807,8 +842,8 @@ Ltac mydrill := repeat mydrill_step.
     
     pose proof (@refine_BagFindBagCount
                   _
-                  PacketHistorySchema i
-                  myqidx r_o r_n x P u P' H0 eqv) as H';
+                  (PacketHistorySchema h) i
+                  (myqidx h) r_o r_n x P u P' H0 eqv) as H';
       fold_string_hyps_in H'; fold_heading_hyps_in H'.
     unfold P, u in H'.
       rewrite H'; clear H' eqv.

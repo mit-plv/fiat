@@ -35,10 +35,16 @@ Definition In_History {h: Heading} (totup: input -> @Tuple h)
 Definition Complete_Dropped_qs_equiv {h: Heading} (totup: input -> @Tuple h)
            (r_o: UnConstrQueryStructure Complete_PacketHistorySchema)
            (r_n: UnConstrQueryStructure (PacketHistorySchema h)) :=
-  forall inp idx, (r_o!"History") {| elementIndex := idx;
-                                indexedElement := (Complete_totup inp) |}
-          <-> (r_n!"History") {| elementIndex := idx;
-                                indexedElement := (totup inp) |}.
+  forall inp idx,
+    ((r_o!"History") {| elementIndex := idx;
+                        indexedElement := (Complete_totup inp) |} ->
+     (r_n!"History") {| elementIndex := idx;
+                        indexedElement := (totup inp) |}) /\
+    ((r_n!"History") {| elementIndex := idx;
+                        indexedElement := (totup inp) |} ->
+     exists inp', (r_o!"History") {| elementIndex := idx;
+                                indexedElement := (Complete_totup inp') |}
+             /\ totup inp' = totup inp).
 Close Scope QueryImpl.
 
 (* we want the same filter body to operate on different schemas of history,
@@ -86,8 +92,9 @@ Definition accessor : Type := { t: Type & input -> t }.
 Definition acc {T: Type} (t: input -> T) :=
   match t return accessor with _ => (existT _ _ t) end.
 Notation "acc1 '//' acc2" :=
-  (fun p => (acc2 (acc1 p))) (at level 90, no associativity).
+  (fun p => (acc2 (acc1 p))) (at level 90, no associativity) : acc_scope.
 
+Open Scope acc_scope.
 (* needs to be manually written! *)
 Definition acc2head : list (accessor * string) :=
   [ (acc (in_ip4 // TotalLength), "TotalLength");
@@ -103,7 +110,7 @@ Definition acc2head : list (accessor * string) :=
     (acc in_tcp, "optTCPpacket");
     (acc in_udp, "optUDPpacket");
     (acc in_chn, "Chain") ].
-
+Close Scope acc_scope.
 
 (* iterate over the accessors *)
 Open Scope list_scope.
@@ -181,6 +188,12 @@ Ltac get_to_the_point_step :=
       H: exists x, (In_History _ _ x) /\ _ |- exists x, (In_History _ _ x) /\ _ ] =>
     destruct H as [pre [[idx Hpre] Hflag]]; exists pre; split;
     [ exists idx; apply Hqs; apply Hpre | ]
+  | [ Hqs: Complete_Dropped_qs_equiv _ _ _,
+      H: exists x, (In_History _ _ x) /\ _ |- exists x, (In_History _ _ x) /\ _ ] =>
+    destruct H as [pre [[idx Hpre] Hflag]]; destruct (Hqs pre idx) as [_ H'];
+    pose proof (H' Hpre) as H''; destruct H'' as [pre' [Hpre' Hpreeq]];
+    inversion Hpreeq; exists pre'; split;
+    [ exists idx; apply Hpre' | ]
   | [ H: ~ _ |- ~ _ ] => intro; apply H
   end.
 Ltac get_to_the_point := repeat get_to_the_point_step.
@@ -293,8 +306,15 @@ Ltac solve_drop_fields filter :=
      instantiate (1 := topkt))
   end;
 
-  unfold filter, Complete_filter; get_to_the_point; assumption.
-
+  unfold filter, Complete_filter; get_to_the_point;
+  [ match goal with
+    | [ Hf: ?f ?pre  |- ?f ?pre' ] =>
+      assert (Hf': f pre' = f pre)
+        by (destruct_packet pre; destruct_packet pre';
+            repeat match goal with [ H: _ = _ |- _ ] => rewrite H end;
+            reflexivity);
+      rewrite Hf'
+    end | ]; assumption.
 
 
 (** Demo! **)
