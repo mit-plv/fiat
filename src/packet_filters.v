@@ -712,157 +712,25 @@ Ltac mydrill := repeat mydrill_step.
       unfold FilterMethod_UnConstr_Comp.
       eapply refine_If_Then_Else. reflexivity.
       eapply refine_If_Then_Else. reflexivity.
-Locate insertion.
 
-    match goal with
-    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
-                      _) _ ] =>
-    pose (@DecideableEnsembles.dec _ P _) as filter_dec;
-      pose (ith3 indices idx) as idx_search_update_term;
-      pose (BagSearchTermType idx_search_update_term) as search_term_type';
-      pose (BagMatchSearchTerm idx_search_update_term) as search_term_matcher; simpl in *
-    end.
-    evar (x: search_term_type').
-
-
-Open Scope list_scope.
-  Ltac createTerm f fds tail fs EarlyIndex LastIndex k ::=
-  lazymatch fs with
-  | [ ] => k tail
-  | [{| KindIndexKind := ?kind;
-        KindIndexIndex := ?s|} ] => idtac kind; idtac s
-  (*  (findMatchingTerm
-       fds kind s
-       ltac:(fun X => k (Some X, tail)))
-     || k (@None (Domain f s), tail) *)
-  end.
-    
-  Ltac find_simple_search_term
-     ClauseMatch EarlyIndex LastIndex
-     qs_schema idx filter_dec search_term :=
-  match type of search_term with
-  | BuildIndexSearchTerm ?indexed_attrs =>
-    let SC := constr:(GetNRelSchemaHeading (qschemaSchemas qs_schema) idx) in
-    findGoodTerm SC filter_dec indexed_attrs ClauseMatch
-                 ltac:(fun fds tail =>
-                         let tail := eval simpl in tail in
-                             makeTerm indexed_attrs SC fds tail EarlyIndex LastIndex ltac:(fun tm => pose tm (*; unify tm search_term;
-                                                                                           unfold ExtensionalEq, MatchIndexSearchTerm;
-                                                                                           simpl; intro; try prove_extensional_eq *)
-                      )) end.
-  red in (type of x).
-
-
-  find_simple_search_term CreateTerm EarlyIndex LastIndex (PacketHistorySchema h) (myqidx h) filter_dec x.
-
-    
-      lazymatch goal with
-    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
-                 _) _ ] =>
-        let filter_dec := eval simpl in (@DecideableEnsembles.dec _ P _) in
-        let idx_search_update_term := eval simpl in (ith3 indices idx) in
-            let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
-                let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-                    let eqv := fresh in
-                    assert (ExtensionalEq filter_dec (search_term_matcher x)) as eqv;
-                      [ find_simple_search_term CreateTerm EarlyIndex LastIndex (PacketHistorySchema h) (myqidx h) filter_dec x
-                      |
-                      let H' := fresh in
-                      pose proof (@refine_BagFindBagCount
-                                    _
-                                    (PacketHistorySchema h) indices
-                                    idx r_o r_n x P f H eqv) as H';
-                      fold_string_hyps_in H'; fold_heading_hyps_in H';
-                      rewrite H'; clear H' eqv
-]
-end.
-
-
-    implement_Count find_simple_search_term CreateTerm EarlyIndex LastIndex
-                (PacketHistorySchema h) (myqidx h) filter_dec x.
-    
-(*  match goal with
-    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
-                 _) _ ] =>
-                    makeEvar search_term_type'
-                             ltac: (fun search_term =>
-                                      let eqv := fresh in
-                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv
-                                      [ find_search_term qs_schema idx filter_dec search_term
-                                      |
-                                                                                                          [ |
-  let H' := fresh in
-  pose proof (@refine_BagFindBagCount
-    _
-    qs_schema indices
-    idx r_o r_n search_term P f H eqv) as H';
-    fold_string_hyps_in H'; fold_heading_hyps_in H';
-    rewrite H'; clear H' eqv
-                                                                                                          )
-  end.*)
-
-  Open Scope list_scope.
-  Ltac createTerm f fds tail fs EarlyIndex LastIndex k ::=
-  lazymatch fs with
-  | [ ] => k tail
-  | [{| KindIndexKind := ?kind;
-        KindIndexIndex := ?s|} ] =>
-    (findMatchingTerm
-       fds kind s
-       ltac:(fun X => k (Some X, tail)))
-    || k (@None (Domain f s), tail)
-  end.
-
-
-
-  evar (x: search_term_type'). red in (type of x).
-  assert (ExtensionalEq filter_dec (search_term_matcher x)) as eqv.
-  ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex (PacketHistorySchema h) (myqidx h) filter_dec x).
-
-  unfold ExtensionalEq, MatchIndexSearchTerm; simpl; intro.
-  subst x. instantiate (1:=(None, filter_dec)). reflexivity.
-
-    match goal with
-    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
-                      _) _ ] =>
-    pose f; pose P; pose indices
-    end.
-
-    Check @refine_BagFindBagCount. pose (BagMatchSearchTerm (ith3 i (myqidx h)) x). change (search_term_matcher x) with b in eqv. subst b.
-
-    assert (filter_dec_dec: forall a, filter_dec a = true <-> P a).
-    { intros. unfold filter_dec. rewrite !bool_dec_simpl.
-      unfold P. reflexivity. }
-    
-    pose {| dec := filter_dec; dec_decides_P := filter_dec_dec |} as P'.
-    
-    pose proof (@refine_BagFindBagCount
-                  _
-                  (PacketHistorySchema h) i
-                  (myqidx h) r_o r_n x P u P' H0 eqv) as H';
-      fold_string_hyps_in H'; fold_heading_hyps_in H'.
-    unfold P, u in H'.
-      rewrite H'; clear H' eqv.
-      simplify with monad laws.
-
-      reflexivity. red; intros.
-
-
-      unfold RefinedInsert. etransitivity.
-      apply refine_If_Then_Else_Bind.
-      apply refine_If_Then_Else.
-
-      simplify with monad laws. simpl.
+      Focus 2.
+      intro. unfold RefinedInsert.
+      change (GetUnConstrRelationBnd r_o ``"History")
+        with (GetUnConstrRelation r_o Fin.F1).
+      match goal with
+        [H : DelegateToBag_AbsR ?r_o ?r_n
+         |- context[Pick (fun idx => UnConstrFreshIdx (GetUnConstrRelation ?r_o ?Ridx) idx)]] =>
+        let freshIdx := fresh in
+             destruct (exists_UnConstrFreshIdx H Ridx) as [? freshIdx];
+          setoid_rewrite (refine_Pick_UnConstrFreshIdx H Ridx freshIdx)
+      end. Search Pick IndexedQueryStructure.
+      apply refine_under_bind_both. apply H2.
+      apply refine_bind_unit.
+      
       insertion IndexUse createEarlyTerm createLastTerm IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
-      simplify with monad laws; simpl. refine pick val r_n.
-      simplify with monad laws; reflexivity. assumption.
-
-      subst H. higher_order_reflexivity.
-
+      reflexivity. intros. unfold computes_to in H1. cbn.
+      
+      
     * Locate "?[".
 
       
