@@ -150,29 +150,9 @@ Proof.
 Qed.
 
 
-Theorem DroppedFilterMethod : Drop_Fields (@FilterMethod_UnConstr).
-Proof.
-  red. Transparent computes_to.
-  solve_drop_fields @FilterMethod_UnConstr. Defined.
-
-(*
-  let d := (eval unfold d in d) in
-  let d := (eval unfold DroppedFilterMethod in d) in
-  match d with
-  | ex_intro _ ?x ?H =>
-    pose x as h; match H with
-    | ex_intro _ ?x ?H =>
-      pose x as topkt; match H with
-      | ex_intro _ ?x ?H =>
-        pose x as totup; pose proof H
-      end
-    end
-  end.
-  fold totup topkt h in H.
-
-  assert (H': forall tup, t (i tup) = tup).
-  { repeat (let f := fresh in destruct tup as [f tup]). reflexivity. }
-*)
+Transparent computes_to.
+Theorem DroppedFilterMethod : FilterAdapter (@FilterMethod_UnConstr).
+Proof. solve_drop_fields @FilterMethod_UnConstr. Defined.
 
 
 Definition UnConstrQuery_In {ResultT}
@@ -379,6 +359,36 @@ Proof.
     + pose proof (le_lt_trans _ _ _ Hlt Hbig). apply (IHl f big H0 H).
 Qed.
 
+
+Lemma CompPreservesFilterMethod:
+  forall topkt totup r inp,
+    topkt = (DropFields.topkt _ DroppedFilterMethod) ->
+    totup = (DropFields.totup _ DroppedFilterMethod) ->
+    refine (FilterMethod_UnConstr topkt totup r inp)
+           (FilterMethod_UnConstr_Comp topkt totup r inp).
+Proof.
+  unfold FilterMethod_UnConstr, FilterMethod_UnConstr_Comp.
+  red; intros topkt totup r inp Hp Ht v H;
+    cbn in Hp, Ht; rewrite Hp, Ht in *.
+  destruct (cf_cond OutgoingRule inp) eqn:outrule. assumption.
+  destruct (negb (cf_cond IncomingRule inp)) eqn:inrule. assumption.
+  inversion H as [c Hc]. destruct Hc as [Hcount Hres]. unfold In in *.
+
+  epose proof (count_zero_iff _ _ _ _ _ c _ _ Hcount) as Hcziff.
+  computes_to_econstructor. computes_to_econstructor.
+  instantiate (1:=(0 <? c)). red. destruct (0 <? c) eqn:Hzero; simpl.
+  - rewrite <- Hzero in Hcziff. apply Hcziff in Hzero.
+    destruct Hzero as [pre [Hin Hcond]]. exists pre.
+    split; [ apply Hin | apply Hcond ].
+  - intro.
+    rewrite <- Hzero in Hcziff. apply Hcziff in H0. congruence.
+  - apply Hres.
+
+    Unshelve.
+    * intros. repeat (let i := fresh in destruct t as [i t]). reflexivity.
+    * reflexivity.
+Qed.
+
 Definition myqidx (h: Heading) : Fin.t (numRawQSschemaSchemas (PacketHistorySchema h)).
 apply Fin.F1. Defined.
 Definition RefinedInsert h totup r d :=
@@ -393,62 +403,6 @@ Definition RefinedInsert h totup r d :=
                (r!"History")%QueryImpl)))
   Else
     ret r.
-
-
-Instance ByteBuffer_eq_dec:
-  forall n, Query_eq (ByteBuffer.ByteBuffer.t n).
-econstructor. revert n. unfold ByteBuffer.ByteBuffer.t.
-eapply Vector.rect2.
-- auto.
-- destruct 1.
-  * subst. intros; destruct (A_eq_dec a b).
-    + subst. auto.
-    + right. intro. inversion H. congruence.
-  * right. intro. inversion H.
-    apply Eqdep_dec.inj_pair2_eq_dec in H2. congruence. apply A_eq_dec.
-Defined.
-
-
-Instance word_eq_dec:
-  forall n, Query_eq (word n).
-econstructor. apply weq. Defined.
-
-Instance TCP_Packet_eq_dec:
-  Query_eq (TCP_Packet).
-econstructor. repeat decide equality; subst; try apply A_eq_dec.
-destruct Payload. destruct Payload0. destruct (A_eq_dec x x0).
-- subst; destruct (A_eq_dec t t0). subst; auto.
-  right; intro. apply Eqdep_dec.inj_pair2_eq_dec in H. congruence.
-  apply A_eq_dec.
-- right; intro. congruence.
-Defined.
-
-Instance UDP_Packet_eq_dec:
-  Query_eq (UDP_Packet.UDP_Packet).
-econstructor. repeat decide equality; subst; try apply A_eq_dec.
-destruct Payload. destruct Payload0. destruct (A_eq_dec x x0).
-- subst; destruct (A_eq_dec t t0). subst; auto.
-  right; intro. apply Eqdep_dec.inj_pair2_eq_dec in H. congruence.
-  apply A_eq_dec.
-- right; intro. congruence.
-Defined.
-
-Instance chain_eq_dec:
-  Query_eq chain.
-econstructor. intros; destruct a; destruct a';
-                try (left; solve [auto]); try (right; congruence).
-Defined.
-
-Instance Enum_eq_dec:
-  forall n T v, Query_eq (@EnumType.EnumType n T v).
-econstructor. unfold EnumType.EnumType. apply Fin.eq_dec. Defined.
-
-
-Instance input_Query_eq:
-  Query_eq input.
-econstructor; decide equality; try apply A_eq_dec;
-  decide equality; apply A_eq_dec. Defined.
-
 
 Lemma freshidxtemp:
   forall h r_o (r_n: UnConstrQueryStructure (PacketHistorySchema h)) totup,
@@ -469,20 +423,10 @@ Theorem SharpenNoIncomingFilter:
 Proof.
   start sharpening ADT. Transparent QSInsert.
 
-  pose DroppedFilterMethod.
-  let d := (eval unfold d in d) in
-  let d := (eval unfold DroppedFilterMethod in d) in
-  match d with
-  | ex_intro _ ?x ?H =>
-    pose x as h; match H with
-    | ex_intro _ ?x ?H =>
-      pose x as totup; match H with
-      | ex_intro _ ?x ?H =>
-        pose x as topkt; pose proof H as Hdrop
-      end
-    end
-  end.
-  fold totup topkt h in Hdrop.
+  pose (h _ DroppedFilterMethod) as h. compute in h.
+  pose (topkt _ DroppedFilterMethod) as topkt. cbn -[GetAttribute] in topkt.
+  pose (totup _ DroppedFilterMethod) as totup. simpl in totup.
+  pose (thm _ DroppedFilterMethod) as Hdrop. simpl in Hdrop.
 
   drop_constraints_under_bind Complete_PacketHistorySchema ltac:(
     intro v; intros Htemp;
@@ -526,11 +470,12 @@ Proof.
       red in H. apply H. auto. auto. Qed.
 
     apply refine_pair. apply refine_pick. intros qs Hins. comp_inv.
-    subst qs. instantiate (1 := (UpdateUnConstrRelation r_n Fin.F1
-                                   (BuildADT.EnsembleInsert
-                                      {| elementIndex := idx;
-                                         indexedElement := totup d0 |}
-                                      (GetUnConstrRelation r_n Fin.F1)))).
+    subst qs.
+    instantiate (1 := (UpdateUnConstrRelation r_n Fin.F1
+                         (BuildADT.EnsembleInsert
+                            {| elementIndex := idx;
+                               indexedElement := totup d |}
+                            (GetUnConstrRelation r_n Fin.F1)))).
     red; intros oinp oidx; split; intros Hoinp;
       destruct Hoinp as [Hoinp | Hoinp].
 
@@ -538,7 +483,7 @@ Proof.
     left; inversion Hoinp; reflexivity.
     right; apply H0 in Hoinp; apply Hoinp.
 
-    exists d0. split. apply in_ensemble_insert_iff.
+    exists d. split. apply in_ensemble_insert_iff.
     left; inversion Hoinp; reflexivity.
     unfold totup; inversion Hoinp; reflexivity.
 
@@ -558,12 +503,12 @@ Proof.
     
    * simpl. etransitivity. 2: (subst H; higher_order_reflexivity).
      apply refine_bind.
-     apply (LessHistoryPreservesFilter d0 _ _ _ r_o r_n H0).
+     apply (LessHistoryPreservesFilter d _ _ _ r_o r_n H0).
 
      red; intros;
-      instantiate (1:=(fun a => r <- RefinedInsert _ totup r_n d0; ret (r, a)));
+      instantiate (1:=(fun a => r <- RefinedInsert _ totup r_n d; ret (r, a)));
       cbv beta; unfold RefinedInsert; unfold If_Then_Else;
-      destruct (cf_cond OutgoingRule d0) eqn:out; red; intros;
+      destruct (cf_cond OutgoingRule d) eqn:out; red; intros;
       repeat comp_inv;
       [ rename x0 into idx; rename H1 into Hidx;
         rename v into r; rename H4 into Hr; rename H3 into Hret
@@ -592,10 +537,10 @@ Proof.
 
       | [ |- FiniteEnsemble _ ] =>
         red; apply Fin.eqb_eq in Hfeq; rewrite Hfeq;
-        exists ((totup d0) :: lfin)%list;
+        exists ((totup d) :: lfin)%list;
         rewrite get_update_unconstr_eq;
         red; exists (({| elementIndex := incrMaxFreshIdx lfin';
-                    indexedElement := totup d0 |}) :: lfin')%list;
+                    indexedElement := totup d |}) :: lfin')%list;
         destruct Hlfin as [Hmap [Heqv Hdup]]; split; [ | split ]
 
       | [ |- map _ _ = _ ] =>
@@ -631,8 +576,8 @@ Proof.
       red; red; right. apply Hoin'.
     + apply (Hles inp Hinp) in Hoin; red; destruct Hoin as [eid Hoin];
       exists eid; red; red; right; auto.
-    + inversion Hoin. assert (Hrule: cf_cond OutgoingRule inp = cf_cond OutgoingRule d0).
-      { destruct inp, d0, in_ip4, in_ip0; cbn in *; subst. reflexivity. }
+    + inversion Hoin. assert (Hrule: cf_cond OutgoingRule inp = cf_cond OutgoingRule d).
+      { destruct inp, d, in_ip4, in_ip0; cbn in *; subst. reflexivity. }
       congruence.
     + assert (Hoin': IndexedEnsemble_In
                        (GetUnConstrRelation r_o (myqidx h))
@@ -641,32 +586,9 @@ Proof.
       destruct Hoin' as [eid' Hoin']. exists eid'. apply Hoin'.
 
 
-* assert (CompPreservesFilterMethod:
-            forall r inp,
-              refine (FilterMethod_UnConstr topkt totup r inp)
-                     (FilterMethod_UnConstr_Comp topkt totup r inp)).
-{
-  unfold FilterMethod_UnConstr, FilterMethod_UnConstr_Comp.
-  red; intros r inp v H.
-  destruct (cf_cond OutgoingRule inp) eqn:outrule. assumption.
-  destruct (negb (cf_cond IncomingRule inp)) eqn:inrule. assumption.
-  inversion H as [c Hc]. destruct Hc as [Hcount Hres]. unfold In in *.
-
-  epose proof (count_zero_iff _ topkt totup _ _ c _ _ Hcount) as Hcziff.
-  computes_to_econstructor. computes_to_econstructor.
-  instantiate (1:=(0 <? c)). red. destruct (0 <? c) eqn:Hzero; simpl.
-  - rewrite <- Hzero in Hcziff. apply Hcziff in Hzero.
-    destruct Hzero as [pre [Hin Hcond]]. exists pre.
-    split; assumption.
-  - intro.
-    rewrite <- Hzero in Hcziff. apply Hcziff in H0. congruence.
-  - apply Hres.
-}
-
-
-  hone method "Filter".
+  * hone method "Filter".
     subst r_o. refine pick eq. simplify with monad laws.
-    apply refine_bind. apply CompPreservesFilterMethod. intro.
+    apply refine_bind. apply CompPreservesFilterMethod; reflexivity. intro.
     apply refine_bind. reflexivity. intro. simpl. higher_order_reflexivity.
 
 
@@ -730,190 +652,3 @@ Ltac mydrill := repeat mydrill_step.
       insertion IndexUse createEarlyTerm createLastTerm IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
       reflexivity. intros. unfold computes_to in H1. cbn.
       
-      
-    * Locate "?[".
-
-      
-(*
-Definition sID := "ID".
-Definition sPACKET := "Packet".
-
-Record Packet := packet
-  { tcp_p: TCP_Packet;
-    ip_h: IPv4_Packet; }.
-
-Definition sHISTORY := "Packet History".
-
-Definition PacketHistorySchema :=
-  Query Structure Schema
-    [ relation sHISTORY has
-              schema < sID :: nat,
-                       sPACKET :: Packet > ]
-      enforcing [].
-
-(* Definition Packet := TupleDef PacketHistorySchema sHISTORY.
- *)
-Definition FilterSig : ADTSig :=
-    ADTsignature {
-        Constructor "Init" : rep,
-        Method "Filter" : rep * Packet -> rep * bool
-    }.
-
-(** spec examples **)
-
-
-(* Disallow all cross-domain SSH *)
-(* --> if dst-port == 22 and src-domain != dst-domain, fail, else pass *)
-Definition CrossDomain22FilterSpec : ADT FilterSig :=
-    Eval simpl in Def ADT {
-        rep := QueryStructure PacketHistorySchema,
-        Def Constructor0 "Init" : rep := empty,,
-
-        Def Method1 "Filter" (r: rep) (p: Packet) : rep * bool :=
-            ret (r, (fail_if_all [
-              weqb (port 22) p.(tcp_p).(DestPort) ;
-              negb (weqb (domain_of p.(ip_h).(SourceAddress)) (domain_of p.(ip_h).(DestAddress)))
-            ]))
-    }%methDefParsing.
-
-
-(* Allow FTP transfers from domain 3 to domains 1 and 2, but disallow FTP transfers from 1 and 2 to 3 *)
-(* assuming this means domain 3 cannot initiate any FTP requests in 1 and 2 *)
-(* --> if dst-port == 21 and src-domain == 3 and dst-domain == 1 or 2, fail, else pass *)
-Definition Trusted21FilterSpec : ADT FilterSig :=
-    Eval simpl in Def ADT {
-        rep := QueryStructure PacketHistorySchema,
-        Def Constructor0 "Init" : rep := empty,,
-
-        Def Method1 "Filter" (r: rep) (p: Packet) : rep * bool :=
-            ret (r, (fail_if_all [
-              (weqb (p.(tcp_p).(DestPort)) (port 21)) ;
-              (weqb (domain_of (p.(ip_h).(SourceAddress))) (domain 130)) ;
-              (fail_if_any [
-                (weqb (domain_of (p.(ip_h).(DestAddress))) (domain 110)) ;
-                (weqb (domain_of (p.(ip_h).(DestAddress))) (domain 120))
-              ])
-            ]))
-    }%methDefParsing.
-*)
-
-Record SimplePacket := 
-  { id: nat }.
-
-Definition SimpleFilterSig : ADTSig :=
-  ADTsignature {
-      Constructor "Init" : rep,
-      Method "Filter" : rep * SimplePacket -> rep * bool
-  }.
-
-Definition SimplePacketHistorySchema :=
-  Query Structure Schema
-    [ relation sHISTORY has
-              schema < sPACKET :: SimplePacket > ]
-      enforcing [].
-
-
-
-Definition isIDHighest (r: QueryStructure SimplePacketHistorySchema) (p: SimplePacket) : Comp bool :=
-(*     vals <- For (pac in r!sHISTORY) Return ((pac!sPACKET).(id)); *)
-    { h: bool | decides h (forall pac, IndexedEnsemble_In ((DropQSConstraints r)!sHISTORY)%QueryImpl pac
-        -> lt (pac!sPACKET).(id) p.(id)) }.
-
-(* rephrase with Ensembles predicate, finiteness not necessary *)
-
-
-Definition IncrementIDFilterSpec : ADT SimpleFilterSig :=
-    Eval simpl in Def ADT {
-        rep := QueryStructure SimplePacketHistorySchema,
-        Def Constructor0 "Init" : rep := empty,,
-
-        Def Method1 "Filter" (r: rep) (p: SimplePacket) : rep * bool :=
-            isHighest <- isIDHighest r p;
-            `(r, _) <- Insert (< sPACKET :: p >) into r!sHISTORY;
-            ret (r, isHighest)
-    }%methDefParsing.
-
-
-Theorem SharpenedIncrementIDFilter:
-  FullySharpened IncrementIDFilterSpec.
-Proof.
-
-  Definition repHighestID (oldrep: QueryStructure SimplePacketHistorySchema) (newrep: option nat) :=
-    match newrep with
-    | Some n =>
-      (forall pac, IndexedEnsemble_In (((DropQSConstraints oldrep)!sHISTORY)%QueryImpl) pac -> le (pac!sPACKET).(id) n)
-      /\ (exists pac, IndexedEnsemble_In (((DropQSConstraints oldrep)!sHISTORY)%QueryImpl) pac /\ (pac!sPACKET).(id) = n)
-    | None => oldrep = QSEmptySpec SimplePacketHistorySchema
-    end.
-  
-  Lemma isIDHighestCompute:
-    forall r_o r_n p, (repHighestID r_o r_n) ->
-      computes_to (isIDHighest r_o p)
-        (match r_n with
-         | Some n => (Nat.ltb n p.(id))
-         | None => true
-         end).
-  Proof.
-    intros. destruct r_n.
-    - eapply PickComputes. unfold decides, If_Then_Else.
-      destruct (n <? id p) eqn:rnpid. 
-      + intros. apply H in H0. apply Nat.ltb_lt in rnpid. intuition.
-      + unfold not. intros. destruct H. apply Nat.ltb_ge in rnpid.
-        assert (Hp: forall pac: RawTuple,
-          IndexedEnsemble_In ((DropQSConstraints r_o)!sHISTORY)%QueryImpl pac ->
-          (lt (id pac!sPACKET) n)). { intros. apply H0 in H2. apply (Nat.lt_le_trans _ _ _ H2 rnpid). }
-        destruct H1 as [pac Hpac]. specialize (Hp pac). destruct Hpac as [HpacIn Hpacn].
-        rewrite Hpacn in Hp. apply Hp, Nat.lt_neq in HpacIn. apply HpacIn. reflexivity.
-    - eapply PickComputes. unfold decides, If_Then_Else. unfold repHighestID in H. subst.
-      intros. unfold QSEmptySpec in H. compute in H. destruct H. inversion H.
-  Qed.
-
-  Lemma isIDHighestRefine:
-    forall r_o r_n p, (repHighestID r_o r_n) ->
-      refine (isIDHighest r_o p)
-        (ret match r_n with
-            | Some n => (Nat.ltb n p.(id))
-            | None => true
-            end).
-  Proof.
-    intros. unfold refine in *. intros. computes_to_inv. subst. apply isIDHighestCompute, H.
-  Qed.
-
-(*  Definition findHighestID (r_o: UnConstrQueryStructure SimplePacketHistorySchema) : option nat.
-    unfold UnConstrQueryStructure in r_o.
-    pose (ilist2_hd r_o). simpl in y. Transparent RawUnConstrRelation. unfold RawUnConstrRelation in y. Check y!sPACKET.*)
-
-  start sharpening ADT.
-(*  hone representation using (@DropQSConstraints_AbsR SimplePacketHistorySchema); try simplify with monad laws; unfold refine.
-  - intros. computes_to_econstructor. unfold DropQSConstraints_AbsR. unfold DropQSConstraints. simpl. Transparent computes_to. apply H0.
-  - intros. computes_to_econstructor. apply isIDHighestCompute.*)
-
-    
-    hone representation using repHighestID; unfold repHighestID in *.
-  - simplify with monad laws. refine pick val (@None nat). subst H. reflexivity. reflexivity.
-  - simplify with monad laws. unfold refine. intros. computes_to_econstructor. apply isIDHighestCompute. apply H0. repeat computes_to_econstructor.
-Abort.
-
-(*
-Definition SYNFloodFilterSpec : ADT FilterSig :=
-    Eval simpl in Def ADT {
-        rep := QueryStructure PacketHistorySchema,
-        Def Constructor0 "Init" : rep := empty,,
-
-        Def Method1 "Filter" (r: rep) (p: Packet) : rep * bool :=
-            src_addr <- ret p.(ip_h)!SourceAddress;
-            dst_addr <- ret p.(ip_h)!DestAddress;
-            src_port <- ret p.(tcp_p)!SourcePort;
-            dst_port <- ret p.(tcp_p)!DestPort;
-            conns <- Count (For (pac in r!sHISTORY)
-                            Where (src_addr = pac.(ip_h)!SourceAddress)
-                            Where (dst_addr = pac.(ip_h)!DestAddress)
-                            Where (dst_port = pac.(tcp_p)!DestPort)
-                            Return ())
-    }%methDefParsing.*)
-
-
-(* spec a filter that ensures every packet has a higher id than previous
-   specify concretely how we are ensuring this: get/put +1 *)
-(* spec a filter for example #3 from email *)
-(* break down master_plan and try to sharpen filter -- write a tactic, read master_plan *)

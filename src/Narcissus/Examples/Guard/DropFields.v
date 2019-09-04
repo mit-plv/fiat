@@ -32,6 +32,7 @@ Definition In_History {h: Heading} (totup: input -> @Tuple h)
 
 (* a Complete_ history is equivalent to a history with dropped fields
    under some function from packets (with all fields) to Tuples (with some fields) *)
+(* Bind is map for Ensembles ? this repr makes it easier? *)
 Definition Complete_Dropped_qs_equiv {h: Heading} (totup: input -> @Tuple h)
            (r_o: UnConstrQueryStructure Complete_PacketHistorySchema)
            (r_n: UnConstrQueryStructure (PacketHistorySchema h)) :=
@@ -65,9 +66,11 @@ Definition Complete_Dropped_equiv (h: Heading) (topkt: @Tuple h -> input)
 (* the theorem below is trivial for any filter if we use packet-Tuple conversion
    functions that keep all the fields, but we want to find conversion functions
    that only keep the required fields, which is what the proof tactics do *)
-Definition Drop_Fields (f: FilterType) :=
-  exists h (totup: input -> @Tuple h) topkt,
-    Complete_Dropped_equiv h topkt totup f.
+Record FilterAdapter (f: FilterType) :=
+  { h: Heading;
+    topkt: @Tuple h -> input;
+    totup: input -> @Tuple h;
+    thm: Complete_Dropped_equiv h topkt totup f }.
 
 
 (** Tactics **)
@@ -286,7 +289,7 @@ Ltac build_topkt heading :=
 
 (* and finally the master tactic that should be self-evident *)
 Ltac solve_drop_fields filter :=
-  eexists; eexists; eexists; red; intros r_o r_n Hrpre pkt; destruct_packet pkt;
+  econstructor; red; intros r_o r_n Hrpre pkt; destruct_packet pkt;
 
   unfold_Complete_f filter;
   pose (Vector.nil Attribute) as attrs;
@@ -342,5 +345,5 @@ Definition f (h: Heading) (topkt: @Tuple h -> input) (totup: input -> @Tuple h)
     if historically flag_true then <ACCEPT> else <DROP>.
 
 
-Theorem mydrop: Drop_Fields f.
-Proof. red. Transparent computes_to. solve_drop_fields f. Defined.
+Theorem mydrop: FilterAdapter f.
+Proof. Transparent computes_to. solve_drop_fields f. Defined.
