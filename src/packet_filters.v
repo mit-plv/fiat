@@ -11,6 +11,9 @@ Require Import
     Fiat.Narcissus.Examples.Guard.DropFields.
 Import ListNotations.
 
+(* TODO: Add a proper makefile target *)
+(* TODO: Fork this file into one that only does column reductions *)
+
 Definition StatefulFilterSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : rep,
@@ -72,7 +75,7 @@ Lemma UnConstrPreservesFilterMethod: forall h topkt totup r_o r_n inp res,
   DropQSConstraints_AbsR r_o r_n ->
   computes_to (@FilterMethod h topkt totup r_o inp) res <->
   computes_to (FilterMethod_UnConstr topkt totup r_n inp) res.
-Proof.
+Proof. (* TODO: Either generalize or start at Unconstr level *)
   intros. unfold FilterMethod, FilterMethod_UnConstr in *.
   destruct (OutgoingRule.(cf_cond) inp) eqn:out. reflexivity.
   destruct (negb (IncomingRule.(cf_cond) inp)) eqn:inc. reflexivity.
@@ -109,7 +112,7 @@ Proof.
 
 Definition LessHistoryRelation {h} totup
            (r_o r_n : UnConstrQueryStructure (PacketHistorySchema h)) :=
-  FiniteTables_AbsR r_o r_o /\
+  FiniteTables_AbsR r_o r_o /\   (* TODO *)
   forall inp,
     (OutgoingRule.(cf_cond) inp) ->
     (In_History totup r_n inp <-> In_History totup r_o inp).
@@ -635,6 +638,52 @@ Ltac mydrill := repeat mydrill_step.
       eapply refine_If_Then_Else. reflexivity.
       eapply refine_If_Then_Else. reflexivity.
 
+      apply refine_bind.
+      Transparent OutgoingToRule OutgoingRule.
+      unfold OutgoingToRule.
+      unfold OutgoingRule.
+      set (cf_cond _).
+      simpl in c.
+      subst c.
+      simpl.
+      unfold combine_conditions.
+      simpl.
+      clear Hdrop.
+      clear totup topkt.
+      unfold lift_condition.
+      simpl.
+      unfold cond_srcaddr, cond_dstaddr.
+      simpl.
+      unfold match_address.
+      simpl.
+
+      assert (forall v, (v ^& mask_of_nat 32) = v) by admit.
+      match goal with
+      | [  |- context[UnConstrQuery_In _ _ ?f] ] =>
+        set f
+      end.
+      Arguments RawTuple: clear implicits.
+      Arguments GetAttribute: clear implicits.
+
+      replace c with (fun
+         t : RawTuple
+               {|
+               NumAttr := 3;
+               AttrList := [chain <: Type; word 32 <: Type; word 32 <: Type]%NamedSchema |} =>
+       Where (GetAttribute <StringId1 :: chain, StringId2 :: word 32,
+                      StringId3 :: word 32>%Heading t BStringId0 = SourceAddress (in_ip4 d))
+             Return () ).
+  (* c := fun conn : RawTuple => *)
+  (*      Where (GetAttribute conn BStringId = ipv4ToString (SourceAddress a)) *)
+  (*      Where (GetAttribute conn BStringId0 = ipv4ToString (DestAddress a)) *)
+  (*      Return ()   : RawTuple -> Comp (list ()) *)
+  (* ============================ *)
+  (* refine (Count For (UnConstrQuery_In r_o Fin.F1 c)) ?Goal0 *)
+
+      (* Try to cast addresses to strings *)
+      implement_Query IndexUse createEarlyTerm createLastTerm
+                      IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
+      simpl (cf_cond _).
       Focus 2.
       intro. unfold RefinedInsert.
       change (GetUnConstrRelationBnd r_o ``"History")
@@ -651,4 +700,3 @@ Ltac mydrill := repeat mydrill_step.
       
       insertion IndexUse createEarlyTerm createLastTerm IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
       reflexivity. intros. unfold computes_to in H1. cbn.
-      

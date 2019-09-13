@@ -4,7 +4,7 @@
 Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 Require Import BinNat.
-
+Require Import Coq.Strings.String.
 Require Import Bedrock.Word.
 
 Require Import Fiat.Common.EnumType.
