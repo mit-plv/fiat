@@ -150,8 +150,16 @@ Notation "cf '--protocol' proto" :=
   (and_cf cf (lift_condition in_ip4 (cond_proto (```proto))))
     (at level 41, left associativity).
 
-Definition mask_of_nat (m: nat) : word (m + (32 - m)) :=
-    wnot (@zext m (wones m) (32 - m)).
+Definition mask_of_nat (m: nat) : word ((32 - m) + m) :=
+  Word.combine (wzero (32 - m)) (wones m).
+
+Lemma wand_full_mask:
+  forall w: word 32, (wand w (mask_of_nat 32)) = w.
+Proof.
+  intros.
+  rewrite wand_comm.
+  apply (@wand_unit 32 w).
+Qed.
 
 (* Definition addr_tuple := (N * N * N * N)%type. *)
 
