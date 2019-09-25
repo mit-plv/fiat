@@ -8,6 +8,7 @@ Require Import
   Fiat.Narcissus.Examples.NetworkStack.IPv4Header
   Fiat.Narcissus.Examples.NetworkStack.TCP_Packet
   Fiat.Narcissus.Examples.NetworkStack.UDP_Packet
+  Fiat.Narcissus.Examples.Guard.Core
   Fiat.Narcissus.Examples.Guard.IPTables.
 Import VectorNotations.
 Require Export IPTables.
@@ -126,8 +127,8 @@ Definition acc2head : list (accessor * string) :=
     (acc (in_ip4 // SourceAddress), "SourceAddress");
     (acc (in_ip4 // DestAddress), "DestAddress");
     (acc (in_ip4 // IPv4Header.Options), "Options");
-    (acc in_tcp, "optTCPpacket");
-    (acc in_udp, "optUDPpacket");
+    (acc in_tsp, "TransportLayerPacket");
+    (* (acc in_udp, "optUDPpacket"); *)
     (acc in_chn, "Chain") ].
 Close Scope acc_scope.
 
@@ -159,13 +160,15 @@ Ltac dummy_type x k :=
   end.
 
 Ltac dummy_type' :=
-  repeat constructor;
-  match goal with
-  | [|- word ?n] => apply (wzero n)
-  | [|- string] => apply ""
-  | [|- ()] => apply tt
-  | [|- bool] => apply false
-  end.
+  repeat lazymatch goal with
+         | [|- word ?n] => apply (wzero n)
+         | [|- string] => apply ""
+         | [|- ()] => apply tt
+         | [|- list _] => apply List.nil
+         | [|- bool] => apply false
+         | [|- sigT _ ] => unshelve eapply existT
+         | _ => constructor
+         end.
 
 (* how to destruct a packet in-place
    FIXME: needs to be manually written! *)
@@ -180,7 +183,7 @@ Ltac destruct_packet pkt :=
                        try (pose (pkt' (acc_fun pkt)) as p; subst pkt';
                             rename p into pkt'));
   assert (Hpkt: pkt = pkt') by
-      (destruct pkt as [i1 i2 i3 i4]; destruct i1; reflexivity);
+      (destruct pkt as [i1 i2 i3]; destruct i1; reflexivity);
   subst pkt'; rewrite Hpkt; clear Hpkt.
 
 
@@ -305,8 +308,9 @@ Ltac build_topkt heading :=
 
 
 (* and finally the master tactic that should be self-evident *)
-Ltac solve_drop_fields filter :=
-  econstructor; red; intros r_o r_n Hrpre pkt; destruct_packet pkt;
+Ltac solve_drop_fields' filter :=
+  econstructor; red; intros r_o r_n Hrpre pkt;
+  destruct_packet pkt;
 
   unfold_Complete_f filter;
   pose (Vector.nil Attribute) as attrs;
@@ -336,9 +340,14 @@ Ltac solve_drop_fields filter :=
       rewrite Hf'
     end | ]; assumption.
 
+Ltac solve_drop_fields :=
+  match goal with
+  | [  |- FilterAdapter ?f ] => solve_drop_fields' f
+  end.
 
 (** Demo! **)
 
+Open Scope iptables.
 Definition flag_true (p: input) : Prop := p.(in_ip4).(DF) = true.
 Definition sent_to_me := (iptables -A FORWARD --destination 18'0'0'0/8).(cf_cond).
 
@@ -358,5 +367,7 @@ Definition f (h: Heading) (topkt: @Tuple h -> input) (totup: input -> @Tuple h)
   Else with r (In_History totup),
     if historically flag_true then <ACCEPT> else <DROP>.
 
+(* FIXME why does this keep the transport layer packet? *)
 Theorem mydrop: FilterAdapter f.
-Proof. Transparent computes_to. solve_drop_fields f. Defined.
+Proof. Transparent computes_to.
+   solve_drop_fields. Defined.

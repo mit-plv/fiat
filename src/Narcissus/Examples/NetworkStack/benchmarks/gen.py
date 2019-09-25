@@ -135,7 +135,7 @@ def mkletdef_packet(letname, bytestring_name, packet, layer):
     return LETDEF_PACKET_TEMPLATE.format(letname, decexpr)
 
 BENCHMARK_TEMPLATE = '''\
-    Bench.Test.create ~name:"{}"
+    Bench.Test.create ~name:"[microbenchmarks.ml] {}"
       (fun () -> ignore (must ({})))\
 '''
 def mkbench(testname, inputname, kind, packet, layer):

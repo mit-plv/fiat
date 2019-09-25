@@ -2109,3 +2109,128 @@ Global Instance ByteString_RichMonoidOpt
 Proof.
   abstract eauto using ByteString_enqueue_ByteString_inj.
 Defined.
+
+Lemma Vector_append_destruct {A n1 n2}
+      (v : Vector.t A (n1+n2))
+  : exists v1 v2, v = Vector.append v1 v2.
+Proof.
+  eauto using Vector_split_append.
+Qed.
+
+Lemma Vector_append_destruct3 {A n1 n2 n3}
+      (v : Vector.t A (n1+(n2+n3)))
+  : exists v1 v2 v3, v = Vector.append v1 (Vector.append v2 v3).
+Proof.
+  destruct (Vector_append_destruct v) as [v1 [v23 ?]].
+  destruct (Vector_append_destruct v23) as [v2 [v3 ?]].
+  exists v1, v2, v3. subst. reflexivity.
+Qed.
+
+Lemma Vector_append_inj {n1 n2}
+      (v1 v1' : Vector.t Core.char n1) (v2 v2' : Vector.t Core.char n2)
+  : Vector.append v1 v2 = Vector.append v1' v2' -> v1 = v1' /\ v2 = v2'.
+Proof.
+  intros.
+  apply (f_equal build_aligned_ByteString) in H.
+  rewrite !build_aligned_ByteString_append in H.
+  split; apply build_aligned_ByteString_inj.
+  eapply ByteString_enqueue_ByteString_inj; eauto.
+  eapply ByteString_enqueue_ByteString_inj'; eauto.
+Qed.
+
+Require Import List.
+
+Lemma length_ByteString_into_BitString_measure :
+  forall b,
+length (ByteString_into_BitString b) = bin_measure b.
+Proof.
+  simpl.
+  intros; rewrite <- length_BitString_into_ByteString; f_equal.
+  rewrite <- ByteString_into_BitString_eq; reflexivity.
+Qed.
+
+Lemma build_aligned_ByteString_nil
+  :   build_aligned_ByteString (Vector.nil _) = ByteString_id.
+Proof.
+  unfold build_aligned_ByteString, ByteString_id; simpl.
+  f_equal.
+  eapply le_uniqueness_proof.
+Qed.
+
+Lemma padding_eq_mod_8
+  : forall b : ByteString, padding b = length_ByteString b mod 8.
+Proof.
+  intros; unfold length_ByteString.
+  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by omega.
+  rewrite NPeano.Nat.mod_small; destruct b; eauto.
+Qed.
+
+Lemma ByteString_enqueue_padding_eq
+  : forall a b,
+    padding (ByteString_enqueue a b) =
+    NPeano.modulo (S (padding b)) 8.
+Proof.
+  intros.
+  rewrite padding_eq_mod_8.
+  unfold length_ByteString.
+  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by omega.
+  destruct b; simpl.
+  destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ?] ] ] ] ] ] ] ]; simpl; try omega.
+  reflexivity.
+Qed.
+
+Lemma queue_into_ByteString_padding_eq
+  : forall l,
+    padding (queue_into_ByteString l) = NPeano.modulo (length l) 8.
+Proof.
+  intro; replace (length l) with (length l + bin_measure ByteString_id)
+    by (simpl; rewrite length_ByteString_id; omega).
+  unfold queue_into_ByteString; generalize ByteString_id.
+  induction l; intros; simpl fold_left.
+  - apply padding_eq_mod_8.
+  - simpl fold_left.
+    rewrite IHl.
+    replace bin_measure with length_ByteString by reflexivity.
+    rewrite <- NPeano.Nat.add_mod_idemp_r by omega.
+    rewrite <- NPeano.Nat.add_mod_idemp_r with (b := length_ByteString _) by omega.
+    rewrite <- !padding_eq_mod_8.
+    rewrite ByteString_enqueue_padding_eq.
+    rewrite NPeano.Nat.add_mod_idemp_r by omega.
+    f_equal.
+    simpl; omega.
+Qed.
+
+Lemma ByteString_enqueue_ByteString_padding_eq
+  : forall b b',
+    padding (ByteString_enqueue_ByteString b b') = NPeano.modulo (padding b + padding b') 8.
+Proof.
+  intros.
+  rewrite (ByteString_into_queue_eq b),
+  (ByteString_into_queue_eq b').
+  rewrite ByteString_enqueue_ByteString_into_BitString.
+  rewrite queue_into_ByteString_app.
+  generalize (queue_into_ByteString (ByteString_into_queue b)).
+  induction (ByteString_into_queue b'); intros; simpl fold_left.
+  - rewrite <- NPeano.Nat.add_mod_idemp_r by omega.
+    replace (padding (queue_into_ByteString []%list) mod 8) with 0 by reflexivity.
+    rewrite NPeano.Nat.mod_small; destruct b0; simpl; eauto.
+    omega.
+  - rewrite IHb0.
+    rewrite !queue_into_ByteString_padding_eq.
+    rewrite !NPeano.Nat.add_mod_idemp_r by omega.
+    rewrite ByteString_enqueue_padding_eq.
+    rewrite plus_comm.
+    rewrite !NPeano.Nat.add_mod_idemp_r by omega.
+    f_equal; simpl length; omega.
+Qed.
+
+Definition length_ByteString_ByteString_id
+  : length_ByteString ByteString_id = 0 := eq_refl.
+
+Lemma build_aligned_ByteString_byteString_idem
+  : forall b, padding b = 0 -> build_aligned_ByteString (byteString b) = b.
+Proof.
+  intros. destruct b. simpl. unfold build_aligned_ByteString. simpl in *.
+  subst. f_equal. eauto using shatter_word_0.
+  apply Core.le_uniqueness_proof.
+Qed.

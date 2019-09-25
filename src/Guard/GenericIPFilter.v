@@ -6,9 +6,11 @@ Require Import
     Coq.Lists.List
     Fiat.QueryStructure.Automation.MasterPlan
     IndexedEnsembles
+    Fiat.Narcissus.Examples.Guard.Core
     Fiat.Narcissus.Examples.Guard.IPTables
     Fiat.Narcissus.Examples.Guard.PacketFiltersLemmas
-    Fiat.Narcissus.Examples.Guard.DropFields.
+    Fiat.Narcissus.Examples.Guard.DropFields
+    Coq.Sets.Ensembles.
 Import ListNotations.
 
 (* TODO: Add a proper makefile target *)
@@ -159,7 +161,7 @@ Notation IndexType sch :=
 
 (* This computes the set of columns to keep *)
 Theorem DroppedFilterMethod : FilterAdapter (@FilterMethod_UnConstr).
-Proof. solve_drop_fields @FilterMethod_UnConstr. Defined.
+Proof. solve_drop_fields. Defined.
 
 Definition IPFilterSchema :=
   Eval cbn in PacketHistorySchema (DroppedFilterMethod.(h _)).
@@ -172,7 +174,7 @@ Definition columns :=
   Eval compute in (Vector.to_list (DroppedFilterMethod.(h _).(HeadingNames))).
 
 Print columns.
-(* columns = ["Chain"; "DestAddress"; "SourceAddress"]%list
+(* columns = ["Chain"; "TransportLayerPacket"; "DestAddress"; "SourceAddress"]%list
      : list string *)
 
 Open Scope list_scope.
@@ -622,13 +624,6 @@ Proof.
     subst r_o. refine pick eq. simplify with monad laws.
     apply refine_bind. apply CompPreservesFilterMethod; reflexivity. intro.
     apply refine_bind. reflexivity. intro. simpl. higher_order_reflexivity.
-
-
-
-Notation IndexType sch :=
-  (@ilist3 RawSchema (fun sch : RawSchema =>
-                        list (string * Attributes (rawSchemaHeading sch)))
-           (numRawQSschemaSchemas sch) (qschemaSchemas sch)).
 
 
 pose
