@@ -626,13 +626,6 @@ Proof.
     apply refine_bind. reflexivity. intro. simpl. higher_order_reflexivity.
 
 
-
-Notation IndexType sch :=
-  (@ilist3 RawSchema (fun sch : RawSchema =>
-                        list (string * Attributes (rawSchemaHeading sch)))
-           (numRawQSschemaSchemas sch) (qschemaSchemas sch)).
-
-
 pose
   {| prim_fst := [("EqualityIndex", "SourceAddress" # "History" ## (PacketHistorySchema h))]%list;
      prim_snd := () |} as indexes.
