@@ -152,18 +152,47 @@ Proof.
   - assumption.
 Qed.
 
+Notation IndexType sch :=
+  (@ilist3 RawSchema (fun sch : RawSchema =>
+                        list (string * Attributes (rawSchemaHeading sch)))
+           (numRawQSschemaSchemas sch) (qschemaSchemas sch)).
 
-Transparent computes_to.
+(* This computes the set of columns to keep *)
 Theorem DroppedFilterMethod : FilterAdapter (@FilterMethod_UnConstr).
 Proof. solve_drop_fields @FilterMethod_UnConstr. Defined.
 
+Definition IPFilterSchema :=
+  Eval cbn in PacketHistorySchema (DroppedFilterMethod.(h _)).
 
-Definition UnConstrQuery_In {ResultT}
-           {qsSchema}
-           (qs : UnConstrQueryStructure qsSchema)
-           (R : Fin.t _)
-           (bod : RawTuple -> Comp (list ResultT))
-  := QueryResultComp (GetUnConstrRelation qs R) bod.
+(** Genpatcher hooks here **)
+
+(* ‘columns’ is the list of columns available; this will vary depending on the filter *)
+
+Definition columns :=
+  Eval compute in (Vector.to_list (DroppedFilterMethod.(h _).(HeadingNames))).
+
+Print columns.
+(* columns = ["Chain"; "DestAddress"; "SourceAddress"]%list
+     : list string *)
+
+Open Scope list_scope.
+
+(* Here are two examples *)
+
+Definition SlowIndex : IndexType IPFilterSchema :=
+  {| prim_fst := [];
+     prim_snd := () |}.
+
+Definition FastIndex :=
+  {| prim_fst := [("EqualityIndex", "SourceAddress" # "History" ## IPFilterSchema)]%list;
+     prim_snd := () |}.
+
+(* Genpatcher should mutate the following definition: *)
+Definition Index : IndexType IPFilterSchema :=
+  {| prim_fst := [];
+     prim_snd := () |}.
+
+(** End of GenPatcher hooks **)
 
 Notation "( x 'in' r '%' Ridx ) bod" :=
   (let qs_schema : QueryStructureSchema := _ in
