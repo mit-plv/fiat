@@ -312,6 +312,7 @@ src/FiniteSetADTs/FiniteSetADTMethodLaws.v
 src/FiniteSetADTs/FiniteSetRefinement.v
 src/FiniteSetADTs/NatWord.v
 src/FiniteSetADTs/WordInterface.v
+src/Guard/GenericIPFilter.v
 src/Guard/TcpFilter.v
 src/Guard/TcpFilterOCaml.v
 src/Narcissus/BaseFormats.v
@@ -363,6 +364,10 @@ src/Narcissus/Examples/DNS/SimpleDNSPacket.v
 src/Narcissus/Examples/DNS/SimpleDnsOpt.v
 src/Narcissus/Examples/DNS/SimpleRRecordTypes.v
 src/Narcissus/Examples/DNS/SimpleResourceRecord.v
+src/Narcissus/Examples/Guard/DropFields.v
+src/Narcissus/Examples/Guard/IPTables.v
+src/Narcissus/Examples/Guard/IPTablesPorts.v
+src/Narcissus/Examples/Guard/PacketFiltersLemmas.v
 src/Narcissus/Examples/NetworkStack/ARPPacket.v
 src/Narcissus/Examples/NetworkStack/EthernetHeader.v
 src/Narcissus/Examples/NetworkStack/Fiat4Mirage.v
