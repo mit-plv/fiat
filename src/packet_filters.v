@@ -57,7 +57,7 @@ Definition FilterMethod {h} (topkt: @Tuple h -> input)
   Else (
       If negb (IncomingRule.(cf_cond) inp)
       Then ret None
-      Else with r totup,
+      Else with r (In_History_Constr totup),
         if historically (OutgoingToRule' inp) then <ACCEPT> else <DROP>).
 
 Definition FilterMethod_UnConstr {h} (topkt: @Tuple h -> input)
@@ -68,7 +68,7 @@ Definition FilterMethod_UnConstr {h} (topkt: @Tuple h -> input)
   Else (
       If negb (IncomingRule.(cf_cond) inp)
       Then ret None
-      Else with unconstr r totup,
+      Else with r (In_History totup),
         if historically (OutgoingToRule' inp) then <ACCEPT> else <DROP>).
 
 Lemma UnConstrPreservesFilterMethod: forall h topkt totup r_o r_n inp res,
@@ -81,7 +81,7 @@ Proof. (* TODO: Either generalize or start at Unconstr level *)
   destruct (negb (IncomingRule.(cf_cond) inp)) eqn:inc. reflexivity.
   split; intros; apply Bind_inv in H0; destruct H0 as [b [Hbin Hbres]];
     unfold DropQSConstraints_AbsR in H; rewrite <- H in *;
-    computes_to_econstructor; unfold In_History;
+    computes_to_econstructor; unfold In_History, In_History_Constr;
     [ change (GetUnConstrRelationBnd (DropQSConstraints r_o) ``"History")
         with (GetUnConstrRelation (DropQSConstraints r_o) Fin.F1);
       rewrite GetRelDropConstraints; apply Hbin

@@ -10,7 +10,7 @@ Require Import
   Fiat.Narcissus.Examples.NetworkStack.UDP_Packet
   Fiat.Narcissus.Examples.Guard.IPTables.
 Import VectorNotations.
-
+Require Export IPTables.
 
 (** Definitions **)
 
@@ -29,6 +29,9 @@ Open Scope QueryImpl.
 Definition In_History {h: Heading} (totup: input -> @Tuple h)
            (r: UnConstrQueryStructure (PacketHistorySchema h)) (p: input) : Prop :=
   IndexedEnsemble_In (r!"History") (totup p).
+Definition In_History_Constr {h} totup
+           (r: QueryStructure (PacketHistorySchema h)) (pre: input) :=
+  IndexedEnsemble_In (GetRelationBnd r {| bindex := "History"; indexb := _ |}) (totup pre).
 
 (* a Complete_ history is equivalent to a history with dropped fields
    under some function from packets (with all fields) to Tuples (with some fields) *)
@@ -47,6 +50,19 @@ Definition Complete_Dropped_qs_equiv {h: Heading} (totup: input -> @Tuple h)
                                 indexedElement := (Complete_totup inp') |}
              /\ totup inp' = totup inp).
 Close Scope QueryImpl.
+
+Lemma DropPreservesFreshIdx:
+  forall h r_o (r_n: UnConstrQueryStructure (PacketHistorySchema h)) totup,
+    Complete_Dropped_qs_equiv totup r_o r_n ->
+    refine
+      {idx: nat | UnConstrFreshIdx (GetUnConstrRelation r_o Fin.F1) idx}
+      {idx: nat | UnConstrFreshIdx (GetUnConstrRelation r_n Fin.F1) idx}.
+Proof.
+  intros h r_o r_n totup H. red in H. intro v; intros Hv; computes_to_inv.
+  red in Hv. computes_to_econstructor. red; intros [idx [inp tmp]] Hinp.
+  cbn in inp; destruct tmp. apply (H inp idx) in Hinp. apply Hv in Hinp.
+  cbn in *. assumption.
+Qed.
 
 (* we want the same filter body to operate on different schemas of history,
    i.e. Complete_ histories and histories with dropped fields,
@@ -244,8 +260,8 @@ Ltac evec_cons x vec :=
    (sadly I could not figure out how to build the Tuple-to-packet function here) *)
 Ltac change_dummy_else_tuple_heading acc_type acc_fun head :=
   match goal with [ attrs: Vector.t Attribute _, inp: input |- _ ] =>
-  idtac "trying" head;
-  tryif change_dummy acc_fun inp then idtac else
+  idtac "is" head "required?";
+  tryif change_dummy acc_fun inp then idtac "no, dropping it" else
     (evec_cons (Build_Attribute head acc_type) attrs;
      match goal with
      | [ ftup: input -> ilist2 _ |- _ ] =>
@@ -253,7 +269,8 @@ Ltac change_dummy_else_tuple_heading acc_type acc_fun head :=
        pose (fun p => icons2 (head :: acc_fun p)%Component (ftup p)) as y;
        subst ftup; rename y into ftup; cbv beta in ftup
      | _ => pose (fun p => icons2 (head :: acc_fun p)%Component inil2) as ftup
-     end)
+     end;
+     idtac "yes, keeping it")
   end.
 
 (* helper for building Tuple-to-packet function; this replaces a field
@@ -325,14 +342,11 @@ Ltac solve_drop_fields filter :=
 Definition flag_true (p: input) : Prop := p.(in_ip4).(DF) = true.
 Definition sent_to_me := (iptables -A FORWARD --destination 18'0'0'0/8).(cf_cond).
 
-Notation "'with' r totup ',' 'if' 'historically' cond 'then' iftrue 'else' iffalse" :=
-  (b <- { b: bool | decides b (exists pre,
-                 IndexedEnsemble_In (GetRelationBnd r {| bindex := "History"; indexb := _ |}) (totup pre) /\ cond pre) };
-     if b then iftrue else iffalse) (at level 65, r at level 9) : filter_scope.
-Notation "'with' 'unconstr' r totup ',' 'if' 'historically' cond 'then' iftrue 'else' iffalse" :=
-  (b <- { b: bool | decides b (exists pre,
-                 In_History totup r pre /\ cond pre) };
-     if b then iftrue else iffalse) (at level 65, r at level 9) : filter_scope.
+Notation "'with' r cont ',' 'if' 'historically' cond 'then' iftrue 'else' iffalse" :=
+  (b <- { b: bool | decides b (exists pre, cont r pre /\ cond pre) };
+   if b then iftrue else iffalse)
+     (at level 65, r at level 9) : filter_scope.
+
 Notation "'<' res '>'" :=
   (ret (Some res)) (at level 64, res at level 63) : filter_scope.
 
@@ -341,9 +355,8 @@ Definition f (h: Heading) (topkt: @Tuple h -> input) (totup: input -> @Tuple h)
            (r: UnConstrQueryStructure (PacketHistorySchema h)) (inp: input) :=
   If sent_to_me inp
   Then <ACCEPT>
-  Else with unconstr r totup,
+  Else with r (In_History totup),
     if historically flag_true then <ACCEPT> else <DROP>.
-
 
 Theorem mydrop: FilterAdapter f.
 Proof. Transparent computes_to. solve_drop_fields f. Defined.
