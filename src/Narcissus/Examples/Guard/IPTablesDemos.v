@@ -48,11 +48,11 @@ Definition dhcp_offer : Vector.t (word 8) _ :=
 Definition dhcp_request : Vector.t (word 8) _ :=
   Eval compute in Vector.map (@NToWord 8) [69; 0; 1; 44; 168; 55; 0; 0; 250; 17; 23; 138; 0; 0; 0; 0; 255; 255; 255; 255; 0; 68; 0; 67; 1; 24; 159; 189; 1; 1; 6; 0; 0; 0; 61; 30; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 11; 130; 1; 252; 66; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 99; 130; 83; 99; 53; 1; 3; 61; 7; 1; 0; 11; 130; 1; 252; 66; 50; 4; 192; 168; 0; 10; 54; 4; 192; 168; 0; 1; 55; 4; 1; 3; 6; 42; 255; 0]%N.
 
-Definition dhcp_offer_input :=
-  input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_offer).
+Definition dhcp_offer_input : input :=
+  must (input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_offer)).
 
-Definition dhcp_request_input :=
-  input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_request).
+Definition dhcp_request_input : input :=
+  must (input_of_bytes FORWARD (bytes_of_ByteBuffer dhcp_request)).
 
 (* The filter that accepts client DHCP broadcasts accepts dhcp_request (a client message): *)
 Compute (accept_dhcp_client_broadcast dhcp_request_input).

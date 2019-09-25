@@ -57,3 +57,9 @@ Definition udp_decode (hdr: IPv4_Packet) :=
   fun (bs: bytes) =>
     let bs' := AlignedByteBuffer.bytebuffer_of_bytebuffer_range offset tcpLen (projT2 bs) in
     WrapDecoder (@UDP_decoder_impl src dst (natToWord 16 tcpLen)) bs'.
+
+Definition must {A} (o: option A) : if o then A else unit :=
+  match o with
+  | Some a => a
+  | None => tt
+  end.

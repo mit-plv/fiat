@@ -12,20 +12,29 @@ Require Import Fiat.Narcissus.Examples.Guard.Core.
 Inductive chain := INPUT | FORWARD | OUTPUT.
 Scheme Equality for chain.
 
+Inductive transport_layer_input :=
+| TCPInput (pkt: TCP_Packet)
+| UDPInput (pkt: UDP_Packet).
+
 (* The guard's filter functions take a decoded packet and a chain
    identifier as input.  *)
 Record input :=
-  { in_ip4: option IPv4_Packet;
-    in_tcp: option TCP_Packet;
-    in_udp: option UDP_Packet;
+  { in_ip4: IPv4_Packet;
+    in_tsp: transport_layer_input;
     in_chn: chain }.
 
-Definition input_of_bytes (chn: chain) (bs: bytes) :=
-  let opt_hdr := ipv4_decode bs in
-  {| in_ip4 := opt_hdr;
-     in_tcp := Common.option_bind (fun hdr => tcp_decode hdr bs) opt_hdr;
-     in_udp := Common.option_bind (fun hdr => udp_decode hdr bs) opt_hdr;
-     in_chn := chn |}.
+Definition input_of_bytes (chn: chain) (bs: bytes) : option input :=
+  match ipv4_decode bs with
+  | Some ip4 =>
+    match tcp_decode ip4 bs with
+    | Some tcp => Some {| in_ip4 := ip4; in_tsp := TCPInput tcp; in_chn := chn |}
+    | None => match udp_decode ip4 bs with
+             | Some udp => Some {| in_ip4 := ip4; in_tsp := UDPInput udp; in_chn := chn |}
+             | None => None
+             end
+    end
+  | None => None
+  end.
 
 (* Addresses are represented as machine words. *)
 Definition address := word 32.
@@ -136,24 +145,23 @@ Definition cond_proto (proto: EnumType ["ICMP"; "TCP"; "UDP"])
 
 Scheme Equality for option.
 
-Definition tcp_or_udp {A} ftcp fudp i : option A :=
-  match i.(in_tcp), i.(in_udp) with
-  | Some p, _ => Some p.(ftcp)
-  | _, Some p => Some p.(fudp)
-  | None, None => None
+Definition tcp_or_udp {A} ftcp fudp i : A :=
+  match i.(in_tsp) with
+  | TCPInput pkt => pkt.(ftcp)
+  | UDPInput pkt => pkt.(fudp)
   end.
 
 (* Filter by TCP or UDP source port *)
 Definition cond_srcport (port: word 16)
   : condition input :=
   let fn := tcp_or_udp TCP_Packet.SourcePort UDP_Packet.SourcePort in
-  fun pkt => option_beq _ (@weqb 16) pkt.(fn) (Some port).
+  fun pkt => (@weqb 16) pkt.(fn) port.
 
 (* Filter by TCP or UDP destination port *)
 Definition cond_dstport (port: word 16)
   : condition input :=
   let fn := tcp_or_udp TCP_Packet.DestPort UDP_Packet.DestPort in
-  fun pkt => option_beq _ (@weqb 16) pkt.(fn) (Some port).
+  fun pkt => (@weqb 16) pkt.(fn) port.
 
 (** The following adds syntax for these conditions: **)
 
@@ -177,7 +185,7 @@ Notation "cf '-A' c" :=
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--protocol' proto" :=
-  (and_cf cf (lift_condition_opt in_ip4 (cond_proto (```proto))))
+  (and_cf cf (lift_condition in_ip4 (cond_proto (```proto))))
     (at level 41, left associativity) : iptables_scope.
 
 Definition mask_of_nat (m: nat) : word ((32 - m) + m) :=
@@ -208,11 +216,11 @@ Notation "addr / mask" :=
   : addr_scope.
 
 Notation "cf '--source' addr" :=
-  (and_cf cf (lift_condition_opt in_ip4 (cond_srcaddr addr%addr)))
+  (and_cf cf (lift_condition in_ip4 (cond_srcaddr addr%addr)))
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--destination' addr" :=
-  (and_cf cf (lift_condition_opt in_ip4 (cond_dstaddr addr%addr)))
+  (and_cf cf (lift_condition in_ip4 (cond_dstaddr addr%addr)))
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--source-port' port" :=
