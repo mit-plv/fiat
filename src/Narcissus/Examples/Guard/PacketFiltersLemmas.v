@@ -25,8 +25,8 @@ Require Import
         Fiat.QueryStructure.Automation.General.QueryAutomation
         Fiat.QueryStructure.Automation.General.InsertAutomation
         Fiat.QueryStructure.Automation.General.DeleteAutomation
+        Fiat.Narcissus.Examples.Guard.Core
         Fiat.Narcissus.Examples.Guard.DropFields.
-Import ListNotations.
 
         
 Lemma change_refine_form {X1 X2 Y Z} :
@@ -54,7 +54,7 @@ Definition UnIndexedEnsembleListEquivalence'
   sig (fun (l': list IndexedElement) =>
          map indexedElement l' = l /\
          (forall x : IndexedElement,
-            In IndexedElement ensemble x <-> List.In x l') /\
+            Ensembles.In IndexedElement ensemble x <-> List.In x l') /\
          NoDup (map elementIndex l')).
 
 
@@ -207,7 +207,7 @@ Qed.
 
 Lemma simpl_in_bind:
   forall (T U: Type) (x v : T) (y: U),
-    In T (`(r', _) <- ret (x, y); ret r') v -> x = v.
+    Ensembles.In T (`(r', _) <- ret (x, y); ret r') v -> x = v.
 Proof.
   intros. apply Bind_inv in H. destruct H. destruct H. apply Return_inv in H. rewrite <- H in H0. simpl in H0. apply Return_inv in H0. assumption. Qed.
 
