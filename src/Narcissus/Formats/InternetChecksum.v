@@ -825,6 +825,23 @@ Proof.
       * exists (pred x); omega.
 Qed.
 
+Lemma checksum_split :
+  forall bs1 bs2,
+    (exists x, length bs1 = 2 * x)%nat ->
+    checksum (bs1 ++ bs2) = checksum bs1 ^1+ checksum bs2.
+Proof.
+  fix IH 1.
+  destruct bs1; intros.
+  - reflexivity.
+  - destruct bs1; destruct H; simpl in *.
+    + omega.
+    + rewrite IH.
+      * unfold add_bytes_into_checksum, add_w16_into_checksum.
+        rewrite <- !OneC_plus_assoc. f_equal.
+        rewrite OneC_plus_comm. reflexivity.
+      * exists (pred x). omega.
+Qed.
+
 Lemma checksum_app :
   forall bs1 bs2,
     (exists x, length bs1 = 2 * x)%nat ->

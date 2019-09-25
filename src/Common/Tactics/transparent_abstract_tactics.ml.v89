@@ -30,7 +30,7 @@ module TRANSPARENT_ABSTRACT =
 
     let tclABSTRACTTERM name_op term tacK =
       (* What's the right default goal kind?*)
-      let default_gk = (Global, false, Proof Theorem) in
+      let default_gk = (Global ImportDefaultBehavior, false, Proof Theorem) in
       let s, gk = match name_op with
         | Some s ->
            (try let _, gk, _ = current_proof_statement () in s, gk

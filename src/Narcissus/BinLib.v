@@ -123,7 +123,7 @@ Proof.
     simpl in *.
     rewrite <- Vector_split_append in H5.
     pose proof mempty_left; simpl in H9.
-    rewrite IPChecksum.build_aligned_ByteString_nil, H9 in H8.
+    rewrite build_aligned_ByteString_nil, H9 in H8.
     symmetry in H8.
     destruct (build_aligned_ByteString_split _ _ _ H8).
     symmetry in H8.

@@ -351,8 +351,6 @@ src/Narcissus/Common/WordFacts.v
 src/Narcissus/ComplementaryFormats/ComplementaryFormat.v
 src/Narcissus/Examples/ByteAlignedExample.v
 src/Narcissus/Examples/ICMP_Packet.v
-src/Narcissus/Examples/IPTables.v
-src/Narcissus/Examples/IPTablesPorts.v
 src/Narcissus/Examples/README.v
 src/Narcissus/Examples/Toy.v
 src/Narcissus/Examples/Toy2.v
@@ -364,10 +362,15 @@ src/Narcissus/Examples/DNS/SimpleDNSPacket.v
 src/Narcissus/Examples/DNS/SimpleDnsOpt.v
 src/Narcissus/Examples/DNS/SimpleRRecordTypes.v
 src/Narcissus/Examples/DNS/SimpleResourceRecord.v
+src/Narcissus/Examples/Guard/Core.v
 src/Narcissus/Examples/Guard/DropFields.v
+src/Narcissus/Examples/Guard/Guard.v
+src/Narcissus/Examples/Guard/GuardExtraction.v
 src/Narcissus/Examples/Guard/IPTables.v
-src/Narcissus/Examples/Guard/IPTablesPorts.v
+src/Narcissus/Examples/Guard/IPTablesDemos.v
+src/Narcissus/Examples/Guard/IPTablesGuard.v
 src/Narcissus/Examples/Guard/PacketFiltersLemmas.v
+src/Narcissus/Examples/Guard/Ports.v
 src/Narcissus/Examples/NetworkStack/ARPPacket.v
 src/Narcissus/Examples/NetworkStack/EthernetHeader.v
 src/Narcissus/Examples/NetworkStack/Fiat4Mirage.v

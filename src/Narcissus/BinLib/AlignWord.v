@@ -1067,7 +1067,7 @@ Section AlignEncodeWord.
     - unfold Compose_Encode, EncodeMEquivAlignedEncodeM; intros; injections; intuition; simpl.
       + injections; simpl; unfold SetCurrentByte.
         unfold plus; fold plus.
-        destruct (NPeano.ltb idx (idx + Datatypes.S m)) eqn: ? ; try omega.
+        destruct (Nat.ltb idx (idx + Datatypes.S m)) eqn: ? ; try omega.
         * eexists (Vector.append v1 (Vector.cons _ (proj s) _ v2)); split.
           { repeat f_equal; try omega.
             clear; simpl in v.
@@ -1087,10 +1087,10 @@ Section AlignEncodeWord.
             rewrite H; reflexivity.
           }
         * destruct (le_lt_dec (idx + Datatypes.S m) idx); try omega.
-          apply NPeano.ltb_lt in l; congruence.
+          apply Nat.ltb_lt in l; congruence.
       + injections; simpl; unfold SetCurrentByte.
-        destruct (NPeano.ltb idx numBytes') eqn: ?; eauto.
-        apply NPeano.ltb_lt in Heqb.
+        destruct (Nat.ltb idx numBytes') eqn: ?; eauto.
+        apply Nat.ltb_lt in Heqb.
         unfold build_aligned_ByteString in H0.
         unfold length_ByteString in H0; simpl padding in H0; simpl numBytes in H0.
         omega.
