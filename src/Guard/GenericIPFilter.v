@@ -36,10 +36,10 @@ Definition IncomingRule :=
   iptables -A FORWARD --destination 18'0'0'0/24.
 
 Definition OutgoingToRule (dst: address) :=
-  and_cf OutgoingRule (lift_condition in_ip4 (cond_dstaddr {| saddr := dst; smask := mask_of_nat 32 |})).
+  and_cf OutgoingRule (lift_condition in_ip4 (cond_dstaddr {| saddr := dst; smask := None |})).
 
 Definition OutgoingToRule' (cur pre : input) : Prop :=
-  (OutgoingToRule cur.(in_ip4).(SourceAddress)).(cf_cond) pre = true.
+  (OutgoingToRule cur.(in_ip4).(ipv4_source)).(cf_cond) pre = true.
 
 Lemma OutgoingToImpliesOutgoing:
   forall inp dst,
@@ -139,7 +139,7 @@ Proof.
     computes_to_econstructor. unfold decides; simpl.
     destruct H1. destruct H1. exists x0. split.
     * apply (H x0).
-      apply (OutgoingToImpliesOutgoing x0 (SourceAddress (in_ip4 inp))).
+      apply (OutgoingToImpliesOutgoing x0 (ipv4_source (in_ip4 inp))).
       assumption. assumption.
     * assumption.
 
@@ -147,7 +147,7 @@ Proof.
     unfold not; intros. destruct H1. destruct H3. destruct H1.
     exists x0. split.
     * apply (H x0).
-      apply (OutgoingToImpliesOutgoing x0 (SourceAddress (in_ip4 inp))).
+      apply (OutgoingToImpliesOutgoing x0 (ipv4_source (in_ip4 inp))).
       assumption. assumption.
     * assumption.
 
@@ -186,7 +186,7 @@ Definition SlowIndex : IndexType IPFilterSchema :=
      prim_snd := () |}.
 
 Definition FastIndex :=
-  {| prim_fst := [("EqualityIndex", "SourceAddress" # "History" ## IPFilterSchema)]%list;
+  {| prim_fst := [("EqualityIndex", "DestAddress" # "History" ## IPFilterSchema)]%list;
      prim_snd := () |}.
 
 (* Genpatcher should mutate the following definition: *)
@@ -209,7 +209,7 @@ Definition FilterMethod_UnConstr_Comp {h} (topkt: @Tuple h -> input)
   If cf_cond OutgoingRule inp Then <ACCEPT> Else
   If negb (cf_cond IncomingRule inp) Then ret None Else
     (c <- Count (For (t in r%"History")
-                 Where (cf_cond (OutgoingToRule (SourceAddress (in_ip4 inp))) (topkt t) = true)
+                 Where (cf_cond (OutgoingToRule (ipv4_source (in_ip4 inp))) (topkt t) = true)
                  Return ());
      If 0 <? c Then <ACCEPT> Else <DROP>).
 
@@ -626,9 +626,9 @@ Proof.
     apply refine_bind. reflexivity. intro. simpl. higher_order_reflexivity.
 
 
-pose
-  {| prim_fst := [("EqualityIndex", "SourceAddress" # "History" ## (PacketHistorySchema h))]%list;
-     prim_snd := () |} as indexes.
+(* pose *)
+(*   {| prim_fst := [("EqualityIndex", "ipv4_source" # "History" ## (PacketHistorySchema h))]%list; *)
+(*      prim_snd := () |} as indexes. *)
 
 
 Ltac FindAttributeUses := EqExpressionAttributeCounter.
@@ -642,7 +642,8 @@ Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
 Ltac createLastTerm_dep := createLastEqualityTerm_dep.
 Ltac BuildEarlyBag := BuildEarlyEqualityBag.
 Ltac BuildLastBag := BuildLastEqualityBag.
-Ltac PickIndex := ltac:(fun indexes makeIndex => let attrlist' := eval compute in indexes in makeIndex attrlist').
+    (* FIXME use Index, not FastIndex *)
+Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in FastIndex in makeIndex attrlist').
 
 
 Ltac mydrill_step :=
@@ -651,8 +652,7 @@ Ltac mydrill_step :=
   end.
 Ltac mydrill := repeat mydrill_step.
 
-
-    PickIndex indexes ltac:(fun attrlist =>
+    PickIndex ltac:(fun attrlist =>
                       make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
 
     + plan CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep.
@@ -661,66 +661,136 @@ Ltac mydrill := repeat mydrill_step.
       unfold FilterMethod_UnConstr_Comp.
       eapply refine_If_Then_Else. reflexivity.
       eapply refine_If_Then_Else. reflexivity.
-
       apply refine_bind.
-      Transparent OutgoingToRule OutgoingRule.
-      unfold OutgoingToRule.
-      unfold OutgoingRule.
-      set (cf_cond _).
-      simpl in c.
-      subst c.
-      simpl.
-      unfold combine_conditions.
-      simpl.
-      clear Hdrop.
-      clear totup topkt.
-      unfold lift_condition.
-      simpl.
-      unfold cond_srcaddr, cond_dstaddr.
-      simpl.
-      unfold match_address.
-      simpl.
 
-      assert (forall v, (v ^& mask_of_nat 32) = v) by admit.
-      match goal with
-      | [  |- context[UnConstrQuery_In _ _ ?f] ] =>
-        set f
-      end.
-      Arguments RawTuple: clear implicits.
-      Arguments GetAttribute: clear implicits.
+      Arguments GetAttribute : clear implicits.
+      Arguments RawTuple : clear implicits.
 
-      replace c with (fun
-         t : RawTuple
-               {|
-               NumAttr := 3;
-               AttrList := [chain <: Type; word 32 <: Type; word 32 <: Type]%NamedSchema |} =>
-       Where (GetAttribute <StringId1 :: chain, StringId2 :: word 32,
-                      StringId3 :: word 32>%Heading t BStringId0 = SourceAddress (in_ip4 d))
-             Return () ).
-  (* c := fun conn : RawTuple => *)
-  (*      Where (GetAttribute conn BStringId = ipv4ToString (SourceAddress a)) *)
-  (*      Where (GetAttribute conn BStringId0 = ipv4ToString (DestAddress a)) *)
-  (*      Return ()   : RawTuple -> Comp (list ()) *)
-  (* ============================ *)
-  (* refine (Count For (UnConstrQuery_In r_o Fin.F1 c)) ?Goal0 *)
+      etransitivity; [ setoid_rewrite refine_UnConstrQuery_In | ].
+      { reflexivity. }
+      { intro.
+        etransitivity; [apply refine_Query_Where_Cond | ].
 
-      (* Try to cast addresses to strings *)
+        {
+        Transparent OutgoingToRule OutgoingRule.
+        (* Arguments mask_of_nat: simpl never. *)
+        Arguments wand: simpl never.
+        Arguments N.land: simpl nomatch.
+        Arguments chain_beq: simpl never.
+        Arguments GetAttribute: simpl never.
+        Hint Unfold cf_cond combine_conditions cond_srcaddr cond_dstaddr cond_chain match_address : iptables.
+        Hint Unfold OutgoingToRule OutgoingRule : iptables.
+        repeat (autounfold with iptables; cbn).
+
+        (* Hint Rewrite -> wand_full_mask : iptables. *)
+        Hint Rewrite -> andb_true_iff andb_true_l andb_true_r : iptables.
+        Hint Rewrite -> internal_chain_dec_bl : iptables.
+        Hint Rewrite -> N.eqb_eq : iptables.
+        Hint Rewrite -> weqb_true_iff : iptables.
+        autorewrite with iptables.
+
+        repeat match goal with
+               | _ => rewrite and_assoc
+               | [  |- context[chain_beq ?x ?y = true /\ ?z] ] => rewrite (and_comm (chain_beq x y = true) z)
+               end.
+        rewrite <- !and_assoc.
+
+        reflexivity.
+        }
+
+        Axiom refine_Query_Where_And :
+          forall (ResultT : Type) (P Q : Prop)
+            (body : Comp (list ResultT)),
+            refine (Query_Where (P /\ Q) body)
+                   (Query_Where P (Query_Where Q body)).
+
+        clear Hdrop.
+        etransitivity.
+        apply refine_Query_Where_And.
+        etransitivity.
+        apply refine_Query_Where_And.
+
+  (*       Proof. *)
+  (*         unfold refine, Query_Where; intros * H. *)
+  (*         computes_to_econstructor; computes_to_inv; *)
+  (*           destruct H; split; *)
+  (*             [intros (p & q) | intros]. *)
+  (*         - specialize (H p); computes_to_inv; tauto. *)
+  (*         - assert (~P \/ ~Q). *)
+  (*           rewrite not_and_implication in H1. *)
+  (*           Require Import Classical. *)
+  (*           tauto. *)
+
+  (*         (HP & HQ). *)
+  (*         etransitivity; intro. *)
+  (*         apply refine_Query_Where_Cond. with (Q := True). *)
+  (*   intuition; intros. *)
+  (*   intros; computes_to_econstructor; intuition. *)
+  (* Qed. *)
+
+        higher_order_reflexivity.
+      }
+
       implement_Query IndexUse createEarlyTerm createLastTerm
-                      IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
-      simpl (cf_cond _).
-      Focus 2.
-      intro. unfold RefinedInsert.
-      change (GetUnConstrRelationBnd r_o ``"History")
-        with (GetUnConstrRelation r_o Fin.F1).
-      match goal with
-        [H : DelegateToBag_AbsR ?r_o ?r_n
-         |- context[Pick (fun idx => UnConstrFreshIdx (GetUnConstrRelation ?r_o ?Ridx) idx)]] =>
-        let freshIdx := fresh in
-             destruct (exists_UnConstrFreshIdx H Ridx) as [? freshIdx];
-          setoid_rewrite (refine_Pick_UnConstrFreshIdx H Ridx freshIdx)
-      end. Search Pick IndexedQueryStructure.
-      apply refine_under_bind_both. apply H2.
-      apply refine_bind_unit.
-      
+      IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
+
+      simpl; repeat first [setoid_rewrite refine_bind_unit
+                          | setoid_rewrite refine_bind_bind ];
+      cbv beta; simpl.
+
+      setoid_rewrite map_length.
+      setoid_rewrite app_nil_r.
+      setoid_rewrite map_length.
+
+      finish honing.
+
+      intro; higher_order_reflexivity.
+
+      intro.
+      unfold RefinedInsert.
+      etransitivity; [ eapply refine_If_Then_Else_Bind | ].
+      etransitivity; [ eapply refine_If_Then_Else | ].
+
+      simpl.
+      unfold myqidx.
+      simplify with monad laws.
+      subst totup topkt Hdrop.
+      cbv beta.
+      change (GetUnConstrRelationBnd r_o ?idx) with (GetUnConstrRelation r_o ((ibound (indexb idx)))).
+      simpl.
+      etransitivity.
       insertion IndexUse createEarlyTerm createLastTerm IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
-      reflexivity. intros. unfold computes_to in H1. cbn.
+
+      simplify with monad laws.
+      higher_order_reflexivity.
+
+      simpl.
+      simplify with monad laws.
+      refine pick val _; [ | eauto ].
+      simplify with monad laws.
+      higher_order_reflexivity.
+
+      (* FIXME: Can this safely be moved up? *)
+      Arguments cf_cond: simpl never.
+      higher_order_reflexivity.
+
+      subst H.
+      higher_order_reflexivity.
+
+    + clear topkt.
+      clear totup.
+      clear Hdrop.
+
+      (* FIXME get rid of topkt/totup/Hdrop to speed up derivations *)
+      Implement_Bags BuildEarlyBag BuildLastBag.
+Defined.
+
+Definition GuardImpl :=
+  Eval simpl in projT1 SharpenNoIncomingFilter.
+
+Definition guard_init : ComputationalADT.cRep GuardImpl :=
+  Eval simpl in (CallConstructor GuardImpl "Init").
+
+(* FIXME rename Filter to ProcessPacket and take bytes as input *)
+Definition guard_process_packet (bs: input) (rep: ComputationalADT.cRep GuardImpl) : (_ * option result) :=
+  Eval simpl in CallMethod GuardImpl "Filter" rep bs.
