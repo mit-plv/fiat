@@ -5,9 +5,9 @@ Require Import
   Fiat.Common.ilist2
   Fiat.Common.EnumType
   Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
-  Fiat.Narcissus.Examples.NetworkStack.IPv4Header
-  Fiat.Narcissus.Examples.NetworkStack.TCP_Packet
-  Fiat.Narcissus.Examples.NetworkStack.UDP_Packet
+  (* Fiat.Narcissus.Examples.NetworkStack.IPv4Header *)
+  (* Fiat.Narcissus.Examples.NetworkStack.TCP_Packet *)
+  (* Fiat.Narcissus.Examples.NetworkStack.UDP_Packet *)
   Fiat.Narcissus.Examples.Guard.Core
   Fiat.Narcissus.Examples.Guard.IPTables.
 Import VectorNotations.
@@ -117,16 +117,16 @@ Notation "acc1 '//' acc2" :=
 Open Scope acc_scope.
 (* needs to be manually written! *)
 Definition acc2head : list (accessor * string) :=
-  [ (acc (in_ip4 // TotalLength), "TotalLength");
-    (acc (in_ip4 // ID), "Identifier");
-    (acc (in_ip4 // DF), "DontFragment");
-    (acc (in_ip4 // MF), "MultipleFragments");
-    (acc (in_ip4 // FragmentOffset), "FragmentOffset");
-    (acc (in_ip4 // TTL), "TTL");
-    (acc (in_ip4 // Protocol), "Protocol");
-    (acc (in_ip4 // SourceAddress), "SourceAddress");
-    (acc (in_ip4 // DestAddress), "DestAddress");
-    (acc (in_ip4 // IPv4Header.Options), "Options");
+  [ (acc (in_ip4 // ipv4_len), "TotalLength");
+    (acc (in_ip4 // ipv4_id), "Identifier");
+    (acc (in_ip4 // ipv4_df), "DontFragment");
+    (acc (in_ip4 // ipv4_mf), "MultipleFragments");
+    (acc (in_ip4 // ipv4_fragment_offset), "FragmentOffset");
+    (acc (in_ip4 // ipv4_ttl), "TTL");
+    (acc (in_ip4 // ipv4_protocol), "Protocol");
+    (acc (in_ip4 // ipv4_source), "SourceAddress");
+    (acc (in_ip4 // ipv4_dest), "DestAddress");
+    (* (acc (in_ip4 // IPv4Header.Options), "Options"); *)
     (acc in_tsp, "TransportLayerPacket");
     (* (acc in_udp, "optUDPpacket"); *)
     (acc in_chn, "Chain") ].
@@ -151,6 +151,7 @@ Ltac for_each_acc k :=
 Ltac dummy_type x k :=
   match (type of x) with
   | word ?n => k (wzero n)
+  | N => k 0%N
   | string => k ""
   | bool => k false
   | list ?T => k (@Datatypes.nil T)
@@ -162,6 +163,7 @@ Ltac dummy_type x k :=
 Ltac dummy_type' :=
   repeat lazymatch goal with
          | [|- word ?n] => apply (wzero n)
+         | [|- N] => apply 0%N
          | [|- string] => apply ""
          | [|- ()] => apply tt
          | [|- list _] => apply List.nil
@@ -174,7 +176,7 @@ Ltac dummy_type' :=
    FIXME: needs to be manually written! *)
 Ltac destruct_packet pkt :=
   pose Build_input as pkt';
-  pose Build_IPv4_Packet as pkt'';
+  pose Build_ipv4_input_pkt as pkt'';
   for_each_acc ltac:(fun _ acc_fun _ =>
                        try (pose (pkt'' (acc_fun pkt)) as p; subst pkt'';
                             rename p into pkt''));
@@ -348,7 +350,7 @@ Ltac solve_drop_fields :=
 (** Demo! **)
 
 Open Scope iptables.
-Definition flag_true (p: input) : Prop := p.(in_ip4).(DF) = true.
+Definition flag_true (p: input) : Prop := p.(in_ip4).(ipv4_df) = true.
 Definition sent_to_me := (iptables -A FORWARD --destination 18'0'0'0/8).(cf_cond).
 
 Notation "'with' r cont ',' 'if' 'historically' cond 'then' iftrue 'else' iffalse" :=
