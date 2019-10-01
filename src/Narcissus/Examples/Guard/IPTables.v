@@ -80,7 +80,7 @@ Definition rule_of_invocations (invs: list invocation) : rule :=
 Definition policy_of_invocations (ch: chain) (invs: list invocation) (default: result) : result :=
   fold_left (fun acc inv => match inv with
                          | Rule r => acc
-                         | Policy ch' p => if chain_beq ch' ch then p else acc
+                         | Policy ch' p => if chain_beq ch ch' then p else acc
                          end) invs default.
 
 (* Usual boolean operators can be lifted to conditions: *)
@@ -110,7 +110,7 @@ Definition invocation_of_condition (c: condition input) (r: result) :=
 
 (* Check if we're running in a given chain *)
 Definition cond_chain (c: chain) : condition chain :=
-  fun chn => chain_beq c chn.
+  fun chn => chain_beq chn c.
 
 Record address_spec :=
   { saddr: address;
