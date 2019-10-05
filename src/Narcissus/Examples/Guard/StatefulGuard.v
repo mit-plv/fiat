@@ -12,8 +12,6 @@ Require Import
     Fiat.Narcissus.Examples.Guard.DropFields.
 Import ListNotations.
 
-(* TODO: Add a proper makefile target *)
-
 (**
 we are 18.X.X.X
 outside world is all other IP addresses
@@ -126,7 +124,7 @@ Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
 Ltac createLastTerm_dep := createLastEqualityTerm_dep.
 Ltac BuildEarlyBag := BuildEarlyEqualityBag.
 Ltac BuildLastBag := BuildLastEqualityBag.
-Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in FastIndex in makeIndex attrlist').
+Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in Index in makeIndex attrlist').
 
 Arguments wand: simpl never.
 Arguments Nat.ltb: simpl never.
@@ -260,9 +258,3 @@ Defined.
 
 Definition GuardImpl :=
   Eval simpl in projT1 SharpenNoIncomingFilter.
-
-Definition guard_init : ComputationalADT.cRep GuardImpl :=
-  Eval simpl in (CallConstructor GuardImpl "Init").
-
-Definition guard_process_packet (bs: input) (rep: ComputationalADT.cRep GuardImpl) : (_ * option result) :=
-  Eval simpl in CallMethod GuardImpl "Filter" rep bs.
