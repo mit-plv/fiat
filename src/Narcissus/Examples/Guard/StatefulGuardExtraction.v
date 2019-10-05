@@ -11,12 +11,12 @@ Arguments Fiat.Common.ilist2.ilist2_tl : simpl nomatch.
 Notation simp x :=
   ltac:(let x := (eval red in x) in
         let x := (eval cbn in x) in
-        exact x).
+        exact x) (only parsing).
 
 Definition guard_init (_: unit) : ComputationalADT.cRep GuardImpl :=
   simp (CallConstructor GuardImpl "Init").
 
-Definition guard_process_packet (rep: ComputationalADT.cRep GuardImpl) (bs: bytes) (chain: IPTables.chain) : (_ * option result) :=
+Definition guard_process_packet (rep: ComputationalADT.cRep GuardImpl) (bs: bytes) (chain: IPTables.chain) : (ComputationalADT.cRep GuardImpl * option result) :=
   match IPTables.input_of_bytes chain bs with
   | Some input => simp (CallMethod GuardImpl "Filter" rep input)
   | None => (rep, Some DROP)
@@ -43,4 +43,4 @@ Extraction Inline
            StatefulGuard.ADTImplMethod4
            StatefulGuard.ADTImplMethod5.
 
-Extraction "../../../../../ocaml/FiatGuard" guard_init guard_process_packet.
+Extraction "FiatGuard" guard_init guard_process_packet.
