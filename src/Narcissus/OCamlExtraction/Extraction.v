@@ -73,8 +73,8 @@ Extract Inlined Constant wnot => "Int64Word.wnot".
 Extract Inlined Constant wneg => "Int64Word.wneg".
 Extract Inlined Constant wordToNat => "Int64Word.wordToNat".
 Extract Inlined Constant natToWord => "Int64Word.natToWord".
-Extract Inlined Constant NToWord => "Int64Word.natToWord".
 Extract Inlined Constant wordToN => "Int64Word.wordToN".
+Extract Inlined Constant NToWord => "Int64Word.nToWord".
 Extract Inlined Constant wzero => "Int64Word.wzero".
 Extract Inlined Constant wzero' => "Int64Word.wzero'".
 Extract Inlined Constant wones => "Int64Word.wones".
@@ -115,20 +115,20 @@ Extract Inlined Constant Fin.L => "(fun _ n p -> p)".
 Extract Inlined Constant Fin.R => "(fun _ n p -> n + p)".
 Extract Inlined Constant Fin.eqb => "(fun _ _ n p -> n = p)".
 
-Extract Inductive Vector.t =>
-"StackVector.t"
-  ["StackVector.empty ()" "StackVector.cons"]
-  "StackVector.destruct".
+(* Extract Inductive Vector.t => *)
+(* "StackVector.t" *)
+(*   ["StackVector.empty ()" "StackVector.cons"] *)
+(*   "StackVector.destruct". *)
 
-Extract Inductive VectorDef.t =>
-"StackVector.t"
-  ["StackVector.empty ()" "StackVector.cons"]
-  "StackVector.destruct".
+(* Extract Inductive VectorDef.t => *)
+(* "StackVector.t" *)
+(*   ["StackVector.empty ()" "StackVector.cons"] *)
+(*   "StackVector.destruct". *)
 
-Extract Inlined Constant Vector.nth => "StackVector.nth".
-Extract Inlined Constant VectorDef.nth => "StackVector.nth".
-Extract Inlined Constant AlignedDecodeMonad.Vector_nth_opt => "StackVector.nth_opt".
-Extract Inlined Constant EnumOpt.word_indexed => "StackVector.index".
+(* Extract Inlined Constant Vector.nth => "StackVector.nth". *)
+(* Extract Inlined Constant VectorDef.nth => "StackVector.nth". *)
+(* Extract Inlined Constant AlignedDecodeMonad.Vector_nth_opt => "StackVector.nth_opt". *)
+(* Extract Inlined Constant EnumOpt.word_indexed => "StackVector.index". *)
 
 (* CPC clean up CstructBytestring.ml to remove unneeded stuff *)
 
