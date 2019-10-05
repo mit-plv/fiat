@@ -11,6 +11,7 @@ Require Import
         Fiat.Common.ilist2
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.List.ListFacts
+        Fiat.Narcissus.Examples.Guard.Core
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Operations.Insert
         Fiat.QueryStructure.Specification.Operations.Empty

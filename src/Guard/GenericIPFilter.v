@@ -451,6 +451,18 @@ Proof.
   cbn in *. assumption.
 Qed.
 
+Ltac FindAttributeUses := EqExpressionAttributeCounter.
+Ltac BuildEarlyIndex := ltac:(LastCombineCase6 BuildEarlyEqualityIndex).
+Ltac BuildLastIndex := ltac:(LastCombineCase5 BuildLastEqualityIndex).
+Ltac IndexUse := EqIndexUse.
+Ltac createEarlyTerm := createEarlyEqualityTerm.
+Ltac createLastTerm := createLastEqualityTerm.
+Ltac IndexUse_dep := EqIndexUse_dep.
+Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
+Ltac createLastTerm_dep := createLastEqualityTerm_dep.
+Ltac BuildEarlyBag := BuildEarlyEqualityBag.
+Ltac BuildLastBag := BuildLastEqualityBag.
+Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in Index in makeIndex attrlist').
 
 Theorem SharpenNoIncomingFilter:
   FullySharpened NoIncomingConnectionsFilter.
@@ -626,38 +638,14 @@ Proof.
     apply refine_bind. reflexivity. intro. simpl. higher_order_reflexivity.
 
 
-(* pose *)
-(*   {| prim_fst := [("EqualityIndex", "ipv4_source" # "History" ## (PacketHistorySchema h))]%list; *)
-(*      prim_snd := () |} as indexes. *)
-
-
-Ltac FindAttributeUses := EqExpressionAttributeCounter.
-Ltac BuildEarlyIndex := ltac:(LastCombineCase6 BuildEarlyEqualityIndex).
-Ltac BuildLastIndex := ltac:(LastCombineCase5 BuildLastEqualityIndex).
-Ltac IndexUse := EqIndexUse.
-Ltac createEarlyTerm := createEarlyEqualityTerm.
-Ltac createLastTerm := createLastEqualityTerm.
-Ltac IndexUse_dep := EqIndexUse_dep.
-Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
-Ltac createLastTerm_dep := createLastEqualityTerm_dep.
-Ltac BuildEarlyBag := BuildEarlyEqualityBag.
-Ltac BuildLastBag := BuildLastEqualityBag.
-    (* FIXME use Index, not FastIndex *)
-Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in FastIndex in makeIndex attrlist').
-
-
-Ltac mydrill_step :=
-  match goal with
-  | [|- refine (Bind _ _) _] => eapply refine_bind
-  end.
-Ltac mydrill := repeat mydrill_step.
-
     PickIndex ltac:(fun attrlist =>
                       make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
 
     + plan CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep.
     + etransitivity. simplify with monad laws.
-      mydrill.
+      repeat   match goal with
+               | [|- refine (Bind _ _) _] => eapply refine_bind
+               end.
       unfold FilterMethod_UnConstr_Comp.
       eapply refine_If_Then_Else. reflexivity.
       eapply refine_If_Then_Else. reflexivity.
