@@ -6,6 +6,7 @@ Require Import
     Coq.Lists.List
     Fiat.QueryStructure.Automation.MasterPlan
     IndexedEnsembles
+    Fiat.Narcissus.Examples.Guard.Core
     Fiat.Narcissus.Examples.Guard.IPTables
     Fiat.Narcissus.Examples.Guard.PacketFiltersLemmas
     Fiat.Narcissus.Examples.Guard.DropFields.
@@ -26,14 +27,12 @@ Definition IncomingRule :=
   iptables -A FORWARD --destination 18'0'0'0/24.
 
 Definition OutgoingToRule (dst: address) :=
-  iptables -A FORWARD --source 18'0'0'0/24
-           --destination (Build_address_spec dst (mask_of_nat 32)).
+  and_cf OutgoingRule (lift_condition in_ip4 (cond_dstaddr {| saddr := dst; smask := None |})).
 
 Definition OutgoingToRule' (cur pre : input) : Prop :=
-  (OutgoingToRule cur.(in_ip4).(SourceAddress)).(cf_cond) pre = true.
+  (OutgoingToRule cur.(in_ip4).(ipv4_source)).(cf_cond) pre = true.
 
 Opaque OutgoingRule IncomingRule OutgoingToRule OutgoingToRule'.
-
 
 Definition FilterMethodGen {h T} cont
            (topkt: @Tuple h -> input)
@@ -50,8 +49,49 @@ Definition FilterMethod: FilterType. filter_gen @FilterMethodGen. Defined.
 Definition FilterMethod_Count: FilterType. filter_count FilterMethod. Defined.
 
 Transparent computes_to.
+
+Notation IndexType sch :=
+  (@ilist3 RawSchema (fun sch : RawSchema =>
+                        list (string * Attributes (rawSchemaHeading sch)))
+           (numRawQSschemaSchemas sch) (qschemaSchemas sch)).
+
+(* This computes the set of columns to keep *)
 Theorem DroppedFilterMethod : FilterAdapter (@FilterMethod).
 Proof. solve_drop_fields @FilterMethod. Defined.
+
+Definition IPFilterSchema :=
+  Eval cbn in PacketHistorySchema (DroppedFilterMethod.(h _)).
+
+(** Genpatcher hooks here **)
+
+(* ‘columns’ is the list of columns available; this will vary depending on the filter *)
+
+Definition columns :=
+  Eval compute in (Vector.to_list (DroppedFilterMethod.(h _).(HeadingNames))).
+
+Print columns.
+(* columns = ["Chain"; "TransportLayerPacket"; "DestAddress"; "SourceAddress"]%list
+     : list string *)
+
+Open Scope list_scope.
+
+(* Here are two examples *)
+
+Definition SlowIndex : IndexType IPFilterSchema :=
+  {| prim_fst := [];
+     prim_snd := () |}.
+
+Definition FastIndex :=
+  {| prim_fst := [("EqualityIndex", "DestAddress" # "History" ## IPFilterSchema)]%list;
+     prim_snd := () |}.
+
+(* Genpatcher should mutate the following definition: *)
+Definition Index : IndexType IPFilterSchema :=
+  {| prim_fst := [];
+     prim_snd := () |}.
+
+(** End of GenPatcher hooks **)
+
 Definition myh := (h _ DroppedFilterMethod).
 Definition mytopkt := (topkt _ DroppedFilterMethod).
 Definition mytotup := (totup _ DroppedFilterMethod).
@@ -74,6 +114,32 @@ Definition NoIncomingConnectionsFilter : ADT StatefulFilterSig :=
       `(r, _) <- Insert (Complete_totup inp) into r!"History";
       ret (r, res)
   }%methDefParsing.
+
+Ltac FindAttributeUses := EqExpressionAttributeCounter.
+Ltac BuildEarlyIndex := ltac:(LastCombineCase6 BuildEarlyEqualityIndex).
+Ltac BuildLastIndex := ltac:(LastCombineCase5 BuildLastEqualityIndex).
+Ltac IndexUse := EqIndexUse.
+Ltac createEarlyTerm := createEarlyEqualityTerm.
+Ltac createLastTerm := createLastEqualityTerm.
+Ltac IndexUse_dep := EqIndexUse_dep.
+Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
+Ltac createLastTerm_dep := createLastEqualityTerm_dep.
+Ltac BuildEarlyBag := BuildEarlyEqualityBag.
+Ltac BuildLastBag := BuildLastEqualityBag.
+Ltac PickIndex := ltac:(fun makeIndex => let attrlist' := eval compute in FastIndex in makeIndex attrlist').
+
+Arguments wand: simpl never.
+Arguments Nat.ltb: simpl never.
+Arguments N.land: simpl nomatch.
+Arguments chain_beq: simpl never.
+Arguments GetAttribute: simpl never.
+Hint Unfold cf_cond combine_conditions cond_srcaddr cond_dstaddr cond_chain match_address : iptables.
+
+(* Hint Rewrite -> wand_full_mask : iptables. *)
+Hint Rewrite -> andb_true_iff andb_true_l andb_true_r : iptables.
+Hint Rewrite -> internal_chain_dec_bl : iptables.
+Hint Rewrite -> N.eqb_eq : iptables.
+Hint Rewrite -> weqb_true_iff : iptables.
 
 Theorem SharpenNoIncomingFilter:
   FullySharpened NoIncomingConnectionsFilter.
@@ -134,3 +200,69 @@ Proof.
    subst r_o; refine pick eq; simplify with monad laws;
    apply refine_bind; [ apply CompPreservesFilterMethod; reflexivity | intro ];
    apply refine_bind; [ reflexivity | intro; simpl; higher_order_reflexivity ].
+
+   PickIndex ltac:(fun attrlist =>
+                     make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
+
+   + plan CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep.
+   + etransitivity. simplify with monad laws.
+     eapply refine_bind; [ | intro ].
+
+     { (* Filter *)
+       unfold FilterMethod_Count.
+       repeat lazymatch goal with
+              | [  |- refine (if _ then _ else _) _ ] => eapply refine_If_Then_Else
+              | [  |- context[UnConstrQuery_In] ] => idtac
+              | _ => higher_order_reflexivity
+              end.
+
+       Transparent OutgoingToRule OutgoingToRule' OutgoingRule.
+       Hint Unfold OutgoingToRule OutgoingToRule' OutgoingRule : iptables.
+
+       repeat (autounfold with iptables; cbn).
+
+       etransitivity; [ setoid_rewrite refine_UnConstrQuery_In | ].
+       { reflexivity. }
+       { intro.
+         etransitivity; [apply refine_Query_Where_Cond | ].
+         { autorewrite with iptables.
+           repeat match goal with
+                  | _ => rewrite and_assoc
+                  | [  |- context[chain_beq ?x ?y = true /\ ?z] ] => rewrite (and_comm (chain_beq x y = true) z)
+                  end.
+           rewrite <- !and_assoc.
+           reflexivity. }
+         { higher_order_reflexivity. } }
+
+       implement_Query IndexUse createEarlyTerm createLastTerm
+       IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
+       simplify with monad laws.
+
+       simpl; repeat first [ setoid_rewrite refine_bind_unit
+                           | setoid_rewrite refine_bind_bind ].
+       apply refine_bind; [ reflexivity | intro; simpl ].
+       repeat rewrite ?map_length, ?app_nil_r.
+       higher_order_reflexivity. }
+
+     { (* Insertion *)
+       unfold mytotup; simpl.
+       etransitivity.
+       insertion IndexUse createEarlyTerm createLastTerm IndexUse_dep createEarlyTerm_dep createLastTerm_dep.
+       simplify with monad laws.
+       higher_order_reflexivity. }
+
+     simpl.
+     subst H.
+     higher_order_reflexivity.
+
+   + Implement_Bags BuildEarlyBag BuildLastBag.
+Defined.
+
+Definition GuardImpl :=
+  Eval simpl in projT1 SharpenNoIncomingFilter.
+
+Definition guard_init : ComputationalADT.cRep GuardImpl :=
+  Eval simpl in (CallConstructor GuardImpl "Init").
+
+Definition guard_process_packet (bs: input) (rep: ComputationalADT.cRep GuardImpl) : (_ * option result) :=
+  Eval simpl in CallMethod GuardImpl "Filter" rep bs.
