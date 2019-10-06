@@ -3,6 +3,8 @@ type idx_t = int
 let zero _ = 0
 let succ (_, n) = Pervasives.succ n
 
+let idx_to_N _ n = n
+
 type 'a storage_t =
   { version: int;
     data: 'a array;

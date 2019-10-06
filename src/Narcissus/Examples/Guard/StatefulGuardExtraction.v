@@ -43,4 +43,6 @@ Extraction Inline
            StatefulGuard.ADTImplMethod4
            StatefulGuard.ADTImplMethod5.
 
+Extract Inlined Constant IPTables.N_of_fin => "ArrayVector.idx_to_N".
+
 Extraction "FiatGuard" guard_init guard_process_packet.
