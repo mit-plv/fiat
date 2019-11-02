@@ -220,25 +220,30 @@ EXAMPLES_UNMADE_VO := \
 EXTRACTION_UNMADE_VO := \
 	src/CertifiedExtraction/Benchmarks/DNS.vo \
 
+GUARD_VO := \
+	src/Narcissus/Examples/Guard/IPTables.vo \
+	src/Narcissus/Examples/Guard/IPTablesPorts.vo \
+	src/Narcissus/Examples/Guard/PacketFiltersLemmas.vo \
+	src/Narcissus/Examples/Guard/DropFields.vo \
+	src/Narcissus/Examples/NetworkStack/TCP_Packet.vo \
+	src/Narcissus/Examples/NetworkStack/UDP_Packet.vo \
+	src/Narcissus/Examples/NetworkStack/IPv4Header.vo
+
 NARCISSUS_EXAMPLES_VO := \
-	src/Narcissus/Examples/IPTables.vo \
-	src/Narcissus/Examples/IPTablesPorts.vo \
-	src/Narcissus/Examples/ByteAlignedExample.vo \
 	src/Narcissus/Examples/ICMP_Packet.vo \
+	src/Narcissus/Examples/ByteAlignedExample.vo \
 	src/Narcissus/Examples/IntExample.vo \
 	src/Narcissus/Examples/NetworkStack/ARPPacket.vo \
 	src/Narcissus/Examples/NetworkStack/EthernetFrame.vo \
 	src/Narcissus/Examples/NetworkStack/EthernetHeader.vo \
 	src/Narcissus/Examples/NetworkStack/Fiat4Mirage.vo \
-	src/Narcissus/Examples/NetworkStack/TCP_Packet.vo \
-	src/Narcissus/Examples/NetworkStack/UDP_Packet.vo \
-	src/Narcissus/Examples/NetworkStack/IPv4Header.vo \
 	src/Narcissus/Examples/DNS/DNSPacket.vo \
 	src/Narcissus/Examples/DNS/DnsOpt.vo \
 	src/Narcissus/Examples/DNS/RRecordTypes.vo \
 	src/Narcissus/Examples/DNS/SimpleDNSPacket.vo \
 	src/Narcissus/Examples/DNS/SimpleDnsOpt.vo \
-	src/Narcissus/Examples/DNS/SimpleRRecordTypes.vo
+	src/Narcissus/Examples/DNS/SimpleRRecordTypes.vo \
+	$(GUARD_VO)
 
 NARCISSUS_UNMADE_VO := \
 	src/Narcissus/Examples/Toy.vo \
@@ -291,6 +296,7 @@ examples: $(EXAMPLES_VO)
 bedrock: $(BEDROCK_VO)
 narcissus: bedrock $(NARCISSUS_VO)
 narcissus-examples: $(NARCISSUS_EXAMPLES_VO)
+guard: $(GUARD_VO)
 
 fiat-quick: $(addsuffix .vio,$(basename $(FIAT_VO))) $(TACTICS_TARGETS)
 fiat-core-quick: $(addsuffix .vio,$(basename $(FIAT_CORE_VO))) $(TACTICS_TARGETS)

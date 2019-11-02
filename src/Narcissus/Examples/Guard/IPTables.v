@@ -12,23 +12,104 @@ Require Import Fiat.Narcissus.Examples.Guard.Core.
 Inductive chain := INPUT | FORWARD | OUTPUT.
 Scheme Equality for chain.
 
+Record ipv4_input_pkt :=
+  { ipv4_len : N;
+    ipv4_id : N;
+    ipv4_df : bool;
+    ipv4_mf : bool;
+    ipv4_fragment_offset : N;
+    ipv4_ttl : N;
+    ipv4_protocol : N;
+    ipv4_source : N;
+    ipv4_dest : N }.
+
+Definition N_of_fin {n} (f: Fin.t n) :=
+  N.of_nat (proj1_sig (Fin.to_nat f)).
+
+Definition ipv4_input_pkt_of_pkt pkt :=
+  {| ipv4_len := wordToN (pkt.(TotalLength));
+     ipv4_id := wordToN (pkt.(ID));
+     ipv4_df := pkt.(DF);
+     ipv4_mf := pkt.(MF);
+     ipv4_fragment_offset := wordToN (pkt.(FragmentOffset));
+     ipv4_ttl := wordToN (pkt.(TTL));
+     ipv4_protocol := N_of_fin pkt.(Protocol);
+     ipv4_source := wordToN (pkt.(SourceAddress));
+     ipv4_dest := wordToN (pkt.(DestAddress)) |}.
+
+Record tcp_input_pkt :=
+  { tcp_source_port : N;
+    tcp_dest_port : N;
+    tcp_seq_num : N;
+    tcp_ack_num : N;
+    tcp_ns : bool; (* ECN-nonce concealment protection flag *)
+    tcp_cwr : bool; (* Congestion Window Reduced (CWR) flag *)
+    tcp_ece : bool; (* ECN-Echo flag *)
+    tcp_ack : bool; (* Acknowledgment field is significant flag *)
+    tcp_psh : bool; (* Push function flag *)
+    tcp_rst : bool; (* Reset the connection flag *)
+    tcp_syn : bool; (* Synchronize sequence numbers flag *)
+    tcp_fin : bool; (* No more data from sender flag*)
+    tcp_windowsize : N;
+    tcp_payload : { n : _ & ByteBuffer.t n }}.
+
+Definition tcp_input_pkt_of_pkt pkt :=
+  {| tcp_source_port := wordToN pkt.(SourcePort);
+     tcp_dest_port := wordToN pkt.(DestPort);
+     tcp_seq_num := wordToN pkt.(SeqNumber);
+     tcp_ack_num := wordToN pkt.(AckNumber);
+     tcp_ns := pkt.(NS);
+     tcp_cwr := pkt.(CWR);
+     tcp_ece := pkt.(ECE);
+     tcp_ack := pkt.(ACK);
+     tcp_psh := pkt.(PSH);
+     tcp_rst := pkt.(RST);
+     tcp_syn := pkt.(SYN);
+     tcp_fin := pkt.(FIN);
+     tcp_windowsize := wordToN pkt.(WindowSize);
+     tcp_payload := pkt.(Payload) |}.
+
+Record udp_input_pkt :=
+  { udp_source_port : N;
+    udp_dest_port : N;
+    udp_payload : { n : _ & ByteBuffer.t n } }.
+
+Definition udp_input_pkt_of_pkt pkt :=
+  {| udp_source_port := wordToN pkt.(UDP_Packet.SourcePort);
+     udp_dest_port := wordToN pkt.(UDP_Packet.DestPort);
+     udp_payload := pkt.(UDP_Packet.Payload) |}.
+
+Inductive transport_layer_input :=
+| TCPInput (pkt: tcp_input_pkt)
+| UDPInput (pkt: udp_input_pkt).
+
 (* The guard's filter functions take a decoded packet and a chain
    identifier as input.  *)
 Record input :=
-  { in_ip4: option IPv4_Packet;
-    in_tcp: option TCP_Packet;
-    in_udp: option UDP_Packet;
+  { in_ip4: ipv4_input_pkt;
+    in_tsp: transport_layer_input;
     in_chn: chain }.
 
-Definition input_of_bytes (chn: chain) (bs: bytes) :=
-  let opt_hdr := ipv4_decode bs in
-  {| in_ip4 := opt_hdr;
-     in_tcp := Common.option_bind (fun hdr => tcp_decode hdr bs) opt_hdr;
-     in_udp := Common.option_bind (fun hdr => udp_decode hdr bs) opt_hdr;
-     in_chn := chn |}.
+Definition input_of_bytes (chn: chain) (bs: bytes) : option input :=
+  match ipv4_decode bs with
+  | Some ip4 =>
+    let ip4_in := ipv4_input_pkt_of_pkt ip4 in
+    match tcp_decode ip4 bs with
+    | Some tcp => Some {| in_ip4 := ip4_in;
+                         in_tsp := TCPInput (tcp_input_pkt_of_pkt tcp);
+                         in_chn := chn |}
+    | None => match udp_decode ip4 bs with
+             | Some udp => Some {| in_ip4 := ip4_in;
+                                  in_tsp := UDPInput (udp_input_pkt_of_pkt udp);
+                                  in_chn := chn |}
+             | None => None
+             end
+    end
+  | None => None
+  end.
 
-(* Addresses are represented as machine words. *)
-Definition address := word 32.
+(* Addresses are represented as N. *)
+Definition address := N.
 
 (* Conditions are the basic blocks of rules. *)
 (* FIXME: This should use props instead of bools *)
@@ -71,7 +152,7 @@ Definition rule_of_invocations (invs: list invocation) : rule :=
 Definition policy_of_invocations (ch: chain) (invs: list invocation) (default: result) : result :=
   fold_left (fun acc inv => match inv with
                          | Rule r => acc
-                         | Policy ch' p => if chain_beq ch' ch then p else acc
+                         | Policy ch' p => if chain_beq ch ch' then p else acc
                          end) invs default.
 
 (* Usual boolean operators can be lifted to conditions: *)
@@ -101,29 +182,31 @@ Definition invocation_of_condition (c: condition input) (r: result) :=
 
 (* Check if we're running in a given chain *)
 Definition cond_chain (c: chain) : condition chain :=
-  fun chn => chain_beq c chn.
+  fun chn => chain_beq chn c.
 
 Record address_spec :=
   { saddr: address;
-    smask: word 32 }.
+    smask: option N }.
 
 (* Check if an address is in a subnet: *)
 Definition match_address (spec: address_spec) (addr: address) : bool :=
-  weqb (addr ^& spec.(smask))
-       (spec.(saddr) ^& spec.(smask)).
+  match spec.(smask) with
+  | Some mask => N.eqb (N.land addr mask) (N.land spec.(saddr) mask)
+  | None => N.eqb addr spec.(saddr)
+  end.
 
 Delimit Scope addr_scope with addr.
 
 (* Check if the packet's source address is in a subnet *)
 Definition cond_srcaddr (spec: address_spec)
-  : condition IPv4_Packet :=
-  fun pkt => match_address spec pkt.(SourceAddress).
+  : condition ipv4_input_pkt :=
+  fun pkt => match_address spec pkt.(ipv4_source).
 Arguments cond_srcaddr spec%addr.
 
 (* Check if the packet's destination address is in a subnet *)
 Definition cond_dstaddr (spec: address_spec)
-  : condition IPv4_Packet :=
-  fun pkt => match_address spec pkt.(DestAddress).
+  : condition ipv4_input_pkt :=
+  fun pkt => match_address spec pkt.(ipv4_dest).
 Arguments cond_dstaddr spec%addr.
 
 Require Import Coq.Vectors.Vector.
@@ -131,29 +214,26 @@ Import VectorNotations.
 
 (* Check if the packet encapsulates a given protocol *)
 Definition cond_proto (proto: EnumType ["ICMP"; "TCP"; "UDP"])
-  : condition IPv4_Packet :=
-  fun pkt => Fin.eqb pkt.(Protocol) proto.
+  : condition ipv4_input_pkt :=
+  fun pkt => N.eqb pkt.(ipv4_protocol) (N_of_fin proto).
 
-Scheme Equality for option.
-
-Definition tcp_or_udp {A} ftcp fudp i : option A :=
-  match i.(in_tcp), i.(in_udp) with
-  | Some p, _ => Some p.(ftcp)
-  | _, Some p => Some p.(fudp)
-  | None, None => None
+Definition tcp_or_udp {A} ftcp fudp i : A :=
+  match i.(in_tsp) with
+  | TCPInput pkt => pkt.(ftcp)
+  | UDPInput pkt => pkt.(fudp)
   end.
 
 (* Filter by TCP or UDP source port *)
-Definition cond_srcport (port: word 16)
+Definition cond_srcport port
   : condition input :=
-  let fn := tcp_or_udp TCP_Packet.SourcePort UDP_Packet.SourcePort in
-  fun pkt => option_beq _ (@weqb 16) pkt.(fn) (Some port).
+  let fn := tcp_or_udp tcp_source_port udp_source_port in
+  fun pkt => N.eqb pkt.(fn) port.
 
 (* Filter by TCP or UDP destination port *)
-Definition cond_dstport (port: word 16)
+Definition cond_dstport port
   : condition input :=
-  let fn := tcp_or_udp TCP_Packet.DestPort UDP_Packet.DestPort in
-  fun pkt => option_beq _ (@weqb 16) pkt.(fn) (Some port).
+  let fn := tcp_or_udp tcp_dest_port udp_dest_port in
+  fun pkt => Neqb pkt.(fn) port.
 
 (** The following adds syntax for these conditions: **)
 
@@ -177,57 +257,56 @@ Notation "cf '-A' c" :=
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--protocol' proto" :=
-  (and_cf cf (lift_condition_opt in_ip4 (cond_proto (```proto))))
+  (and_cf cf (lift_condition in_ip4 (cond_proto (```proto))))
     (at level 41, left associativity) : iptables_scope.
 
-Definition mask_of_nat (m: nat) : word (m + (32 - m)) :=
-    wnot (@zext m (wones m) (32 - m)).
+Definition mask_of_nat (m: nat) : N :=
+  N.shiftl (N.ones (N.of_nat m)) (32 - N.of_nat m)%N.
+(* Compute (NToWord 32 (mask_of_nat 5)). *)
 
-(* Definition addr_tuple := (N * N * N * N)%type. *)
-
-(* Coercion addr_of_tuple (tup: addr_tuple) : word 32 := *)
-(*   let '(uuuu, uuu, uu, u) := tup in *)
-(*   NToWord 32 (uuuu * (Npow2 24) + uuu * (Npow2 16) + uu * (Npow2 8) + u). *)
+(* Lemma wand_full_mask: *)
+(*   forall w: word 32, (wand w (mask_of_nat 32)) = w. *)
+(* Proof. *)
+(*   intros. *)
+(*   rewrite wand_comm. *)
+(*   apply (@wand_unit 32 w). *)
+(* Qed. *)
 
 Coercion addr_spec_of_N (n: N) : address_spec :=
-  {| saddr := NToWord 32 n;
-     smask := wones 32 |}.
+  {| saddr := n;
+     smask := None |}.
 
 Notation "addr / mask" :=
-  {| saddr := NToWord 32 addr;
-     smask := mask_of_nat mask |}
+  {| saddr := addr;
+     smask := Some (mask_of_nat mask) |}
     (at level 40, left associativity, format "addr / mask")
   : addr_scope.
 
 Notation "cf '--source' addr" :=
-  (and_cf cf (lift_condition_opt in_ip4 (cond_srcaddr addr%addr)))
+  (and_cf cf (lift_condition in_ip4 (cond_srcaddr addr%addr)))
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--destination' addr" :=
-  (and_cf cf (lift_condition_opt in_ip4 (cond_dstaddr addr%addr)))
+  (and_cf cf (lift_condition in_ip4 (cond_dstaddr addr%addr)))
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--source-port' port" :=
-  (and_cf cf (cond_srcport (NToWord 16 port%N)))
+  (and_cf cf (cond_srcport port%N))
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '--destination-port' port" :=
-  (and_cf cf (cond_dstport (NToWord 16 port%N)))
+  (and_cf cf (cond_dstport port%N))
     (at level 41, left associativity) : iptables_scope.
 
 Notation "cf '-j' result" :=
   (invocation_of_condition cf.(cf_cond) result)
     (at level 41, left associativity) : iptables_scope.
 
-Notation "n * m" :=
+Notation "n ' m" :=
   ((n * (N.of_nat 256) + m)%N)
-    (at level 40, format "n * m", left associativity)
+    (at level 38, format "n ' m", left associativity)
   : addr_scope.
-
-(* Notation "'ipv4:' a : b : c : d" := : iptables *)
-(*   (NToWord 32 (a * (Npow2 24) + b * (Npow2 16) + c * (Npow2 8) + d)) *)
-(*     (at level 38, left associativity) *)
-(*   : addr_scope. *)
+Bind Scope addr_scope with N.
 
 Notation "cf !" :=
   {| cf_cond := cf.(cf_cond);

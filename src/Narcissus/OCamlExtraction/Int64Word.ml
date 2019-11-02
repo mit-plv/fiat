@@ -125,6 +125,12 @@ let wordToNat _ w =
 let natToWord _ (n: int) =
   Int64.of_int n
 
+let wordToN _ w =
+  w
+
+let nToWord _ (n: int) =
+  n
+
 let wzero _ =
   Int64.zero
 

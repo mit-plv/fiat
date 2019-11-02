@@ -88,10 +88,10 @@ Definition fiat_ipv4_encode {sz} :=
 
 Definition fiat_tcp_encode {sz} v srcAddress dstAddress tcpLength :=
   WrapEncoder sz (fun sz v pkt => @TCP_encoder_impl srcAddress dstAddress tcpLength pkt sz v) v.
-Definition fiat_tcp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) tcpLength :=
+Definition fiat_tcp_decode {sz} v (srcAddress dstAddress: ByteBuffer.t 4) tcpLength :=
   WrapDecoder sz (@TCP_decoder_impl srcAddress dstAddress tcpLength) v.
 
 Definition fiat_udp_encode {sz} v srcAddress dstAddress udpLength :=
   WrapEncoder sz (fun sz v pkt => @UDP_encoder_impl srcAddress dstAddress udpLength pkt sz v) v.
-Definition fiat_udp_decode {sz} v (srcAddress dstAddress: Vector.t (word 8) 4) (udpLength: word 16) :=
+Definition fiat_udp_decode {sz} v (srcAddress dstAddress: ByteBuffer.t 4) (udpLength: word 16) :=
   WrapDecoder sz (@UDP_decoder_impl srcAddress dstAddress udpLength) v.
