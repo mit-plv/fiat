@@ -95,6 +95,11 @@ EXPECTED_EXT:=.v811
 ML_DESCRIPTION := "Coq v8.11"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+ifneq (,$(filter 8.12%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v812
+ML_DESCRIPTION := "Coq v8.12"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := mlg
 else
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
@@ -106,6 +111,7 @@ ML4_OR_MLG := ml4
 else
 ifdef COQ_VERSION # if not, we're just going to remake the relevant Makefile to include anyway, so we shouldn't error
 $(error Unrecognized Coq version $(COQ_VERSION))
+endif
 endif
 endif
 endif

@@ -7,6 +7,12 @@ matrix:
     - dist: trusty
       env: COQ_VERSION="master" TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-master-daily"
     - dist: trusty
+      env: COQ_VERSION="v8.11"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.11-daily"
+    - dist: trusty
+      env: COQ_VERSION="v8.10"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.10-daily"
+    - dist: trusty
+      env: COQ_VERSION="v8.9"   TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.9-daily"
+    - dist: trusty
       env: COQ_VERSION="v8.8"   TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.8-daily"
     - dist: trusty
       env: COQ_VERSION="v8.7"   TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.7-daily"
