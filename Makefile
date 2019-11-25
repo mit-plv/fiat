@@ -44,6 +44,7 @@ SUPER_FAST_TARGETS += submodule-update
 Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
 STRICT_COQDEP ?= 1
+INSTALLDEFAULTROOT?=Fiat
 
 UPDATE_COQPROJECT = yes # always update _CoqProject, since we sometimes switch between ml4 and mlg
 EXTRA_PIPE_SED_FOR_COQPROJECT = | sed s'/\.@ML4_OR_MLG@/.$(ML4_OR_MLG)/g'
