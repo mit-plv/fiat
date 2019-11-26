@@ -96,6 +96,7 @@ EXPECTED_EXT:=.v811
 ML_DESCRIPTION := "Coq v8.11"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+else
 ifneq (,$(filter 8.12%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v812
 ML_DESCRIPTION := "Coq v8.12"
