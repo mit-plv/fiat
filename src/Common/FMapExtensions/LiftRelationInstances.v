@@ -691,7 +691,7 @@ Module FMapExtensionsLiftRelationInstances_fun (E: DecidableType) (Import M: WSf
                     ==> iffR)
                  (lift_relation_hetero R defaultA defaultB)).
     Local Notation inst lem :=
-      (@lem
+      (lem
          _ _ _
          is_true is_true (fun x => x)
          _ _ _ _ _ _
