@@ -114,7 +114,7 @@ Section i3list.
 End i3list.
 
 Arguments i3cons [_ _ _ _ _ _ _ _] _ _.
-Arguments i3nil [_ _ _].
+Arguments i3nil {_ _ _}.
 Arguments i3th [_ _ _ _ _ _] _ _.
 
 Section i3list_replace.

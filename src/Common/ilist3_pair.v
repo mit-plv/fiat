@@ -113,5 +113,5 @@ Section ilist3_pair.
 End ilist3_pair.
 
 Arguments icons3_pair [_ _ _ _ _ _ _ _ _ _ _ ] _ _.
-Arguments inil3_pair [_ _ _ _ ].
+Arguments inil3_pair {_ _ _ _ }.
 Arguments ith3_pair [_ _ _ _ _ _ _ _] _ _.

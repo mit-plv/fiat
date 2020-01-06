@@ -156,5 +156,5 @@ Proof.
 Qed.
 
 Arguments i3cons2 [_ _ _ _ _ _ _ _] _ _.
-Arguments i3nil2 [_ _ _].
+Arguments i3nil2 {_ _ _}.
 Arguments i3th2 [_ _ _ _ _ _] _ _.
