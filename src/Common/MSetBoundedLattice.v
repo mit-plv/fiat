@@ -74,7 +74,7 @@ Module MSetBoundedLatticeOn (E: OrderedType) (Import M: SetsOn E).
           reflexivity. }
         { lazymatch type of IHxs with
           | context[E.eq ?x ?y]
-            => assert (~E.eq x y) by (intro; rename x into x'; setoid_subst x'; firstorder)
+            => assert (~E.eq x y) by (intro; rename x into x'; setoid_subst x'; firstorder auto with crelations)
           end.
           destruct_head and.
           destruct_head or; [ solve [ split; eauto ] | ].
