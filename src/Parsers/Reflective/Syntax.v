@@ -237,7 +237,7 @@ End args.
 Section term.
   Context (var : TypeCode -> Type).
 
-  Inductive RLiteralConstructor : TypeCode -> Set :=
+  Inductive RLiteralConstructor : TypeCode -> Type :=
   | Rpair {A B : SimpleTypeCode} : RLiteralConstructor (A --> B --> A * B)
   | RS : RLiteralConstructor (cnat --> cnat)
   | RO : RLiteralConstructor cnat
@@ -280,7 +280,7 @@ Section term.
   | Rsplit_string_for_production
     : RLiteralNonConstructor (cnat * (cnat * cnat) --> cnat --> cnat --> (clist cnat)).*)
 
-  Inductive RLiteralTerm (T : TypeCode) : Set :=
+  Inductive RLiteralTerm (T : TypeCode) : Type :=
   | RLC (_ : RLiteralConstructor T)
   | RLNC (_ : RLiteralNonConstructor T).
 
