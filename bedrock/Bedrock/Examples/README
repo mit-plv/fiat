@@ -1,0 +1,45 @@
+Here lie some fascinating example programs and their verifications.
+
+======================
+BONA FIDE CASE STUDIES
+======================
+
+SinglyLinkedList: is-null, length, rev, and append
+Malloc: a naive memory allocator, used by the rest of the case studies
+Sets: the finite set ADT, implemented by:
+  ListSet: ...using unsorted lists
+  TreeSet: ...using binary search trees
+Bags: the bag ADT, implemented by:
+  Queue: ...using a linked list to provide a FIFO interface
+Memoize: an ADT that optimizes use of a stateful function (passed as a parameter at runtime) by caching results
+
+==========================
+SOME MACRO IMPLEMENTATIONS
+==========================
+
+Lambda: anonymous local functions
+Conditional: 'if..then..else' with complex Boolean conditionals
+Wrap: embodies Hoare logic's rule of consequence as a macro combinator
+StreamParse: ML-style pattern matching for word arrays
+ArrayQuery: a sort of array comprehension with compile-time optimization based on analyzing the test expression
+
+============================================
+PERFORMANCE TESTING OF COMPILED BEDROCK CODE
+============================================
+
+See subdirectory 'comparison'.
+
+================
+REGRESSION TESTS
+================
+
+LemmaTests: proving some simple implications between separation logic assertions
+Baby: some very basic programs that don't use separation logic explicitly
+TrivialMem: a tiny step toward using separation logic and memory operations
+TrivialMem2: another tiny step
+Indir: let's access a pointer through a pointer!
+Factorial: speaks for itself
+Swap: let's swap the values in two memory addresses!
+TrivialArray: array read and write functions, plus incrementing every cell of an array
+Pair: a very basic stateful ADT: pairs of words, with read and write methods
+

@@ -1,0 +1,5 @@
+ CFLAGS := -m32
+LDFLAGS := -m32
+ASFLAGS := --32
+
+RosMaster: RosMaster.o sys.o driver.o

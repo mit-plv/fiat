@@ -1,0 +1,16 @@
+Performance comparison of 4 implementations of an example inspired by a server doing database queries.
+
+- A conventional C implementation (winds up in c.exe)
+- A first-order OCaml implementation (winds up in ocaml.exe)
+- A higher-order OCaml implementation (winds up in ocaml_nice.exe)
+- A (verified) Bedrock implementation (winds up in bedrock.exe)
+
+To build, run a command line like the following:
+   DATA=100000 CMD=200 make
+where the parameters set how large to make the "database" and how many queries to perform on it, respectively.
+
+Beware: the first time this command is run, it needs to do verification of the Bedrock program,
+which runs for about an hour on my workstations.
+
+Beware #2: the Bedrock compilation process generates AMD64 assembly, so you must be using
+a platform that can run such code.

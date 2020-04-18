@@ -1,0 +1,6 @@
+libbrtos.a: bedrock.o sys.o driver.o rtos.o
+	$(AR) cr $@ $^
+
+# This is an example program.
+rtos_app: libbrtos.a bedrock.h rtos_app.c
+	$(CC) -L. -lbrtos rtos_app.c -o rtos_app

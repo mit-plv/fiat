@@ -1,0 +1,25 @@
+Verified compositional compiler from Cito to Bedrock.
+
+(1) Build instructions:
+
+(1.1) First, build the Bedrock framework and the Cito compiler (see ../../README) by running from ../.. :
+  make native
+  make cito
+
+(1.2) To build the example programs to native executables (only under AMD64 Linux), run from . :
+  make examples/<NAME>.exe
+
+For example:
+  make examples/CountUnique.exe
+
+(2) File Descriptions:
+
+Syntax.v :		The syntax of the source language Cito. See paper Section 2.
+Semantics.v :		Big-step operational semantics of Cito. See paper Section 2.
+CompileStmt.v :		The core statement compiler. See paper Section 4 & 5 & 6.
+Inv.v :	      		Definitions of Inv, funcsOk. See paper Section 4 & 6.
+Link.v :	   	Module compiler/bundler. See paper Section 7.
+optimizers/ConstFolding.v :	The constant folding optimizer. See paper Section 8.
+optimizers/ElimDead.v :   	The dead code elimination optimizer. See paper Section 8.
+examples/CountUnique.v :	The CountUnique example. See paper Section 1 & 8.
+examples/FactorialRecur.v :	An recursive factorial example.

@@ -1,0 +1,16 @@
+For a nice web server demo, set environment variable PAGES to the path
+of a directory whose contents you want to serve (recursively) as
+static web files.  Then, run the following, ideally with parallel
+'make'.  Expect the whole build process to last several hours.  (And
+all this has only been tested in amd64 Linux and definitely won't work
+on other hardware ISAs.)
+
+make -C ../src
+# Base Bedrock library
+make
+# Platform examples
+make tests/pages.gen.s
+# Encode static content into an assembly file.
+make tests/WebServer.exe
+# Build server executable.
+# Now the server is accessible on port 8080 of localhost.

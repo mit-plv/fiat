@@ -1,6 +1,0 @@
-Google for worklist for dataflow analysis
-
-Write a tactic that handles reasoning about empty strings
-
-Thread the invariant through the completeness proof, assuming that the split state will only contain non-proofy bits
-Provide a simply typed interface for splitting algorithms (no minimal parse trees mentioned, too)

@@ -1,0 +1,6 @@
+Here's a release of the "Bedrock Real-Time Operating System" for the HACMS
+ground team.  See `rtos_app.c' for an example application, `Makefile' for build
+procedure, and `bedrock.h' for API documentation.
+
+Note that there are separate releases for 32-bit and 64-bit x86, differing
+only in the .s assembly files.
