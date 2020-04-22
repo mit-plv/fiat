@@ -2,30 +2,21 @@ language: generic
 
 sudo: required
 
+dist: xenial
+
 matrix:
   include:
-    - dist: xenial
-      env: COQ_VERSION="master" TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-master-daily"
-    - dist: xenial
-      env: COQ_VERSION="v8.11"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.11-daily"
-    - dist: xenial
-      env: COQ_VERSION="v8.10"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.10-daily"
-    - dist: xenial
-      env: COQ_VERSION="v8.9"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.9-daily"
-    - dist: xenial
-      env: COQ_VERSION="v8.8"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib camlp5"                     PPA="ppa:jgross-h/coq-8.8-daily"
-    - dist: xenial
-      env: COQ_VERSION="v8.7"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib camlp5"                     PPA="ppa:jgross-h/coq-8.7-daily"
-    - dist: xenial
-      env: COQ_VERSION="v8.6"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib camlp5"                     PPA="ppa:jgross-h/coq-8.6-daily"
-    - dist: xenial
-      env: COQ_VERSION="8.8.0"  TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq-8.8.0 libcoq-8.8.0-ocaml libcoq-8.8.0-ocaml-dev ocaml ocaml-findlib camlp5"    PPA="ppa:jgross-h/many-coq-versions"
-    - dist: xenial
-      env: COQ_VERSION="8.7.2"  TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq-8.7.2 libcoq-8.7.2-ocaml libcoq-8.7.2-ocaml-dev ocaml ocaml-findlib camlp5"    PPA="ppa:jgross-h/many-coq-versions"
-    - dist: xenial
-      env: COQ_VERSION="8.6.1"  TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq-8.6.1 libcoq-8.6.1-ocaml libcoq-8.6.1-ocaml-dev ocaml ocaml-findlib camlp5"    PPA="ppa:jgross-h/many-coq-versions"
-    - dist: xenial
-      env: COQ_VERSION="8.5pl3" TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev ocaml ocaml-findlib camlp5" PPA="ppa:jgross-h/many-coq-versions"
+    - env: COQ_VERSION="master" TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-master-daily"
+    - env: COQ_VERSION="v8.11"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.11-daily"
+    - env: COQ_VERSION="v8.10"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.10-daily"
+    - env: COQ_VERSION="v8.9"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.9-daily"
+    - env: COQ_VERSION="v8.8"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib camlp5"                     PPA="ppa:jgross-h/coq-8.8-daily"
+    - env: COQ_VERSION="v8.7"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib camlp5"                     PPA="ppa:jgross-h/coq-8.7-daily"
+    - env: COQ_VERSION="v8.6"   TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib camlp5"                     PPA="ppa:jgross-h/coq-8.6-daily"
+    - env: COQ_VERSION="8.8.0"  TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq-8.8.0 libcoq-8.8.0-ocaml libcoq-8.8.0-ocaml-dev ocaml ocaml-findlib camlp5"    PPA="ppa:jgross-h/many-coq-versions"
+    - env: COQ_VERSION="8.7.2"  TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq-8.7.2 libcoq-8.7.2-ocaml libcoq-8.7.2-ocaml-dev ocaml ocaml-findlib camlp5"    PPA="ppa:jgross-h/many-coq-versions"
+    - env: COQ_VERSION="8.6.1"  TARGETS="fiat-core parsers querystructures" FLAGS="PROFILE=1" COQ_PACKAGE="coq-8.6.1 libcoq-8.6.1-ocaml libcoq-8.6.1-ocaml-dev ocaml ocaml-findlib camlp5"    PPA="ppa:jgross-h/many-coq-versions"
+    - env: COQ_VERSION="8.5pl3" TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev ocaml ocaml-findlib camlp5" PPA="ppa:jgross-h/many-coq-versions"
 
 before_install:
   - if [ ! -z "$PPA" ]; then sudo add-apt-repository "$PPA" -y; fi
