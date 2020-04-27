@@ -2103,10 +2103,9 @@ Proof.
 Qed.
 
 Global Instance ByteString_RichMonoidOpt
-  : RichMonoidOpt ByteStringQueueMonoid :=
-  {
-  }.
+  : RichMonoidOpt ByteStringQueueMonoid.
 Proof.
+  constructor.
   abstract eauto using ByteString_enqueue_ByteString_inj.
 Defined.
 

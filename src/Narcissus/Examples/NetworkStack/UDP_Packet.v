@@ -111,8 +111,6 @@ Section UDP_Decoder.
 
 End UDP_Decoder.
 
-Print UDP_decoder_impl.
-
 (*Definition udp_packet :=
  {| SourcePort := natToWord 16 1; DestPort := natToWord 16 2;
     Payload := List.map (natToWord 8) [7; 8; 7; 8] |}.

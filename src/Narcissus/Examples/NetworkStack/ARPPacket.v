@@ -94,18 +94,17 @@ Definition ARP_Packet_OK (arp : ARPPacket) :=
 
 Arguments Vector.nth : simpl never.
 
-  (* Step One: Synthesize an encoder and a proof that it is correct. *)
-  Definition ARP_encoder :
-    CorrectAlignedEncoderFor ARPPacket_Format.
-  Proof.
-    synthesize_aligned_encoder.
-  Defined.
+(* Step One: Synthesize an encoder and a proof that it is correct. *)
+Definition ARP_encoder :
+  CorrectAlignedEncoderFor ARPPacket_Format.
+Proof.
+  synthesize_aligned_encoder.
+Defined.
 
-  (* Step Two: Extract the encoder function, and have it start encoding
-   at the      start of the provided ByteString [v]. *)
-  Definition ARP_encoder_impl {sz} v r :=
-    Eval simpl in (projT1 ARP_encoder sz v 0 r tt).
-  Print ARP_encoder_impl.
+(* Step Two: Extract the encoder function, and have it start encoding
+ at the start of the provided ByteString [v]. *)
+Definition ARP_encoder_impl {sz} v r :=
+  Eval simpl in (projT1 ARP_encoder sz v 0 r tt).
 
 (* Step Three: Synthesize a decoder and a proof that /it/ is correct. *)
 Definition ARP_Packet_Header_decoder

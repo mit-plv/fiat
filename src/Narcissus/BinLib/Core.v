@@ -1340,8 +1340,9 @@ Proof.
 Qed.
 
 Instance ByteString_MonoidUnitOpt
-  : MonoidUnitOpt ByteStringMonoid bool :=
-  {| T_measure f := 1;
+  : MonoidUnitOpt ByteStringMonoid bool.
+Proof.
+  refine {| T_measure f := 1;
      mappend_push_opt := ByteString_push;
      mappend_pop_opt := ByteString_pop;
      measure_push := ByteString_measure_push ;
@@ -1350,7 +1351,6 @@ Instance ByteString_MonoidUnitOpt
      mappend_push_step_opt := ByteString_mappend_push_step_opt;
      mappend_pop_opt_inj := ByteString_mappend_pop_opt_inj
   |}.
-Proof.
   - abstract eauto.
 Defined.
 
@@ -2314,19 +2314,18 @@ Proof.
 Qed.
 
 Instance ByteString_QueueMonoidOpt
-  : QueueMonoidOpt ByteStringQueueMonoid bool
-  :=
-  { B_measure f := 1;
-    enqueue_opt := ByteString_enqueue;
-    dequeue_opt := ByteString_dequeue;
-    measure_enqueue := length_ByteString_enqueue';
-    measure_dequeue_Some := ByteString_measure_dequeue_Some;
-    dequeue_mappend_opt := ByteString_dequeue_mappend_opt;
-    enqueue_mappend_opt := ByteString_enqueue_ByteString_enqueue_ByteString;
-    dequeue_head_opt := ByteString_dequeue_head_opt;
-    dequeue_None := ByteString_dequeue_None;
-    dequeue_opt_inj := ByteString_dequeue_opt_inj
-  }.
+  : QueueMonoidOpt ByteStringQueueMonoid bool.
 Proof.
+  refine (Build_QueueMonoidOpt _
+            (fun _ => 1) _
+            ByteString_enqueue
+            ByteString_dequeue
+            length_ByteString_enqueue'
+            ByteString_measure_dequeue_Some
+            ByteString_dequeue_mappend_opt
+            ByteString_enqueue_ByteString_enqueue_ByteString
+            ByteString_dequeue_head_opt
+            ByteString_dequeue_None
+            ByteString_dequeue_opt_inj).
   - abstract eauto.
 Defined.

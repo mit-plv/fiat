@@ -1,5 +1,7 @@
 Require Import Fiat.Narcissus.Examples.TutorialPrelude.
 
+Set Warnings "-local-declaration".
+
 (**
 The following section presents the Narcissus framework through a series of increasingly complex examples showcasing its main features.  Details are purposefuly omitted; they will be revealed in section N.  The end result is a moderately complex description for the packet format used by an indoor temperature sensor to report measurements to a smart home controller.
 **)

@@ -170,50 +170,50 @@ Section EthernetPacketDecoder.
             format_word ◦ constant wzero 24 ++ format_enum EtherTypeCodes ◦ EthType ++ empty_Format
             Or format_enum EtherTypeCodes ◦ EthType ++ empty_Format)
     (format_unused_word 16).
-    Proof.
-      unfold Prefix_Format, composeIf, Union_Format; intros.
-      rewrite unfold_computes in H.
-      destruct_ex; revert H; pattern x;
-        apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl;
-          econstructor; [intros | econstructor; intros; eauto].
-      Opaque natToWord.
-      + unfold Vector.nth in H; simpl in H.
-        unfold sequence_Format at 1 in H.
-        unfold Projection_Format, empty_Format,
-        Compose_Format, ComposeOpt.compose, Bind2 in H.
-        computes_to_inv.
-        rewrite unfold_computes in H; destruct_ex; split_and;
-          subst; eauto.
-        unfold format_nat, format_word in H0; computes_to_inv; subst.
-        injections; eexists _, _, _; intuition eauto.
-        unfold format_unused_word, Compose_Format.
-        apply unfold_computes; eexists _; intuition eauto;
-          try computes_to_econstructor.
-        apply unfold_computes; eauto.
-      + unfold Vector.nth in H; simpl in H.
-        unfold sequence_Format at 1 in H.
-        unfold Projection_Format, empty_Format,
-        Compose_Format, ComposeOpt.compose, Bind2 in H.
-        computes_to_inv.
-        rewrite unfold_computes in H; destruct_ex; split_and;
-          subst; eauto.
-        unfold format_enum, format_word in H0; computes_to_inv; subst.
-        injections; eexists _, _, _; intuition eauto.
-        unfold format_unused_word, Compose_Format.
-        apply unfold_computes; eexists _; intuition eauto;
-          try computes_to_econstructor.
-        apply unfold_computes; eauto.
-    Qed.
+  Proof.
+    unfold Prefix_Format, composeIf, Union_Format; intros.
+    rewrite unfold_computes in H.
+    destruct_ex; revert H; pattern x;
+      apply IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv; simpl;
+        econstructor; [intros | econstructor; intros; eauto].
+    Opaque natToWord.
+    + unfold Vector.nth in H; simpl in H.
+      unfold sequence_Format at 1 in H.
+      unfold Projection_Format, empty_Format,
+      Compose_Format, ComposeOpt.compose, Bind2 in H.
+      computes_to_inv.
+      rewrite unfold_computes in H; destruct_ex; split_and;
+        subst; eauto.
+      unfold format_nat, format_word in H0; computes_to_inv; subst.
+      injections; eexists _, _, _; intuition eauto.
+      unfold format_unused_word, Compose_Format.
+      apply unfold_computes; eexists _; intuition eauto;
+        try computes_to_econstructor.
+      apply unfold_computes; eauto.
+    + unfold Vector.nth in H; simpl in H.
+      unfold sequence_Format at 1 in H.
+      unfold Projection_Format, empty_Format,
+      Compose_Format, ComposeOpt.compose, Bind2 in H.
+      computes_to_inv.
+      rewrite unfold_computes in H; destruct_ex; split_and;
+        subst; eauto.
+      unfold format_enum, format_word in H0; computes_to_inv; subst.
+      injections; eexists _, _, _; intuition eauto.
+      unfold format_unused_word, Compose_Format.
+      apply unfold_computes; eexists _; intuition eauto;
+        try computes_to_econstructor.
+      apply unfold_computes; eauto.
+  Qed.
 
-    Lemma valid_packet_len_OK_good_Len
-      : lt packet_len (pow2 16).
-    Proof.
-      intros.
-      etransitivity; eauto.
-      rewrite <- (wordToNat_natToWord_idempotent 16 1501).
-      eapply wordToNat_bound.
-      simpl; eapply BinNat.N.ltb_lt; reflexivity.
-    Qed.
+  Lemma valid_packet_len_OK_good_Len
+    : lt packet_len (pow2 16).
+  Proof.
+    intros.
+    etransitivity; eauto.
+    rewrite <- (wordToNat_natToWord_idempotent 16 1501).
+    eapply wordToNat_bound.
+    simpl; eapply BinNat.N.ltb_lt; reflexivity.
+  Qed.
 
   Hint Extern 4 => eapply valid_packet_len_OK_good_Len : data_inv_hints.
 
@@ -239,5 +239,3 @@ Section EthernetPacketDecoder.
     Eval simpl in (projT1 EthernetHeader_decoder sz v 0 ()).
 
 End EthernetPacketDecoder.
-
-Print Ethernet_decoder_impl.

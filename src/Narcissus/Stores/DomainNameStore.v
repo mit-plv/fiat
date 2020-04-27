@@ -66,20 +66,20 @@ Section DomainNameCache.
 
   (* pointerT2Nat (Nat2pointerT (NPeano.div (wordToNat w) 8)) *)
 
-  Global Instance cacheAddNat : CacheAdd _ nat :=
-    {| addE ce n := (Ifopt (fst ce) as m Then
-                                         let n' := (wordToNat m) + n in
-                                         if Compare_dec.lt_dec n' (pow2 17)
-                                         then Some (natToWord _ n')
-                                         else None
-                                                Else None, snd ce);
-       addD cd n := (Ifopt (fst cd) as m Then
-                                         let n' := (wordToNat m) + n in
-                                         if Compare_dec.lt_dec n' (pow2 17)
-                                         then Some (natToWord _ n')
-                                         else None
-                                                Else None, snd cd) |}.
+  Global Instance cacheAddNat : CacheAdd _ nat.
   Proof.
+    refine {| addE ce n := (Ifopt (fst ce) as m Then
+                                                let n' := (wordToNat m) + n in
+                                                if Compare_dec.lt_dec n' (pow2 17)
+                                                then Some (natToWord _ n')
+                                                else None
+                                                       Else None, snd ce);
+              addD cd n := (Ifopt (fst cd) as m Then
+                                                let n' := (wordToNat m) + n in
+                                                if Compare_dec.lt_dec n' (pow2 17)
+                                                then Some (natToWord _ n')
+                                                else None
+                                                       Else None, snd cd) |}.
     simpl; intuition eauto; destruct a; destruct a0;
       simpl in *; eauto; try congruence.
     injections.
@@ -92,12 +92,12 @@ Section DomainNameCache.
   Global Instance : Query_eq pointerT :=
     {| A_eq_dec := pointerT_eq_dec |}.
 
-  Global Instance cachePeekDNPointer : CachePeek _ (option pointerT) :=
-    {| peekE ce := Ifopt (fst ce) as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None;
-       peekD cd := Ifopt (fst cd) as m Then Some
-                                       (Nat2pointerT (wordToNat (wtl (wtl (wtl m)))))
-                                       Else None |}.
+  Global Instance cachePeekDNPointer : CachePeek _ (option pointerT).
   Proof.
+    refine {| peekE ce := Ifopt (fst ce) as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None;
+              peekD cd := Ifopt (fst cd) as m Then Some
+                                              (Nat2pointerT (wordToNat (wtl (wtl (wtl m)))))
+                                              Else None |}.
     abstract (simpl; intros; intuition; rewrite H0; auto).
   Defined.
 

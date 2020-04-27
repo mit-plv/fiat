@@ -35,7 +35,7 @@ Record IPv4_Packet :=
   { TotalLength : word 16;
     ID : word 16;
     DF : bool; (* Don't fragment flag *)
-    MF : bool; (*  Multiple fragments flag *)
+    MF : bool; (* Multiple fragments flag *)
     FragmentOffset : word 13;
     TTL : word 8;
     Protocol : EnumType ["ICMP"; "TCP"; "UDP"];
@@ -45,7 +45,7 @@ Record IPv4_Packet :=
 
 (* Protocol Numbers from [RFC5237]*)
 Definition ProtocolTypeCodes : Vector.t (word 8) 3 :=
-  [WO~0~0~0~0~0~0~0~1; (* ICMP: 1*)
+  [WO~0~0~0~0~0~0~0~1;   (* ICMP: 1*)
      WO~0~0~0~0~0~1~1~0; (* TCP:  6*)
      WO~0~0~0~1~0~0~0~1  (* UDP:  17*)
   ].
@@ -95,7 +95,6 @@ Defined.
    at the start of the provided ByteString [v]. *)
 Definition IPv4_encoder_impl {sz} v r :=
   Eval simpl in (projT1 IPv4_encoder sz v 0 r tt).
-Print IPv4_encoder_impl.
 
 Ltac apply_new_combinator_rule ::=
   match goal with
@@ -139,7 +138,7 @@ Section BP.
     Eval compute in ByteBuffer.of_vector (Vector.map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;0;0;192;168;222;10;192;168;222;1;0;0;0;0]).
 End BP.
 
-(* An source version of a packet, different from binary packet above. *)
+(* A source version of a packet, different from binary packet above. *)
 Definition pkt :=
   {| TotalLength := WO~0~1~1~1~0~1~0~0~0~0~0~0~0~0~0~0;
      ID := wones _;
@@ -182,17 +181,18 @@ Eval compute in
         Else None.
 (* and it does! *)
 
-(* Some addition checksum sanity checks. *)
+(* Some additional checksum sanity checks. *)
 Compute
   match IPv4_decoder_impl bin_pkt with
   | Some (p, _, _) => Some ((wordToN p.(SourceAddress)), wordToN p.(DestAddress))
   | None => None
   end.
 
-Goal match AlignedIPChecksum.calculate_IPChecksum bin_pkt' 0 ()()  with
+Goal match AlignedIPChecksum.calculate_IPChecksum bin_pkt' 0 ()() with
      | Some (p, _, _) => p = bin_pkt
      | None => True
      end.
+Proof.
   reflexivity.
 Qed.
 
@@ -208,10 +208,11 @@ Definition pkt' := {|
                     DestAddress := WO~1~1~0~0~0~0~0~0~1~0~1~0~1~0~0~0~1~1~0~1~1~1~1~0~0~0~0~0~0~0~0~1;
                     Options := [] |}.
 
-Goal match IPv4_encoder_impl (initialize_Aligned_ByteString 24) pkt'  with
+Goal match IPv4_encoder_impl (initialize_Aligned_ByteString 24) pkt' with
      | Some (p, _, _) => p = bin_pkt
      | None => True
      end.
+Proof.
   compute.
   reflexivity.
 Qed.

@@ -85,7 +85,7 @@ Section AlignedFix.
                                                                                                                  (wf_lt_A a'))).
     eapply H; eauto.
     admit.
-  Qed.
+  Admitted.
 
   Lemma byte_align_Fix_encode_inv {A}
         (A_OK : A -> Prop)
@@ -155,6 +155,6 @@ Section AlignedFix.
     admit. (* works in 8.4: eapply H; eauto. *)
     admit. (* works in 8.4: rewrite Heqp; reflexivity.*)
     reflexivity.
-  Qed.
+  Admitted.
 
 End AlignedFix.
