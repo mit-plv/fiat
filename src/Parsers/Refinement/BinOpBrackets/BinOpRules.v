@@ -26,6 +26,7 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Export DisjointLemmas.Exports.
+Import ListNotations.
 
 Local Open Scope string_like_scope.
 
