@@ -1,6 +1,7 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List.
 Require Export Fiat.Parsers.StringLike.Core.
+Import ListNotations.
 
 Set Implicit Arguments.
 

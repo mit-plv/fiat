@@ -8,6 +8,7 @@ Require Import Coq.Lists.List
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.QueryStructure.Specification.Representation.Notations.
+Import ListNotations.
 
 (* A tuple is a heterogeneous list indexed by a heading. *)
 Definition RawTuple {heading : RawHeading} :=

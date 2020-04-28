@@ -1,5 +1,5 @@
 (** Refinement rules for disjoint rules *)
-Require Import Coq.omega.Omega.
+Require Import Coq.omega.Omega Coq.Lists.List.
 Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.StringLike.LastCharSuchThat.
@@ -12,6 +12,7 @@ Require Import Fiat.Parsers.Refinement.PossibleTerminalsSets.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Common.List.DisjointFacts.
 Export DisjointLemmas.Exports.
+Import ListNotations.
 
 Set Implicit Arguments.
 

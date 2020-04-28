@@ -1,11 +1,12 @@
 (** * Properties about Context Free Grammars *)
-Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Lists.List.
 Require Import Fiat.Common Fiat.Common.UIP.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 
 Set Implicit Arguments.
 
+Import ListNotations.
 Local Open Scope list_scope.
 
 Global Instance item_rect_Proper {Char T}
