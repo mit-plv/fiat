@@ -150,7 +150,7 @@ Global Program Instance nat_eq_Decidable {n m : nat} : Decidable (n = m) := {
 }.
 Obligation 1. t' beq_nat_true_iff. Qed.
 
-Global Program Instance le_Decidable {n m} : Decidable (le n m) := {
+Global Program Instance le_Decidable {n m} : Decidable (Nat.le n m) := {
   Decidable_witness := Compare_dec.leb n m
 }.
 Obligation 1. t' leb_iff. Qed.
