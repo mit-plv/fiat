@@ -103,6 +103,12 @@ ML_DESCRIPTION := "Coq v8.12"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
 else
+ifneq (,$(filter 8.13%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v813
+ML_DESCRIPTION := "Coq v8.13"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+ML4_OR_MLG := mlg
+else
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
 
@@ -117,6 +123,7 @@ EXPECTED_EXT:=.v812
 ML_DESCRIPTION := "Coq v8.12"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+endif
 endif
 endif
 endif
