@@ -195,7 +195,7 @@ Section might_be_empty.
     lazymatch goal with
     | [ p : related _ (lookup_state ?st ?nt) |- collapse_might_be_empty (lookup_state ?st ?nt') = true ]
       => change nt' with nt;
-           destruct (lookup_state st nt) as [|[]|] eqn:H
+           destruct (lookup_state) as [|[]|] eqn:H
     end; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       try specialize (p eq_refl);
@@ -216,7 +216,7 @@ Section might_be_empty.
     lazymatch goal with
     | [ p : related _ (lookup_state ?st ?nt) |- collapse_might_be_empty (lookup_state ?st ?nt') = true ]
       => change nt' with nt;
-           destruct (lookup_state st nt) as [|[]|] eqn:H
+           destruct (lookup_state) as [|[]|] eqn:H
     end; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       try specialize (p eq_refl);
