@@ -1,0 +1,6 @@
+[submodule "bedrock/etc/coq-scripts"]
+	path = bedrock/etc/coq-scripts
+	url = https://github.com/JasonGross/coq-scripts.git
+[submodule "fiat/etc/coq-scripts"]
+	path = fiat/etc/coq-scripts
+	url = https://github.com/JasonGross/coq-scripts.git
