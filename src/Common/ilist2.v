@@ -95,6 +95,27 @@ Section ilist2.
                prim_snd := ilist2_app (ilist2_tl il) il' |}
       end.
 
+  (* Split *)
+  Fixpoint ilist2_split {n} {As : Vector.t A n}
+    : forall {n'} {As' : Vector.t A n'},  ilist2 (As ++ As') -> ilist2 As * ilist2 As' :=
+      match As return
+            forall {n'} (As' : Vector.t A n'),
+              ilist2 (As ++ As') -> ilist2 As * ilist2 As' with
+      | [] =>
+        fun n' As' il =>  (inil2, il)
+      | a :: As'' =>
+        fun n' As' il =>
+          let '(il0, il1) := ilist2_split (ilist2_tl il) in
+          ({| prim_fst := ilist2_hd il; prim_snd := il0 |}, il1)
+      end.
+
+  Lemma split_app {n} {As : Vector.t A n} :
+    forall {n'} {As' : Vector.t A n'} (il: ilist2 As) (il': ilist2 As'),
+      ilist2_split (ilist2_app il il') = (il, il').
+  Proof.
+    induction As; cbn; destruct il; cbn; intros; rewrite ?IHAs; reflexivity.
+  Qed.
+
   (* Membership in an indexed list. *)
 
   Inductive ilist2_In {a : A} (b : B a)
