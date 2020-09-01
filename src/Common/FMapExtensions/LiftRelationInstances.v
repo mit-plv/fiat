@@ -441,25 +441,25 @@ Module FMapExtensionsLiftRelationInstances_fun (E: DecidableType) (Import M: WSf
     Local Notation instP lem
       := (inst lem Params3.iffP Params3.iffP_iff).
     Definition lift_relation_gen_hetero_Proper_Proper_subrelation_iffR
-      := inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_iffR).
+      := @inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_iffR).
     Definition lift_relation_gen_hetero_Proper_Proper_subrelation
-      := inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen).
+      := @inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen).
     Definition lift_relation_gen_hetero_Proper_Proper_subrelation_impl
-      := inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_impl).
+      := @inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_impl).
     Definition lift_relation_gen_hetero_Proper_Proper_subrelation_flip_impl
-      := inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_flip_impl).
+      := @inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_flip_impl).
     Definition lift_relation_gen_hetero_Proper_Proper_subrelation_iffP
-      := instP (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_iffP).
+      := @instP (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_iffP).
     Definition lift_relation_gen_hetero_homo_Proper_Proper_subrelation_iffR
-      := inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_iffR).
+      := @inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_iffR).
     Definition lift_relation_gen_hetero_homo_Proper_Proper_subrelation
-      := inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen).
+      := @inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen).
     Definition lift_relation_gen_hetero_homo_Proper_Proper_subrelation_impl
-      := inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_impl).
+      := @inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_impl).
     Definition lift_relation_gen_hetero_homo_Proper_Proper_subrelation_flip_impl
-      := inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_flip_impl).
+      := @inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_flip_impl).
     Definition lift_relation_gen_hetero_homo_Proper_Proper_subrelation_iffP
-      := inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_iffP).
+      := @inst (@lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen_iffP).
     Global Existing Instances
            lift_relation_gen_hetero_Proper_Proper_subrelation_iffR
            lift_relation_gen_hetero_Proper_Proper_subrelation
