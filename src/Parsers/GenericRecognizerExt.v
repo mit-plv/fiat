@@ -128,7 +128,7 @@ Section recursive_descent_parser.
       := parse_production'_for_ext _ _ (fun _ _ _ => eq_refl) _ _ _.
   End production.
 
-  Global Instance parse_production'_for_Proper
+  Global Instance parse_production'_for_Proper {len0 str}
     : Proper ((pointwise_relation _ (pointwise_relation _ (pointwise_relation _ eq)))
                 ==> (pointwise_relation _ (pointwise_relation _ (pointwise_relation _ (pointwise_relation _ eq))))
                 ==> eq
@@ -143,7 +143,7 @@ Section recursive_descent_parser.
       eauto with nocore.
   Qed.
 
-  Global Instance parse_production'_Proper
+  Global Instance parse_production'_Proper {len0 str}
     : Proper ((pointwise_relation _ (pointwise_relation _ (pointwise_relation _ eq)))
                 ==> eq
                 ==> eq
@@ -177,7 +177,7 @@ Section recursive_descent_parser.
     Qed.
   End productions.
 
-  Global Instance parse_productions'_Proper
+  Global Instance parse_productions'_Proper {str len0}
     : Proper ((pointwise_relation _ (pointwise_relation _ (pointwise_relation _ eq)))
                 ==> eq
                 ==> eq
@@ -215,7 +215,7 @@ Section recursive_descent_parser.
     Qed.
   End step.
 
-  Global Instance parse_nonterminal_step_Proper
+  Global Instance parse_nonterminal_step_Proper {str len0 valid_len}
     : Proper ((forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ (pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq)))))))
                 ==> eq
                 ==> eq
