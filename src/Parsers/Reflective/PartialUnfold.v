@@ -42,7 +42,7 @@ Section normalization_by_evaluation.
     := args_for (fun A => option (onelevelG A)).
 
   Section constantOfs.
-    Context (constantOf : forall {T} (t : Term var T), option (onelevelG T)).
+    Context (constantOf : forall T (t : Term var T), option (onelevelG T)).
 
     Definition constantOfs {T} (af : args_for (Term var) T) : args_for_onelevel T :=
       map_args_for constantOf af.
@@ -75,7 +75,7 @@ Section normalization_by_evaluation.
     args_for normalized_of.
 
   Section meanings.
-    Context (meaning : forall {T} (t : Term normalized_of T), normalized_of T).
+    Context (meaning : forall T (t : Term normalized_of T), normalized_of T).
 
     Definition meanings {T} (af : args_for (Term normalized_of) T) : arg_meanings_for T :=
       map_args_for meaning af.
