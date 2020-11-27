@@ -119,8 +119,8 @@ ML4_OR_MLG := ml4
 else
 ifdef COQ_VERSION # if not, we're just going to remake the relevant Makefile to include anyway, so we shouldn't error
 $(warning Unrecognized Coq version $(COQ_VERSION))
-EXPECTED_EXT:=.v812
-ML_DESCRIPTION := "Coq v8.12"
+EXPECTED_EXT:=.v813
+ML_DESCRIPTION := "Coq v8.13"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
 endif
