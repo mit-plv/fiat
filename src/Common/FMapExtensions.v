@@ -1469,7 +1469,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 
   Global Instance eq_key_elt_Equivalence {elt} : Equivalence (@eq_key_elt elt) | 100.
   Proof.
-    split; unfold eq_key_elt; repeat (intros [] || intro); simpl in *; intuition.
+    split; unfold eq_key_elt; repeat intros []; simpl in *; intuition;
     etransitivity; eassumption.
   Qed.
 
