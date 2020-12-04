@@ -1,0 +1,69 @@
+name: CI (Coq)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        env:
+        - { COQ_VERSION: "master", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-master-daily" }
+        - { COQ_VERSION: "v8.11" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.11-daily" }
+        - { COQ_VERSION: "v8.10" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.10-daily" }
+        - { COQ_VERSION: "v8.9"  , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.9-daily" }
+        - { COQ_VERSION: "v8.8"  , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq libcoq-ocaml-dev camlp5"                    , PPA: "ppa:jgross-h/coq-8.8-daily" }
+        - { COQ_VERSION: "v8.7"  , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq libcoq-ocaml-dev camlp5"                    , PPA: "ppa:jgross-h/coq-8.7-daily" }
+        - { COQ_VERSION: "v8.6"  , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq libcoq-ocaml-dev camlp5"                    , PPA: "ppa:jgross-h/coq-8.6-daily" }
+        - { COQ_VERSION: "8.8.0" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq-8.8.0 libcoq-8.8.0-ocaml libcoq-8.8.0-ocaml-dev camlp5"   , PPA: "ppa:jgross-h/many-coq-versions" }
+        - { COQ_VERSION: "8.7.2" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq-8.7.2 libcoq-8.7.2-ocaml libcoq-8.7.2-ocaml-dev camlp5"   , PPA: "ppa:jgross-h/many-coq-versions" }
+        - { COQ_VERSION: "8.6.1" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE: 1", COQ_PACKAGE: "coq-8.6.1 libcoq-8.6.1-ocaml libcoq-8.6.1-ocaml-dev camlp5"   , PPA: "ppa:jgross-h/many-coq-versions" }
+        - { COQ_VERSION: "8.5pl3", TARGETS: "fiat-core querystructures"        , FLAGS: ""         , COQ_PACKAGE: "coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev camlp5", PPA: "ppa:jgross-h/many-coq-versions" }
+
+    env: ${{ matrix.env }}
+
+    steps:
+    - name: install Coq
+      run: |
+        if [ ! -z "$PPA" ]; then sudo add-apt-repository "$PPA" -y; fi
+        sudo apt-get -o Acquire::Retries=30 update -q
+        sudo apt-get -o Acquire::Retries=30 install ocaml-findlib $COQ_PACKAGE -y --allow-unauthenticated
+    - name: echo build params
+      run: |
+        echo "::group::lscpu"
+        lscpu
+        echo "::endgroup::"
+        echo "::group::uname -a"
+        uname -a
+        echo "::endgroup::"
+        echo "::group::lsb_release -a"
+        lsb_release -a
+        echo "::endgroup::"
+        echo "::group::ghc --version"
+        ghc --version
+        echo "::endgroup::"
+        echo "::group::gcc -v"
+        gcc -v
+        echo "::endgroup::"
+        echo "::group::ocamlc -config"
+        ocamlc -config
+        echo "::endgroup::"
+        echo "::group::coqc --config"
+        coqc --config
+        echo "::endgroup::"
+        echo "::group::coqc --version"
+        coqc --version
+        echo "::endgroup::"
+        echo "::group::echo | coqtop"
+        echo | coqtop
+        echo "::endgroup::"
+    - uses: actions/checkout@v2
+    - name: submodules-init
+      uses: snickerbockers/submodules-init@v4
+    - name: SCRIPT
+      run: ./etc/coq-scripts/timing/make-pretty-timed.sh -j2 $TARGETS $FLAGS && make TIMED=1 -j2 $TARGETS
