@@ -1,4 +1,3 @@
--arg -native-compiler -arg ondemand
 -R src Fiat
 -R Bedrock Bedrock
 -I src/Common/Tactics
