@@ -6,7 +6,7 @@ dist: xenial
 
 matrix:
   include:
-    - env: COQ_VERSION="master" TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" NJOBS="1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-master-daily"
+    - env: COQ_VERSION="master" TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1 -d VERBOSE=1" NJOBS="1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-master-daily"
     - env: COQ_VERSION="v8.12"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" NJOBS="2" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.12-daily"
     - env: COQ_VERSION="v8.11"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" NJOBS="2" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.11-daily"
     - env: COQ_VERSION="v8.10"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" NJOBS="2" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml ocaml-findlib"                            PPA="ppa:jgross-h/coq-8.10-daily"
