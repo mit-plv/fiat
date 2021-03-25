@@ -11,7 +11,7 @@ Require Import
 
 Require Import
         Coq.Vectors.Vector
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Bedrock.Word.
 
 Section AlignWord.

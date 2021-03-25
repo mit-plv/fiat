@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         Fiat.Computation Fiat.ADT Fiat.ADTRefinement Fiat.ADTNotation Fiat.ADTRefinement.BuildADTRefinements
         Examples.CacheADT.KVEnsembles.
 

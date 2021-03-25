@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Coq.omega.Omega Coq.Lists.SetoidList.
+Require Import Coq.ZArith.ZArith Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
 Require Export Fiat.Common.Tactics.SplitInContext.

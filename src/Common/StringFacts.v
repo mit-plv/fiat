@@ -1,4 +1,4 @@
-Require Import Coq.omega.Omega.
+Require Import Coq.ZArith.ZArith.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.

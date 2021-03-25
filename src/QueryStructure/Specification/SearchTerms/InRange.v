@@ -1,5 +1,5 @@
 Require Import Coq.Arith.Compare_dec
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
 Section RangeClause.

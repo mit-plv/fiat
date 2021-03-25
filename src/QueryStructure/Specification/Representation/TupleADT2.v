@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List
         Coq.Strings.String
         Coq.Arith.Arith
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Fiat.Common.ilist2
         Fiat.Common.StringBound
         Fiat.ADT

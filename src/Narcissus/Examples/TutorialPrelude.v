@@ -1,5 +1,5 @@
 Require Export
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.Strings.String
         Coq.Vectors.Vector.
 Require Export

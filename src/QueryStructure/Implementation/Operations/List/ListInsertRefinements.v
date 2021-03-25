@@ -1,5 +1,5 @@
 Require Import Coq.Strings.String
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.Lists.List
         Coq.Logic.FunctionalExtensionality
         Coq.Sets.Ensembles

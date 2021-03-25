@@ -3,7 +3,7 @@ Require Import Coq.Strings.Ascii
         Coq.Lists.List.
 
 Require Export Coq.Vectors.Vector
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.Strings.Ascii
         Coq.Bool.Bool
         Coq.Bool.Bvector

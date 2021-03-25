@@ -62,7 +62,7 @@ Section ListBags.
     firstorder.
   Qed.
 
-  Require Import Coq.omega.Omega.
+  Require Import Coq.ZArith.ZArith.
   Lemma List_BagCountCorrect_aux :
     forall (container: list TItem) (search_term: TSearchTerm) default,
       length (List.filter (bfind_matcher search_term) container) + default =

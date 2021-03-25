@@ -109,7 +109,7 @@ Proof.
     constructor; intros.
   contradiction (NPeano.Nat.nlt_0_r _ H).
   apply IHlen.
-  Require Import Omega.
+  Require Import Coq.ZArith.ZArith.
   omega.
 Qed.
 

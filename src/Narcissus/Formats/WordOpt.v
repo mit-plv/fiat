@@ -1,5 +1,5 @@
 Require Import
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Fiat.Common
         Fiat.Computation.Notations
         Fiat.Narcissus.Common.Specs

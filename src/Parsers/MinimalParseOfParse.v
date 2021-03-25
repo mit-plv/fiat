@@ -1,6 +1,6 @@
 (** * Every parse tree has a corresponding minimal parse tree *)
 Require Import Coq.Strings.String Coq.Lists.List.
-Require Import Coq.omega.Omega.
+Require Import Coq.ZArith.ZArith.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Parsers.CorrectnessBaseTypes Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.StringLike.Properties.

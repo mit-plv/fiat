@@ -3,7 +3,7 @@ Require Import Coq.Numbers.Natural.Peano.NPeano
         Coq.Arith.Lt
         Coq.Arith.Compare_dec
         Coq.Lists.List
-        Coq.omega.Omega.
+        Coq.ZArith.ZArith.
 
 Section GenSym.
   Local Unset Implicit Arguments.

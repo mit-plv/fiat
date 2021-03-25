@@ -1,6 +1,6 @@
 (** Refinement rules for binary operations *)
 Require Import Coq.Lists.List.
-Require Import Coq.omega.Omega.
+Require Import Coq.ZArith.ZArith.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.

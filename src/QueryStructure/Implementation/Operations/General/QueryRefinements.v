@@ -1,6 +1,6 @@
 Require Import
         Coq.Arith.Arith
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.NArith.NArith
         Coq.ZArith.ZArith
         Coq.Strings.String

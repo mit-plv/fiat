@@ -1,6 +1,6 @@
 Require Import
         Coq.Bool.Bool
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.Lists.List
         Fiat.Common.DecideableEnsembles
         Fiat.Common.EnumType
