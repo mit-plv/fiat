@@ -1,7 +1,7 @@
 (** * Theorems about string-like types *)
 
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Coq.omega.Omega.
+Require Import Coq.ZArith.ZArith.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.

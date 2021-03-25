@@ -1,7 +1,7 @@
 Require Import
         Coq.Arith.Peano_dec
         Coq.Logic.Eqdep_dec
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.Vector

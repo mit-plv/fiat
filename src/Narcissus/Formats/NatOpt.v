@@ -3,7 +3,7 @@ Require Import
         Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.Formats.WordOpt.
 Require Import
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Bedrock.Word.
 
 Section Nat.

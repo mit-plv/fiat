@@ -1,6 +1,6 @@
 Require Import
         Coq.Vectors.Vector
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.Strings.Ascii
         Coq.Strings.String
         Coq.Bool.Bool

@@ -1,4 +1,4 @@
-Require Import Coq.omega.Omega.
+Require Import Coq.ZArith.ZArith.
 
 Hint Rewrite <- nat_compare_lt : hints.
 Hint Rewrite <- nat_compare_gt : hints.

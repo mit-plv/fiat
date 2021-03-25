@@ -1,6 +1,6 @@
 Require Import
         Bedrock.Word
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.Strings.Ascii
         Coq.Strings.String
         Coq.Logic.Eqdep_dec.

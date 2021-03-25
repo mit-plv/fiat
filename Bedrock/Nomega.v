@@ -1,6 +1,6 @@
 (* Make [omega] work for [N] *)
 
-Require Import Coq.Arith.Arith Coq.omega.Omega Coq.NArith.NArith.
+Require Import Coq.Arith.Arith Coq.ZArith.ZArith Coq.NArith.NArith.
 
 Local Open Scope N_scope.
 

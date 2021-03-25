@@ -4,7 +4,7 @@ Require Import
         Coq.FSets.FMapInterface
         Coq.FSets.FMapFacts
         Coq.FSets.FMapAVL
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Fiat.Common
         Fiat.Common.List.ListFacts
         Fiat.Common.List.FlattenList

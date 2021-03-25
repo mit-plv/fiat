@@ -1,5 +1,5 @@
 Require Import
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.Strings.String
         Coq.Vectors.Vector.
 

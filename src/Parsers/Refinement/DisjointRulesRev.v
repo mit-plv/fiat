@@ -1,5 +1,5 @@
 (** Refinement rules for disjoint rules *)
-Require Import Coq.omega.Omega Coq.Lists.List.
+Require Import Coq.ZArith.ZArith Coq.Lists.List.
 Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.StringLike.LastCharSuchThat.

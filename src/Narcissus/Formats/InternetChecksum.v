@@ -1,6 +1,6 @@
 Require Import List.
 Require Import Bedrock.Word
-        Coq.omega.Omega
+        Coq.ZArith.ZArith
         Coq.micromega.Psatz.
 
 Require Import NArith NArithRing.

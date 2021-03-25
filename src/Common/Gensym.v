@@ -1,6 +1,6 @@
 (** * Generate a symbol distinct from every element of a list of symbols *)
 (** Assumes a way to generate a new symbol from a pair of symbols "greater" than either one. *)
-Require Import Coq.Classes.RelationClasses Coq.Lists.List Coq.omega.Omega.
+Require Import Coq.Classes.RelationClasses Coq.Lists.List Coq.ZArith.ZArith.
 Require Import Coq.Strings.String Coq.Strings.Ascii.
 Require Import Fiat.Common.StringFacts.
 

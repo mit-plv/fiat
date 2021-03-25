@@ -1,4 +1,4 @@
-Require Import Coq.Arith.EqNat Coq.Arith.Compare_dec Coq.omega.Omega.
+Require Import Coq.Arith.EqNat Coq.Arith.Compare_dec Coq.ZArith.ZArith.
 Require Import Coq.Lists.List.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.

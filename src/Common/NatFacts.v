@@ -1,6 +1,6 @@
 Require Import Coq.Classes.Morphisms.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Coq.omega.Omega.
+Require Import Coq.ZArith.ZArith.
 
 Lemma min_def {x y} : min x y = x - (x - y).
 Proof. apply Min.min_case_strong; omega. Qed.

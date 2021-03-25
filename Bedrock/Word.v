@@ -4,7 +4,7 @@ Require Import Coq.Arith.Arith
         Coq.Arith.Div2
         Coq.NArith.NArith
         Coq.Bool.Bool
-        Coq.omega.Omega.
+        Coq.ZArith.ZArith.
 Require Import Bedrock.Nomega.
 
 Set Implicit Arguments.
