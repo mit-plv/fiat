@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
         Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
 Require Import

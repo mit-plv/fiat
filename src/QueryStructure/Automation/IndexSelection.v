@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Sorting.Mergesort
         Coq.Structures.Orders
         Coq.Arith.Arith

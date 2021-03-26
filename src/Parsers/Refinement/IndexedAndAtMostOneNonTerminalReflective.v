@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** First step of a splitter refinement; indexed representation, and handle all rules with at most one nonterminal; leave a reflective goal *)
 Require Import Coq.Strings.String Coq.Arith.Lt Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.

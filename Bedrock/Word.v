@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** Fixed precision machine words *)
 
 Require Import Coq.Arith.Arith

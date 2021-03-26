@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Generate a symbol distinct from every element of a list of symbols *)
 (** Assumes a way to generate a new symbol from a pair of symbols "greater" than either one. *)
 Require Import Coq.Classes.RelationClasses Coq.Lists.List Coq.ZArith.ZArith.

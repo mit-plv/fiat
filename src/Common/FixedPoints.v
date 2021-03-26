@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Arith.EqNat Coq.Arith.Compare_dec Coq.ZArith.ZArith.
 Require Import Coq.Lists.List.
 Require Import Fiat.Common.List.ListFacts.

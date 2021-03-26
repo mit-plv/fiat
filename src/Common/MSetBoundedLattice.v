@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Export Coq.MSets.MSetInterface.
 Require Import Coq.MSets.MSetFacts.
 Require Import Coq.MSets.MSetProperties.

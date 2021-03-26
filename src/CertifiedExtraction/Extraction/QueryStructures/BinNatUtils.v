@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Bedrock.Memory.
 
 Lemma lt_BinNat_lt:

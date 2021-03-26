@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Definitions of some specific string-like types *)
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.

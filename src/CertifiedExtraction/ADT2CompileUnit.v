@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Fiat.ADT.Core.
 Require Import Bedrock.Platform.Facade.DFModule.
 Require Import Fiat.ADTNotation.

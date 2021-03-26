@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import
         Coq.Arith.Peano_dec
         Coq.Logic.Eqdep_dec

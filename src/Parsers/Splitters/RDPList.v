@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Definition of the part of boolean-returning CFG parser-recognizer that instantiates things to lists *)
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.

@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Fiat.Parsers.Grammars.JavaScriptAssignmentExpression.
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Refinement.DisjointRules.

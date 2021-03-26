@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import
         CertifiedExtraction.Extraction.QueryStructures.Basics
         CertifiedExtraction.Extraction.QueryStructures.TupleToListW

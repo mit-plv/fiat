@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Every parse tree has a corresponding minimal parse tree *)
 
 Require Import Coq.ZArith.ZArith.

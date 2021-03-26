@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** Sharpened ADT for an expression grammar with parentheses *)
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.ZArith.ZArith.

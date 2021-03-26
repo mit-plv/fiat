@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Lemmas about the common part of the interface of the CFG parser *)
 Require Import Coq.Classes.RelationClasses Coq.Setoids.Setoid.
 Require Import Coq.ZArith.ZArith.

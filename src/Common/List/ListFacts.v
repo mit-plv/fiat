@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
         Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality Fiat.Common.List.FlattenList Fiat.Common.LogicFacts.
