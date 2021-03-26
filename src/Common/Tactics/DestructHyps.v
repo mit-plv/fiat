@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** given a [matcher] that succeeds on some hypotheses and fails on
     others, destruct any matching hypotheses, and then execute [tac]
     after each [destruct].

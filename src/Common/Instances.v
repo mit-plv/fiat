@@ -1,4 +1,5 @@
 Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Classes.RelationClasses Coq.Program.Basics.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Instance arrow2_1_Proper {A B RA RB X Y}
        {H0 : Proper (RA ==> RB ==> flip impl) (fun (a : A) (b : B) => X a b)}

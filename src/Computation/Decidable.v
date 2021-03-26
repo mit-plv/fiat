@@ -1,4 +1,5 @@
 Require Import Coq.Arith.Compare_dec.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Generalizable All Variables.
 

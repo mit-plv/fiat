@@ -1,5 +1,6 @@
 (** * Definition of the generic part of the interface of the CFG parser *)
 Require Import Coq.Strings.String.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.
 

@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Ltac transparent_specialize_one H arg :=
   first [ let test := eval unfold H in H in idtac;
           let H' := fresh in rename H into H'; pose (H' arg) as H; subst H'

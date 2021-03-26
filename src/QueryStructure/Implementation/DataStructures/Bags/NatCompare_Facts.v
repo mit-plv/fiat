@@ -1,4 +1,5 @@
 Require Import Coq.ZArith.ZArith.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Hint Rewrite <- nat_compare_lt : hints.
 Hint Rewrite <- nat_compare_gt : hints.

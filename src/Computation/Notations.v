@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Reserved Notation "x >>= y" (at level 42, right associativity).
 (*Reserved Notation "x <- y ; z" (at level 42, right associativity).
 Reserved Notation "x ;; z" (at level 42, right associativity).*)

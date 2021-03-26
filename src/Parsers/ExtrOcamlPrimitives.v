@@ -3,6 +3,7 @@ Require Export Coq.extraction.ExtrOcamlIntConv.
 Require Import Coq.ZArith.BinInt.
 
 Require Import Coq.Strings.String.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Module Import Ocaml.
   Module Ocaml.

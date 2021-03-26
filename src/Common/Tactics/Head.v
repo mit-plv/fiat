@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** find the head of the given expression *)
 Ltac head expr :=
   match expr with

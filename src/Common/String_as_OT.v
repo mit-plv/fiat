@@ -1,5 +1,6 @@
 Require Import Coq.ZArith.ZArith Coq.Strings.String Coq.Strings.Ascii.
 Require Import Coq.Structures.OrderedType.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Lemma nat_compare_eq_refl : forall x, Nat.compare x x = Eq.
   intros; apply Nat.compare_eq_iff; trivial.

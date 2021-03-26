@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (* Coq's build in tactics don't work so well with things like [iff]
    so split them up into multiple hypotheses *)
 Ltac split_in_context_by ident funl funr tac :=

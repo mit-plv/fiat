@@ -1,4 +1,5 @@
 Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Local Coercion is_true : bool >-> Sortclass.
 

@@ -3,6 +3,7 @@
     computationally reduce things like [True /\ True], but can still
     express equality of types. *)
 Require Import Coq.Setoids.Setoid.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Delimit Scope pointed_prop_scope with pointed_prop.
 Delimit Scope option_pointed_prop_scope with option_pointed_prop.

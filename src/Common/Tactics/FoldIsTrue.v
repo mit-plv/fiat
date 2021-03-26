@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (* These tactics do [change (?x = true) with (is_true x) in *], but get around anomalies in older versions of 8.4 *)
 Ltac fold_is_true' x :=
   change (x = true) with (is_true x) in *.

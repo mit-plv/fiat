@@ -1,6 +1,7 @@
 (** * Miscellaneous Well-Foundedness Facts *)
 Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
 Require Import Coq.Lists.SetoidList.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.
 Set Asymmetric Patterns.

@@ -1,3 +1,4 @@
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Reserved Notation "# x" (at level 70).
 Reserved Infix "@" (left associativity, at level 77).
 Reserved Notation "\ x , e" (at level 78).

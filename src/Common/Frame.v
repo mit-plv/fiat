@@ -2,6 +2,7 @@ Require Import
         SetoidClass
         Coq.Arith.Max
         Coq.Classes.Morphisms.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Generalizable All Variables.
 
