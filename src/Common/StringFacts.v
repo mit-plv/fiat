@@ -137,9 +137,9 @@ Proof.
   { destruct n, m; reflexivity. }
   { simpl.
     destruct n, m; simpl; trivial; rewrite IHs; simpl;
-    try omega; [].
-    rewrite (plus_comm m (S n)); simpl.
-    rewrite (plus_comm n m); simpl.
+    try omega;
+    rewrite (plus_comm m (S n)); simpl;
+    rewrite (plus_comm n m); simpl;
     reflexivity. }
 Qed.
 
