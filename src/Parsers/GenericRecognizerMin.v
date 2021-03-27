@@ -22,6 +22,7 @@ Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.UIP.
 Require Import Fiat.Common.
+Import ListNotations.
 Import NPeano.
 
 Set Implicit Arguments.

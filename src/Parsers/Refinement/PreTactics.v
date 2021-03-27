@@ -14,8 +14,11 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.NatFacts.
+Require Import Coq.Lists.List.
 
 Export Common.opt2.Notations.
+
+Import ListNotations.
 
 Global Open Scope string_scope.
 Global Open Scope list_scope.

@@ -36,6 +36,7 @@ Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.Enumerable.ReflectiveForall.
 Require Import Fiat.Common.Enumerable.ReflectiveForallStaged.
+Import ListNotations.
 
 Set Implicit Arguments.
 

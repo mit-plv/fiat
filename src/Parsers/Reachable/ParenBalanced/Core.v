@@ -9,6 +9,7 @@ Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.LogicFacts.
 Require Import Fiat.Common.Equality.
+Import ListNotations.
 
 Set Implicit Arguments.
 
