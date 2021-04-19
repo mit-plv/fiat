@@ -17,9 +17,11 @@
 *.swp
 *.synctex.gz
 *.toc
-*.v.d
+*.d
 *.vio
 *.vo
+*.vos
+*.vok
 .#*
 .DS_Store
 .coq-native
