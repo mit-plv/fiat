@@ -1,0 +1,30 @@
+module TRANSPARENT_ABSTRACT =
+  struct
+    open Names
+    open Ltac_plugin
+
+    (* Lift a constr to an ltac value. *)
+    let to_ltac_val c = Tacinterp.Value.of_constr c
+
+    (* Build a new definition for [term] with identifier [id] and call *)
+    (* the [tacK] tactic with the result. *)
+    let transparent_abstract_term ~name_op (term : EConstr.constr) tacK =
+      Proofview.Goal.enter begin
+       fun gl ->
+        let termType = Tacmach.New.pf_get_type_of gl term in
+        Abstract.cache_term_by_tactic_then ~opaque:false ~name_op
+          ~goal_type:(Some termType)
+          (Eauto.e_give_exact term)
+          (fun lem args -> Tacinterp.Value.apply tacK [to_ltac_val (EConstr.applist (lem, args))])
+      end
+
+    (* Default identifier *)
+    let anon_id = Id.of_string "anonymous"
+
+    let tclTRABSTRACT name_op tac = Abstract.tclABSTRACT ~opaque:false name_op tac
+
+    let tclABSTRACTTERM name_op term tacK =
+      (* What's the right default goal kind?*)
+      transparent_abstract_term ~name_op term tacK
+
+  end
