@@ -47,9 +47,9 @@ Section IncludedInAClauses.
   Defined.
 
   Global Instance DecideableEnsemble_IncludedInA st :
-    DecideableEnsemble (IncludedInA st) :=
-    {| dec a := ?[IncludedInA_dec st a] |}.
+    DecideableEnsemble (IncludedInA st).
   Proof.
+    econstructor 1 with (dec := fun a => ?[IncludedInA_dec st a]).
     intros; destruct (IncludedInA_dec st a); intuition eauto.
     discriminate.
   Defined.
@@ -58,9 +58,9 @@ Section IncludedInAClauses.
          (A : Type)
          (f : A -> list X)
          b :
-    DecideableEnsemble (fun a => IncludedInA b (f a) ) :=
-    {| dec a := ?[IncludedInA_dec b (f a)]|}.
+    DecideableEnsemble (fun a => IncludedInA b (f a) ).
   Proof.
+    econstructor 1 with (dec := fun a => ?[IncludedInA_dec b (f a)]).
     intros; destruct (IncludedInA_dec b (f a)); intuition eauto.
     discriminate.
   Defined.
@@ -79,9 +79,9 @@ Section IncludedInClauses.
     IncludedInA_dec (X_eq_dec := A_eq_dec) l l'.
 
   Global Instance DecideableEnsemble_IncludedIn st :
-    DecideableEnsemble (IncludedIn st) :=
-    {| dec a := ?[IncludedIn_dec st a] |}.
+    DecideableEnsemble (IncludedIn st).
   Proof.
+    econstructor 1 with (dec := fun a => ?[IncludedIn_dec st a]).
     intros; destruct (IncludedIn_dec st a); intuition eauto.
     discriminate.
   Defined.
@@ -90,9 +90,9 @@ Section IncludedInClauses.
          (A : Type)
          (f : A -> list X)
          b :
-    DecideableEnsemble (fun a => IncludedIn b (f a) ) :=
-    {| dec a := ?[IncludedIn_dec b (f a)]|}.
+    DecideableEnsemble (fun a => IncludedIn b (f a) ).
   Proof.
+    econstructor 1 with (dec := fun a => ?[IncludedIn_dec b (f a)]).
     intros; destruct (IncludedIn_dec b (f a)); intuition eauto.
     discriminate.
   Defined.

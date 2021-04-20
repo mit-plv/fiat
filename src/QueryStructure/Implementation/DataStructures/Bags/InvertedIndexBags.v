@@ -741,7 +741,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
           intro H'; destruct H' as [x H'];
         rewrite add_mapsto_iff in H'; intuition.
         eapply (H4 (S m)); unfold MValues.In in *; eauto.
-        omega.
+        Lia.lia.
         Grab Existential Variables.
         exact x0.
     Qed.
@@ -1142,7 +1142,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
       InvertedIndex_bfind, InvertedIndex_benumerate;
       intros.
       unfold InvertedIndex_RepInv in *; intuition.
-      rewrite !filter_map.
+      rewrite !ListFacts.filter_map.
       rewrite <- Permutation_filter_elements
       with (f := fun (k : MValues.key) (item : TItem) =>
                    andb (if IncludedInA_dec (X_eq_dec := E.eq_dec) (fst search_term) (projection item)

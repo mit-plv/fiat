@@ -138,7 +138,7 @@ Qed.
 
 Hint Rewrite roundTrip_0 : wordToNat.
 
-Local Hint Extern 1 (@eq nat _ _) => omega.
+Local Hint Extern 1 (@eq nat _ _) => Lia.lia.
 
 Theorem untimes2 : forall n, n + (n + 0) = 2 * n.
   auto.
@@ -151,7 +151,7 @@ Section strong.
 
   Lemma strong' : forall n m, m <= n -> P m.
     induction n; simpl; intuition; apply PH; intuition.
-    elimtype False; omega.
+    elimtype False; Lia.lia.
   Qed.
 
   Theorem strong : forall n, P n.
@@ -524,7 +524,7 @@ Theorem mod2_S : forall n k,
   -> mod2 n = true.
   induction n using strong; intros.
   destruct n; simpl in *.
-  elimtype False; omega.
+  elimtype False; Lia.lia.
   destruct n; simpl in *; auto.
   destruct k; simpl in *.
   discriminate.
@@ -541,24 +541,24 @@ Theorem posToWord_nat : forall p sz, posToWord sz p = natToWord sz (nat_of_P p).
 
   rewrite ZL6.
   destruct (ZL4 p) as [? Heq]; rewrite Heq; simpl.
-  replace (x + S x) with (S (2 * x)) by omega.
+  replace (x + S x) with (S (2 * x)) by Lia.lia.
   symmetry; apply mod2_S_double.
 
   rewrite IHp.
   rewrite ZL6.
   destruct (nat_of_P p); simpl; intuition.
-  replace (n + S n) with (S (2 * n)) by omega.
+  replace (n + S n) with (S (2 * n)) by Lia.lia.
   rewrite div2_S_double; auto.
 
   unfold nat_of_P; simpl.
   rewrite ZL6.
-  replace (nat_of_P p + nat_of_P p) with (2 * nat_of_P p) by omega.
+  replace (nat_of_P p + nat_of_P p) with (2 * nat_of_P p) by Lia.lia.
   symmetry; apply mod2_double.
 
   rewrite IHp.
   unfold nat_of_P; simpl.
   rewrite ZL6.
-  replace (nat_of_P p + nat_of_P p) with (2 * nat_of_P p) by omega.
+  replace (nat_of_P p + nat_of_P p) with (2 * nat_of_P p) by Lia.lia.
   rewrite div2_double.
   auto.
   auto.
@@ -592,9 +592,6 @@ Theorem Npow2_nat : forall n, nat_of_N (Npow2 n) = pow2 n.
   induction n; simpl; intuition.
   rewrite <- IHn; clear IHn.
   case_eq (Npow2 n); intuition.
-  rewrite untimes2.
-  replace (Npos p~0) with (N.double (Npos p)) by reflexivity.
-  apply nat_of_Ndouble.
 Qed.
 
 Theorem wneg_alt : forall sz (x : word sz), wneg x = wnegN x.
@@ -632,7 +629,7 @@ Theorem drop_mod2 : forall n k,
   rewrite <- plus_n_Sm.
   repeat rewrite untimes2 in *.
   simpl; auto.
-  apply H; omega.
+  apply H; Lia.lia.
 Qed.
 
 Theorem div2_minus_2 : forall n k,
@@ -645,7 +642,7 @@ Theorem div2_minus_2 : forall n k,
 
   destruct k; simpl in *; intuition.
   rewrite <- plus_n_Sm.
-  apply H; omega.
+  apply H; Lia.lia.
 Qed.
 
 Theorem div2_bound : forall k n,
@@ -654,10 +651,10 @@ Theorem div2_bound : forall k n,
   intros; case_eq (mod2 n); intro Heq.
 
   rewrite (div2_odd _ Heq) in H.
-  omega.
+  Lia.lia.
 
   rewrite (div2_even _ Heq) in H.
-  omega.
+  Lia.lia.
 Qed.
 
 Theorem drop_sub : forall sz n k,
@@ -692,7 +689,7 @@ Theorem drop_sub : forall sz n k,
   auto.
 Qed.
 
-Local Hint Extern 1 (_ <= _) => omega.
+Local Hint Extern 1 (_ <= _) => Lia.lia.
 
 Theorem wplus_assoc : forall sz (x y z : word sz), x ^+ (y ^+ z) = x ^+ y ^+ z.
   intros; repeat rewrite wplus_alt; unfold wplusN, wordBinN; intros.
@@ -721,7 +718,7 @@ Theorem mod2_WS : forall sz (x : word sz) b, mod2 (wordToNat (WS b x)) = b.
   rewrite untimes2.
   case_eq (2 * wordToNat x); intuition.
   eapply mod2_S; eauto.
-  rewrite <- (mod2_double (wordToNat x)); f_equal; omega.
+  rewrite <- (mod2_double (wordToNat x)); f_equal; Lia.lia.
 Qed.
 
 Theorem div2_WS : forall sz (x : word sz) b, div2 (wordToNat (WS b x)) = wordToNat x.
@@ -801,7 +798,7 @@ Theorem wmult_plus_distr : forall sz (x y z : word sz), (x ^+ y) ^* z = (x ^* z)
   generalize dependent (wordToNat x * wordToNat z).
   generalize dependent (wordToNat y * wordToNat z).
   intros.
-  omega.
+  Lia.lia.
 Qed.
 
 Theorem wminus_def : forall sz (x y : word sz), x ^- y = x ^+ ^~ y.
@@ -810,7 +807,7 @@ Qed.
 
 Theorem wordToNat_bound : forall sz (w : word sz), wordToNat w < pow2 sz.
   induction w; simpl; intuition.
-  destruct b; simpl; omega.
+  destruct b; simpl; Lia.lia.
 Qed.
 
 Theorem natToWord_pow2 : forall sz, natToWord sz (pow2 sz) = natToWord sz 0.
@@ -836,7 +833,7 @@ Theorem wminus_inv : forall sz (x : word sz), x ^+ ^~ x = wzero sz.
   rewrite drop_sub; auto with arith.
   apply natToWord_pow2.
   generalize (wordToNat_bound x).
-  omega.
+  Lia.lia.
 Qed.
 
 Definition wring (sz : nat) : ring_theory (wzero sz) (wone sz) (@wplus sz) (@wmult sz) (@wminus sz) (@wneg sz) (@eq _) :=
@@ -1120,8 +1117,8 @@ Lemma natToWord_plus : forall sz n m, natToWord sz (n + m) = natToWord _ n ^+ na
   destruct (wordToNat_natToWord (S sz) m); intuition.
   rewrite H0; rewrite H2; clear H0 H2.
   replace (n - x * pow2 (S sz) + (m - x0 * pow2 (S sz))) with (n + m - x * pow2 (S sz) - x0 * pow2 (S sz))
-    by omega.
-  repeat rewrite drop_sub; auto; omega.
+    by Lia.lia.
+  repeat rewrite drop_sub; auto; Lia.lia.
 Qed.
 
 Lemma natToWord_S : forall sz n, natToWord sz (S n) = natToWord _ 1 ^+ natToWord _ n.
@@ -1139,18 +1136,10 @@ Theorem natToWord_inj : forall sz n m, natToWord sz n = natToWord sz m
   intuition.
   rewrite H4 in H; rewrite H2 in H; clear H4 H2.
   assert (x = 0).
-  destruct x; auto.
-  simpl in *.
-  generalize dependent (x * pow2 sz).
-  intros.
-  omega.
-  assert (x0 = 0).
-  destruct x0; auto.
-  simpl in *.
-  generalize dependent (x0 * pow2 sz).
-  intros.
-  omega.
-  subst; simpl in *; omega.
+  { destruct x; auto. }
+    assert (x0 = 0).
+  {destruct x0; auto. }
+  subst; simpl in *; Lia.lia.
 Qed.
 
 Lemma wordToNat_natToWord_idempotent : forall sz n,
@@ -1159,13 +1148,13 @@ Lemma wordToNat_natToWord_idempotent : forall sz n,
   intros.
   destruct (wordToNat_natToWord sz n); intuition.
   destruct x.
-  simpl in *; omega.
+  simpl in *; Lia.lia.
   simpl in *.
   apply Nlt_out in H.
   autorewrite with N in *.
   rewrite Npow2_nat in *.
   generalize dependent (x * pow2 sz).
-  intros; omega.
+  intros; Lia.lia.
 Qed.
 
 Lemma wplus_cancel : forall sz (a b c : word sz),

@@ -116,8 +116,8 @@ Section ListBags.
     }.
 
   Global Instance ListAsBagCorrect
-  : CorrectBag ListBag_RepInv ListBag_ValidUpdate ListAsBag :=
-    {|
+  : CorrectBag ListBag_RepInv ListBag_ValidUpdate ListAsBag.
+  refine {|
 
       binsert_enumerate := List_BagInsertEnumerate;
       benumerate_empty  := List_BagEnumerateEmpty;

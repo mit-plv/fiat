@@ -504,7 +504,7 @@ Proof.
   split; intros.
 
   unfold UnConstrFreshIdx; exists (S bound); intros; intuition; subst; simpl.
-  unfold EnsembleInsert in *; intuition; subst; simpl; omega.
+  unfold EnsembleInsert in *; intuition; subst; simpl; Lia.lia.
   (* erewrite binsert_enumerate_length by eauto with typeclass_instances.
     intuition; subst;
     [ | apply lt_S];
@@ -528,7 +528,7 @@ Proof.
   constructor; eauto.
   unfold not; intros.
   rewrite in_map_iff in H0; destruct_ex; intuition; subst.
-  apply equiv in H3; apply H in H3; destruct x; simpl in *; omega.
+  apply equiv in H3; apply H in H3; destruct x; simpl in *; Lia.lia.
 
   setoid_rewrite perm; reflexivity.
 Qed.
@@ -565,7 +565,7 @@ Lemma bdelete_correct_DB_fst {qsSchema}
          (DT : Ensemble RawTuple)
          (DT_Dec : DecideableEnsemble DT)
          search_term,
-    ExtensionalEq (@dec _ _ DT_Dec)
+    ExtensionalEq (@DecideableEnsembles.dec _ _ DT_Dec)
                   (bfind_matcher (Bag := BagPlus bag_plus) search_term)
     -> refine {x | QSDeletedTuples qs Ridx DT x}
               (ret (fst (bdelete bag search_term))).
@@ -601,7 +601,7 @@ Lemma bdelete_correct_DB_snd
                (@UpdateUnConstrRelation db_schema qs index
                                         (EnsembleDelete (GetUnConstrRelation qs index)
                                                         DeletedRawTuples)) index)
-            (snd (List.partition (@dec _ _ DT_Dec)
+            (snd (List.partition (@DecideableEnsembles.dec _ _ DT_Dec)
                                  (benumerate store))).
 Proof.
   simpl; unfold EnsembleDelete, EnsembleBagEquivalence, Ensembles.In, Complement; simpl;
@@ -610,7 +610,7 @@ Proof.
   repeat setoid_rewrite get_update_unconstr_eq; simpl; intros.
   exists x0.
   unfold UnConstrFreshIdx in *; intros; apply H; destruct H3; eauto.
-  exists (snd (partition (@dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ ) x)); intuition.
+  exists (snd (partition (@DecideableEnsembles.dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ ) x)); intuition.
   - unfold BagPlusProofAsBag; rewrite <- H2.
     repeat rewrite partition_filter_neq.
     clear; induction x; simpl; eauto.
@@ -629,15 +629,15 @@ Proof.
       rewrite H3 in H5; congruence.
   - revert H4; clear; induction x; simpl; eauto.
     intros; inversion H4; subst.
-    case_eq (partition (fun x0 => @dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
+    case_eq (partition (fun x0 => @DecideableEnsembles.dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ x0) x); intros; simpl in *; rewrite H.
     rewrite H in IHx; apply IHx in H2;
-    case_eq (@dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ a);
+    case_eq (@DecideableEnsembles.dec IndexedRawTuple (fun t => DeletedRawTuples (indexedElement t)) _ a);
     intros; simpl in *; rewrite H0; simpl; eauto.
     constructor; eauto.
     unfold not; intros; apply H1.
     generalize l l0 H H3; clear; induction x; simpl; intros.
     + injections; simpl in *; eauto.
-    + case_eq (partition (fun x0 : IndexedRawTuple => dec (indexedRawTuple x0)) x).
+    + case_eq (partition (fun x0 : IndexedRawTuple => DecideableEnsembles.dec (indexedRawTuple x0)) x).
       intros; rewrite H0 in H; find_if_inside; injections.
       eauto.
       simpl in H3; intuition.
@@ -652,7 +652,7 @@ Lemma bdeletePlus_correct_DB_snd
      -> forall (DeletedRawTuples : Ensemble RawTuple)
                (DT_Dec : DecideableEnsemble DeletedRawTuples)
                search_term,
-          ExtensionalEq (@dec _ _ DT_Dec)
+          ExtensionalEq (@DecideableEnsembles.dec _ _ DT_Dec)
                         (bfind_matcher (Bag := BagPlus bag_plus) search_term)
           -> EnsembleBagEquivalence
                bag_plus
@@ -695,7 +695,7 @@ Proof.
               List.In a' x0 /\ indexedElement a' = a
               /\ (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a') = false)).
     generalize (@Permutation_in _ _ _ a H1 (or_introl (refl_equal _))).
-    rewrite filter_map; clear; induction x0; simpl;
+    rewrite ListFacts.filter_map; clear; induction x0; simpl;
     intuition.
     revert H;
       case_eq (bfind_matcher (Bag := BagPlus bag_plus) search_term (indexedElement a0)); simpl; intros; eauto.
@@ -720,12 +720,12 @@ Proof.
       apply H2; apply in_map_iff; eexists; eauto.
     }
     destruct_ex; intuition; subst.
-    rewrite filter_map in H1; rewrite H in H1; simpl in *.
+    rewrite ListFacts.filter_map in H1; rewrite H in H1; simpl in *.
     rewrite H8 in *; simpl in *.
     destruct (IHl DeletedRawTuples DT_Dec x1
                   (fun tup => Ensembles.In _ u tup /\ tup <> x)); eauto;
     clear IHl.
-    + rewrite filter_map; eapply Permutation_cons_inv; eauto.
+    + rewrite ListFacts.filter_map; eapply Permutation_cons_inv; eauto.
     + intuition; intros.
       destruct H2; apply H3 in H2.
       eapply Permutation_in in H; eauto.

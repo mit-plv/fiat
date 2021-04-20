@@ -331,7 +331,7 @@ Module TrieBag (X:OrderedType).
       inversion 1; eauto.
     Qed.
 
-    Hint Resolve SubTrieMapBST SubTrieMapBST'.
+    Hint Resolve SubTrieMapBST SubTrieMapBST' : core.
 
     Lemma TrieNode_RepInv
     : forall bag subtries st,
@@ -348,7 +348,7 @@ Module TrieBag (X:OrderedType).
       inversion 1; eauto.
     Qed.
 
-    Hint Resolve TrieNode_RepInv TrieNode_RepInv'.
+    Hint Resolve TrieNode_RepInv TrieNode_RepInv' : core.
 
     Lemma SubTrieOK
     : forall trie k subtrie st,
@@ -371,7 +371,7 @@ Module TrieBag (X:OrderedType).
           inversion H4; subst; eauto.
     Qed.
 
-    Hint Resolve SubTrieOK.
+    Hint Resolve SubTrieOK : core.
 
     Definition TrieBagRepInv (trie : Trie) := TrieOK trie [ ].
 
@@ -396,8 +396,8 @@ Module TrieBag (X:OrderedType).
     Functional Scheme Trie_update_ind := Induction for Trie_update Sort Prop.
     Functional Scheme Trie_find_ind := Induction for Trie_find Sort Prop.
 
-    Hint Resolve add_bst.
-    Hint Constructors eqlistA.
+    Hint Resolve add_bst : core.
+    Hint Constructors eqlistA : core.
 
     Lemma Trie_add_Preserves_TreeOK
     : forall trie item st1 st2,
@@ -422,12 +422,16 @@ Module TrieBag (X:OrderedType).
         apply eqlistA_app;
           repeat first [econstructor; eauto
                        | try reflexivity ].
+        eapply XMapFacts.KeySetoid_Reflexive.
+        eapply XMapFacts.KeySetoid_Symmetric.
+        eapply XMapFacts.KeySetoid_Transitive.
+        eapply XMapFacts.KeySetoid_Symmetric; eauto.
         apply H5.
         apply MapsTo_1 with (x := key0).
         symmetry; eauto.
         apply find_2; eassumption.
         apply H5.
-        eapply add_3 in H6; eauto.
+        eapply add_3 in H6; eauto using XMapFacts.KeySetoid_Symmetric.
       - econstructor; inversion H1; subst; simpl; eauto.
         + intros; destruct (X.eq_dec k key0).
           apply find_1 in H6; eauto.
@@ -436,16 +440,17 @@ Module TrieBag (X:OrderedType).
           eapply H; eauto.
           rewrite <- app_assoc.
           rewrite H0.
-          apply eqlistA_app;
-            repeat first [econstructor; eauto
+          apply eqlistA_app; eauto using XMapFacts.KeySetoid;
+          repeat first [ econstructor; eauto
                          | try reflexivity ].
+          eapply XMapFacts.KeySetoid_Symmetric; eauto.
           unfold TrieBagRepInv; intros; econstructor; simpl in *.
           apply bempty_RepInv.
           econstructor.
           intros; elimtype False; eapply benumerate_empty; eauto.
           intros; elimtype False; eapply empty_1; eauto.
           apply H5.
-          eapply add_3 in H6; eauto.
+          eapply add_3 in H6; eauto using XMapFacts.KeySetoid_Symmetric.
     Qed.
 
     Corollary TrieBag_binsert_Preserves_RepInv :
@@ -549,7 +554,7 @@ Module TrieBag (X:OrderedType).
               symmetry; eauto.
               apply find_2; eauto.
             * apply H3.
-              eapply add_3; eauto.
+              eapply add_3; eauto using XMapFacts.KeySetoid_Symmetric.
         - simpl; econstructor; inversion containerCorrect; subst; eauto.
           + pose proof (bdelete_RepInv bag search_term) as e'; simpl in *;
             rewrite e0 in e'; eapply e'.
@@ -594,7 +599,7 @@ Module TrieBag (X:OrderedType).
       inversion 1; subst; eauto.
     Qed.
 
-    Hint Resolve ValidUpdate_TrieBag_ValidUpdate.
+    Hint Resolve ValidUpdate_TrieBag_ValidUpdate : core.
 
     Lemma TrieBag_bupdate_Preserves_RepInv :
       bupdate_Preserves_RepInv
@@ -642,7 +647,7 @@ Module TrieBag (X:OrderedType).
             symmetry; eauto.
             apply find_2; eauto.
           * apply H3.
-            eapply add_3; eauto.
+            eapply add_3; eauto using XMapFacts.KeySetoid_Symmetric.
       - simpl; econstructor; inversion containerCorrect; subst; eauto.
         + pose proof (bupdate_RepInv bag search_term updateTerm) as e'; simpl in *;  rewrite e0 in e'; eapply e'; eauto.
         + intros; destruct (bupdate_correct bag search_term updateTerm);
@@ -778,6 +783,7 @@ Module TrieBag (X:OrderedType).
       unfold KeyBasedPartitioningFunction.
       repeat find_if_inside; eauto.
       rewrite H in e; intuition.
+      eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
     Qed.
 
     Lemma TrieBag_BagEnumerateEmpty :
@@ -901,7 +907,7 @@ Module TrieBag (X:OrderedType).
         rewrite bcount_correct by eauto.
         rewrite !fold_left_rev_right; simpl.
         clear; revert n; induction l; simpl; eauto with arith.
-        intros; rewrite IHl; f_equal; omega.
+        intros; rewrite IHl; f_equal; Lia.lia.
       - rewrite length_flatten.
         remember [] as l; replace 0 with (length l) by (subst; eauto).
         clear Heql; generalize (Trie_enumerate_RepInv containerCorrect).
@@ -913,7 +919,7 @@ Module TrieBag (X:OrderedType).
         unfold compose; rewrite IHl0 by eauto.
         remember (length l) as n; clear Heqn; generalize n.
         clear; induction l0; simpl; eauto with arith; intros.
-        rewrite IHl0; f_equal; omega.
+        rewrite IHl0; f_equal; Lia.lia.
     Qed.
 
     Lemma Permutation_KeyBasedPartition
@@ -1177,8 +1183,8 @@ Module TrieBag (X:OrderedType).
         rewrite <- app_assoc in H1.
         apply in_app_or in H1; intuition eauto.
         destruct a as [k' t]; simpl in *.
-        assert (InA (PX.eqke (elt:=Trie)) (k', t) ((k', t) :: l))
-               by (econstructor; eauto).
+        assert (InA (PX.eqke (elt:=Trie)) (k', t) ((k', t) :: l)) by
+            (econstructor; eauto using PX.eqke_refl).
         generalize (H k' t H1).
         assert (k = k')
           by (revert H3; clear; induction (Trie_enumerate t);
@@ -1295,7 +1301,7 @@ Module TrieBag (X:OrderedType).
         apply in_app_or in H1; intuition eauto.
         destruct a.
         assert (InA (PX.eqke (elt:=Trie)) (t, t0) ((t, t0) :: l)) by
-            (econstructor; eauto).
+            (econstructor; eauto using PX.eqke_refl).
         apply H in H1; simpl in *.
         assert (k = t).
         {
@@ -1521,7 +1527,7 @@ Module TrieBag (X:OrderedType).
         rewrite IHbags'; eauto.
         destruct a; simpl in *.
         assert (~ X.eq k key') by
-            (intros; eapply H1; econstructor; eauto).
+            (intros; eapply H1; econstructor; eauto using PX.eqke_refl).
         generalize (fun item => H2 k b (or_introl (refl_equal _)) item) H3;
           clear.
         induction (benumerate b); simpl; eauto; intros.
@@ -1540,8 +1546,10 @@ Module TrieBag (X:OrderedType).
         rewrite map_app, map_map, map_id; reflexivity.
         intros.
         apply InA_app in H3; intuition eauto.
-        assert (~X.eq k (fst a))
-          by (destruct a; intro; eapply H0; eauto; econstructor).
+        assert (~X.eq k (fst a)) by
+            (destruct a; intro; eapply H0;
+             eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive; econstructor;
+             unfold PX.eqke; simpl; eauto).
         apply H3; revert H5; clear; induction (Trie_enumerate (snd a));
         intros; inversion H5; subst; eauto.
         destruct H0; simpl in *; eauto.
@@ -1653,7 +1661,8 @@ Module TrieBag (X:OrderedType).
         rewrite filter_app, IHbags'; eauto; f_equiv.
         destruct a; simpl in *.
         assert (~ X.eq k key') by
-            (intros; eapply H1; econstructor; eauto).
+            (intros; eapply H1; econstructor;
+             eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive, PX.eqke_refl).
         generalize (fun item => H2 k b (or_introl (refl_equal _)) item) H3;
           clear.
         induction (benumerate b); simpl; eauto; intros.
@@ -1689,8 +1698,8 @@ Module TrieBag (X:OrderedType).
         destruct a; eapply H; econstructor 2; eauto.
         eapply H0; eauto.
         apply InA_app in H3; intuition eauto.
-        assert (~X.eq k (fst a))
-          by (destruct a; intro; eapply H0; eauto; econstructor).
+        assert (~X.eq k (fst a)) by
+               (destruct a; intro; eapply H0; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive; econstructor; unfold PX.eqke; simpl; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive).
         apply H3; revert H5; clear; induction (Trie_enumerate (snd a));
         intros; inversion H5; subst; eauto.
         destruct H0; simpl in *; eauto.
@@ -1766,24 +1775,24 @@ Module TrieBag (X:OrderedType).
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
             destruct a; simpl in *.
-            eapply XMap.add_3 in H0; eauto.
+            eapply XMap.add_3 in H0; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
-            eapply XMap.add_3 in H0; eauto.
+            eapply XMap.add_3 in H0; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
           * inversion H; subst.
             destruct H5; destruct a; simpl in *; subst.
             right; rewrite <- elements_mapsto_iff; simpl.
             unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec k key0); simpl in *; eauto; try congruence.
             rewrite e in H0; symmetry in H0; intuition.
-            apply add_1; eauto.
+            apply add_1; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
             eauto.
           * right; rewrite <- elements_mapsto_iff; simpl.
             unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
             rewrite <- elements_mapsto_iff in *; simpl; eauto.
             rewrite <- elements_mapsto_iff in *; simpl; eauto.
-            apply add_2; eauto.
+            apply add_2; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
           * unfold KeyBasedPartitioningFunction in *.
             destruct (F.eq_dec (fst a) key0); simpl in *; eauto.
             pose proof (proj1 (add_mapsto_iff _ _ _ _ _) H0); intuition; subst.
@@ -1852,7 +1861,7 @@ Module TrieBag (X:OrderedType).
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
             destruct a; simpl in *.
-            eapply XMap.add_3 in H; eauto.
+            eapply XMap.add_3 in H; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
           * apply (proj1 (H0 v)); eauto.
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
@@ -1860,7 +1869,7 @@ Module TrieBag (X:OrderedType).
             rewrite <- elements_mapsto_iff in H.
             pose proof (proj1 (add_mapsto_iff _ _ _ _ _) H); intuition; subst.
             apply (proj1 (H0 (snd a))); econstructor.
-            constructor; eauto.
+            constructor; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
             apply (proj2 (H0 v)); rewrite <- elements_mapsto_iff; eauto.
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
@@ -1877,7 +1886,7 @@ Module TrieBag (X:OrderedType).
           * inversion H4; eauto.
     Qed.
 
-    Hint Resolve filter_negb_Prefix filter_Prefix Prefix_app.
+    Hint Resolve filter_negb_Prefix filter_Prefix Prefix_app : core.
 
     Lemma TrieOK_subtrie_remove
     : forall b m l key' k subtrie,
@@ -1915,7 +1924,7 @@ Module TrieBag (X:OrderedType).
       rewrite filter_iff in H1; intuition.
     Qed.
 
-    Hint Resolve TrieOK_subtrie_remove TrieOK_subtrie_filter.
+    Hint Resolve TrieOK_subtrie_remove TrieOK_subtrie_filter : core.
 
     Lemma TrieBag_BagFindCorrect :
       BagFindCorrect TrieBagRepInv TrieBag_bfind TrieBag_bfind_matcher TrieBag_benumerate.
@@ -2081,6 +2090,8 @@ Module TrieBag (X:OrderedType).
       unfold Proper, respectful; intros; subst.
       unfold KeyBasedPartitioningFunction; repeat find_if_inside; eauto.
       rewrite <- e in n; intuition.
+      elimtype False;
+      eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
     Qed.
 
     Lemma Proper_negb_KeyBasedPartitioningFunction
@@ -2090,7 +2101,7 @@ Module TrieBag (X:OrderedType).
                   negb (KeyBasedPartitioningFunction Trie key' k0 e)).
     Proof.
       unfold Proper, respectful, KeyBasedPartitioningFunction; intros.
-      repeat find_if_inside; subst; simpl; eauto.
+      repeat find_if_inside; subst; simpl; eauto using XMapFacts.KeySetoid_Symmetric, XMapFacts.KeySetoid_Transitive.
       rewrite H in n; intuition.
     Qed.
 

@@ -114,7 +114,7 @@ Section i2list.
 End i2list.
 
 Arguments i2cons [_ _ _ _ _ _ _ _] _ _.
-Arguments i2nil [_ _ _].
+Arguments i2nil {_ _ _}.
 Arguments i2th [_ _ _ _ _ _] _ _.
 
 Section i2list_replace.

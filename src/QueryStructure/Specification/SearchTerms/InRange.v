@@ -8,10 +8,9 @@ Section RangeClause.
   : {n <= range} + {~ n <= range} := le_dec n range.
 
   Global Instance DecideableEnsemble_InRange_le range :
-    DecideableEnsemble (fun a => a <= range) :=
-    {| dec a :=
-         ?[le_dec a range] |}.
+    DecideableEnsemble (fun a => a <= range).
   Proof.
+    econstructor 1 with (dec := fun a =>  ?[le_dec a range]).
     intros; destruct (le_dec a range); intuition eauto; discriminate.
   Defined.
 
@@ -19,16 +18,16 @@ Section RangeClause.
          (A : Type)
          (f : A -> nat)
          b :
-    DecideableEnsemble (fun a => f a <= b) :=
-    {| dec a := ?[le_dec (f a) b ] |}.
+    DecideableEnsemble (fun a => f a <= b).
   Proof.
+    econstructor 1 with (dec := fun a =>  ?[le_dec (f a) b ] ).
     intros; destruct (le_dec (f a) b); intuition eauto; discriminate.
   Defined.
 
   Global Instance DecideableEnsemble_InRange_ge range :
-    DecideableEnsemble (fun a => range <= a) :=
-    {| dec a := ?[le_dec range a] |}.
+    DecideableEnsemble (fun a => range <= a).
   Proof.
+    econstructor 1 with (dec := fun a => ?[le_dec range a]).
     intros; destruct (le_dec range a); intuition eauto; discriminate.
   Defined.
 
@@ -36,9 +35,9 @@ Section RangeClause.
          (A : Type)
          (f : A -> nat)
          b :
-    DecideableEnsemble (fun a => b <= f a) :=
-    {| dec a := ?[le_dec b (f a) ] |}.
+    DecideableEnsemble (fun a => b <= f a).
   Proof.
+    econstructor 1 with (dec := fun a => ?[le_dec b (f a) ]).
     intros; destruct (le_dec b (f a)); intuition eauto; discriminate.
   Defined.
 
@@ -58,9 +57,9 @@ Section RangeClause.
   Defined.
 
   Global Instance DecideableEnsemble_InRange minRange maxRange :
-    DecideableEnsemble (fun a => minRange <= a <= maxRange) :=
-    {| dec a := ?[InRange_dec a minRange maxRange] |}.
+    DecideableEnsemble (fun a => minRange <= a <= maxRange).
   Proof.
+    econstructor 1 with (dec := fun a => ?[InRange_dec a minRange maxRange]).
     intros; destruct (InRange_dec a minRange maxRange); intuition eauto; discriminate.
   Defined.
 
@@ -68,9 +67,9 @@ Section RangeClause.
          (A : Type)
          (f : A -> nat)
          minRange maxRange :
-    DecideableEnsemble (fun a => minRange <= f a <= maxRange) :=
-    {| dec a := ?[InRange_dec (f a) minRange maxRange ] |}.
-  Proof.
+    DecideableEnsemble (fun a => minRange <= f a <= maxRange).
+   Proof. 
+     econstructor 1 with (dec := fun a => ?[InRange_dec (f a) minRange maxRange ]).
     intros; destruct (InRange_dec (f a) minRange maxRange); intuition eauto; discriminate.
   Defined.
 
