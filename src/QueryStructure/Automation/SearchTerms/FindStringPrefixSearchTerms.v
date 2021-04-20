@@ -12,14 +12,16 @@ Require Import
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
 Definition FindStringPrefixIndex : string := "FindStringPrefixIndex".
 
-Instance DecideablePrefix_f {A} {f s}: DecideableEnsemble (fun s' : A => is_true (prefix s (f s'))) :=
-  {dec s' := ?[bool_dec (prefix s (f s')) true]}.
-intros; find_if_inside; intuition.
+Instance DecideablePrefix_f {A} {f s}: DecideableEnsemble (fun s' : A => is_true (prefix s (f s'))).
+Proof.
+  refine {| DecideableEnsembles.dec s' := ?[bool_dec (prefix s (f s')) true] |}.
+  intros; find_if_inside; intuition.
 Defined.
 
-Instance DecideablePrefix_sym_f {A} {f s}: DecideableEnsemble (fun s' : A => is_true (prefix (f s') s)) :=
-  {dec s' := ?[bool_dec (prefix (f s') s) true]}.
-intros; find_if_inside; intuition.
+Instance DecideablePrefix_sym_f {A} {f s}: DecideableEnsemble (fun s' : A => is_true (prefix (f s') s)).
+Proof.
+  refine {| DecideableEnsembles.dec s' := ?[bool_dec (prefix (f s') s) true] |}.
+  intros; find_if_inside; intuition.
 Defined.
 
 Ltac BuildLastFindStringPrefixIndex

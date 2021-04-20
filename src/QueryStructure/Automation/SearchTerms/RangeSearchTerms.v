@@ -354,7 +354,7 @@ Proof.
              | |- context[le_dec ?st ?st'] =>
                destruct (le_dec st st'); simpl
              end
-           | progress (unfold Nat_as_OT.lt, Nat_as_OT.eq in *; omega)
+           | progress (unfold Nat_as_OT.lt, Nat_as_OT.eq in *; Lia.lia)
            ].
 Qed.
 
@@ -370,15 +370,14 @@ Instance NatRangeTreeBagCorrect
                 UpdateTermType
                 (NatRangeTreeBag.RangeTreeBag_RepInv _ RepInv projection)
                 (NatRangeTreeBag.RangeTreeBag_ValidUpdate _ ValidUpdate projection)
-                (@NatRangeTreeBag' heading BagType  SearchTermType UpdateTermType TBag projection bupdate_transform) :=
-  { bempty_RepInv     := @NatRangeTreeBag.RangeTreeBag_Empty_RepInv BagType RawTuple SearchTermType UpdateTermType TBag RepInv projection;
-    binsert_RepInv    := NatRangeTreeBag.RangeTreeBag_binsert_Preserves_RepInv CorrectTBag (projection := projection);
-    bdelete_RepInv    := NatRangeTreeBag.RangeTreeBag_bdelete_Preserves_RepInv CorrectTBag (projection := projection);
-    bupdate_RepInv    := NatRangeTreeBag.RangeTreeBag_bupdate_Preserves_RepInv CorrectTBag (projection := projection);
-
-    binsert_enumerate := NatRangeTreeBag.RangeTreeBag_BagInsertEnumerate CorrectTBag (projection := projection);
-    benumerate_empty  := NatRangeTreeBag.RangeTreeBag_BagEnumerateEmpty (TBag := TBag)
-  }.
+                (@NatRangeTreeBag' heading BagType  SearchTermType UpdateTermType TBag projection bupdate_transform).
+econstructor.
+eapply (@NatRangeTreeBag.RangeTreeBag_Empty_RepInv BagType RawTuple SearchTermType UpdateTermType TBag RepInv projection).
+eapply (NatRangeTreeBag.RangeTreeBag_binsert_Preserves_RepInv CorrectTBag (projection := projection)).
+eapply (NatRangeTreeBag.RangeTreeBag_bdelete_Preserves_RepInv CorrectTBag (projection := projection)).
+eapply (NatRangeTreeBag.RangeTreeBag_bupdate_Preserves_RepInv CorrectTBag (projection := projection)).
+eapply (NatRangeTreeBag.RangeTreeBag_BagEnumerateEmpty (TBag := TBag)).
+eapply (NatRangeTreeBag.RangeTreeBag_BagInsertEnumerate CorrectTBag (projection := projection)).
 destruct (bfind_matcher_eq heading TBag projection);
   apply (NatRangeTreeBag.RangeTreeBag_BagFindCorrect CorrectTBag (projection := projection)).
 destruct (bfind_matcher_eq heading TBag projection);
