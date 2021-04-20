@@ -108,7 +108,7 @@ Ltac subst_pow2 :=
   rewrite ?pow2_8 in *.
 
 Hint Extern 4 => subst_pow2 : data_inv_hints.
-Hint Extern 4 => omega : data_inv_hints.
+Hint Extern 4 => Lia.lia : data_inv_hints.
 
 Lemma unfold_cache_inv_Property :
   forall (store : Cache)
@@ -176,7 +176,7 @@ Qed.
 
 Lemma plus_minus : forall m n n',
     m + n = n' -> n = n' - m.
-  intros; omega.
+  intros; Lia.lia.
 Qed.
 
 Lemma optimize_if_bind2_opt {A A' B C D}

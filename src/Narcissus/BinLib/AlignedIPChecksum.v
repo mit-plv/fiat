@@ -279,20 +279,20 @@ Proof.
     rewrite !ByteString2ListOfChar_Over; eauto.
     simpl; rewrite padding_eq_mod_8.
     rewrite !length_ByteString_enqueue_ByteString.
-    rewrite Nat.add_mod by omega.
+    rewrite Nat.add_mod by Lia.lia.
     apply len_format_A_OK in H0.
     apply len_format_B_OK in H1.
     unfold format_checksum; rewrite length_encode_word', measure_mempty.
-    rewrite H0, byte_aligned_A, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by omega.
-    rewrite H1, byte_aligned_B, <- plus_n_O, NPeano.Nat.mod_mod by omega.
+    rewrite H0, byte_aligned_A, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by Lia.lia.
+    rewrite H1, byte_aligned_B, <- plus_n_O, NPeano.Nat.mod_mod by Lia.lia.
     reflexivity.
     simpl; rewrite padding_eq_mod_8.
     rewrite !length_ByteString_enqueue_ByteString.
-    rewrite Nat.add_mod by omega.
+    rewrite Nat.add_mod by Lia.lia.
     apply len_format_A_OK in H0.
     apply len_format_B_OK in H1.
-    rewrite H0, byte_aligned_A, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by omega.
-    rewrite H1, byte_aligned_B, <- plus_n_O, NPeano.Nat.mod_mod by omega.
+    rewrite H0, byte_aligned_A, plus_O_n, NPeano.Nat.mod_mod, Nat.add_mod by Lia.lia.
+    rewrite H1, byte_aligned_B, <- plus_n_O, NPeano.Nat.mod_mod by Lia.lia.
     unfold format_checksum; rewrite length_encode_word'; reflexivity.
 Qed.
 
@@ -378,7 +378,7 @@ Proof.
          erewrite len_format_A_OK; eauto.
          erewrite (len_format_B_OK _ b0); eauto.
          unfold format_checksum; rewrite length_encode_word', measure_mempty.
-         rewrite <- H2; omega.
+         rewrite <- H2; Lia.lia.
        - eauto.
        - eapply Pseudo_Checksum_Valid_bounded; eauto. }
   all: try unfold flip, pointwise_relation, impl;
@@ -445,7 +445,7 @@ Proof.
       * destruct v; simpl; eauto.
         destruct v; simpl; eauto.
         rewrite add_bytes_into_checksum_swap; eauto.
-        rewrite !IHsz'' by omega.
+        rewrite !IHsz'' by Lia.lia.
         rewrite add_bytes_into_checksum_swap; eauto.
     + eauto.
 Qed.
@@ -487,7 +487,7 @@ Proof.
   assert ((exists m', m = 2 * m') \/ (exists m', m = S (2 * m'))).
   { induction m; eauto.
     destruct IHm; destruct_ex; subst; eauto.
-    left; exists (S x); omega.
+    left; exists (S x); Lia.lia.
   }
   destruct H as [ [? ?] | [? ?] ]; subst.
   - rewrite (mult_comm 2).
@@ -499,7 +499,7 @@ Proof.
       * rewrite dequeue_byte_ByteString2ListOfChar.
         reflexivity.
     + intros; destruct v.
-      * replace (S (2 * S x)) with ((S (S (S (2 * x))))) by omega.
+      * replace (S (2 * S x)) with ((S (S (S (2 * x))))) by Lia.lia.
         rewrite ByteString2ListOfChar_overflow.
         rewrite ByteString2ListOfChar_overflow.
         unfold checksum; fold checksum.
@@ -509,14 +509,14 @@ Proof.
         destruct (2 * x); eauto.
       * rewrite dequeue_byte_ByteString2ListOfChar.
         destruct v.
-        replace (2 * S x * 8) with ((S (S (2 * x))) * 8) by omega.
+        replace (2 * S x * 8) with ((S (S (2 * x))) * 8) by Lia.lia.
         rewrite ByteString2ListOfChar_overflow.
         unfold checksum; fold checksum.
         rewrite IHx.
         rewrite <- !ByteBuffer_checksum_bound_ok.
         simpl.
         destruct (2 * x); eauto.
-        replace (2 * S x * 8) with ((S (S (2 * x))) * 8) by omega.
+        replace (2 * S x * 8) with ((S (S (2 * x))) * 8) by Lia.lia.
         rewrite dequeue_byte_ByteString2ListOfChar.
         replace
           (checksum (h :: (h0 :: ByteString2ListOfChar (S (2 * x) * 8) (build_aligned_ByteString v))%list))
@@ -527,7 +527,7 @@ Proof.
           by reflexivity.
         rewrite IHx.
         rewrite <- !ByteBuffer_checksum_bound_ok.
-        replace (2 * S x) with (S (S ( 2 * x))) by omega.
+        replace (2 * S x) with (S (S ( 2 * x))) by Lia.lia.
         rewrite <- Vector_checksum_bound_acc; reflexivity.
 Qed.
 
@@ -799,7 +799,7 @@ Proof.
       unfold format_checksum. rewrite encode_word'_padding. eauto.
     + intros. injections. unfold format_checksum.
       rewrite length_encode_word'. rewrite measure_mempty.
-      apply checksum_sz_OK' in H. omega.
+      apply checksum_sz_OK' in H. Lia.lia.
     + unfold f_bit_aligned_free. instantiate (1:=f). intros.
       assert (padding b = 0) as L1. {
         apply (f_equal padding) in H. simpl in H.
@@ -844,7 +844,7 @@ Proof.
 
       assert (encode_B (idx + (nB + (nC + nC3))) (t1 ++ vB ++ vC3) idx w c =
               Some (t1 ++ vB ++ vC3, idx+nB, ce)). {
-        assert (idx + nB + (nC + nC3) = idx + (nB + (nC + nC3))) as L by omega.
+        assert (idx + nB + (nC + nC3) = idx + (nB + (nC + nC3))) as L by Lia.lia.
         rewrite Vector_append_assoc with (H:=L). destruct L. simpl.
         epose proof AlignedEncoder_extr as H'. eapply H'; eauto. clear H'.
         eapply @AlignedEncoder_fixed; eauto.
@@ -883,22 +883,22 @@ Proof.
         eapply (f_equal bin_measure) in H12. simpl in *.
         unfold format_checksum in H12.
         rewrite length_encode_word' in H12. rewrite measure_mempty in H12.
-        unfold length_ByteString in H12. simpl in H12. omega.
+        unfold length_ByteString in H12. simpl in H12. Lia.lia.
         assert (checksum_sz = 8 * nC).
         epose proof AlignedEncoder_inv0 as L. eapply L in H4; eauto. clear L.
         apply checksum_sz_OK' in H4.
-        unfold length_ByteString in H4. simpl in H4. omega.
-        omega.
+        unfold length_ByteString in H4. simpl in H4. Lia.lia.
+        Lia.lia.
       } subst nC'.
 
-      assert (n3' = nA + nA3) as L by omega. subst n3'.
+      assert (n3' = nA + nA3) as L by Lia.lia. subst n3'.
       assert (encode_A (idx + (nB + (nC + (nA + nA3)))) t n w c =
               Some (t, n+nA, c)). {
         rewrite (Vector_append_assoc _ _ _ H3) in H8.
         clear Heqa0. destruct H3. simpl in *.
         subst. apply Vector_append_inj in H8. destruct_conjs.
         apply Vector_append_inj in H7. destruct_conjs. subst.
-        assert (idx + nB + nC + (nA + nA3) = idx + nB + (nC + (nA + nA3))) as L by omega.
+        assert (idx + nB + nC + (nA + nA3) = idx + nB + (nC + (nA + nA3))) as L by Lia.lia.
         rewrite (Vector_append_assoc _ _ _ L). destruct L. simpl.
         epose proof AlignedEncoder_extl as L. eapply L; eauto. clear L.
         destruct_unit.
@@ -1029,7 +1029,7 @@ Proof.
   f_equal. rewrite build_aligned_ByteString_append.
   replace (sz * 8) with (bin_measure (build_aligned_ByteString v)).
   rewrite ByteString2ListOfChar_Over; eauto.
-  simpl. unfold length_ByteString. simpl. omega.
+  simpl. unfold length_ByteString. simpl. Lia.lia.
 Qed.
 
 Lemma padding_append_0
@@ -1087,7 +1087,7 @@ Proof.
   apply Nat.mod_divides; eauto.
   apply Nat.mod_divides in H; eauto.
   destruct H as [x ?]. rewrite H. clear.
-  exists (2*x). omega.
+  exists (2*x). Lia.lia.
 Qed.
 
 Fixpoint calculate_aligned_IPchecksum''
@@ -1139,7 +1139,7 @@ Proof.
     rewrite <- Eqdep_dec.eq_rect_eq_dec; try apply Nat.eq_dec.
   - destruct m. reflexivity. destruct m; reflexivity.
   - destruct idx; eauto.
-    assert (n = n - 0) as L by omega.
+    assert (n = n - 0) as L by Lia.lia.
     replace (ByteBuffer.drop 0 v) with (eq_rect _ _ v _ L).
     destruct L. simpl. reflexivity.
     simpl.
@@ -1223,7 +1223,7 @@ Proof.
     | |- context [ByteString2ListOfChar (numBytes ?a * 8) ?a] =>
       replace (numBytes a * 8) with (bin_measure a)
     end.
-    2 : rewrite length_ByteString_no_padding; try omega.
+    2 : rewrite length_ByteString_no_padding; try Lia.lia.
     rewrite !ByteString2ListOfChar_append.
     rewrite !ByteString2ListOfChar_format_checksum.
 
@@ -1231,7 +1231,7 @@ Proof.
                  forall b, exists x, |ByteString2ListOfChar n b| = 2 * x) as L. {
       clear. intros.
       apply Nat.mod_divides in H; eauto. destruct H as [x ?].
-      replace (16 * x) with (8 * (2*x)) in * by omega.
+      replace (16 * x) with (8 * (2*x)) in * by Lia.lia.
       subst.
       rewrite ByteString2ListOfChar_len. eauto.
     }
@@ -1263,9 +1263,9 @@ Proof.
     } rewrite L. clear L.
     rewrite <- !checksum_split; eauto.
     apply checksum_correct.
-    simpl. exists (1+x1). unfold Core.char in *. rewrite H7. omega.
-    simpl. exists 1. omega.
-    simpl. exists 1. omega.
+    simpl. exists (1+x1). unfold Core.char in *. rewrite H7. Lia.lia.
+    simpl. exists 1. Lia.lia.
+    simpl. exists 1. Lia.lia.
     all : destruct_conjs; simpl.
     all : repeat match goal with
                  | |- padding (ByteString_enqueue_ByteString _ _) = _ =>
@@ -1417,7 +1417,7 @@ Proof.
     | |- context [numBytes ?a * 8] =>
       replace (numBytes a * 8) with (bin_measure a)
     end.
-    2 : rewrite length_ByteString_no_padding; try omega.
+    2 : rewrite length_ByteString_no_padding; try Lia.lia.
 
     match goal with
     | |- context [wnot (checksum (ByteString2ListOfChar ?a ?b))] =>
@@ -1434,7 +1434,7 @@ Proof.
                  forall b, exists x, |ByteString2ListOfChar n b| = 2 * x) as L. {
       clear. intros.
       apply Nat.mod_divides in H; eauto. destruct H as [x ?].
-      replace (16 * x) with (8 * (2*x)) in * by omega.
+      replace (16 * x) with (8 * (2*x)) in * by Lia.lia.
       subst.
       rewrite ByteString2ListOfChar_len. eauto.
     }
@@ -1460,7 +1460,7 @@ Proof.
     assert (exists x, | l1' | = 2 * x) as L'. {
       subst l1'. simpl.
       rewrite !app_length. rewrite <- !ByteBuffer.to_list_length. rewrite H7.
-      exists (6+x1). omega.
+      exists (6+x1). Lia.lia.
     } destruct L' as [x L'].
     rewrite <- !app_assoc.
     match goal with
@@ -1485,9 +1485,9 @@ Proof.
     } rewrite L. clear L.
     rewrite <- !checksum_split; eauto.
     apply checksum_correct.
-    rewrite !app_length. rewrite L'. simpl. exists (1+x). omega.
-    simpl. exists 1. omega.
-    simpl. exists 1. omega.
+    rewrite !app_length. rewrite L'. simpl. exists (1+x). Lia.lia.
+    simpl. exists 1. Lia.lia.
+    simpl. exists 1. Lia.lia.
 
     all : destruct_conjs; simpl.
     all : repeat match goal with

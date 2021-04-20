@@ -139,7 +139,7 @@ Proof.
   unfold WordOpt.format_word; simpl.
   intros; computes_to_inv; injections.
   rewrite length_encode_word'; simpl.
-  unfold ByteString_id, length_ByteString; simpl; omega.
+  unfold ByteString_id, length_ByteString; simpl; Lia.lia.
 Qed.
 
 Lemma length_ByteString_unused_word {S}
@@ -150,7 +150,7 @@ Proof.
     intros; rewrite unfold_computes in H; destruct_ex; split_and.
   unfold format_word in H0; computes_to_inv; injections.
   rewrite length_encode_word'; simpl.
-  unfold ByteString_id, length_ByteString; simpl; omega.
+  unfold ByteString_id, length_ByteString; simpl; Lia.lia.
 Qed.
 
 Lemma length_ByteString_bool
@@ -317,7 +317,7 @@ Lemma length_ByteString_Projection_compose {S S' S''}:
 Ltac associate_for_ByteAlignment :=
   eapply @Guarded_CorrectAlignedEncoderThenCAssoc;
   [clear; intros ce bs ce' Comp ? ;
-   calculate_length_ByteString'; omega
+   calculate_length_ByteString'; Lia.lia
   | ].
 
 (*Lemma CorrectAlignedEncoderForFormatOption {S}
@@ -499,7 +499,7 @@ Lemma length_ByteString_bytebuffer
     rewrite length_ByteString_enqueue_ByteString.
     apply IHt in H'.
     simpl; rewrite H'.
-    apply length_ByteString_word in H; subst; omega.
+    apply length_ByteString_word in H; subst; Lia.lia.
 Qed.
 
 Lemma length_ByteString_Projection {S S'}:

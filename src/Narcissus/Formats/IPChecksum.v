@@ -203,7 +203,7 @@ Proof.
       - simpl; intros; rewrite Vector_append_nil_r'.
         revert l; rewrite (plus_n_O m); simpl; reflexivity.
       - simpl; intros.
-        assert (m + 1 + n = m + (1 + n)) by omega.
+        assert (m + 1 + n = m + (1 + n)) by Lia.lia.
         pose proof (Vector_append_assoc _ _ _ H l [h] byteString)%vector.
         simpl in H0; rewrite H0; clear H0.
         revert H.
@@ -329,7 +329,7 @@ Corollary length_encode_word {sz} :
 Proof.
   unfold encode_word.
   intros; rewrite length_encode_word'.
-  simpl; rewrite length_ByteString_id; omega.
+  simpl; rewrite length_ByteString_id; Lia.lia.
 Qed.
 
 Definition IPChecksum (b b' : ByteString) : ByteString :=
@@ -361,15 +361,15 @@ Proof.
   - reflexivity.
   - simpl encode_word'.
     rewrite ByteString_enqueue_padding_eq.
-    replace (S n + padding bs) with (1 + (n + padding bs)) by omega.
-    rewrite <- Nat.add_mod_idemp_r by omega.
+    replace (S n + padding bs) with (1 + (n + padding bs)) by Lia.lia.
+    rewrite <- Nat.add_mod_idemp_r by Lia.lia.
     rewrite <- IHw.
-    rewrite !Nat.add_mod_idemp_r by omega.
+    rewrite !Nat.add_mod_idemp_r by Lia.lia.
     replace (S (padding (encode_word' n w bs))) with
-        (1 + (padding (encode_word' n w bs))) by omega.
-    rewrite <- Nat.add_mod_idemp_r at 1 by omega.
-    rewrite NPeano.Nat.mod_mod by omega.
-    rewrite Nat.add_mod_idemp_r by omega; reflexivity.
+        (1 + (padding (encode_word' n w bs))) by Lia.lia.
+    rewrite <- Nat.add_mod_idemp_r at 1 by Lia.lia.
+    rewrite NPeano.Nat.mod_mod by Lia.lia.
+    rewrite Nat.add_mod_idemp_r by Lia.lia; reflexivity.
 Qed.
 
 Lemma encode_word'_padding :
@@ -426,7 +426,7 @@ Lemma padding_eq_length
 Proof.
   destruct b; simpl.
   unfold length_ByteString; simpl.
-  omega.
+  Lia.lia.
 Qed.
 
 Definition IPv4_Packet_format_measure (ipv4_b : ByteString)
@@ -455,7 +455,7 @@ Proof.
   - intros; rewrite (shatter_word front); injections.
     unfold ByteString_push; simpl.
     destruct (Peano_dec.eq_nat_dec padding 7).
-    subst; elimtype False; omega.
+    subst; elimtype False; Lia.lia.
     f_equal.
     eapply le_uniqueness_proof.
 Qed.
@@ -506,7 +506,7 @@ Proof.
   congruence.
   rewrite Mult.mult_comm, NPeano.Nat.mod_add in H by eauto.
   destruct padding as [ | [ | [ | [ | [ | [ | [ | [ | [ ] ] ] ] ] ] ] ] ] ;
-    eauto; simpl in H; try omega.
+    eauto; simpl in H; try Lia.lia.
   unfold IPChecksum_ByteAligned; intuition eauto.
   subst; rewrite plus_O_n in H.
   eapply NPeano.Nat.mod_divides in H; eauto.
@@ -514,7 +514,7 @@ Proof.
   simpl.
   exists x.
   unfold AlignedByteString.numBytes in H.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma IPChecksum_ByteAligned_length_ByteString
@@ -576,7 +576,7 @@ Proof.
   rewrite !length_ByteString_enqueue_ByteString; simpl.
   unfold format_checksum.
   erewrite length_encode_word'; simpl; rewrite length_ByteString_id.
-  erewrite H0, H1; eauto; omega.
+  erewrite H0, H1; eauto; Lia.lia.
 Qed.
 
 Lemma length_ByteString_composeIf {S} :
@@ -737,7 +737,7 @@ Proof.
   unfold format_word in H0; computes_to_inv; injections.
   rewrite length_encode_word'; simpl.
   rewrite length_ByteString_id.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma length_ByteString_word
@@ -748,7 +748,7 @@ Proof.
   unfold WordOpt.format_word; simpl.
   intros; computes_to_inv; injections.
   rewrite length_encode_word'.
-  simpl; rewrite length_ByteString_id; omega.
+  simpl; rewrite length_ByteString_id; Lia.lia.
 Qed.
 
 Lemma length_ByteString_bool
@@ -854,10 +854,10 @@ Proof.
     + intros; rewrite !mappend_measure.
       simpl; rewrite (H0 _ _ _ _ H6).
       simpl; rewrite (H1 _ _ _ _ H7).
-      erewrite <- H4; eauto; try omega.
+      erewrite <- H4; eauto; try Lia.lia.
       unfold format_checksum.
       rewrite length_encode_word'.
-      simpl; omega.
+      simpl; Lia.lia.
     + unfold IPChecksum_Valid in *; intros; simpl.
       rewrite ByteString2ListOfChar_Over.
       * rewrite ByteString2ListOfChar_Over in H9.
@@ -1066,7 +1066,7 @@ Proof.
          erewrite H0; eauto.
          apply unfold_computes in H10; erewrite (H1 _ b0); eauto.
          unfold format_checksum; rewrite length_encode_word', measure_mempty.
-         rewrite <- H7; omega.
+         rewrite <- H7; Lia.lia.
        - eauto.
        - unfold IPChecksum_Valid in *; intros; simpl.
          rewrite ByteString2ListOfChar_Over.
@@ -1144,7 +1144,7 @@ Proof.
     + pose proof (monoid_dequeue_enqueue_word h (build_aligned_ByteString v)) .
       pose proof (build_aligned_ByteString_append v [h]) as H'; simpl in H';
         rewrite H'; clear H'.
-      assert (lt 0 8)%nat as OK by omega.
+      assert (lt 0 8)%nat as OK by Lia.lia.
       replace (build_aligned_ByteString [h]) with
           (ByteStringToBoundedByteString (word_into_ByteString (m := 1) OK h)).
       rewrite H.
@@ -1219,14 +1219,14 @@ Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
   destruct (NPeano.Nat.mod_divides (n' * 16) 8); eauto.
   rewrite H0; eauto.
-  eexists (2 * n'); omega.
+  eexists (2 * n'); Lia.lia.
 Qed.
 
 Lemma lt_minus_plus :
   forall n m o,
     lt n (o - m) -> lt (m + n) o.
 Proof.
-  intros; omega.
+  intros; Lia.lia.
 Qed.
 
 Lemma lt_minus_minus :
@@ -1235,7 +1235,7 @@ Lemma lt_minus_minus :
     -> n' = n - m
     -> lt n o -> lt n' (o - m).
 Proof.
-  intros; omega.
+  intros; Lia.lia.
 Qed.
 
 Lemma lt_8_2_16 : lt 8 (pow2 16).
@@ -1253,7 +1253,7 @@ Lemma lt_minus_plus_idem :
     -> lt n o
     -> lt (m + (n - m)) o.
 Proof.
-  intros; omega.
+  intros; Lia.lia.
 Qed.
 
 Lemma mult_32_mod_8 :
@@ -1282,7 +1282,7 @@ Qed.
 Lemma mult_8_mod_8': forall n' : nat, (8 * n') mod 8 = 0.
 Proof.
   intros; rewrite mult_comm.
-  rewrite Nat.mod_mul; omega.
+  rewrite Nat.mod_mul; Lia.lia.
 Qed.
 
 Lemma mult_32_mod_8'
@@ -1326,7 +1326,7 @@ Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
   destruct (NPeano.Nat.mod_divides (n' * 32) 16); eauto.
   rewrite H0; eauto.
-  eexists (2 * n'); omega.
+  eexists (2 * n'); Lia.lia.
 Qed.
 
 Lemma mult_16_mod_16 :
@@ -1335,7 +1335,7 @@ Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
   destruct (NPeano.Nat.mod_divides (n' * 16) 16); eauto.
   rewrite H0; eauto.
-  eexists (n'); omega.
+  eexists (n'); Lia.lia.
 Qed.
 
 Lemma mult_32_mod_16'

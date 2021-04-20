@@ -191,7 +191,7 @@ Lemma firstn_skipn_self'' {A}
                   l).
 Proof.
   intros; eapply firstn_skipn_self'.
-  omega.
+  Lia.lia.
 Qed.
 
 Lemma word_eq_self
@@ -244,7 +244,7 @@ Lemma decides_length_firstn_skipn_app {A}
 Proof.
   intros.
   rewrite length_firstn_skipn_app with (o0 := o);
-    simpl; omega.
+    simpl; Lia.lia.
 Qed.
 
 Lemma length_firstn_skipn_app' {A}
@@ -271,7 +271,7 @@ Lemma decides_length_firstn_skipn_app' {A}
     length l = n + (m + o)
     -> decides true (length (firstn o (skipn (n + m) l) ) = o).
 Proof.
-  intros; rewrite length_firstn_skipn_app'; simpl; omega.
+  intros; rewrite length_firstn_skipn_app'; simpl; Lia.lia.
 Qed.
 
 Lemma length_firstn_skipn_app'' {A}
@@ -289,7 +289,7 @@ Lemma decides_length_firstn_skipn_app'' {A}
     -> decides true (length (firstn n l ) = n).
 Proof.
   intros; erewrite length_firstn_skipn_app'' with (o0 := o) (m0 := m);
-    simpl; omega.
+    simpl; Lia.lia.
 Qed.
 
 Lemma lt_1_pow2_16

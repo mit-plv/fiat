@@ -157,29 +157,29 @@ Ltac ExtractView :=
   try reflexivity;
   (* Try to instantiate and solve the goal with any variables in hand *)
   solve [match goal with
-         | H : _ |- _ => solve [instantiate (1 := H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 2 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 2 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 3 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 3 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 4 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 4 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 5 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 5 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 6 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 6 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 7 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 7 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 8 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 8 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 9 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 9 * H); try Lia.lia;
                                 auto with arith]
-         | H : _ |- _ => solve [instantiate (1 := 10 * H); try omega;
+         | H : _ |- _ => solve [instantiate (1 := 10 * H); try Lia.lia;
                                 auto with arith]
-         | H : ?x = ?y |- _ => solve [instantiate (1 := x); try omega;
+         | H : ?x = ?y |- _ => solve [instantiate (1 := x); try Lia.lia;
                                       auto with arith]
-         | H : ?x = ?y |- _ => solve [instantiate (1 := y); try omega;
+         | H : ?x = ?y |- _ => solve [instantiate (1 := y); try Lia.lia;
                                       auto with arith]
          end] .
 

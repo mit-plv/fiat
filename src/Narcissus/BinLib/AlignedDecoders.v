@@ -393,7 +393,7 @@ Section AlignedDecoders.
           destruct_ex; intuition; subst.
           destruct encode_S_OK.
           destruct a.
-          destruct a0.          
+          destruct a0.
           unfold CorrectAlignedEncoderProjection; simpl in *.
           eexists _, _; split.
           unfold Basics.compose; eauto.
@@ -526,7 +526,7 @@ Section AlignedDecoders.
     eexists (build_aligned_ByteString
                (snd (Vector_split _ _ (Guarded_Vector_split m n b)))).
     abstract (unfold build_aligned_ByteString, le_B; simpl;
-              unfold length_ByteString; simpl; omega).
+              unfold length_ByteString; simpl; Lia.lia).
   Defined.
 
   Lemma build_aligned_ByteString_eq_split
@@ -548,17 +548,17 @@ Section AlignedDecoders.
     inversion H; subst.
     - revert b H0 IHm; clear.
       intro; pattern m, b; apply Vector.caseS; simpl; intros.
-      assert ((n + (n - n)) = n) by omega.
+      assert ((n + (n - n)) = n) by Lia.lia.
       rewrite eq_rect_Vector_cons with (H' := H).
       f_equal.
       erewrite <- IHm; eauto.
     - revert b H0 IHm H1; clear.
       intro; pattern m0, b; apply Vector.caseS; simpl; intros.
-      assert ((m + (n - m)) = n) by omega.
+      assert ((m + (n - m)) = n) by Lia.lia.
       erewrite eq_rect_Vector_cons with (H' := H).
       f_equal.
       erewrite <- IHm; eauto.
-      omega.
+      Lia.lia.
   Qed.
 
   Lemma ByteAlign_Decode_w_Measure_le {A}
@@ -582,7 +582,7 @@ Section AlignedDecoders.
   Proof.
     intros.
     destruct (Compare_dec.le_dec m n).
-    assert (m + (n - m) = n) by omega.
+    assert (m + (n - m) = n) by Lia.lia.
     assert (forall b, Decode_w_Measure_le dec_a (build_aligned_ByteString b) cd decode_a_le
                       = Decode_w_Measure_le dec_a (build_aligned_ByteString ( eq_rect _ _ (Guarded_Vector_split m n b) _ H0)) cd decode_a_le).
     { revert l; clear; intros.
@@ -665,7 +665,7 @@ Section AlignedDecoders.
     eexists (build_aligned_ByteString
                (snd (Vector_split _ _ (Guarded_Vector_split m n b)))).
     abstract (unfold build_aligned_ByteString, lt_B; simpl;
-              unfold length_ByteString; simpl; omega).
+              unfold length_ByteString; simpl; Lia.lia).
   Defined.
 
   Fixpoint BytesToString {sz}
@@ -706,8 +706,8 @@ Section AlignedDecoders.
   Proof.
     intros.
     destruct (Compare_dec.lt_dec m n);
-      destruct (Compare_dec.lt_dec n m); try omega.
-    - assert (m + (n - m) = n) by omega.
+      destruct (Compare_dec.lt_dec n m); try Lia.lia.
+    - assert (m + (n - m) = n) by Lia.lia.
       assert (forall b, Decode_w_Measure_lt (dec_a m) (build_aligned_ByteString b) cd decode_a_le
                         = Decode_w_Measure_lt (dec_a m)(build_aligned_ByteString ( eq_rect _ _ (Guarded_Vector_split m n b) _ H0)) cd decode_a_le).
       { revert l; clear; intros.
@@ -726,14 +726,14 @@ Section AlignedDecoders.
           repeat f_equal.
         revert l1 l0. rewrite H1; intros; f_equal.
         f_equal; apply Core.le_uniqueness_proof.
-        omega.
+        Lia.lia.
         apply ByteString_id.
         eapply Decode_w_Measure_lt_eq'' in Heqo0.
-        rewrite <- build_aligned_ByteString_eq_split in Heqo0 by omega.
+        rewrite <- build_aligned_ByteString_eq_split in Heqo0 by Lia.lia.
         rewrite Heqo0 in Heqo.
         discriminate.
         apply ByteString_id.
-        erewrite (build_aligned_ByteString_eq_split m n) in Heqo by omega.
+        erewrite (build_aligned_ByteString_eq_split m n) in Heqo by Lia.lia.
         rewrite Heqo; reflexivity.
       }
       rewrite H1.
@@ -779,8 +779,8 @@ Section AlignedDecoders.
     - eapply dec_fail in l; simpl.
       eapply Specs.Decode_w_Measure_lt_eq' in l.
       apply l.
-    - assert (m = n) by omega; subst.
-      assert (n + (n - n) = n) by omega.
+    - assert (m = n) by Lia.lia; subst.
+      assert (n + (n - n) = n) by Lia.lia.
       assert (forall b, Decode_w_Measure_lt (dec_a n) (build_aligned_ByteString b) cd decode_a_le
                         = Decode_w_Measure_lt (dec_a n)(build_aligned_ByteString ( eq_rect _ _ (Guarded_Vector_split n n b) _ H0)) cd decode_a_le).
       { clear; intros.
@@ -799,14 +799,14 @@ Section AlignedDecoders.
           repeat f_equal.
         revert l l0. rewrite H1; intros; f_equal.
         f_equal; apply Core.le_uniqueness_proof.
-        omega.
+        Lia.lia.
         apply ByteString_id.
         eapply Decode_w_Measure_lt_eq'' in Heqo0.
-        rewrite <- build_aligned_ByteString_eq_split in Heqo0 by omega.
+        rewrite <- build_aligned_ByteString_eq_split in Heqo0 by Lia.lia.
         rewrite Heqo0 in Heqo.
         discriminate.
         apply ByteString_id.
-        erewrite (build_aligned_ByteString_eq_split n n) in Heqo by omega.
+        erewrite (build_aligned_ByteString_eq_split n n) in Heqo by Lia.lia.
         rewrite Heqo; reflexivity.
       }
       rewrite H1.
@@ -1021,14 +1021,14 @@ Section AlignedDecoders.
       intro.
     apply Eqdep_dec.eq_rect_eq_dec; auto with arith.
     destruct v; simpl in *.
-    omega.
+    Lia.lia.
     unfold Guarded_Vector_split; fold Guarded_Vector_split;
       simpl.
     unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; eauto.
     f_equal.
     apply IHn.
     Grab Existential Variables.
-    omega.
+    Lia.lia.
   Qed.
 
   Lemma optimize_Guarded_Decode {sz} {C} n
@@ -1088,10 +1088,10 @@ Section AlignedDecoders.
     erewrite VectorByteToWord_cons.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
     Grab Existential Variables.
-    omega.
-    omega.
-    omega.
-    omega.
+    Lia.lia.
+    Lia.lia.
+    Lia.lia.
+    Lia.lia.
   Qed.
 
   Lemma split2_split2
@@ -1278,7 +1278,7 @@ Section AlignedDecoders.
     induction b; intros.
     - unfold build_aligned_ByteString; simpl.
       inversion H; subst; reflexivity.
-    - destruct sz; try omega.
+    - destruct sz; try Lia.lia.
       apply lt_S_n in H.
       pose proof (IHb _ cd H).
       unfold decode_unused_word, WordOpt.decode_word, FMapFormat.Compose_Decode in *.
@@ -1327,7 +1327,7 @@ Section AlignedDecoders.
       simpl; intros; unfold Vector_split; simpl.
       reflexivity.
     - simpl.
-      replace (8 * S numBytes') with (8 + 8 * numBytes') by omega.
+      replace (8 * S numBytes') with (8 + 8 * numBytes') by Lia.lia.
       unfold decode_unused_word, WordOpt.decode_word, FMapFormat.Compose_Decode in *.
       unfold decode_unused_word; intros.
       rewrite decode_word_plus'.
@@ -1526,7 +1526,7 @@ Section AlignedDecoders.
         rewrite H0.
         erewrite eq_rect_Vector_cons with (H' := (plus_assoc n 0 sz)); eauto; simpl.
         destruct (Vector_split (n + 0) sz (eq_rect (n + sz) (Vector.t A) x0 (n + 0 + sz) (plus_assoc n 0 sz))); reflexivity.
-    - assert (n + (S m + sz) = S n + (m + sz)) by omega.
+    - assert (n + (S m + sz) = S n + (m + sz)) by Lia.lia.
       fold plus in *; unfold Core.char in *.
       replace (Vector.tl (snd (Vector_split n (S (m + sz)) v)))
         with ((snd (Vector_split n (m + sz) (Vector.tl  (eq_rect _ _ v _ H))))).
@@ -1535,7 +1535,7 @@ Section AlignedDecoders.
         fold plus in *; rewrite Heqp.
         simpl; rewrite H0.
         clear.
-        assert ( S (n + (m + sz)) = S (n + m + sz)) by omega.
+        assert ( S (n + (m + sz)) = S (n + m + sz)) by Lia.lia.
         rewrite <- eq_rect_Vector_tl with (H1 := H0).
         rewrite <- Equality.transport_pp; simpl; clear.
         generalize (eq_trans H H0);
@@ -1546,8 +1546,8 @@ Section AlignedDecoders.
           destruct (Vector_split m sz (Vector.tl v)) eqn: ?.
           simpl in *; fold plus in *; rewrite Heqp; reflexivity.
         * intros.
-          assert (n + S (m + sz) = S (n + m + sz)) by omega.
-          assert (n + S (m + sz) = n + S m + sz) by omega.
+          assert (n + S (m + sz) = S (n + m + sz)) by Lia.lia.
+          assert (n + S (m + sz) = n + S m + sz) by Lia.lia.
           (* Again, 8.4 compatibility problems. *)
           erewrite eq_rect_Vector_tl with (H' := H0).
           erewrite eq_rect_Vector_tl with (H' := H).
@@ -1556,7 +1556,7 @@ Section AlignedDecoders.
           simpl in *; fold plus in *; rewrite Heqp, H1; simpl.
           destruct (Vector_split (n + S m) sz (eq_rect (n + S (m + sz)) (Vector.t A) (Vector.tl v) (n + S m + sz) H0)) eqn: ?.
           replace (plus_assoc n (S m) sz) with H0; simpl; eauto.
-          eapply Eqdep_dec.eq_proofs_unicity; intros; omega.
+          eapply Eqdep_dec.eq_proofs_unicity; intros; Lia.lia.
       + clear.
         revert H v.
         assert (forall q (v : t A (n + (S q))) H,
@@ -1564,7 +1564,7 @@ Section AlignedDecoders.
                    Vector.tl (snd (Vector_split n (S (q)) v))).
         { induction n; simpl; intros.
           rewrite <- Eqdep_dec.eq_rect_eq_dec; auto with arith.
-          assert (n + S q = S (n + q)) by omega.
+          assert (n + S q = S (n + q)) by Lia.lia.
           rewrite eq_rect_Vector_tl with (H' := H0).
           pose proof (IHn q (Vector.tl v) H0).
           destruct ((Vector_split n q (Vector.tl (eq_rect (n + S q) (t A) (Vector.tl v) (S n + q) H0))))
