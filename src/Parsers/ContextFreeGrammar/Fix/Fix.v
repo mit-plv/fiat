@@ -37,7 +37,20 @@ Section grammar_fixedpoint.
     := PositiveMapExtensions.lift_eqb state_beq default_value.
   Definition aggregate_state_lt (v1 v2 : aggregate_state) : bool
     := PositiveMapExtensions.lift_ltb state_beq state_le default_value v1 v2.
+    
+  Global Instance aggregate_state_eq_Proper_eq
+    : Proper (eq ==> eq ==> eq) aggregate_state_eq
+    := _.
+  
+  Instance: Params (@aggregate_state_eq) 0 := {}.
 
+  Instance ext_subrel A B R S :
+    @subrelation B R S ->
+    @subrelation (A -> B) (pointwise_relation A R) (eq ==> S)%signature.
+  Proof.
+    intros HRS f g Heq x y ->. apply HRS, Heq.
+  Qed.
+    
   Lemma PositiveMap_elements_iff {A m k v}
     : @PositiveMap.find A k m = Some v <-> In (k, v) (PositiveMap.elements m).
   Proof.
@@ -155,6 +168,10 @@ Section grammar_fixedpoint.
   Definition aggregate_step (v : aggregate_state) : aggregate_state
     := aggregate_state_lub v (aggregate_prestep v).
 
+  Global Instance aggregate_step_Proper_eq
+    : Proper (eq ==> eq) aggregate_step
+    := _.
+    
   Definition aggregate_state_lub_correct (v1 v2 : aggregate_state)
     : aggregate_state_le v1 (aggregate_state_lub v1 v2)
       /\ aggregate_state_le v2 (aggregate_state_lub v1 v2).
@@ -379,7 +396,6 @@ Section grammar_fixedpoint.
       edestruct dec; [ | congruence ].
       reflexivity.
     Qed.
-
     Lemma pre_Fix_grammar_helper_commute v
       : aggregate_state_eq (pre_Fix_grammar_helper (aggregate_step v))
                            (aggregate_step (pre_Fix_grammar_helper v)).
@@ -405,13 +421,6 @@ Section grammar_fixedpoint.
       { apply IHv.
         apply step_lt; assumption. }
     Qed.
-
-    Global Instance aggregate_state_eq_Proper_eq
-      : Proper (eq ==> eq ==> eq) aggregate_state_eq
-      := _.
-    Global Instance aggregate_step_Proper_eq
-      : Proper (eq ==> eq) aggregate_step
-      := _.
 
     Lemma pre_Fix_grammar_fixedpoint
       : aggregate_state_eq pre_Fix_grammar (aggregate_step pre_Fix_grammar).
