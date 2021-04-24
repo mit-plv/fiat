@@ -15,7 +15,10 @@ Require Import
         Fiat.Narcissus.Common.ComposeOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.BinLib.AlignedByteString
-        Fiat.Narcissus.BinLib.AlignedDecoders.
+        Fiat.Narcissus.BinLib.AlignedDecoders
+        Fiat.Narcissus.BinLib.AlignWord
+        Fiat.Narcissus.BinLib.AlignedEncodeMonad
+        Fiat.Narcissus.BinLib.AlignedDecodeMonad.
 
 Require Import
         Bedrock.Word.
@@ -212,6 +215,59 @@ Section AlignedSumType.
     instantiate (1 := fun ce => snd (align_format_sumtype align_encoders_n align_encoders_v align_encoders_ce st ce)).
     simpl; reflexivity.
     simpl; reflexivity.
+  Qed.
+
+  Definition AlignedEncodeSumType
+             {m : nat}
+             {types : t Type m}
+             (aligned_encoders :
+                  ilist (B := fun T : Type => forall sz, AlignedEncodeM (S := T) sz) types)
+    : forall sz, AlignedEncodeM (S := SumType types) sz :=
+    fun sz v idx st env => ith aligned_encoders (SumType_index types st) sz v idx (SumType_proj types st) env.
+
+  Lemma CorrectAlignedEncoderForFormatSumType'
+            {m : nat}
+            {types : t Type m}
+            (formats : ilist types)
+            (aligned_encoders :
+                  ilist (B := fun T : Type => forall sz, AlignedEncodeM (S := T) sz) types)
+            (encoders_OK :
+               forall idx,
+                 CorrectAlignedEncoder (ith formats idx) (ith aligned_encoders idx))
+    : CorrectAlignedEncoder (format_SumType types formats)
+                            (AlignedEncodeSumType aligned_encoders).
+  Proof.
+    unfold CorrectAlignedEncoder; intros.
+    eexists (fun st => projT1 (encoders_OK (SumType_index types st)) (SumType_proj types st)).
+    split; [ | split]; intros.
+    - pose proof (projT2 (encoders_OK (SumType_index types s))); simpl in *; destruct H.
+      specialize (H (SumType_proj types s) env); intuition.
+    - pose proof (projT2 (encoders_OK (SumType_index types s))); simpl in *; destruct H0.
+      specialize (H0 (SumType_proj types s) env); intuition.
+      specialize (H0 (SumType_proj types s) env); intuition eauto.
+    - unfold EncodeMEquivAlignedEncodeM; intros.
+      pose proof (projT2 (encoders_OK (SumType_index types s))); simpl in *; destruct H.
+      unfold EncodeMEquivAlignedEncodeM in H0; intuition eauto;
+        specialize (H2 env (SumType_proj types s) idx); intuition eauto.
+      + eapply H2; eauto.
+      + eapply H5; eauto.
+  Qed.
+
+  Lemma CorrectAlignedEncoderForFormatSumType
+            {m : nat}
+            {types : t Type m}
+            (formats : ilist types)
+            (aligned_encoders :
+                  ilist (B := fun T : Type => forall sz, AlignedEncodeM (S := T) sz) types)
+            (encoders_OK :
+               Iterate_Dep_Type_BoundedIndex
+                 (fun idx =>
+                 CorrectAlignedEncoder (ith formats idx) (ith aligned_encoders idx)))
+    : CorrectAlignedEncoder (format_SumType types formats)
+                            (AlignedEncodeSumType aligned_encoders).
+  Proof.
+    intros; eapply CorrectAlignedEncoderForFormatSumType'.
+    eapply Lookup_Iterate_Dep_Type; eauto.
   Qed.
 
 End AlignedSumType.

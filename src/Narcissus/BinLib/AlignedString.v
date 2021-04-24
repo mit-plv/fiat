@@ -73,7 +73,7 @@ Section AlignedList.
       unfold LetIn.
       rewrite addD_addD_plus;
         repeat f_equal.
-      omega.
+      Lia.lia.
   Qed.
 
   Fixpoint StringToBytes
@@ -103,7 +103,7 @@ Section AlignedList.
       simpl.
       rewrite <- build_aligned_ByteString_append; simpl.
       rewrite !addE_addE_plus.
-      f_equiv; f_equiv; f_equiv; omega.
+      f_equiv; f_equiv; f_equiv; Lia.lia.
   Qed.
 
   Lemma format_string_aligned_ByteString {numBytes}
@@ -135,7 +135,7 @@ Section AlignedList.
       -> FixStringOpt.decode_string sz (build_aligned_ByteString b) cd = None.
   Proof.
     induction sz; intros.
-    - omega.
+    - Lia.lia.
     - simpl.
       assert (forall A n b, exists a b', b = Vector.cons A a n b')
         by (clear; intros; pattern n, b; apply caseS; eauto).
@@ -148,7 +148,7 @@ Section AlignedList.
         unfold BindOpt.
         rewrite AlignedDecodeChar; simpl.
         rewrite IHsz. higher_order_reflexivity.
-        omega.
+        Lia.lia.
         reflexivity.
   Qed.
 
