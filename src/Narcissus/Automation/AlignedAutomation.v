@@ -7,6 +7,7 @@ Require Import
         Fiat.Narcissus.Common.ComposeCheckSum
         Fiat.Narcissus.Common.ComposeIf
         Fiat.Narcissus.Formats
+        Fiat.Narcissus.Formats.StringOpt
         Fiat.Narcissus.BaseFormats
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Automation.NormalizeFormats.
@@ -32,7 +33,25 @@ Ltac eapply_formatnchars_thm_simplified thm sz :=
 
 Ltac align_decoders_step :=
   first [
-      eapply @AlignedDecodeNatM; intros
+      match goal with
+      | |- IterateBoundedIndex.prim_and _ _ =>
+        apply IterateBoundedIndex.Build_prim_and; intros;
+        [ eapply DecodeMEquivAlignedDecodeM_trans;
+          [ | intros; symmetry;
+              cbv beta; simpl; unfold decode_nat, sequence_Decode; optimize_decoder_impl |
+            try (instantiate (1 := ilist.icons _ _); simpl; intros; higher_order_reflexivity)]
+        | try exact I]
+      | |- IterateBoundedIndex.Iterate_Ensemble_BoundedIndex _ =>
+        apply IterateBoundedIndex.Build_prim_and; intros;
+        [ eapply DecodeMEquivAlignedDecodeM_trans;
+          [ | intros; symmetry;
+              cbv beta; simpl; unfold decode_nat, sequence_Decode; optimize_decoder_impl |
+            try (instantiate (1 := ilist.icons _ _); simpl; intros; higher_order_reflexivity)]
+        | try exact I]
+      | |- context [ decode_string_with_term_char ?term_char _ _] =>
+      eapply (fun H H' => @AlignedString.AlignedDecodeStringM _ _ H H' _ (NToWord 8 (Ascii.N_of_ascii term_char))); intros; eauto
+      end
+    | eapply @AlignedDecodeNatM; intros
     | eapply @AlignedDecodeByteBufferM; intros; eauto
     | eapply @AlignedDecodeBind2CharM; intros; eauto
     | eapply @AlignedDecodeBindCharM; intros; eauto
@@ -60,6 +79,7 @@ Ltac align_decoders_step :=
     | eapply @AlignedDecodeSumTypeM; intros; eauto
     | eapply @AlignedDecodeListM; intros; eauto
     | eapply @AlignedDecodeCharM; intros; eauto
+    | eapply (fun H H' => @AlignedDecodeNCharM _ _ H H' 8); eauto; simpl; intros
     | eapply (fun H H' => @AlignedDecodeNCharM _ _ H H' 4); eauto; simpl; intros
     | eapply (fun H H' => AlignedDecodeNCharM H H'  (m := 2)); eauto; simpl; intros
     | eapply (AlignedDecodeNUnusedCharM _ _ (m := 2)); eauto; simpl; intros

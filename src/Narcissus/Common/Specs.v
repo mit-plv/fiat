@@ -965,14 +965,13 @@ Global Unset Implicit Arguments.
 
 Definition CorrectDecoderFor {S T} {cache : Cache}
            {monoid : Monoid T} Invariant FormatSpec :=
-  { decodePlusCacheInv : _ |
-    exists P_inv,
-    (cache_inv_Property (snd decodePlusCacheInv) P_inv
+  { decodePlusCacheInv : (T -> CacheDecode -> option (S * T * CacheDecode)) * (CacheDecode -> Prop) * ((CacheDecode -> Prop) -> Prop)
+    | (cache_inv_Property (snd (fst decodePlusCacheInv)) (snd decodePlusCacheInv)
      -> CorrectDecoder (S := S) monoid Invariant Invariant eq
                                 FormatSpec
-                                (fst decodePlusCacheInv)
-                                (snd decodePlusCacheInv) FormatSpec)
-    /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
+                                (fst (fst decodePlusCacheInv))
+                                (snd (fst decodePlusCacheInv)) FormatSpec)
+    /\ cache_inv_Property (snd (fst decodePlusCacheInv)) (snd decodePlusCacheInv)}.
 
 Definition CorrectEncoderFor {S T} {cache : Cache}
       {monoid : Monoid T} FormatSpec :=
@@ -993,14 +992,14 @@ Lemma CorrectDecodeEncode
     forall a envE envD b envE',
       Equiv envE envD
       -> Invariant a
-      -> snd (proj1_sig decoder) envD
+      -> snd (fst (proj1_sig decoder)) envD
       -> projT1 encoder a envE = Some (b, envE')
       -> exists envD',
-          fst (proj1_sig decoder) b envD = Some (a, mempty, envD').
+          fst (fst (proj1_sig decoder)) b envD = Some (a, mempty, envD').
 Proof.
   intros.
   destruct encoder as [encoder encoder_OK].
-  destruct decoder as [decoder [Inv [decoder_OK Inv_cd] ] ]; simpl in *.
+  destruct decoder as [ [ [decoder Inv] P_env] [decoder_OK Inv_cd] ]; simpl in *.
   specialize (proj1 (encoder_OK a envE) _ H2); intro.
   specialize (decoder_OK Inv_cd).
   destruct decoder_OK as [decoder_OK _].
@@ -1019,15 +1018,15 @@ Lemma CorrectEncodeDecode
            (decoder : CorrectDecoderFor Invariant FormatSpec),
     forall bs ce cd cd' s ext,
       Equiv ce cd
-      -> snd (proj1_sig decoder) cd
-      -> fst (proj1_sig decoder) bs cd = Some (s, ext, cd')
+      -> snd (fst (proj1_sig decoder)) cd
+      -> fst (fst (proj1_sig decoder)) bs cd = Some (s, ext, cd')
       -> Invariant s /\
          exists ce' bs',
            bs = mappend bs' ext
            /\ Equiv ce' cd' /\ FormatSpec s ce (bs', ce').
 Proof.
   intros.
-  destruct decoder as [decoder [Inv [decoder_OK Inv_cd] ] ]; simpl in *.
+  destruct decoder as [ [ [decoder Inv] P_env] [decoder_OK Inv_cd] ]; simpl in *.
   specialize (decoder_OK Inv_cd).
   destruct decoder_OK as [_ decoder_OK].
   eapply decoder_OK in H1; eauto.
@@ -1050,7 +1049,7 @@ Lemma Start_CorrectDecoderFor
       (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)
   : @CorrectDecoderFor S T cache monoid Invariant FormatSpec.
 Proof.
-  exists (decoder_opt, cache_inv); exists P_inv; split; simpl; eauto.
+  exists (decoder_opt, cache_inv, P_inv); split; simpl; eauto.
   unfold CorrectDecoder in *; intuition; intros.
   - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4).
     rewrite decoder_opt_OK in H5; eauto.
@@ -1082,9 +1081,9 @@ Lemma refine_Pick_Decoder_For
       (decoderImpl : @CorrectDecoderFor S T cache monoid Invariant FormatSpec)
   : forall b ce cd,
     Equiv ce cd
-    -> snd (proj1_sig decoderImpl) cd
+    -> snd (fst (proj1_sig decoderImpl)) cd
     -> refine (Pick_Decoder_For Invariant FormatSpec b ce)
-              (ret match fst (proj1_sig decoderImpl) b cd
+              (ret match fst (fst (proj1_sig decoderImpl)) b cd
                    with
                    | Some (a, _, _) => Some a
                    | None => None
@@ -1098,7 +1097,7 @@ Proof.
   intros v Comp_v; computes_to_inv; subst;
     apply PickComputes; intros.
   split; intros.
-  - destruct (fst (proj1_sig decoderImpl) b cd) as [ [ [? ?] ?] | ] eqn: ?; try discriminate.
+  - destruct (fst (fst (proj1_sig decoderImpl)) b cd) as [ [ [? ?] ?] | ] eqn: ?; try discriminate.
     injections.
     eapply H2 in Heqo; eauto.
     destruct Heqo as [? [? [? [? ?] ] ] ].
