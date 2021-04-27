@@ -165,6 +165,7 @@ Lemma option_format_correct
       (P_inv_pf : cache_inv_Property P (fun P => P_invT P /\ P_invE P))
       (Some_Predicate : S -> Prop)
       (None_Predicate : Prop)
+      (None_View_Predicate : () -> () -> Prop)
       (b' : bool)
       (predicate :=
          fun a_opt =>
@@ -192,7 +193,7 @@ Lemma option_format_correct
               monoid
               (fun _ => None_Predicate)
               (fun _ => None_Predicate)
-              (fun u _ => True)
+              None_View_Predicate
               format_None decode_None P
               format_None)
   : CorrectDecoder

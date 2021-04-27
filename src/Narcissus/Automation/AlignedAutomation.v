@@ -38,9 +38,16 @@ Ltac align_decoders_step :=
     | eapply @AlignedDecodeBindCharM; intros; eauto
     | eapply @AlignedDecodeBind3CharM; intros; eauto
     | eapply @AlignedDecodeBind4CharM; intros; eauto
+    | eapply @AlignedDecodeBind8CharM; intros; eauto
     | eapply @AlignedDecodeBindEnum; intros; eauto
     | let H' := fresh in
       pose proof (fun C D => @AlignedDecodeBindEnumM _ _ C D 2) as H';
+      simpl in H'; eapply H'; eauto; intros
+    | let H' := fresh in
+      pose proof (fun C D => @AlignedDecodeBindEnumM _ _ C D 3) as H';
+      simpl in H'; eapply H'; eauto; intros
+    | let H' := fresh in
+      pose proof (fun C D => @AlignedDecodeBindEnumM _ _ C D 4) as H';
       simpl in H'; eapply H'; eauto; intros
     | eapply @AlignedDecodeBindUnused2CharM; simpl; eauto;
       eapply DecodeMEquivAlignedDecodeM_trans;
@@ -50,6 +57,7 @@ Ltac align_decoders_step :=
       eapply DecodeMEquivAlignedDecodeM_trans;
       [ | intros; reflexivity
         |  ]
+    | eapply @AlignedDecodeSumTypeM; intros; eauto
     | eapply @AlignedDecodeListM; intros; eauto
     | eapply @AlignedDecodeCharM; intros; eauto
     | eapply (fun H H' => @AlignedDecodeNCharM _ _ H H' 4); eauto; simpl; intros

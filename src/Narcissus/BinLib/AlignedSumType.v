@@ -270,6 +270,51 @@ Section AlignedSumType.
     eapply Lookup_Iterate_Dep_Type; eauto.
   Qed.
 
+  Definition SumTypeAlignedDecodeM {n m}
+           {types : Vector.t Type (S n)}
+           (aligned_decoders :
+              ilist (B := fun T => forall {n}, AlignedDecodeM T n) types)
+           (idx : Fin.t (S n))
+    : AlignedDecodeM (SumType types) m :=
+    (fun v idx' cd => `(i, bs, cd') <- (ith aligned_decoders idx _ v idx' cd); Some (inj_SumType types idx i, bs, cd')).
+
+  Lemma AlignedDecodeSumTypeM {C : Type}
+        {n}
+        {types : Vector.t Type (S n)}
+        (decoders : ilist (B := fun T => ByteString -> CacheDecode -> option (T * ByteString * CacheDecode)) types)
+        (aligned_decoders :
+           ilist (B := fun T => forall {n}, AlignedDecodeM T n) types)
+        (idx : Fin.t (S n))
+    : forall (t : SumType types -> DecodeM (C * _) ByteString)
+             (t' : SumType types -> forall {numBytes}, AlignedDecodeM C numBytes),
+      (Iterate_Ensemble_BoundedIndex (fun idx =>
+                                        DecodeMEquivAlignedDecodeM (ith decoders idx) (ith aligned_decoders idx)))
+      -> (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
+      -> DecodeMEquivAlignedDecodeM
+           (fun v cd => `(l, bs, cd') <- decode_SumType types decoders idx v cd;
+                          t l bs cd')
+           (fun numBytes => l <- SumTypeAlignedDecodeM aligned_decoders idx;
+                            t' l)%AlignedDecodeM%list.
+  Proof.
+    intros.
+    eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
+    apply (proj1 (Iterate_Ensemble_BoundedIndex_equiv _)) with (idx0 := idx) in H.
+    unfold decode_SumType, SumTypeAlignedDecodeM.
+    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
+    eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
+    2: simpl; higher_order_reflexivity.
+    2: simpl; unfold AlignedDecodeMEquiv; simpl; intros.
+    intros.
+    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
+    eapply Return_DecodeMEquivAlignedDecodeM.
+    higher_order_reflexivity.
+    apply AlignedDecodeMEquiv_refl.
+    unfold BindAlignedDecodeM, DecodeBindOpt2, BindOpt.
+    destruct (ith aligned_decoders idx n0 v idx0 c); simpl; eauto.
+    destruct p as [ [? ?] ?]; reflexivity.
+  Qed.
+
+
 End AlignedSumType.
 
 Arguments align_format_sumtype : simpl never.

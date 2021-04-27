@@ -1859,6 +1859,65 @@ Section AlignedDecoders.
       - intros; reflexivity.
   Qed.
 
+  Lemma AlignedDecodeBind8CharM:
+      (forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m)) ->
+      forall (C : Type) (t : word 64 -> DecodeM (C * _) ByteString)
+             (t' : word 64 -> forall numBytes : nat, AlignedDecodeM C numBytes),
+        (forall b : word 64, DecodeMEquivAlignedDecodeM (t b) (t' b)) ->
+        DecodeMEquivAlignedDecodeM
+          (fun (v : ByteString) (cd : CacheDecode) => `(a, b0, cd') <-
+                                                       decode_word v cd;
+                                                        t a b0 cd')
+          (fun numBytes : nat =>
+             (b1 <- GetCurrentByte;
+             b2 <- GetCurrentByte;
+             b3 <- GetCurrentByte;
+             b4 <- GetCurrentByte;
+             b5 <- GetCurrentByte;
+             b6 <- GetCurrentByte;
+             b7 <- GetCurrentByte;
+             b8 <- GetCurrentByte;
+                w <- return (Core.append_word b8 (Core.append_word b7 (Core.append_word b6 (Core.append_word b5 (Core.append_word b4 (Core.append_word b3 (Core.append_word b2 b1)))))));
+                              t' w numBytes)%AlignedDecodeM).
+  Proof.
+    intros; eapply DecodeMEquivAlignedDecodeM_trans.
+    - eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply AlignedDecodeBindCharM; intros.
+      eapply H0.
+      - simpl; intros.
+        unfold decode_word; rewrite (decode_word_plus' 8 56).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 48).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b0) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 40).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b1) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 32).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b2) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 24).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b3) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 16).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b4) as [ [? ?] | ]; eauto.
+        rewrite (decode_word_plus' 8 8).
+        unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+        destruct (decode_word' 8 b5) as [ [? ?] | ]; eauto.
+        destruct (decode_word' 8 b6) as [ [? ?] | ]; eauto.
+        rewrite !addD_addD_plus; simpl plus.
+        higher_order_reflexivity.
+      - intros; reflexivity.
+  Qed.
+
   Lemma AlignedDecode_ifb_dep {A : Type}
         (decode_T decode_E : DecodeM (A * ByteString) ByteString)
         (cond : ByteString -> bool)
