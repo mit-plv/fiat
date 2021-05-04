@@ -16,6 +16,13 @@ Require Import Fiat.Common.SetoidInstances. (* must come after the above for ins
 Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
 
+Instance: Params (@PositiveMapExtensions.defaulted_f) 5 := {}.
+Instance: Params (@PositiveMap.find) 1 := {}.
+Instance: Params (@PositiveMap.mapi) 2 := {}.
+Instance: Params (option_rect_nodep) 4 := {}.
+Instance: Params (@least_upper_bound) 2 := {}.
+Instance: Params (@eq) 1 := {}.
+
 Section grammar_fixedpoint.
   Context {Char : Type}.
 
@@ -157,6 +164,9 @@ Section grammar_fixedpoint.
 
   Definition aggregate_state_lub_f : option (state gdata) -> option (state gdata) -> option (state gdata)
       := PositiveMapExtensions.defaulted_f default_value default_value least_upper_bound.
+
+  (** Do not search for Proper instances for partial applications of this constant. *)
+  Instance: Params (@aggregate_state_lub_f) 0 := {}.
 
   Definition aggregate_state_lub (v1 v2 : aggregate_state) : aggregate_state
     := PositiveMap.map2 aggregate_state_lub_f v1 v2.
