@@ -127,6 +127,13 @@ Proof.
   destruct c; eauto.
 Qed.
 
+Instance subrelation_refine {A} : subrelation (pointwise_relation A impl) (flip refine) := fun x y R => R.
+Instance subrelation_refine_impl {A} : subrelation (pointwise_relation A (flip impl)) refine := fun x y R => R.
+Instance subrelation_refine_equiv_flip_impl {A} : subrelation refineEquiv (pointwise_relation A (flip impl)).
+Proof. intros x y [H H0]. apply H. Qed.
+Instance subrelation_refine_equiv_impl {A} : subrelation refineEquiv (pointwise_relation A impl).
+Proof. intros x y [H H0]. apply H0. Qed.
+
 Add Parametric Morphism A
 : (@Pick A)
     with signature

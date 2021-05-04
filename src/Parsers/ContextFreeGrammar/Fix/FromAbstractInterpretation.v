@@ -58,6 +58,12 @@ Section fold_correctness.
           er_correct := ex_intro _ n (conj (er_correct it) (er_correct its));
           er_state_le := combine_production_Proper_le (er_state_le it) (er_state_le its) |}.
 
+  Instance flip_state_le_eta : subrelation (flip (C:=Prop) (fun x y => x <= y)) (fun x y : state => flip state_le x y).
+  Proof. firstorder. Qed.
+
+  Instance flip_state_le_eta_inv : subrelation (flip state_le) (fun x y : state => flip (C:=Prop) state_le x y).
+  Proof. firstorder. Qed.
+
   Lemma fold_le nt st
         (H : st <= fold_productions' (lookup_state fold_grammar) (opt.compile_productions (Lookup_string G nt)))
     : st <= lookup_state fold_grammar (of_nonterminal nt).

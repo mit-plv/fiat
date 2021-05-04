@@ -21,12 +21,15 @@ Instance proper_const {A B} {R1 : relation A} {R2}
 Proof.
   repeat intro; reflexivity.
 Qed.
-Instance pointwise_Proper {A B} R (f : A -> B) `{forall x, Proper R (f x)}
+
+Lemma pointwise_Proper {A B} R (f : A -> B) `{forall x, Proper R (f x)}
 : Proper (pointwise_relation A R) f.
 Proof.
   unfold Proper in *.
   repeat intro; trivial.
 Qed.
+
+Hint Extern 10 (Proper (pointwise_relation _ _) _) => class_apply @pointwise_Proper : typeclass_instances.
 
 Global Instance sumbool_rect_Proper {L R : Prop} {P} {R1}
 : Proper (pointwise_relation L R1 ==> pointwise_relation R R1 ==> @forall_relation _ (fun _ : {L} + {R} => P) (fun _ => R1))
