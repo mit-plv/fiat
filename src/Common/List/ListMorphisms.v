@@ -219,6 +219,22 @@ Definition pointwise2_relation :=
   fun (A A': Type) {B : Type} (R : relation B) (f g : A -> A' -> B) =>
     forall a a', R (f a a') (g a a').
 
+Instance pointwise2_subrelation {A A' B} (R : relation B) :
+  subrelation (pointwise2_relation A A' R) (pointwise_relation A (pointwise_relation A' R)).
+Proof. intros x y r. apply r. Qed.
+
+Instance pointwise2_subrelation_inv {A A' B} (R : relation B) :
+  subrelation (pointwise_relation A (pointwise_relation A' R)) (pointwise2_relation A A' R).
+Proof. intros x y r. apply r. Qed.
+
+Instance pointwise2_forall_relation {A A' B} (R : relation B) :
+  subrelation (pointwise2_relation A A' R) (forall_relation (fun _ : A => forall_relation (fun _ : A' => R))).
+Proof. intros x y r. apply r. Qed.
+
+Instance pointwise2_forall_relation_inv {A A' B} (R : relation B) :
+  subrelation (forall_relation (fun _ : A => forall_relation (fun _ : A' => R))) (pointwise2_relation A A' R).
+Proof. intros x y r. apply r. Qed.
+
 Add Parametric Morphism {A B: Type} :
   (@List.fold_right A B)
     with signature (@pointwise2_relation B A _ eq ==> eq ==> eq ==> eq)
