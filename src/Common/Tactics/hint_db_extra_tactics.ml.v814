@@ -25,7 +25,7 @@ module WITH_DB =
 	  (fun tac hints ->
 	   List.fold_left
 	     (fun tac hint1 ->
-	      Hints.FullHint.run hint1
+		match Hints.FullHint.run hint1
 		       (fun hint2 ->
 			      (* match the type of the hint to pull out the lemma *)
 			      match hint2 with
@@ -34,8 +34,10 @@ module WITH_DB =
 			      | Hints.ERes_pf h ->
                                  let lem = h.Hints.hint_term in
 				 let this_tac = Tacinterp.Value.apply tacK [Tacinterp.Value.of_constr lem] in
-				 tclORELSE this_tac tac
-			      | _ -> tac))
+				 Hints.HintTactic (tclORELSE this_tac tac)
+			      | _ -> Hints.HintTactic tac) with
+		| Hints.HintTactic tac -> tac
+		| Hints.HintContinuation _ -> assert false)
 	     tac hints)
 	  (tclFAIL 0 (Pp.str "No applicable tactic!")) !syms
       end
