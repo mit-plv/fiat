@@ -62,16 +62,16 @@ Section BoolFacts.
     forall s1 s2,
       (if string_dec s1 s2 then true else false) = true <-> s1 = s2.
   Proof.
-    intros s1 s2; destruct (string_dec s1 s2); simpl; intuition.
-    discriminate.
+    intros s1 s2; destruct (string_dec s1 s2); simpl; intuition;
+      discriminate.
   Qed.
 
   Lemma ascii_dec_bool_true_iff :
     forall s1 s2,
       (if ascii_dec s1 s2 then true else false) = true <-> s1 = s2.
   Proof.
-    intros s1 s2; destruct (ascii_dec s1 s2); simpl; intuition.
-    discriminate.
+    intros s1 s2; destruct (ascii_dec s1 s2); simpl; intuition;
+      discriminate.
   Qed.
 
   Lemma eq_nat_dec_bool_true_iff :
