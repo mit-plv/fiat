@@ -32,7 +32,7 @@ module WITH_DB =
 				Hints.Give_exact h
 			      | Hints.Res_pf h
 			      | Hints.ERes_pf h ->
-                                 let lem = h.Hints.hint_term in
+                                 let _, lem = Hints.hint_as_term h in
 				 let this_tac = Tacinterp.Value.apply tacK [Tacinterp.Value.of_constr lem] in
 				 tclORELSE this_tac tac
 			      | _ -> tac))
