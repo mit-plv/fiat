@@ -43,7 +43,7 @@ module WITH_DB =
   let add_resolve_to_db lem db =
     Proofview.Goal.enter begin
 	fun gl ->
-	let _ = Hints.add_hints ~locality:Goptions.OptLocal db (Hints.HintsResolveEntry [({ Typeclasses.hint_priority = Some 1 ; Typeclasses.hint_pattern = None },true,Hints.PathAny,lem)]) in
+	let _ = Hints.add_hints ~locality:Hints.Local db (Hints.HintsResolveEntry [({ Typeclasses.hint_priority = Some 1 ; Typeclasses.hint_pattern = None },true,Hints.PathAny,lem)]) in
 	tclIDTAC
       end
 
