@@ -158,7 +158,7 @@ Section implementation.
     edestruct Compare_dec.lt_dec; simpl in *; try omega; [].
     edestruct dec; simpl in *; try congruence; [].
     edestruct negb; simpl in *; congruence.
-    Grab Existential Variables.
+    Unshelve.
     assumption.
     assumption.
   Qed.

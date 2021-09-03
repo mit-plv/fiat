@@ -55,7 +55,7 @@ Proof.
            | _ => progress simpl in *
            | _ => solve [ eauto ]
          end.
-  Grab Existential Variables.
+  Unshelve.
   assumption.
 Qed.
 

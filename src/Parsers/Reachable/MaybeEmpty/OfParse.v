@@ -128,7 +128,7 @@ Section cfg.
     eapply parse_empty_from_maybe_empty_parse_of_productions in p; [ | eassumption.. ].
     eexists (ParseNonTerminal _ _ (projT1 p)).
     exact (H, projT2 p).
-    Grab Existential Variables.
+    Unshelve.
     apply initial_nonterminals_correct, Hsub; assumption.
   Defined.
 

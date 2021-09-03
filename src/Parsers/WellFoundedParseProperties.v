@@ -70,8 +70,8 @@ Section rel.
     repeat intro.
     erewrite size_of_parse_respectful.
     apply H0.
-    Grab Existential Variables.
-    symmetry; assumption.
+    Unshelve.
     reflexivity.
+    symmetry; assumption.
   Qed.
 End rel.

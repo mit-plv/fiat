@@ -1753,7 +1753,7 @@ Section recursive_descent_parser.
               | [ |- bool_of_sum ?x = bool_of_sum ?y ]
                 => destruct x, y; try reflexivity; exfalso; eauto with nocore
               end. }
-            Grab Existential Variables.
+            Unshelve.
             assumption.
             assumption.
             assumption.
