@@ -78,8 +78,8 @@ Section with_actions.
   Proof.
     eapply {| pregrammar_rproductions := List.map (fun xy => (fst xy, List.map (@projT1 _ _) (snd xy)))
                                                   (pregrammar_arproductions g) |}.
-    Grab Existential Variables.
-    2:eapply (pregrammar_aidata g). (* wheee, dependent subgoals in Coq 8.4 *)
+    Unshelve.
+    eapply (pregrammar_aidata g). (* wheee, dependent subgoals in Coq 8.4 *)
     abstract (
         rewrite map_map; simpl;
         apply (arnonterminals_unique g)
@@ -115,8 +115,8 @@ Arguments nonterminals_unique {_} _.
 Definition pregrammar'_of_pregrammar {Char} (g : pregrammar Char) : pregrammar' Char.
 Proof.
   eapply {| pregrammar_productions := List.map (fun xy => (fst xy, interp_rproductions (snd xy))) (pregrammar_rproductions g) |}.
-  Grab Existential Variables.
-  2:eapply (pregrammar_idata g). (* wheee, dependent subgoals in Coq 8.4 *)
+  Unshelve.
+  eapply (pregrammar_idata g). (* wheee, dependent subgoals in Coq 8.4 *)
   abstract (
       rewrite map_map; simpl;
       apply (rnonterminals_unique g)

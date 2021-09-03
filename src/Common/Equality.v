@@ -565,7 +565,7 @@ Section beq_correct.
   Proof.
     unfold list_eq_dec'; erewrite list_beq_correct.
     do 2 edestruct list_eq_dec; subst; simpl; congruence.
-    Grab Existential Variables.
+    Unshelve.
     intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
     intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
   Qed.
@@ -593,7 +593,7 @@ Section beq_correct.
   Proof.
     unfold option_eq_dec'; erewrite option_beq_correct.
     do 2 edestruct option_eq_dec; subst; simpl; congruence.
-    Grab Existential Variables.
+    Unshelve.
     intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
     intros ??; rewrite eq_A_correct; edestruct dec_eq_A; simpl; congruence.
   Qed.

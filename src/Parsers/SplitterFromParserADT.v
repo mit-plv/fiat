@@ -450,7 +450,7 @@ Section parser.
     t'' H (@strings_nontrivial);
       edestruct H as [str Hlen]; (eexists (exist _ (cnew str) _));
         erewrite @mlength_eq by eapply cnew_R; eassumption.
-    Grab Existential Variables.
+    Unshelve.
     eexists; eapply cnew_R.
   Qed.
 

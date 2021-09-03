@@ -159,10 +159,10 @@ Section cfg.
                  | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
                  | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
                end.
-        Grab Existential Variables.
-        reflexivity.
-        reflexivity.
+        Unshelve.
         unfold respectful; intros; subst; assumption.
+        reflexivity.
+        reflexivity.
       Defined.
 
       Definition expand_alt_option {h h' valid valid'}
@@ -319,7 +319,7 @@ Section cfg.
                         | apply lt_helper_2'
                         | reflexivity
                         | omega ]. } }
-          Grab Existential Variables.
+          Unshelve.
           assumption.
           assumption.
         Defined.

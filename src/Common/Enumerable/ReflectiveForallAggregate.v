@@ -177,7 +177,7 @@ Section reflective_forall.
           | [ |- context[if ?e then false else false] ]
             => destruct e eqn:?; reflexivity
           end. } }
-      Grab Existential Variables.
+      Unshelve.
       assumption.
     Qed.
 
@@ -215,9 +215,9 @@ Section reflective_forall.
              | [ |- ?f _ = ?f ?x ] => is_var x; reflexivity
              | [ |- List.In _ (enumerate _) ] => apply enumerate_correct
              end.
-      Grab Existential Variables.
-      eassumption.
+      Unshelve.
       simpl; eapply H_f_good; first [ eassumption | symmetry; eassumption ].
+      eassumption.
     Qed.
 
     Lemma forall_enumerable_by_beq_aggregate_correct_reachable
