@@ -597,7 +597,7 @@ Section correctness_lemmas.
     | _ => solve [ exfalso; unfold not in *; eauto with nocore ]
     | [ |- context[PositiveSet.In _ all_possible_ascii] ]
       => first [ rewrite forall_chars_get | apply for_first_char_True | apply for_last_char_True ];
-         setoid_rewrite (fun v => True_iff (In_all v)); constructor
+         setoid_rewrite (fun v => True_iff (In_all v)); solve [ constructor ]
     | [ |- context[PositiveSet.In _ all_possible_ascii] ]
       => setoid_rewrite (fun v => True_iff (In_all v))
     | [ H : ?P _, H' : forall str, ?P str -> _ |- _ ] => unique pose proof (H' _ H)
@@ -632,18 +632,21 @@ Section correctness_lemmas.
         (p : parse_of_item G str (NonTerminal nt))
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_nt G nt)).
   Proof.
-    correct_t.
-    eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ].
-    correct_t.
+    (* this and similar patterns with other lemmas applied can be
+       replaced by a single correct_t once compat for coq <8.15 is
+       dropped. *)
+    correct_t;
+    (eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ];
+    correct_t).
   Qed.
 
   Lemma all_possible_characters_of
         (p : parse_of G str (Lookup G nt))
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_nt G nt)).
   Proof.
-    correct_t.
-    eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ].
-    correct_t.
+    correct_t;
+    (eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ];
+    correct_t).
   Qed.
 
   Lemma all_possible_ascii_of_item_nt
@@ -672,36 +675,36 @@ Section correctness_lemmas.
         (p : parse_of_item G str (NonTerminal nt))
     : for_first_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_first_characters_of_nt G nt)).
   Proof.
-    correct_t.
-    eapply for_first_char_Proper; [ reflexivity | intros ?? | eassumption ].
-    correct_t.
+    correct_t;
+    (eapply for_first_char_Proper; [ reflexivity | intros ?? | eassumption ];
+    correct_t).
   Qed.
 
   Lemma possible_first_characters_parse_of
         (p : parse_of G str (Lookup G nt))
     : for_first_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_first_characters_of_nt G nt)).
   Proof.
-    correct_t.
-    eapply for_first_char_Proper; [ reflexivity | intros ?? | eassumption ].
-    correct_t.
+    correct_t;
+    (eapply for_first_char_Proper; [ reflexivity | intros ?? | eassumption ];
+    correct_t).
   Qed.
 
   Lemma possible_last_characters_parse_of_item_nt
         (p : parse_of_item G str (NonTerminal nt))
     : for_last_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_last_characters_of_nt G nt)).
   Proof.
-    correct_t.
-    eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ].
-    correct_t.
+    correct_t;
+    (eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ];
+    correct_t).
   Qed.
 
   Lemma possible_last_characters_parse_of
         (p : parse_of G str (Lookup G nt))
     : for_last_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_last_characters_of_nt G nt)).
   Proof.
-    correct_t.
-    eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ].
-    correct_t.
+    correct_t;
+    (eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ];
+    correct_t).
   Qed.
 
   Lemma possible_first_ascii_parse_of_item_nt
@@ -728,9 +731,9 @@ Section correctness_lemmas.
         (p : parse_of_production G str ps)
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_production G ps)).
   Proof.
-    correct_t.
-    eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ].
-    correct_t.
+    correct_t;
+    (eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ];
+    correct_t).
   Qed.
 
   Lemma all_possible_ascii_of_parse_of_production
@@ -749,18 +752,18 @@ Section correctness_lemmas.
         (p : parse_of_production G str ps)
     : for_first_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_first_characters_of_production G ps)).
   Proof.
-    correct_t.
-    eapply for_first_char_Proper; [ reflexivity | intros ?? | eassumption ].
-    correct_t.
+    correct_t;
+    (eapply for_first_char_Proper; [ reflexivity | intros ?? | eassumption ];
+    correct_t).
   Qed.
 
   Lemma possible_last_characters_parse_of_production
         (p : parse_of_production G str ps)
     : for_last_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_last_characters_of_production G ps)).
   Proof.
-    correct_t.
-    eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ].
-    correct_t.
+    correct_t;
+    (eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ];
+    correct_t).
   Qed.
 
   Lemma possible_first_ascii_parse_of_production
