@@ -11,7 +11,7 @@ module TRANSPARENT_ABSTRACT =
     let transparent_abstract_term ~name_op (term : EConstr.constr) tacK =
       Proofview.Goal.enter begin
        fun gl ->
-        let termType = Tacmach.New.pf_get_type_of gl term in
+        let termType = Tacmach.pf_get_type_of gl term in
         Abstract.cache_term_by_tactic_then ~opaque:false ~name_op
           ~goal_type:(Some termType)
           (Eauto.e_give_exact term)

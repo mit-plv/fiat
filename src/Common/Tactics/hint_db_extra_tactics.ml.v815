@@ -1,6 +1,6 @@
 module WITH_DB =
   struct
-    open Tacticals.New
+    open Tacticals
     open Ltac_plugin
 
   (* Lift a constructor to an ltac value. *)
