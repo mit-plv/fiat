@@ -1,0 +1,31 @@
+name: CI (Coq, docker, dev)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: all
+      uses: coq-community/docker-coq-action@v1
+      env:
+        TARGETS: "fiat-core parsers"
+        FLAGS: "PROFILE=1"
+        NJOBS: "2"
+      with:
+        coq_version: dev
+        ocaml_version: 4.05
+        custom_script: |
+          sudo chmod -R a+rw .
+          echo '::group::install general dependencies'
+          sudo apt-get update -y
+          sudo apt-get install -y python python3
+          eval $(opam env)
+          echo '::endgroup::'
+          etc/coq-scripts/timing/make-pretty-timed.sh -j$NJOBS $TARGETS $FLAGS && make TIMED=1 -j$NJOBS $TARGETS
