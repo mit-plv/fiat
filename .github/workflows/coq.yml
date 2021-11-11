@@ -11,6 +11,8 @@ jobs:
     strategy:
       matrix:
         include:
+          - env: { COQ_VERSION: "v8.14" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.14-daily" }
+            os: ubuntu-latest
           - env: { COQ_VERSION: "v8.13" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.13-daily" }
             os: ubuntu-latest
           - env: { COQ_VERSION: "v8.12" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.12-daily" }
@@ -27,7 +29,19 @@ jobs:
             os: ubuntu-18.04
           - env: { COQ_VERSION: "v8.6"  , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev camlp5"                    , PPA: "ppa:jgross-h/coq-8.6-daily" }
             os: ubuntu-18.04
-          - env: { COQ_VERSION: "8.8.0" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.8.0 libcoq-8.8.0-ocaml libcoq-8.8.0-ocaml-dev camlp5"   , PPA: "ppa:jgross-h/many-coq-versions" }
+          - env: { COQ_VERSION: "8.14.0", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.14.0 libcoq-8.14.0-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08" }
+            os: ubuntu-latest
+          - env: { COQ_VERSION: "8.13.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.13.2 libcoq-8.13.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+            os: ubuntu-latest
+          - env: { COQ_VERSION: "8.12.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.12.2 libcoq-8.12.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+            os: ubuntu-latest
+          - env: { COQ_VERSION: "8.11.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.11.2 libcoq-8.11.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+            os: ubuntu-latest
+          - env: { COQ_VERSION: "8.10.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.10.2 libcoq-8.10.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+            os: ubuntu-latest
+          - env: { COQ_VERSION: "8.9.1" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.9.1 libcoq-8.9.1-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions" }
+            os: ubuntu-18.04
+          - env: { COQ_VERSION: "8.8.2" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.8.2 libcoq-8.8.2-ocaml libcoq-8.8.2-ocaml-dev camlp5"   , PPA: "ppa:jgross-h/many-coq-versions" }
             os: ubuntu-18.04
           - env: { COQ_VERSION: "8.7.2" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.7.2 libcoq-8.7.2-ocaml libcoq-8.7.2-ocaml-dev camlp5"   , PPA: "ppa:jgross-h/many-coq-versions" }
             os: ubuntu-18.04
