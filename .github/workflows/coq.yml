@@ -12,8 +12,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - env: { COQ_VERSION: "v8.14" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.14-daily" }
-            os: ubuntu-latest
           - env: { COQ_VERSION: "v8.13" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.13-daily" }
             os: ubuntu-latest
           - env: { COQ_VERSION: "v8.12" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.12-daily" }
