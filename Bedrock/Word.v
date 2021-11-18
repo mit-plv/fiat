@@ -164,9 +164,8 @@ Theorem div2_odd : forall n,
   -> n = S (2 * div2 n).
   induction n using strong; simpl; intuition.
 
-  destruct n; simpl in *; intuition.
-    discriminate.
-  destruct n; simpl in *; intuition.
+  destruct n; simpl in *; try easy.
+  destruct n; simpl in *; try easy.
   do 2 f_equal.
   replace (div2 n + S (div2 n + 0)) with (S (div2 n + (div2 n + 0))); auto.
 Qed.
@@ -176,9 +175,8 @@ Theorem div2_even : forall n,
   -> n = 2 * div2 n.
   induction n using strong; simpl; intuition.
 
-  destruct n; simpl in *; intuition.
-  destruct n; simpl in *; intuition.
-    discriminate.
+  destruct n; simpl in *; try easy.
+  destruct n; simpl in *; try easy.
   f_equal.
   replace (div2 n + S (div2 n + 0)) with (S (div2 n + (div2 n + 0))); auto.
 Qed.

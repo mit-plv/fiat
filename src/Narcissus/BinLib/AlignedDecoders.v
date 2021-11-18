@@ -471,7 +471,7 @@ Section AlignedDecoders.
     - destruct s; simpl in *.
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
-    - destruct s; simpl in .
+    - destruct s; simpl in *.
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
     - destruct s; simpl in *.

@@ -249,8 +249,6 @@ Section AlignedSumType.
       pose proof (projT2 (encoders_OK (SumType_index types s))); simpl in *; destruct H.
       unfold EncodeMEquivAlignedEncodeM in H0; intuition eauto;
         specialize (H2 env (SumType_proj types s) idx); intuition eauto.
-      + eapply H2; eauto.
-      + eapply H5; eauto.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatSumType
