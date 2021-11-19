@@ -247,10 +247,18 @@ EXTRACTION_UNMADE_VO := \
 	src/CertifiedExtraction/Benchmarks/DNS.vo \
 
 GUARD_VO := \
+	src/Narcissus/Examples/Guard/Core.vo \
+	src/Narcissus/Examples/Guard/DropFields.vo \
+	src/Narcissus/Examples/Guard/Guard.vo \
+	src/Narcissus/Examples/Guard/GuardExtraction.vo \
 	src/Narcissus/Examples/Guard/IPTables.vo \
+	src/Narcissus/Examples/Guard/IPTablesDemos.vo \
+	src/Narcissus/Examples/Guard/IPTablesGuard.vo \
 	src/Narcissus/Examples/Guard/IPTablesPorts.vo \
 	src/Narcissus/Examples/Guard/PacketFiltersLemmas.vo \
-	src/Narcissus/Examples/Guard/DropFields.vo \
+	src/Narcissus/Examples/Guard/Ports.vo \
+	src/Narcissus/Examples/Guard/StatefulGuard.vo \
+	src/Narcissus/Examples/Guard/StatefulGuardExtraction.vo \
 	src/Narcissus/Examples/NetworkStack/TCP_Packet.vo \
 	src/Narcissus/Examples/NetworkStack/UDP_Packet.vo \
 	src/Narcissus/Examples/NetworkStack/IPv4Header.vo
