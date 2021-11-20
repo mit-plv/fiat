@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - env: { COQ_VERSION: "8.13.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.13.2 libcoq-8.13.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+          - env: { COQ_VERSION: "8.13.2", TARGETS: "fiat-core querystructures narcissus"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.13.2 libcoq-8.13.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
             os: ubuntu-latest
 
     env: ${{ matrix.env }}
