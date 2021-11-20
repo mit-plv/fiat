@@ -21,11 +21,9 @@ Require Import
 Require Import
         Bedrock.Word
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.BinLib.Core
-        Fiat.Narcissus.Examples.SimpleDnsOpt
-        Fiat.Narcissus.Lib2.DomainNameOpt.
+        Fiat.Narcissus.BinLib.Core.
 
-Require Import Fiat.Examples.DnsServer.SimplePacket
+Require Import
         Fiat.Examples.DnsServer.DecomposeSumField
         Fiat.Examples.DnsServer.SimpleDnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
