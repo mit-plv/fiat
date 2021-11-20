@@ -16,6 +16,7 @@ Class PreGensym A :=
     combine_respectful_l : forall x y, s_gt (combine_symbols x y) x;
     combine_respectful_r : forall x y, s_gt (combine_symbols x y) y }.
 
+Declare Scope gensym_scope.
 Delimit Scope gensym_scope with gensym.
 Infix ">" := s_gt : gensym_scope.
 
@@ -50,16 +51,16 @@ Global Program Instance gensym_nat : PreGensym nat
        sym_init := 0;
        combine_symbols x y := S (x + y) }.
 Next Obligation.
-  repeat intro; abstract omega.
+  repeat intro; abstract lia.
 Defined.
 Next Obligation.
-  repeat intro; abstract omega.
+  repeat intro; abstract lia.
 Defined.
 Next Obligation.
-  repeat intro; abstract omega.
+  repeat intro; abstract lia.
 Defined.
 Next Obligation.
-  repeat intro; abstract omega.
+  repeat intro; abstract lia.
 Defined.
 
 Global Program Instance gensym_string : PreGensym string
@@ -67,14 +68,14 @@ Global Program Instance gensym_string : PreGensym string
        sym_init := ""%string;
        combine_symbols x y := String.String "a"%char (x ++ y)%string }.
 Next Obligation.
-  repeat intro; abstract omega.
+  repeat intro; abstract lia.
 Defined.
 Next Obligation.
-  repeat intro; abstract omega.
+  repeat intro; abstract lia.
 Defined.
 Next Obligation.
-  simpl; repeat intro; abstract (rewrite concat_length; omega).
+  simpl; repeat intro; abstract (rewrite concat_length; lia).
 Defined.
 Next Obligation.
-  simpl; repeat intro; abstract (rewrite concat_length; omega).
+  simpl; repeat intro; abstract (rewrite concat_length; lia).
 Defined.

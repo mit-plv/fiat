@@ -226,7 +226,7 @@ Section Word.
   Proof.
     intros; apply decode_encode_word'_Some in H; subst.
     unfold le_B.
-    rewrite mappend_measure; omega.
+    rewrite mappend_measure; lia.
   Qed.
 
   Lemma decode_word_le
@@ -255,7 +255,7 @@ Section Word.
     rewrite Heqo.
     unfold le_B in *.
     pose proof (B_measure_gt_0 b).
-    omega.
+    lia.
   Qed.
 
   Lemma decode_word_lt
@@ -268,7 +268,7 @@ Section Word.
       simpl in *; try (subst; discriminate).
     injections.
     unfold lt_B in *.
-    omega.
+    lia.
   Qed.
 
   Definition format_unused_word {S}
@@ -364,8 +364,7 @@ Theorem unused_word_decode_correct
                    (format_unused_word (sz := sz)).
 Proof.
   eapply format_decode_correct_alt.
-  Focus 7.
-  (* 7: { *)
+  7: {
     eapply injection_decode_correct with (inj := fun _ => ()).
     eapply Compose_decode_correct with
         (view := (fun _ : S => {_ : word sz | True}%comp)).
@@ -382,7 +381,7 @@ Proof.
     unfold format_unused_word, Compose_Format; eexists v; eauto.
     unfold format_word, serialize, encode_word in *; intuition eauto.
     apply unfold_computes; eauto.
-  (* } *)
+  }
   - instantiate (1 := fun _ => True);
       unfold flip, pointwise_relation; intuition.
   - unfold flip, pointwise_relation; intuition.

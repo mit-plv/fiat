@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Arith.Arith
+Require Import Coq.Lists.List Coq.Arith.Arith Coq.Strings.String
         Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.ADT.ComputationalADT
         Fiat.Common.BoundedLookup
@@ -16,8 +16,7 @@ Require Import Coq.Lists.List Coq.Arith.Arith
 
 Section BuildADTRefinements.
 
-  Require Import Coq.Strings.String.
-  Local Hint Resolve string_dec.
+  Local Hint Resolve string_dec : core.
 
   Lemma refineADT_BuildADT_ReplaceConstructor
         (Rep : Type)

@@ -24,7 +24,7 @@ Fixpoint wordToNat sz (w : word sz) : nat :=
     | WS true w' => S (wordToNat w' * 2)
   end.
 
-Fixpoint wordToNat' sz (w : word sz) : nat :=
+Definition wordToNat' sz (w : word sz) : nat :=
   match w with
     | WO => O
     | WS false w' => 2 * wordToNat w'
@@ -109,7 +109,7 @@ Theorem mod2_double : forall n, mod2 (2 * n) = false.
   induction n; simpl; intuition; rewrite <- plus_n_Sm; rethink.
 Qed.
 
-Local Hint Resolve mod2_S_double mod2_double.
+Local Hint Resolve mod2_S_double mod2_double : core.
 
 Theorem div2_double : forall n, div2 (2 * n) = n.
   induction n; simpl; intuition; rewrite <- plus_n_Sm; f_equal; rethink.
@@ -138,7 +138,7 @@ Qed.
 
 Hint Rewrite roundTrip_0 : wordToNat.
 
-Local Hint Extern 1 (@eq nat _ _) => Lia.lia.
+Local Hint Extern 1 (@eq nat _ _) => Lia.lia : core.
 
 Theorem untimes2 : forall n, n + (n + 0) = 2 * n.
   auto.
@@ -280,7 +280,8 @@ Proof.
   intros; apply (shatter_word a).
 Qed.
 
-Hint Resolve shatter_word_0.
+#[export]
+Hint Resolve shatter_word_0 : core.
 
 Require Import Coq.Logic.Eqdep_dec.
 
@@ -488,6 +489,7 @@ Definition wminusN sz (x y : word sz) : word sz := wplusN x (wnegN y).
 
 (** * Notations *)
 
+Declare Scope word_scope.
 Delimit Scope word_scope with word.
 Bind Scope word_scope with word.
 
@@ -687,7 +689,7 @@ Theorem drop_sub : forall sz n k,
   auto.
 Qed.
 
-Local Hint Extern 1 (_ <= _) => Lia.lia.
+Local Hint Extern 1 (_ <= _) => Lia.lia : core.
 
 Theorem wplus_assoc : forall sz (x y z : word sz), x ^+ (y ^+ z) = x ^+ y ^+ z.
   intros; repeat rewrite wplus_alt; unfold wplusN, wordBinN; intros.
@@ -971,7 +973,7 @@ Ltac word_contra1 := match goal with
 Open Scope word_scope.
 
 (** * Signed Logic **)
-Fixpoint wordToZ sz (w : word sz) : Z :=
+Definition wordToZ sz (w : word sz) : Z :=
   if wmsb w true then
     (** Negative **)
     match wordToN (wneg w) with
@@ -1081,6 +1083,7 @@ Proof.
 Qed.
 
 
+#[export]
 Hint Resolve word_neq lt_le eq_le sub_0_eq le_neq_lt : worder.
 
 Ltac shatter_word x :=

@@ -1,6 +1,7 @@
 Require Export Coq.Sets.Ensembles.
 Require Export Fiat.Common.ReservedNotations.
 
+Declare Scope Ensemble_scope.
 Delimit Scope Ensemble_scope with ensemble.
 Bind Scope Ensemble_scope with Ensemble.
 

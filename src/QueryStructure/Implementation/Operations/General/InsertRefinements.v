@@ -19,10 +19,10 @@ Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List
 
 Section InsertRefinements.
 
-  Hint Resolve crossConstr.
+  Hint Resolve crossConstr : core.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesTupleConstraints
-       SatisfiesAttributeConstraints.
+       SatisfiesAttributeConstraints : core.
 
   Arguments GetUnConstrRelation : simpl never.
   Arguments UpdateUnConstrRelation : simpl never.
@@ -230,7 +230,7 @@ Section InsertRefinements.
     computes_to_econstructor; intros.
     apply H in H0.
     unfold RawTupleIndex; intro; subst.
-    destruct tup; omega.
+    destruct tup; lia.
   Qed.
 
   Lemma refine_SuccessfulInsert :
@@ -754,7 +754,7 @@ Section InsertRefinements.
   Proof.
     unfold UnConstrFreshIdx; intros v Comp_v; computes_to_econstructor.
     computes_to_inv; intros.
-    unfold RawTupleIndex in *; apply Comp_v in H; omega.
+    unfold RawTupleIndex in *; apply Comp_v in H; lia.
   Qed.
 
   Lemma QSInsertSpec_UnConstr_refine :
@@ -849,7 +849,7 @@ Section InsertRefinements.
     unfold DropQSConstraints_AbsR in *; subst.
     f_equiv; intros.
     unfold UnConstrFreshIdx, not in *; intros.
-    apply H4 in H5; simpl in *; omega.
+    apply H4 in H5; simpl in *; lia.
     reflexivity.
   Qed.
 
@@ -1387,31 +1387,31 @@ Section InsertRefinements.
     computes_to_inv; simpl in *; subst.
     intro.
     pose proof (proj2 (H13 _) (or_introl (eq_refl _))).
-    apply H7 in H14; simpl in H14; omega.
+    apply H7 in H14; simpl in H14; lia.
     refine pick val _; try simplify with monad laws; eauto.
     unfold SuccessfulInsertSpec.
     computes_to_inv; simpl in *; subst.
     intro.
     pose proof (proj2 (H12 _) (or_introl (eq_refl _))).
-    apply H7 in H13; simpl in H13; omega.
+    apply H7 in H13; simpl in H13; lia.
     refine pick val _; try simplify with monad laws; eauto.
     unfold SuccessfulInsertSpec.
     computes_to_inv; simpl in *; subst.
     intro.
     pose proof (proj2 (H11 _) (or_introl (eq_refl _))).
-    apply H7 in H12; simpl in H12; omega.
+    apply H7 in H12; simpl in H12; lia.
     refine pick val _; try simplify with monad laws; eauto.
     unfold SuccessfulInsertSpec.
     computes_to_inv; simpl in *; subst.
     intro.
     pose proof (proj2 (H10 _) (or_introl (eq_refl _))).
-    apply H7 in H11; simpl in H11; omega.
+    apply H7 in H11; simpl in H11; lia.
     refine pick val _; try simplify with monad laws; eauto.
     unfold SuccessfulInsertSpec.
     computes_to_inv; simpl in *; subst.
     intro.
     pose proof (proj2 (H9 _) (or_introl (eq_refl _))).
-    apply H7 in H10; simpl in H10; omega.
+    apply H7 in H10; simpl in H10; lia.
   Qed.
 
   Lemma QSInsertSpec_UnConstr_refine_opt :

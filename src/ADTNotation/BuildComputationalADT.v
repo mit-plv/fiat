@@ -14,13 +14,16 @@ Require Import
 
 (* Notations for Computational ADTs. *)
 
-Bind Scope cADT_Scope with cADT.
+Declare Scope cADT_scope.
+Bind Scope cADT_scope with cADT.
 Delimit Scope cADT_scope with cADT.
 
 (* Notations for computational ADT methods. *)
 
 Record cMethDef {Rep : Type} (Sig : methSig) :=
   { cMethBody :> cMethodType Rep (methDom Sig) (methCod Sig)}.
+
+Declare Scope cMethDefParsing_scope.
 
 Notation "'Def' 'Method0' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_cMethDef
@@ -144,6 +147,8 @@ Notation "'Def' 'Method5' id r .. xn : 'rep' := bod" :=
      format "'Def'  'Method5'  id  r  ..  xn  :  'rep' :=  '/' '[  '   bod ']' ")
   : cMethDefParsing_scope.
 
+Declare Scope cMethDef_scope.
+
 (* Again, pretty printing involves fewer rules. *)
 Notation "'Def' 'Method' id ( r : 'rep' ) : 'rep' '*' cod := bod" :=
   (Build_cMethDef {| methID := id; methDom := [] ; methCod := Some cod |} (fun r => bod%comp ))
@@ -181,6 +186,8 @@ Delimit Scope cMethDef_scope with cMethDef.
 
 Record cConsDef {Rep : Type} (Sig : consSig) :=
   { cConsBody :> cConstructorType Rep (consDom Sig) }.
+
+Declare Scope cConsDef_scope.
 
 (* Notations for parsing Constructors. Including the arity is the simplest way to
  make typechecking work. *)

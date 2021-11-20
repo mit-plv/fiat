@@ -818,7 +818,7 @@ Section DnsPacket.
       unfold Core.char in *.
       pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ x t 2 p) as H';
       unfold mult in H';  simpl in H'; rewrite H'; try reflexivity; auto.
-      destruct x as [ | [ | [ | ?] ] ]; try omega.
+      destruct x as [ | [ | [ | ?] ] ]; try lia.
       rewrite AlignedDecode2Char; unfold LetIn; simpl.
       rewrite Ifopt_Ifopt.
       match goal with
@@ -833,7 +833,7 @@ Section DnsPacket.
       repeat rewrite DecodeBindOpt2_assoc.
       pose proof (fun x t => @decode_word_aligned_ByteString_overflow dns_list_cache _ x t 2) as H';
         simpl in H'; unfold mult in H; rewrite H'; try reflexivity; auto.
-      omega.
+      lia.
     }
     { intros; unfold decode_enum.
       etransitivity.
@@ -914,7 +914,7 @@ Section DnsPacket.
         eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
         subst_refine_evar.
         instantiate (1 := fun _ => None).
-        destruct x0 as [ | [| [ | [ | x0] ] ] ]; try omega.
+        destruct x0 as [ | [| [ | [ | x0] ] ] ]; try lia.
         pose proof (fun t x => @decode_word_aligned_ByteString_overflow dns_list_cache _ t x 4) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
         pose proof (fun t x => @decode_word_aligned_ByteString_overflow dns_list_cache _ t x 4) as H';
@@ -988,7 +988,7 @@ Section DnsPacket.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ _ v1 2) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x=> @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -1026,7 +1026,7 @@ Section DnsPacket.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 6 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -1035,7 +1035,7 @@ Section DnsPacket.
           unfold DecodeBindOpt2 at 1;
           pose proof (fun C B => @AlignedDecodeUnusedChars dns_list_cache _ addD_addD_plus C B 2) as H';
             simpl in H'; rewrite H'; clear H'.
-          destruct n1 as [ | [ | [ | [ | n1] ] ] ] ; try omega;
+          destruct n1 as [ | [ | [ | [ | n1] ] ] ] ; try lia;
             try reflexivity.
         }
         { intros; etransitivity.
@@ -1077,7 +1077,7 @@ Section DnsPacket.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -1120,7 +1120,7 @@ Section DnsPacket.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -1204,7 +1204,7 @@ Section DnsPacket.
             unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
             subst_evars.
-            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ]; try omega.
+            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ]; try lia.
             instantiate (1 := fun _ => None).
             pose proof (fun t x => @decode_word_aligned_ByteString_overflow dns_list_cache _ t x 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
@@ -2631,7 +2631,7 @@ Qed.
       unfold Core.char in *.
       pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ x t 2 p) as H';
       unfold mult in H';  simpl in H'; rewrite H'; try reflexivity; auto.
-      destruct x as [ | [ | [ | ?] ] ]; try omega.
+      destruct x as [ | [ | [ | ?] ] ]; try lia.
       rewrite AlignedDecode2Char; unfold LetIn; simpl.
       rewrite Ifopt_Ifopt.
       match goal with
@@ -2646,7 +2646,7 @@ Qed.
       repeat rewrite DecodeBindOpt2_assoc.
       pose proof (fun x t => @decode_word_aligned_ByteString_overflow dns_list_cache _ x t 2) as H';
         simpl in H'; unfold mult in H; rewrite H'; try reflexivity; auto.
-      omega.
+      lia.
     }
     { intros; unfold decode_enum.
       etransitivity.
@@ -2727,7 +2727,7 @@ Qed.
         eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
         subst_refine_evar.
         instantiate (1 := fun _ => None).
-        destruct x0 as [ | [| [ | [ | x0] ] ] ]; try omega.
+        destruct x0 as [ | [| [ | [ | x0] ] ] ]; try lia.
         pose proof (fun t x => @decode_word_aligned_ByteString_overflow dns_list_cache _ t x 4) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
         pose proof (fun t x => @decode_word_aligned_ByteString_overflow dns_list_cache _ t x 4) as H';
@@ -2801,7 +2801,7 @@ Qed.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ _ v1 2) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x=> @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -2839,7 +2839,7 @@ Qed.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 6 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -2848,7 +2848,7 @@ Qed.
           unfold DecodeBindOpt2 at 1;
           pose proof (fun C B => @AlignedDecodeUnusedChars dns_list_cache _ addD_addD_plus C B 2) as H';
             simpl in H'; rewrite H'; clear H'.
-          destruct n1 as [ | [ | [ | [ | n1] ] ] ] ; try omega;
+          destruct n1 as [ | [ | [ | [ | n1] ] ] ] ; try lia;
             try reflexivity.
         }
         { intros; etransitivity.
@@ -2890,7 +2890,7 @@ Qed.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -2933,7 +2933,7 @@ Qed.
           eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
-          destruct n1 as [ | [ | n1] ]; try omega.
+          destruct n1 as [ | [ | n1] ]; try lia.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
           pose proof (fun t x => @decode_unused_word_aligned_ByteString_overflow dns_list_cache _ t x 2) as H';
@@ -3017,7 +3017,7 @@ Qed.
             unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
             subst_evars.
-            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ]; try omega.
+            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ]; try lia.
             instantiate (1 := fun _ => None).
             pose proof (fun t x => @decode_word_aligned_ByteString_overflow dns_list_cache _ t x 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.

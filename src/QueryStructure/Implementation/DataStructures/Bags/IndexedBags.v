@@ -197,7 +197,7 @@ Module NatIPool.
   Proof.
     unfold NatIPool_pget, NatIPool_pfresh; intros [ [m n] pf]; simpl.
     destruct (find (elt:=TItem) n m) eqn: eq; eauto.
-    apply find_2 in eq. apply pf in eq. simpl in eq. omega.
+    apply find_2 in eq. apply pf in eq. simpl in eq. lia.
   Qed.
 
   Global Instance NatIPoolAsIPool

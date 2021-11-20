@@ -87,7 +87,7 @@ Section SharpenedBagImplementation.
         apply in_map_iff in H; destruct H; destruct H.
         apply eqv_nr in H2.
         apply H0 in H2.
-        omega.
+        lia.
         * assumption.
   Qed.
 

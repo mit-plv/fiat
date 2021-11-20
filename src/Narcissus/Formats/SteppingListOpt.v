@@ -114,7 +114,7 @@ Require Export
       lt_B (` b2) b.
   Proof.
     intros; destruct b1; destruct b2; simpl in *.
-    unfold le_B, lt_B in *; omega.
+    unfold le_B, lt_B in *; lia.
   Qed.
 
   Definition decode_list_step (b : B) (cd : CacheDecode):
@@ -343,14 +343,14 @@ Require Export
           split.
           * eapply cacheAdd_OK.
             eapply H12 in Heqo; eauto.
-            unfold le_B, lt_B in *; omega.
+            unfold le_B, lt_B in *; lia.
             simpl; intros; intuition subst; eauto.
             eapply H14 in Heqo; eauto; destruct_ex; intuition.
             eapply H16; eauto.
-            unfold le_B, lt_B in *; omega.
+            unfold le_B, lt_B in *; lia.
             eapply H14 in Heqo; eauto; destruct_ex; intuition.
             eapply H16; eauto.
-            unfold le_B, lt_B in *; omega.
+            unfold le_B, lt_B in *; lia.
           * destruct (getE env (a :: l)) eqn : ? .
             eapply H14 in Heqo; eauto; destruct_ex; intuition.
             eexists; eexists; intuition eauto.
@@ -368,7 +368,7 @@ Require Export
             simpl.
             erewrite peek_correct; eauto.
             eapply add_correct; eauto.
-            unfold le_B, lt_B in *; omega.
+            unfold le_B, lt_B in *; lia.
             eapply H14 in Heqo; eauto; destruct_ex; intuition.
             eexists; eexists; intuition eauto.
             computes_to_econstructor; eauto.
@@ -384,10 +384,10 @@ Require Export
             eapply add_correct; eauto.
             unfold lt_B, le_B in *; rewrite !mappend_measure.
             rewrite mappend_measure in x1.
-            omega.
+            lia.
       - intros; apply functional_extensionality; intros.
         repeat (f_equal; repeat (apply functional_extensionality; intros)).
-        Grab Existential Variables.
+        Unshelve.
         eauto.
     }
   Qed.

@@ -117,4 +117,5 @@ Ltac apply_enumerable_sig_andb_dep :=
           simpl @fst; simpl @snd)
      end).
 
+#[export]
 Hint Extern 2 (Enumerable (sig _)) => apply_enumerable_sig_andb_dep : typeclass_instances.

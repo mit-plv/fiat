@@ -133,7 +133,7 @@ Proof.
     injections; intuition eauto.
     all: eauto.
   }
-  Grab Existential Variables.
+  Unshelve.
   eauto.
 Qed.
 
@@ -184,9 +184,7 @@ Proof.
   intros.
   eapply format_decode_correct_alt.
   6: apply EquivFormat_reflexive.
-  Focus 6.
-  (* 6: { *)
-  {
+  6: {
   eapply injection_decode_correct.
   - eapply Sequence_refined_decoder_correct.
     + apply P_inv_pf.
@@ -225,8 +223,6 @@ Proof.
       computes_to_econstructor; eauto.
     + eauto.
   }
-  all: try unfold flip, pointwise_relation, impl;
-    intuition eauto using EquivFormat_reflexive.
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.
   unfold Compose_Decode, sequence_Decode, sequence_Decode'; simpl.

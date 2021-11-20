@@ -120,6 +120,7 @@ web
 /.coqdeps.d
 /CoqMakefile.conf
 .lia.cache
+.nia.cache
 /src/Narcissus/Examples/NetworkStack/fiat4mirage-bench
 /Makefile.coq-old.conf
 bookstore.ml

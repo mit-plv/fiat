@@ -40,7 +40,7 @@ Section enum.
     end.
     { simpl in *.
       destruct H''. }
-    { simpl in *; omega. }
+    { simpl in *; lia. }
   Qed.
 
   Definition enumerate_fun_bl

@@ -107,7 +107,7 @@ Section TCPPacketDecoder.
     CorrectAlignedEncoderFor TCP_Packet_Format.
   Proof.
     synthesize_aligned_encoder.
-    Grab Existential Variables.
+    Unshelve.
     eauto.
     eauto.
   Defined.
@@ -140,7 +140,7 @@ Section TCPPacketDecoder.
     : CorrectAlignedDecoderFor TCP_Packet_OK TCP_Packet_Format.
   Proof.
     synthesize_aligned_decoder.
-    Grab Existential Variables.
+    Unshelve.
     eauto.
     eauto.
   Defined.

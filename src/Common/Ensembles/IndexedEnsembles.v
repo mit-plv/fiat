@@ -257,7 +257,7 @@ Section IndexedEnsembles.
       intro.
       eapply in_map_iff in H1; destruct_ex; intuition; subst.
       eapply H0 in H4; apply H in H4.
-      omega.
+      lia.
       eauto.
   Qed.
 
@@ -358,13 +358,13 @@ Section IndexedEnsembles.
         injections; simpl in *.
       + intuition.
       + eexists 1, 0, _, _; simpl; eauto.
-      + eexists 1, (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+      + eexists 1, (S (S n')), _, _; simpl; repeat split; try eassumption; lia.
       + eexists 0, 1, _, _; simpl; eauto.
       + intuition.
-      + eexists 0, (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
-      + eexists (S (S n)), 1, _, _; simpl; repeat split; try eassumption; omega.
-      + eexists (S (S n)), 0, _, _; simpl; repeat split; try eassumption; omega.
-      + eexists (S (S n)), (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+      + eexists 0, (S (S n')), _, _; simpl; repeat split; try eassumption; lia.
+      + eexists (S (S n)), 1, _, _; simpl; repeat split; try eassumption; lia.
+      + eexists (S (S n)), 0, _, _; simpl; repeat split; try eassumption; lia.
+      + eexists (S (S n)), (S (S n')), _, _; simpl; repeat split; try eassumption; lia.
     -  destruct (IHPermutation1 _ _ _ _ H H0 H1) as [m [m' [idx [idx' ?] ] ] ];
          intuition.
        clear H.

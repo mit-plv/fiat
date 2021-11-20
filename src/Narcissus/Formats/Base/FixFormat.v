@@ -82,7 +82,7 @@ Section FixFormat.
   (* Proof. *)
   (*   induction n; simpl; intros. *)
   (*   - split; unfold Compose_Target; intros. *)
-  (*     + rewrite @unfold_computes in H0; omega. *)
+  (*     + rewrite @unfold_computes in H0; lia. *)
   (*     + discriminate. *)
   (*   - split; unfold Compose_Target in *; intros. *)
   (*     + rewrite @unfold_computes in H0; split_and. *)
@@ -173,7 +173,7 @@ Section FixFormat.
     - split; unfold Restrict_Format, Compose_Format; intros.
       + discriminate.
       + intro H'; rewrite @unfold_computes in H';
-          destruct_ex; omega.
+          destruct_ex; lia.
     - split; unfold Restrict_Format, Compose_Format in *; intros.
       + apply unfold_computes; intuition eauto.
         eapply encode_body_correct in H; eauto.

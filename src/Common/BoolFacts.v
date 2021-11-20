@@ -8,6 +8,7 @@ Module Export Bool.
   Scheme Minimality for bool Sort Type.
   Scheme Minimality for bool Sort Set.
   Scheme Minimality for bool Sort Prop.
+  Declare Scope boolr_scope.
   Delimit Scope boolr_scope with boolr.
   Definition orbr (b1 b2 : bool) := if b2 then true else b1.
   Definition andbr (b1 b2 : bool) := if b2 then b1 else false.

@@ -157,7 +157,7 @@ Section EthernetPacketDecoder.
         rewrite <- (Nnat.Nat2N.id 1501).
         apply Nomega.Nlt_out.
         reflexivity.
-        Grab Existential Variables.
+        Unshelve.
         eauto.
         eauto.
   Qed.

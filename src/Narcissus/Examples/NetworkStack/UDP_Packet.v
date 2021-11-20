@@ -70,7 +70,7 @@ Section UDP_Decoder.
     CorrectAlignedEncoderFor UDP_Packet_Format.
   Proof.
     synthesize_aligned_encoder.
-    Grab Existential Variables.
+    Unshelve.
     eauto.
     eauto.
   Defined.

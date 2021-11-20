@@ -275,7 +275,7 @@ Section AlignedList.
       + destruct s; simpl in le_s; try solve [inversion le_s].
         repeat apply conj; intros.
         * injections; simpl in v; pattern v; apply case0; simpl.
-          setoid_rewrite (proj2 (PeanoNat.Nat.ltb_lt idx (S idx + m))); try Omega.omega.
+          setoid_rewrite (proj2 (PeanoNat.Nat.ltb_lt idx (S idx + m))); try lia.
           eexists _; split.
           revert v1; rewrite <- (plus_n_O idx); intro; reflexivity.
           pose proof mempty_left as H'; simpl in H'; rewrite H', build_aligned_ByteString_append;
@@ -283,7 +283,7 @@ Section AlignedList.
         * injections; rewrite length_ByteString_ByteString_id in H0.
           unfold AlignedEncodeString; simpl.
           destruct (NPeano.Nat.ltb idx (S numBytes')) eqn: ?; eauto.
-          apply PeanoNat.Nat.ltb_lt in Heqb; Omega.omega.
+          apply PeanoNat.Nat.ltb_lt in Heqb; lia.
         * injections; simpl in H0; congruence.
         * discriminate.
       + destruct s; simpl in le_s; try solve [inversion le_s].
@@ -297,7 +297,7 @@ Section AlignedList.
           -- injections; rewrite length_ByteString_ByteString_id in H0.
              unfold AlignedEncodeString; simpl.
              destruct (NPeano.Nat.ltb idx (S numBytes')) eqn: ?; eauto.
-             apply PeanoNat.Nat.ltb_lt in Heqb; Omega.omega.
+             apply PeanoNat.Nat.ltb_lt in Heqb; lia.
           -- injections; simpl in H0; congruence.
           -- discriminate.
         * apply le_S_n in le_s.

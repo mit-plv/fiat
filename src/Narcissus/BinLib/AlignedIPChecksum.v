@@ -348,9 +348,8 @@ Proof.
   intros.
   rename H4 into H4'; rename H3 into H4; rename H2 into H3.
   eapply format_decode_correct_alt.
-  Focus 7.
-  (*7: {*)
-  {eapply (composeChecksum_format_correct'
+  7: {
+  eapply (composeChecksum_format_correct'
                  A _ monoid _ 16 (Pseudo_Checksum_Valid srcAddr destAddr udpLength protoCode)).
        - eapply H.
        - specialize (H4 (proj2 H)).
@@ -381,8 +380,6 @@ Proof.
          rewrite <- H2; Lia.lia.
        - eauto.
        - eapply Pseudo_Checksum_Valid_bounded; eauto. }
-  all: try unfold flip, pointwise_relation, impl;
-    intuition eauto using EquivFormat_reflexive.
   all: try unfold flip, pointwise_relation, impl;
     intuition eauto using EquivFormat_reflexive.
     instantiate (1 := fun (n : nat) a =>
@@ -635,13 +632,17 @@ Proof.
   apply Vector.caseS; reflexivity.
 Qed.
 
+#[export]
 Hint Extern 4 (weqb _ _ = _) =>
-rewrite aligned_Pseudo_checksum_OK_1; higher_order_reflexivity.
-Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2.
+rewrite aligned_Pseudo_checksum_OK_1; higher_order_reflexivity : core.
+#[export]
+Hint Extern 4 => eapply aligned_Pseudo_checksum_OK_2 : core.
 
+#[export]
 Hint Extern 4 (IPChecksum_Valid_check _ _ = _ ) =>
-rewrite aligned_IPChecksum_OK_1; higher_order_reflexivity.
-Hint Extern 4  => eapply aligned_IPChecksum_OK_2.
+rewrite aligned_IPChecksum_OK_1; higher_order_reflexivity : core.
+#[export]
+Hint Extern 4  => eapply aligned_IPChecksum_OK_2 : core.
 
 Ltac destruct_unit :=
   repeat match goal with
@@ -904,7 +905,7 @@ Proof.
         destruct_unit.
         eapply @AlignedEncoder_fixed; eauto.
       } rewrite H11. simpl. reflexivity.
-      Grab Existential Variables.
+      Unshelve.
       eauto.
 Qed.
 
@@ -1063,18 +1064,17 @@ Proof.
   simpl.
   assert (refine (format_word w ()) (ret (build_aligned_ByteString ([hi8 w; lo8 w]), ()))). {
     etransitivity.
-    Focus 2.
-    (* 2 : { *)
+    2 : {
       pose proof AlignedFormat2Char.
       apply H; eauto. higher_order_reflexivity.
-    (* } *)
+    }
     autorewrite with monad laws.
     higher_order_reflexivity.
   }
   unfold format_word, format_checksum in *. simpl in *.
   apply refine_ret_ret_eq in H. injections. rewrite H0.
   rewrite ByteString2ListOfChar_eq'; eauto.
-  Grab Existential Variables.
+  Unshelve.
   simpl. exact ().
 Qed.
 

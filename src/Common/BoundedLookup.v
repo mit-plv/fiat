@@ -309,6 +309,7 @@ Ltac Build_nth_IndexBound n A a As As' m :=
           Build_nth_IndexBound n' A a As As'' (S m)
   end.
 
+#[export]
 Hint Extern 0 (@IndexBound ?A ?n ?a ?As) =>
 let n' := eval compute in n in
     Build_nth_IndexBound n' A a As As 0 : typeclass_instances.

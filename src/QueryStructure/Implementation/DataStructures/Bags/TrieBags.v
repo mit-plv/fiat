@@ -2849,7 +2849,7 @@ Module TrieBag (X:OrderedType).
           inversion H; eauto.
           econstructor; destruct a; simpl; reflexivity.
       }
-      Grab Existential Variables.
+      Unshelve.
       eauto.
     Qed.
 

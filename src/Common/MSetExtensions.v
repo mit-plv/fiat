@@ -107,7 +107,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Create HintDb sets discriminated.
   Create HintDb setsb discriminated.
   Global Hint Immediate union_subset_1 union_subset_2 inter_subset_1 inter_subset_2 equal_refl : sets.
-  Global Hint Resolve (BasicFacts.inter_s_m : forall x y _ x' y' _, _) : sets.
+  Global Hint Resolve BasicFacts.inter_s_m : sets.
 
   Ltac simplify_sets_step :=
     idtac;
@@ -151,6 +151,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Lemma equal_sym_b x y : equal x y = equal y x.
   Proof. to_caps; fsetdec. Qed.
 
+  #[export]
   Hint Immediate equal_sym_b : sets.
 
   Lemma union_subset_1b
@@ -177,6 +178,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Lemma inter_idempotent x : Equal (inter x x) x.
   Proof. fsetdec. Qed.
 
+  #[export]
   Hint Immediate union_idempotent inter_idempotent : sets.
 
   Lemma union_idempotent_b x : equal (union x x) x.

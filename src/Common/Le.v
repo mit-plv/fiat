@@ -1,5 +1,6 @@
 (** * Common facts about [≤] *)
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
+Require Export Coq.micromega.Lia.
 Require Import Coq.Arith.Le.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Classes.Morphisms.
@@ -89,16 +90,16 @@ Proof.
 Qed.
 
 Lemma not_lt_plus {x y z} (H : ~ x < y + z) : (~ x < y) /\ (~x < z).
-Proof. split; omega. Qed.
+Proof. split; lia. Qed.
 
 Lemma not_le_plus {x y z} (H : ~ x <= y + z) : (~ x <= y) /\ (~x <= z).
-Proof. split; omega. Qed.
+Proof. split; lia. Qed.
 
 Lemma not_lt_add_r {a b} (H : ~a < a + b) : b = 0.
-Proof. omega. Qed.
+Proof. lia. Qed.
 
 Lemma not_lt_add_l {a b} (H : ~a < b + a) : b = 0.
-Proof. omega. Qed.
+Proof. lia. Qed.
 
 Global Instance le_lt_Proper : Proper (Basics.flip le ==> le ==> impl) lt.
 Proof.

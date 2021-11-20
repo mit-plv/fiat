@@ -129,7 +129,7 @@ Module MSetBoundedLatticeOn (E: OrderedType) (Import M: SetsOn E).
       pose proof (subset_cardinal_lt (x := a) H0).
       destruct H3 as [H3|H3].
       { intuition. }
-      { intuition omega. }
+      { intuition lia. }
     Qed.
 
     Definition well_founded_lift_gtb_with_max : well_founded (Basics.flip lift_ltb_with_max).

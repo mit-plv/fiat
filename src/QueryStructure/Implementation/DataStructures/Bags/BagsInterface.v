@@ -224,10 +224,10 @@ Proof.
     econstructor; eapply bupdate_RepInv0.
     apply r.
     apply v.
-    Grab Existential Variables.
-    simpl; apply search_term.
-    simpl; apply search_term.
+    Unshelve.
     apply X0.
+    simpl; apply search_term.
+    simpl; apply search_term.
 Defined.
 
 Instance WFBagPlusTypeAsCorrectBag {TItem}

@@ -57,7 +57,7 @@ Definition SetAttribute2' {n} {attrs}
       -> @DecTuple2 n attrs :=
   fun tup attr dom => SetAttribute2 tup (ibound (indexb attr)) dom.
 
-
+Declare Scope Component2_scope.
 Notation "id :: value" :=
   (Build_Component2 {| attrName2 := id;
                        attrType2 := _ |}
@@ -65,5 +65,6 @@ Notation "id :: value" :=
 
 Bind Scope Component2_scope with Component2.
 Delimit Scope Component2_scope with Component2.
+Declare Scope Tuple2_scope.
 Delimit Scope Tuple2_scope with Tuple2.
 (* Notation for tuples built from [BuildTuple2]. *)

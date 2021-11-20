@@ -162,7 +162,7 @@ Section AlignWord.
         apply K_dec_set; eauto; try decide equality; clear e.
         intros; destruct (shatter_word_S w') as (?, (w'', H)); rewrite H in *; clear H.
         rewrite (wtl_eq_rect_S _ _ _ e0 (trans_S_comm _ _)); simpl.
-        assert (S (sz + sz') = sz' + S sz) by omega.
+        assert (S (sz + sz') = sz' + S sz) by lia.
         replace (eq_rect (S (sz' + sz)) word (WS x0 w'') (sz' + S sz) (trans_S_comm sz' sz)) with
             (eq_rect (S (sz + sz')) word (WS x0 (eq_rect _ _ w'' _ (trans_plus_comm _ _))) (sz' + S sz) H).
         erewrite <- (IHsz' x0 sz _ (trans_plus_comm _ _)).
@@ -201,12 +201,12 @@ Section AlignWord.
       fold (plus sz sz').
       revert x sz w'; induction sz'; simpl; eauto.
       intros.
-      assert (sz + S sz' = sz' + S sz) by omega.
+      assert (sz + S sz' = sz' + S sz) by lia.
       rewrite eq_rect_WS with (e' := H); simpl.
       revert w' e0 H; rewrite e; intros.
       destruct (shatter_word_S w') as (?, (w'', H')); rewrite H' in *; clear H'; simpl.
       f_equal.
-      assert (S (sz + sz') = sz' + S sz) by omega.
+      assert (S (sz + sz') = sz' + S sz) by lia.
       replace (eq_rect (S (sz' + sz)) word (WS x0 w'') (sz' + S sz) H)
         with (eq_rect (S (sz + sz')) word (WS x0 (eq_rect _ _ w'' _ (trans_plus_comm _ _))) (sz' + S sz) H0)
         by (revert w'' H H0; clear;
@@ -549,7 +549,7 @@ Section AlignEncodeWord.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
     unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; repeat f_equal.
     instantiate (1 := eq_refl _); reflexivity.
-    Grab Existential Variables.
+    Unshelve.
     reflexivity.
   Qed.
 
@@ -590,7 +590,7 @@ Section AlignEncodeWord.
     - destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
       eapply decode_word'_lt in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
       unfold lt_B in Heqo; simpl in Heqo.
-      injections; omega.
+      injections; lia.
     - destruct v.
       + simpl; intuition; discriminate.
       + rewrite aligned_decode_char_eq; simpl; intuition.
@@ -604,7 +604,7 @@ Section AlignEncodeWord.
                    | S l => n - l
                    end) with 1 by
               (unfold numBytes; simpl;
-               clear; induction n; omega).
+               clear; induction n; lia).
           setoid_rewrite <- build_aligned_ByteString_append.
           eexists (Vector.cons _ c _ (@Vector.nil _)); reflexivity.
   Qed.
@@ -653,9 +653,9 @@ Section AlignEncodeWord.
         rewrite SW_word_append.
         rewrite <- Equality.transport_pp.
         f_equal.
-        Grab Existential Variables.
-        omega.
-        omega.
+        Unshelve.
+        lia.
+        lia.
   Qed.
 
   Lemma AlignedDecodeBindCharM {C : Type}
@@ -840,7 +840,7 @@ Section AlignEncodeWord.
       injections.
       eapply decode_word'_lt in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
       unfold lt_B in Heqo; simpl in Heqo.
-      injections; omega.
+      injections; lia.
     - destruct v.
       + simpl; intuition; discriminate.
       + rewrite aligned_decode_unused_char_eq'; simpl; intuition.
@@ -854,7 +854,7 @@ Section AlignEncodeWord.
                    | S l => n - l
                    end) with 1 by
               (unfold numBytes; simpl;
-               clear; induction n; omega).
+               clear; induction n; lia).
           setoid_rewrite <- build_aligned_ByteString_append.
           eexists (Vector.cons _ h _ (@Vector.nil _)); reflexivity.
   Qed.
@@ -880,9 +880,7 @@ Section AlignEncodeWord.
       eapply DecodeMEquivAlignedDecodeM_trans;
         intros; try eapply AlignedDecodeMEquiv_refl.
       (*intros; unfold mult; simpl; rewrite decode_unused_word_plus'; simpl; fold mult. *)
-      Focus 2.
-      (*2: {*)
-      {
+      2: {
       instantiate (1 := fun b cd => `(w, v', cd') <- decode_unused_word (sz := 8) b cd;
                                     `(w', v'', cd') <- decode_unused_word (sz := m * 8) v' cd';
                                     Some ((), v'', cd')); simpl.
@@ -912,7 +910,6 @@ Section AlignEncodeWord.
       rewrite addD_addD_plus; reflexivity.
       eauto.
       }
-      all: idtac.
       repeat (intros; eapply Bind_DecodeMEquivAlignedDecodeM);
         eauto using @Return_DecodeMEquivAlignedDecodeM.
       eapply AlignedDecodeUnusedCharM.
@@ -975,9 +972,9 @@ Section AlignEncodeWord.
     f_equal.
     erewrite VectorByteToWord_cons.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    Grab Existential Variables.
-    omega.
-    omega.
+    Unshelve.
+    lia.
+    lia.
   Qed.
 
   Lemma decode_word_aligned_ByteString_overflow
@@ -991,7 +988,7 @@ Section AlignEncodeWord.
     induction b; intros.
     - unfold build_aligned_ByteString; simpl.
       inversion H; subst; reflexivity.
-    - destruct sz; try omega.
+    - destruct sz; try lia.
       apply lt_S_n in H.
       pose proof (IHb _ cd H).
       unfold decode_word, WordOpt.decode_word.
@@ -1068,9 +1065,9 @@ Section AlignEncodeWord.
     - unfold Compose_Encode, EncodeMEquivAlignedEncodeM; intros; injections; intuition; simpl.
       + injections; simpl; unfold SetCurrentByte.
         unfold plus; fold plus.
-        destruct (Nat.ltb idx (idx + Datatypes.S m)) eqn: ? ; try omega.
+        destruct (Nat.ltb idx (idx + Datatypes.S m)) eqn: ? ; try lia.
         * eexists (Vector.append v1 (Vector.cons _ (proj s) _ v2)); split.
-          { repeat f_equal; try omega.
+          { repeat f_equal; try lia.
             clear; simpl in v.
             revert v v2; induction v1; intros.
             - replace v with (Vector.cons _ (Vector.hd v) _ (Vector.tl v)).
@@ -1081,21 +1078,21 @@ Section AlignEncodeWord.
           }
           { rewrite !ByteString_enqueue_ByteString_assoc.
             rewrite <- !build_aligned_ByteString_append.
-            assert (idx + 1 + m = idx + Datatypes.S m) by omega.
+            assert (idx + 1 + m = idx + Datatypes.S m) by lia.
             pose proof (Vector_append_assoc _ _ _ H v1 (Vector.cons (word 8) (proj s) 0 (Vector.nil (word 8))) v2).
             simpl in H1; unfold Core.char in *;             unfold plus in *; fold plus in *; rewrite H1.
             generalize (append (append v1 (Vector.cons (word 8) (proj s) 0 (Vector.nil (word 8)))) v2).
             rewrite H; reflexivity.
           }
-        * destruct (le_lt_dec (idx + Datatypes.S m) idx); try omega.
+        * destruct (le_lt_dec (idx + Datatypes.S m) idx); try lia.
           apply Nat.ltb_lt in l; congruence.
       + injections; simpl; unfold SetCurrentByte.
         destruct (Nat.ltb idx numBytes') eqn: ?; eauto.
         apply Nat.ltb_lt in Heqb.
         unfold build_aligned_ByteString in H0.
         unfold length_ByteString in H0; simpl padding in H0; simpl numBytes in H0.
-        omega.
-      + injections; simpl in *; omega.
+        lia.
+      + injections; simpl in *; lia.
       + discriminate.
   Defined.
 
@@ -1516,7 +1513,7 @@ Section AlignEncodeWord.
         destruct (_ <? _) eqn:?; unfold If_Opt_Then_Else.
       + unfold SetCurrentBytes', AlignedEncode_Nil, ReturnAlignedEncodeM; simpl.
         destruct (S _ <? S _) eqn:?; rewrite ?Nat.ltb_lt, ?Nat.ltb_ge, ?split1'_8_0 in *;
-          (reflexivity || omega).
+          (reflexivity || lia).
       + reflexivity.
       + rewrite IHsz; reflexivity.
       + reflexivity.

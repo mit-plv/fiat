@@ -29,7 +29,7 @@ Definition schemaHeading (sch : Schema) : Heading :=
      HeadingNames := schemaHeadingNames sch |}.
 
 Class HeadingHint :=
-  { headingHint :> Heading }.
+  { headingHint : Heading }.
 
 (* A notation for functional dependencies. *)
 Definition tupleAgree

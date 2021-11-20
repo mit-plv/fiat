@@ -28,10 +28,10 @@ Require Import Coq.Strings.String
 
 Section MutateRefinements.
 
-  Hint Resolve crossConstr.
+  Hint Resolve crossConstr : core.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesAttributeConstraints
-       SatisfiesTupleConstraints.
+       SatisfiesTupleConstraints : core.
 
   Arguments GetUnConstrRelation : simpl never.
   Arguments UpdateUnConstrRelation : simpl never.

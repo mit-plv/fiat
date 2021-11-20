@@ -82,7 +82,7 @@ Section HoneRepresentation.
       eapply (IHdom (fun or => oldMethod or d)); eauto.
   Qed.
 
-  Hint Resolve refine_absMethod.
+  Hint Resolve refine_absMethod : core.
 
   (* A similar approach works for constructors. *)
   Fixpoint absConstructor
@@ -114,7 +114,7 @@ Section HoneRepresentation.
     - intros; eapply IHdom.
   Qed.
 
-  Hint Resolve refine_absConstructor.
+  Hint Resolve refine_absConstructor : core.
 
   (* We can refine an ADT using the default mutator and observer
      implementations provided by [absMutatorMethod] and [absObserverMethod]. *)

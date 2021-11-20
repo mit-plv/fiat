@@ -208,9 +208,7 @@ Lemma option_format_correct
   Proof.
     eapply format_decode_correct_alt.
     2: instantiate (1 := predicate).
-    Focus 7.
-    (* 7: { *)
-    {
+    7: {
       eapply injection_decode_correct
         with (inj := fun v =>
                        match v with
@@ -247,7 +245,6 @@ Lemma option_format_correct
         destruct v; eauto.
         destruct u; apply unfold_computes; eauto.
     }
-    all: idtac.
     - unfold flip, pointwise_relation; intros.
       unfold predicate; intuition eauto.
     - unfold flip, pointwise_relation, impl; intros.
