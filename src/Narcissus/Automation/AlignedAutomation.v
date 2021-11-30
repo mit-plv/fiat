@@ -660,10 +660,13 @@ Ltac align_encoder_step :=
   | eapply CorrectAlignedEncoderForFormatOption
   | intros; try collapse_unaligned_words; eapply CorrectAlignedEncoderProjection; (solve
      [ eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto ])
-  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 2); eauto
-  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 3); eauto
-  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 4); eauto
-  | intros; eapply CorrectAlignedEncoderForFormatNChar with (sz := 5); eauto
+  | intros;
+    match goal with
+    | |- CorrectAlignedEncoder (format_word (sz:=?bsz)) _ =>
+        (* Probably should check if [bsz] is closed. *)
+        let csz := eval compute in (bsz / 8) in
+        eapply CorrectAlignedEncoderForFormatNChar with (sz := csz); eauto
+    end
   | match goal with
     | |- CorrectAlignedEncoder empty_Format _ =>
       eapply CorrectAlignedEncoderForDoneC
