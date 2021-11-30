@@ -129,7 +129,7 @@ Ltac build_fully_determined_type :=
   unfold Domain, GetAttribute, GetAttributeRaw, Basics.compose in *;
   simpl in *;
   let a' := fresh in
-  intros a'; repeat destruct a' as [? a'];
+  intros a';  try destruct a'; destruct_conjs;
   (* Show that it is determined by the constraints (equalities) *)
   (* inferred during parsing. *)
   unfold Domain, GetAttribute, GetAttributeRaw in *;
