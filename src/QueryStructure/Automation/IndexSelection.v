@@ -25,7 +25,7 @@ Module OccCountOrder <: TotalLeBool.
      case_eq (Compare_dec.leb b b0); intuition.
      case_eq (Compare_dec.leb b0 b); intuition.
      apply leb_iff_conv in H; apply leb_iff_conv in H0.
-     omega.
+     lia.
    Qed.
 
 End OccCountOrder.
@@ -45,7 +45,7 @@ Module AttrCountOrder <: TotalLeBool.
       case_eq (Compare_dec.leb b b0); intuition.
       case_eq (Compare_dec.leb b0 b); intuition.
       apply leb_iff_conv in H; apply leb_iff_conv in H0.
-      omega.
+      lia.
     Qed.
 
 End AttrCountOrder.
@@ -348,9 +348,11 @@ Definition ExpressionAttributeCounterPick {A}
                                (InitOccurences _) :=
   Build_ExpressionAttributeCounter qsSchema (Pick P) (InitOccurences _).
 
+#[export]
 Hint Extern 10 (ExpressionAttributeCounter ?qsSchema (Pick ?P) _) =>
-apply ExpressionAttributeCounterPick.
+apply ExpressionAttributeCounterPick : core.
 
+#[export]
 Hint Extern 0 (@TermAttributeCounter _ ?qsSchema (@GetAttributeRaw _ ?tup ?BAidx) ?Ridx' ?BAidx') =>
 match type of tup with
 | @RawTuple (@GetNRelSchemaHeading _ _ ?Ridx) =>
@@ -358,6 +360,7 @@ match type of tup with
   eapply (@GetAttributeRawTermCounter qsSchema Ridx tup BAidx)
 end : typeclass_instances.
 
+#[export]
 Hint Extern 0 (@TermAttributeCounter
                  _ ?qsSchema
                  (GetAttribute ?tup {| bindex := _;

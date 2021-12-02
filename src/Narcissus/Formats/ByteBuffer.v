@@ -55,7 +55,7 @@ Module ByteBuffer.
          | Vector.cons _ sz' v' => (eq_rect _ _ (drop n' sz' v') _ _)
          | _ => (eq_rect _ _ (Vector.nil _) _ _)
          end
-       end); abstract omega.
+       end); abstract lia.
   Defined.
 
   Lemma to_list_of_list_eq

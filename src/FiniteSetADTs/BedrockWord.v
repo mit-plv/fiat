@@ -1,5 +1,5 @@
 Require Export Fiat.FiniteSetADTs.WordInterface.
-Require Export Bedrock.Memory Bedrock.IL.
+Require Export Bedrock.Memory.
 
 Set Implicit Arguments.
 

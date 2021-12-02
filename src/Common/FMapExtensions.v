@@ -1473,7 +1473,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     etransitivity; eassumption.
   Qed.
 
-  Local Hint Extern 1 (eq_key_elt _ _) => reflexivity.
+  Local Hint Extern 1 (eq_key_elt _ _) => reflexivity : core.
 
   Lemma forall_in_eq_key_elt_snd {A} ls (P : _ -> Prop)
     : (forall x : key * A, List.In x ls -> P (snd x))

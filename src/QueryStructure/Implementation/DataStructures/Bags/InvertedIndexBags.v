@@ -742,7 +742,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         rewrite add_mapsto_iff in H'; intuition.
         eapply (H4 (S m)); unfold MValues.In in *; eauto.
         Lia.lia.
-        Grab Existential Variables.
+        Unshelve.
         exact x0.
     Qed.
 

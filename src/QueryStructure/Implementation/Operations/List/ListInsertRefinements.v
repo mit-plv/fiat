@@ -339,7 +339,7 @@ Proof.
     intuition.
   exists (S bound); unfold In in *; destruct_ex; subst; simpl.
   intros; intuition; subst.
-  simpl. omega.
+  simpl. lia.
   destruct H2 as [l' [l'_eq [equiv_l' NoDup_l'] ] ].
     econstructor 1 with ({| elementIndex := bound;
                             indexedElement := tup|} :: l'); split; eauto.
@@ -354,7 +354,7 @@ Proof.
   unfold not; intros.
   rewrite in_map_iff in H; destruct_ex; intuition.
   apply equiv_l' in H3; apply H0 in H3.
-  simpl in *; omega.
+  simpl in *; lia.
 Qed.
 
 Lemma ImplementListInsert_neq qsSchema Ridx Ridx'

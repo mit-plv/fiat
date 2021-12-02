@@ -124,8 +124,8 @@ Definition BuildForeignKeyConstraints
 
 Class namedSchemaHint :=
   { numnSchemaHint : nat;
-    nSchemaHint :> Vector.t Schema numnSchemaHint;
-    nSchemaNamesHint :> Vector.t string numnSchemaHint}.
+    nSchemaHint : Vector.t Schema numnSchemaHint;
+    nSchemaNamesHint : Vector.t string numnSchemaHint}.
 
 Notation "'attribute' attr 'for' rel1 'references' rel2 " :=
   (let hint : namedSchemaHint := _ in

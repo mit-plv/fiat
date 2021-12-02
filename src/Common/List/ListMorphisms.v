@@ -413,6 +413,7 @@ Proof.
     trivial.
 Qed.
 
+#[export]
 Hint Extern 0 (Proper (_ ==> _ ==> SetoidList.eqlistA _) (@List.map _ _))
 => refine map_eqlistA_Proper : typeclass_instances.
 
@@ -425,6 +426,7 @@ Global Instance list_caset_Proper_forall_R {A B} {R : relation B}
 Proof.
   lazy; intros ?????? [|??]; trivial.
 Qed.
+#[export]
 Hint Extern 0 (Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> forall_relation _) (list_caset _))
 => refine list_caset_Proper_forall_R : typeclass_instances.
 
@@ -435,6 +437,7 @@ Proof.
   intros ?? H ls1 ls2 H'.
   induction H'; simpl; eauto with nocore.
 Qed.
+#[export]
 Hint Extern 0 (Proper (_ ==> SetoidList.eqlistA _ ==> _ ==> _) (@fold_left _ _))
 => refine fold_left_eqlistA_Proper : typeclass_instances.
 

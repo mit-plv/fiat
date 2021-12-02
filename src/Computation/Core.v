@@ -161,9 +161,9 @@ Global Opaque Bind.
 Global Opaque Pick.
 Global Opaque computes_to.
 
-Global Hint Resolve ReturnComputes.
-Global Hint Resolve BindComputes.
-Global Hint Resolve PickComputes.
+Global Hint Resolve ReturnComputes : core.
+Global Hint Resolve BindComputes : core.
+Global Hint Resolve PickComputes : core.
 
 Ltac computes_to_inv :=
   repeat match goal with

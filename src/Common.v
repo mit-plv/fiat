@@ -1,6 +1,7 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.ZArith.ZArith Coq.Lists.SetoidList.
+Require Export Coq.micromega.Lia.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
 Require Export Fiat.Common.Tactics.SplitInContext.
@@ -288,7 +289,9 @@ Ltac setoid_rewrite_hyp := repeat setoid_rewrite_hyp'.
 Ltac setoid_rewrite_rev_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite <- H).
 Ltac setoid_rewrite_rev_hyp := repeat setoid_rewrite_rev_hyp'.
 
+#[export]
 Hint Extern 0 => solve [apply reflexivity] : typeclass_instances.
+#[export]
 Hint Extern 10 (Proper _ _) => progress cbv beta : typeclass_instances.
 
 Ltac set_evars :=
@@ -1054,7 +1057,7 @@ Proof.
   destruct ls as [| [|] ]; simpl in *; auto.
 Qed.
 
-Local Hint Constructors List.Forall.
+Local Hint Constructors List.Forall : core.
 
 Lemma Forall_app {T} P (ls1 ls2 : list T)
   : List.Forall P ls1 /\ List.Forall P ls2 <-> List.Forall P (ls1 ++ ls2).
@@ -1124,7 +1127,7 @@ Proof.
          end.
 Qed.
 
-Local Hint Constructors Exists.
+Local Hint Constructors Exists : core.
 
 Local Ltac fold_right_orb_map_sig_t :=
   repeat match goal with
@@ -1266,6 +1269,7 @@ Proof.
 Defined.
 
 Class constr_eq_helper {T0 T1} (a : T0) (b : T1) := mkconstr_eq : True.
+#[export]
 Hint Extern 0 (constr_eq_helper ?a ?b) => constr_eq a b; exact I : typeclass_instances.
 (** return the first hypothesis with head [h] *)
 Ltac hyp_with_head h
@@ -1449,7 +1453,7 @@ Fixpoint Forall_tails_impl {T} (P P' : list T -> Type) (ls : list T) {struct ls}
 
 Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)
   : x - (y - z) = (x - y) + z.
-Proof. omega. Qed.
+Proof. lia. Qed.
 
 Lemma fold_right_and_iff {A ls}
   : fold_right and A ls <-> (fold_right and True ls /\ A).
@@ -1561,6 +1565,7 @@ Ltac flatten_ex H :=
 Ltac progress_flatten_ex H :=
   flatten_ex_helper H progress_flatten_ex flatten_ex.
 
+#[export]
 Hint Extern 0 (flatten_exC ?H) => let ret := progress_flatten_ex H in exact ret : typeclass_instances.
 
 Ltac flatten_all_ex :=
@@ -1608,6 +1613,7 @@ Module opt.
   Definition beq_nat := Eval compute in EqNat.beq_nat.
 
   Module Export Notations.
+    Declare Scope opt_bool_scope.
     Delimit Scope opt_bool_scope with opt_bool.
     Notation "x && y" := (andb x%opt_bool y%opt_bool) : opt_bool_scope.
     Notation "x || y" := (orb x%opt_bool y%opt_bool) : opt_bool_scope.
@@ -1623,6 +1629,7 @@ Module opt2.
   Definition leb := Eval compute in Compare_dec.leb.
 
   Module Export Notations.
+    Declare Scope opt2_bool_scope.
     Delimit Scope opt2_bool_scope with opt2_bool.
     Notation "x && y" := (andb x%opt2_bool y%opt2_bool) : opt2_bool_scope.
     Notation "x || y" := (orb x%opt2_bool y%opt2_bool) : opt2_bool_scope.

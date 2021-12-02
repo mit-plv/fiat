@@ -8,9 +8,9 @@ Local Arguments impl / .
 Local Arguments flip / .
 Local Arguments pointwise_relation / .
 
-Local Hint Extern 1 => progress simpl in *.
-Local Hint Extern 1 => progress subst; eauto. (* WTF? *)
-Local Hint Extern 1 => progress destruct_head_hnf sig.
+Local Hint Extern 1 => progress simpl in * : core.
+Local Hint Extern 1 => progress subst; eauto : core. (* WTF? *)
+Local Hint Extern 1 => progress destruct_head_hnf sig : core.
 
 Section forall_eq.
   (** We prove some lemmas about [forall] and [eq], for the benefit of setoid rewriting. *)
@@ -170,4 +170,5 @@ Lemma impl_exists A P Q (H : exists x : A, impl Q (P x))
 : impl Q (exists x : A, P x).
 Proof. firstorder. Defined.
 
+#[export]
 Hint Resolve impl_exists : typeclass_instances.

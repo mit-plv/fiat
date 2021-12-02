@@ -471,7 +471,7 @@ Section AlignedDecoders.
     - destruct s; simpl in *.
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
-    - destruct s; simpl in .
+    - destruct s; simpl in *.
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
     - destruct s; simpl in *.
@@ -1027,7 +1027,7 @@ Section AlignedDecoders.
     unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; eauto.
     f_equal.
     apply IHn.
-    Grab Existential Variables.
+    Unshelve.
     Lia.lia.
   Qed.
 
@@ -1087,7 +1087,7 @@ Section AlignedDecoders.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
     erewrite VectorByteToWord_cons.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    Grab Existential Variables.
+    Unshelve.
     Lia.lia.
     Lia.lia.
     Lia.lia.
@@ -2042,23 +2042,18 @@ Section AlignedDecoders.
     unfold decode_enum, Aligned_decode_enum.
     intros; eapply DecodeMEquivAlignedDecodeM_trans.
     eapply AlignedDecodeBindCharM; intros.
-    Focus 2.
-    (*2: {*)
-      { simpl; intros.
-         unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
-         destruct (decode_word b cd) as [ [ [? ?] ] | ]; eauto.
-         higher_order_reflexivity.
-      }
-      all: idtac.
-      Focus 2.
-      (*2: { *)
-      {
-        unfold AlignedDecodeMEquiv; simpl; intros.
-        unfold BindAlignedDecodeM.
-        destruct (GetCurrentByte v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
-        higher_order_reflexivity.
-      }
-      all: idtac.
+    2: {
+      simpl; intros.
+      unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
+      destruct (decode_word b cd) as [ [ [? ?] ] | ]; eauto.
+      higher_order_reflexivity.
+    }
+    2: {
+      unfold AlignedDecodeMEquiv; simpl; intros.
+      unfold BindAlignedDecodeM.
+      destruct (GetCurrentByte v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
+      higher_order_reflexivity.
+    }
     simpl.
     destruct (word_indexed b tb); simpl; eauto.
     eapply AlignedDecode_Throw.
@@ -2090,25 +2085,19 @@ Section AlignedDecoders.
     intros; eapply DecodeMEquivAlignedDecodeM_trans.
     eapply Bind_DecodeMEquivAlignedDecodeM;
       [ eapply AlignedDecodeNCharM with (m := sz); intros; eauto | ].
-    Focus 2.
-    (*2: { *)
-    {
+    2: {
       simpl; intros.
          unfold DecodeBindOpt2, DecodeBindOpt, BindOpt, If_Opt_Then_Else.
          destruct (decode_word b cd) as [ [ [? ?] ] | ]; eauto.
          higher_order_reflexivity.
     }
-    all: idtac.
-    Focus 2.
-    (*2: { *)
-    {
+    2: {
       unfold AlignedDecodeMEquiv; simpl; intros.
          unfold Aligned_decode_enumN; simpl.
          unfold BindAlignedDecodeM.
          destruct (GetCurrentBytes sz v idx c) as [ [ [? ?] ] | ]; simpl; eauto.
          higher_order_reflexivity.
     }
-    all: idtac.
     simpl.
     intros; destruct (word_indexed a tb); simpl; eauto.
     eapply AlignedDecode_Throw.

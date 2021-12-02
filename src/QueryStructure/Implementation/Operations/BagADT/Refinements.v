@@ -910,16 +910,14 @@ Section BagsQueryStructureRefinements.
     setoid_rewrite refineEquiv_unit_bind.
     etransitivity.
     2: unfold List_Query_In; etransitivity.
-    Focus 3.
-    (* 3: { *)
+    3: {
       apply refine_under_bind.
       intros; set_evars.
       rewrite <- refineEquiv_bind_unit with (f := fun x => flatten_CompList (map resultComp x))
                                             (x := filter filter_rest a).
       unfold H1; finish honing.
-    (* } *)
-    Focus 2.
-    (* 2: { *)
+    }
+    2: {
          simpl.
          rewrite <- refine_bind_bind.
          rewrite <- filter_and_join_ilist2_hd_dep with
@@ -927,7 +925,7 @@ Section BagsQueryStructureRefinements.
                                                    (search_pattern tup)))
              (filter_rest0 := filter_rest).
          finish honing.
-    (* } *)
+    }
     simplify with monad laws.
     rewrite refineEquiv_bind_bind.
     setoid_rewrite refineEquiv_bind_unit.
@@ -1215,7 +1213,7 @@ Section BagsQueryStructureRefinements.
           apply in_map_iff in H2; destruct H2; destruct H2;
             apply l_eqv in H3. unfold UnConstrFreshIdx in H0;
             unfold In in H2; apply H0 in H3;
-            unfold GetNRelSchema in *; omega.
+            unfold GetNRelSchema in *; lia.
       + exists (S v1); unfold Ensembles.Add, UnConstrFreshIdx; intros.
         inversion H2; subst.
         unfold UnConstrFreshIdx in H1; intuition; subst; simpl; eauto.
@@ -1235,7 +1233,7 @@ Section BagsQueryStructureRefinements.
           apply in_map_iff in H2; destruct H2; destruct H2;
             apply l''_eqv in H3; unfold UnConstrFreshIdx in H1;
             unfold In in H2; apply H1 in H3;
-            unfold GetNRelSchema in *; omega.
+            unfold GetNRelSchema in *; lia.
       - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
   Qed.
 
@@ -1286,7 +1284,7 @@ Proof.
           apply in_map_iff in H3; destruct H3; destruct H3;
             apply l_eqv in H4. unfold UnConstrFreshIdx in H0;
             unfold In in H3; apply H0 in H4;
-            unfold GetNRelSchema in *; omega.
+            unfold GetNRelSchema in *; lia.
       + exists (S v2); unfold Ensembles.Add, UnConstrFreshIdx; intros.
         inversion H3; subst.
         unfold UnConstrFreshIdx in H2; intuition; subst; simpl; eauto.
@@ -1306,7 +1304,7 @@ Proof.
           apply in_map_iff in H3; destruct H3; destruct H3;
             apply l''_eqv in H4; unfold UnConstrFreshIdx in H2;
             unfold In in H3; apply H2 in H4;
-            unfold GetNRelSchema in *; omega.
+            unfold GetNRelSchema in *; lia.
       - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
   Qed.
 
@@ -1499,7 +1497,7 @@ Proof.
   2: reflexivity.
   rewrite map_map; simpl.
   induction a; simpl; eauto.
-  Grab Existential Variables.
+  Unshelve.
   simpl.
   intro; rewrite dec_decides_P; reflexivity.
 Qed.

@@ -796,10 +796,10 @@ Module LeastFixedPointFun.
 
           (* Having to provide new, unique identifiers is not ideal. *)
           (* Have to go to ML for a better solution. *)
-          solve_rec_obligation x ltac:(intros; omega) foo;
+          solve_rec_obligation x ltac:(intros; lia) foo;
             rewrite (H _ (foo _)); simplify with monad laws.
 
-          solve_rec_obligation x ltac:(intros; omega) foo2;
+          solve_rec_obligation x ltac:(intros; lia) foo2;
             rewrite (H _ (foo2 _)); simplify with monad laws.
           subst H0; higher_order_reflexivity.
     - simpl; intros; higher_order_reflexivity.

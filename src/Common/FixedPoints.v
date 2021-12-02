@@ -48,7 +48,7 @@ Section fixedpoints.
     { simpl.
       intros a Hle.
       assert (sizeof (step a) <= 0) by (etransitivity; [ apply step_monotonic | apply Hle ]).
-      apply step_eq; omega. }
+      apply step_eq; lia. }
     { simpl.
       intros.
       repeat match goal with
@@ -59,20 +59,20 @@ Section fixedpoints.
                => apply leb_iff_conv in H
              | _ => solve [ eauto with nocore ]
              | [ |- step _ = _ ] => apply step_eq
-             | _ => omega
-             | [ H : forall a, _ -> _ = _ |- _ ] => rewrite H by omega
+             | _ => lia
+             | [ H : forall a, _ -> _ = _ |- _ ] => rewrite H by lia
              | [ H : _ < _ |- _ ] => hnf in H
              | [ H : S _ <= S _ |- _ ] => apply Le.le_S_n in H
              | [ H : sizeof ?x <= ?y, H' : ?y <= sizeof (step ?x) |- _ ]
                => let H'' := fresh in
                   assert (H'' : sizeof (step x) <= sizeof x) by apply step_monotonic;
-                    assert (sizeof x = y) by omega;
-                    assert (y = sizeof (step x)) by omega;
+                    assert (sizeof x = y) by lia;
+                    assert (y = sizeof (step x)) by lia;
                     clear H H' H''
              | [ H : sizeof ?x <= sizeof (step ?x) |- _ ]
                => let H'' := fresh in
                   assert (H'' : sizeof (step x) <= sizeof x) by apply step_monotonic;
-                    assert (sizeof x = sizeof (step x)) by omega;
+                    assert (sizeof x = sizeof (step x)) by lia;
                     clear H H''
              end. }
   Qed.
@@ -111,11 +111,11 @@ Section listpair.
            end.
     match goal with
     | [ H : ?x + ?y = ?x' + ?y' |- _ = _ :> list _ * list _ ]
-      => assert (x = x') by omega;
-           assert (y = y') by omega;
+      => assert (x = x') by lia;
+           assert (y = y') by lia;
            clear H
     end.
-    rewrite !length_filter_eq by omega.
+    rewrite !length_filter_eq by lia.
     reflexivity.
   Qed.
 

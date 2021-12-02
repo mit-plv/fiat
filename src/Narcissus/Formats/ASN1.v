@@ -458,7 +458,7 @@ Qed.
     eapply (@format_string_aligned_ByteString test_cache); eauto.
     apply build_aligned_ByteString_id.
     congruence.
-    Grab Existential Variables.
+    Unshelve.
     exact ().
     apply Vector.nil.
   Defined.
@@ -487,7 +487,7 @@ Qed.
     decode_step idtac.
     decode_step idtac.
     decode_step idtac.
-    simpl; omega.
+    simpl; lia.
     decode_step idtac.
     intros; eapply If_Then_Else_format_correct.
     decode_step idtac.
@@ -563,9 +563,9 @@ Proof.
     let b' := match b' with ?f _ => f end in
       eapply (@optimize_Guarded_Decode n0 _ 1 b')
   end.
-  destruct n0 as [ | [ | ?] ]; intros; try omega.
+  destruct n0 as [ | [ | ?] ]; intros; try lia.
   apply (@decode_word_aligned_ByteString_overflow NoCache.test_cache) with (sz := 1); auto.
-  destruct n0 as [ | ?]; intros; try omega.
+  destruct n0 as [ | ?]; intros; try lia.
   higher_order_reflexivity.
   instantiate (1 := fun n1 v1 (cd0 : CacheDecode) =>
                       If NPeano.leb 1 n1 Then (Some ((Vector.hd (Guarded_Vector_split 1 n1 v1), @existT _ (Vector.t _) _ (Vector.tl (Guarded_Vector_split 1 n1 v1))), cd0)) Else None).

@@ -24,10 +24,10 @@ Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List Coq.Logic.Fun
 
 Section DeleteRefinements.
 
-  Hint Resolve crossConstr.
+  Hint Resolve crossConstr : core.
   Hint Unfold SatisfiesCrossRelationConstraints
        SatisfiesAttributeConstraints
-       SatisfiesTupleConstraints.
+       SatisfiesTupleConstraints : core.
 
   Arguments GetUnConstrRelation : simpl never.
   Arguments UpdateUnConstrRelation : simpl never.

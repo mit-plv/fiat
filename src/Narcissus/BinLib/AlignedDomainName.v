@@ -748,7 +748,7 @@ Section AlignedDomainName.
     eapply ByteString_f_equal; simpl; eauto.
     eapply ByteString_f_equal; simpl;
       try instantiate (1 := eq_refl _); reflexivity.
-    Grab Existential Variables.
+    Unshelve.
     reflexivity.
   Qed.
 
@@ -762,7 +762,7 @@ Section AlignedDomainName.
       ~ (lt (x - 1) (wordToNat (Vector.hd (Guarded_Vector_split 1 x x0))))%nat ->
       (lt (x - 1 - wordToNat (Vector.hd (Guarded_Vector_split 1 x x0))) x)%nat.
   Proof.
-    clear; intros; omega.
+    clear; intros; lia.
   Qed.
 
   Definition byte_aligned_decode_DomainName {sz}
@@ -912,7 +912,7 @@ Section AlignedDomainName.
       try (intros; unfold decode_word; rewrite aligned_decode_char_eq;
            reflexivity).
     Focus 2.
-    intros; assert (n = 0) by omega; subst.
+    intros; assert (n = 0) by lia; subst.
     revert b1; clear.
     apply case0; reflexivity.
     set_refine_evar.
@@ -929,7 +929,7 @@ Section AlignedDomainName.
       try (intros; unfold decode_word; rewrite aligned_decode_char_eq;
            reflexivity).
     Focus 2.
-    intros; assert (n - 1 = 0) by omega.
+    intros; assert (n - 1 = 0) by lia.
     revert b1; rewrite H3; clear.
     apply case0; reflexivity.
     set_refine_evar.
@@ -986,13 +986,13 @@ Section AlignedDomainName.
     find_if_inside; eauto.
     simpl.
     find_if_inside; eauto.
-    destruct n; try omega; simpl; eauto.
+    destruct n; try lia; simpl; eauto.
     match goal with
       |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
       replace z' with z by reflexivity; destruct z; eauto
     end.
     clear; induction s; simpl; eauto.
-    destruct n; simpl; auto; try omega.
+    destruct n; simpl; auto; try lia.
     match goal with
       |- match ?z with _ => _ end = match match ?z' with _ => _ end with _ => _ end =>
       replace z' with z by reflexivity; destruct z; eauto

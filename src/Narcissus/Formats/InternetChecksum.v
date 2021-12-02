@@ -377,6 +377,7 @@ Definition OneC_plus {sz} (w1 w2: word sz) :=
        else
          @ZToOneC sz (OneCToZ w1 + OneCToZ w2).
 
+Declare Scope oneC_scope.
 Infix "^1+" := (OneC_plus) (at level 50, left associativity) : oneC_scope.
 Local Open Scope oneC_scope.
 

@@ -131,7 +131,9 @@ Global Instance and_flip_impl_Proper
   : Proper (Basics.flip Basics.impl ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) and | 10.
 Proof. lazy; tauto. Qed.
 
+#[export]
 Hint Extern 0 (Proper (_ ==> Basics.impl --> _) and) => apply and_flip_impl_Proper : typeclass_instances.
+#[export]
 Hint Extern 0 (Proper (Basics.impl --> _ ==> _) and) => apply and_flip_impl_Proper : typeclass_instances.
 
 Global Instance eq_eq_impl_impl_Proper
@@ -152,6 +154,7 @@ Proof.
 Qed.
 
 (** If we don't know the relation, default to assuming that it's equality, if the type is not a function *)
+#[export]
 Hint Extern 0 (@Reflexive ?T ?e)
  => is_evar e;
       lazymatch T with
@@ -164,6 +167,7 @@ Lemma pointwise_Reflexive {A B R} {_ : @Reflexive B R}
 Proof.
   repeat intro; reflexivity.
 Qed.
+#[export]
 Hint Extern 1 (Reflexive (pointwise_relation _ _)) => apply @pointwise_Reflexive : typeclass_instances.
 
 Ltac solve_Proper_eqs :=
@@ -182,11 +186,15 @@ Ltac is_evar_or_eq e :=
 Ltac is_evar_or_eq_or_evar_free e :=
   first [ is_evar_or_eq e
         | try (has_evar e; fail 1) ].
+#[export]
 Hint Extern 1 (Proper ?e _) =>
 is_evar_or_eq e; solve_Proper_eqs : typeclass_instances.
+#[export]
 Hint Extern 1 (Proper (?e1 ==> ?e2) _) =>
 is_evar_or_eq e1; is_evar_or_eq_or_evar_free e2; solve_Proper_eqs : typeclass_instances.
+#[export]
 Hint Extern 1 (Proper (?e1 ==> ?e2 ==> ?e3) _) =>
 is_evar_or_eq e1; is_evar_or_eq e2; is_evar_or_eq_or_evar_free e3; solve_Proper_eqs : typeclass_instances.
+#[export]
 Hint Extern 1 (Proper (?e1 ==> ?e2 ==> ?e3 ==> ?e4) _) =>
 is_evar_or_eq e1; is_evar_or_eq e2; is_evar_or_eq e3; is_evar_or_eq_or_evar_free e4; solve_Proper_eqs : typeclass_instances.

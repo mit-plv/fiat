@@ -233,7 +233,7 @@ Definition cond_srcport port
 Definition cond_dstport port
   : condition input :=
   let fn := tcp_or_udp tcp_dest_port udp_dest_port in
-  fun pkt => Neqb pkt.(fn) port.
+  fun pkt => N.eqb pkt.(fn) port.
 
 (** The following adds syntax for these conditions: **)
 

@@ -1,7 +1,7 @@
 Require Import
         Fiat.Narcissus.Common.Specs.
 
-Notation "[ n ]" := (exist _ n _) : format.
+Notation "[ n ]" := (exist _ n _) : format_scope.
 
 Lemma sig_equivalence :
   forall (A : Type) (P : A -> Prop) (n m : A) (n_pf : P n) (m_pf : P m),

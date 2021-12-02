@@ -112,7 +112,7 @@ Section String.
              (cd' : CacheDecode),
       decode_string len b3 cd0 = Some (a, b', cd') -> lt_B b' b3.
   Proof.
-    induction len; simpl; intros; try omega.
+    induction len; simpl; intros; try lia.
     destruct (decode_ascii b3 cd0) as [ [ [? ?] ?] | ] eqn: ? ;
       simpl in *; try discriminate.
     eapply ascii_decode_lt in Heqo.
@@ -121,7 +121,7 @@ Section String.
     injections.
     inversion lt_len; subst; simpl in *.
     - injections; eauto.
-    - eapply IHlen in Heqo0; eauto; unfold lt_B in *; omega.
+    - eapply IHlen in Heqo0; eauto; unfold lt_B in *; lia.
   Qed.
 
 End String.

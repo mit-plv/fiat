@@ -17,4 +17,5 @@ Reserved Notation "`( a , b , c ) <- d ; k"
          (at level 81, right associativity,
           format "'[v' `( a ,  b ,  c )  <-  d ; '/' k ']'").
 
+Declare Scope comp_scope.
 Delimit Scope comp_scope with comp.

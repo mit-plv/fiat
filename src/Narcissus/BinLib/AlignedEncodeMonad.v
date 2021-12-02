@@ -183,7 +183,7 @@ Section AlignedEncodeM.
     unfold EncodeMEquivAlignedEncodeM, AlignedEncode_Nil, ReturnAlignedEncodeM;
       intros; injections; simpl in *; intuition.
     - injections; simpl.
-      assert (idx < Datatypes.S (idx + m))%nat as H' by omega;
+      assert (idx < Datatypes.S (idx + m))%nat as H' by lia;
         rewrite <- ltb_lt in H'; rewrite H'.
       revert v.
       eapply Vector.case0; simpl.
@@ -194,8 +194,8 @@ Section AlignedEncodeM.
     - injections; simpl in *.
       destruct (idx <? (Datatypes.S numBytes')) eqn: ?; auto.
       rewrite ltb_lt in Heqb.
-      omega.
-    - injections; simpl in *; omega.
+      lia.
+    - injections; simpl in *; lia.
     - discriminate.
   Qed.
 
@@ -229,15 +229,15 @@ Section AlignedEncodeM.
       destruct (H' _ _ (eq_refl _) (encode1_OK _ _ (eq_refl _)) v1 (fst (Vector_split _ _ v)) _
                    (Vector.append (snd (Vector_split _ _ v)) v2)) as [? [? ?] ].
       assert (idx + (numBytes t1 + (numBytes t2 + m)) =
-              (idx + numBytes t1) + (numBytes t2 + m)) by omega; simpl in *.
+              (idx + numBytes t1) + (numBytes t2 + m)) by lia; simpl in *.
       destruct (H0' H2 (fst (Vector_split _ _ (eq_rect _ (Vector.t char) x _ H10)))
                     (fst (Vector_split _ _ (snd (Vector_split _ _ (eq_rect _ (Vector.t char) x _ H10)))))
                     _ (snd (Vector_split _ _ (snd (Vector_split _ _ (eq_rect _ (Vector.t char) x _ H10)))))
                ).
       assert (idx + numBytes t1 + (numBytes t2 + m) =
-              idx + (numBytes t1 + numBytes t2 + m)) as H11' by omega.
+              idx + (numBytes t1 + numBytes t2 + m)) as H11' by lia.
       assert (idx + (numBytes t1 + (numBytes t2 + m)) =
-              (idx + (numBytes t1 + numBytes t2 + m))) by omega; simpl in *.
+              (idx + (numBytes t1 + numBytes t2 + m))) by lia; simpl in *.
       unfold AppendAlignedEncodeM.
       replace (encode1_aligned (idx + ((numBytes t1 + numBytes t2) + m))
                                (Vector.append v1 (Vector.append v v2)) idx s env)
@@ -260,7 +260,7 @@ Section AlignedEncodeM.
           intro.
           revert H10 x v.
           assert (idx + (numBytes t1 + (numBytes t2 + m)) - idx - (numBytes t2 + m) = numBytes t1)
-            as H''' by omega; revert x2 H16; rewrite H'''; clear H'''.
+            as H''' by lia; revert x2 H16; rewrite H'''; clear H'''.
           generalize (numBytes t1); intros; subst.
           rewrite <- !build_aligned_ByteString_append in H9;
             apply build_aligned_ByteString_inj in H9; subst.
@@ -281,7 +281,7 @@ Section AlignedEncodeM.
              (eq_rect _ (fun x => option ((Vector.t char x) * nat * CacheFormat))%type (Some (x, idx + numBytes t1, env'')) _ H12).
          rewrite <- H8.
          assert (idx + (numBytes t1 + numBytes t2 + m) =
-                 idx + (numBytes t1 + (numBytes t2 + m))) by omega.
+                 idx + (numBytes t1 + (numBytes t2 + m))) by lia.
          replace (Vector.append v1 (Vector.append (fst (Vector_split (numBytes t1) (numBytes t2) v))
                                                   (Vector.append (snd (Vector_split (numBytes t1) (numBytes t2) v)) v2)))
            with (eq_rect _ (Vector.t char) (Vector.append v1 (Vector.append v v2)) _ H).
@@ -292,7 +292,7 @@ Section AlignedEncodeM.
              by (intros ? ? H'; rewrite H'; reflexivity).
          rewrite H', <- Equality.transport_pp.
          erewrite (UIP_dec _ _ (eq_refl _)); reflexivity.
-         assert (numBytes t1 + numBytes t2 + m = numBytes t1 + (numBytes t2 + m)) by omega.
+         assert (numBytes t1 + numBytes t2 + m = numBytes t1 + (numBytes t2 + m)) by lia.
          replace (Vector.append (fst (Vector_split (numBytes t1) (numBytes t2) v))
                                 (Vector.append (snd (Vector_split (numBytes t1) (numBytes t2) v)) v2))
            with (eq_rect _ (Vector.t char) (Vector.append v v2) _ H0)
@@ -317,8 +317,8 @@ Section AlignedEncodeM.
         { eauto; simpl in l; eapply (proj1 (proj2 H)) in l; eauto; rewrite Heqo1 in l; discriminate. }
         rewrite length_ByteString_no_padding in l by eauto.
         pose proof (proj1 (proj2 (H0 env'' s (snd (fst p))))) as H'.
-        assert (numBytes t1 + idx < Datatypes.S numBytes')%nat by omega; clear l.
-        assert (idx + numBytes t1 <= numBytes')%nat by omega.
+        assert (numBytes t1 + idx < Datatypes.S numBytes')%nat by lia; clear l.
+        assert (idx + numBytes t1 <= numBytes')%nat by lia.
         destruct (Vector_split_lt _ _ H4 v) as [? [? [? [? ?] ] ] ].
         pose proof (proj1 (proj2 (H))) as H'' .
         destruct (H3 (fst (Vector_split _ _ x0)) (snd (Vector_split _ _ x0)) _ x1) as [v' [? ?] ].
@@ -332,7 +332,7 @@ Section AlignedEncodeM.
         intros. erewrite (UIP_dec _ _ (eq_refl _)) in H6; simpl in H6.
         rewrite Heqo1 in H6; destruct p as [ [? ?] ?]; simpl in *; congruence.
       + rewrite Heqo0; simpl; eauto.
-      + replace (8 * snd (fst p)) with (length_ByteString t1 + 8 * idx); try omega.
+      + replace (8 * snd (fst p)) with (length_ByteString t1 + 8 * idx); try lia.
         rewrite length_ByteString_no_padding by eauto.
         revert p Heqo1 H6.
         rewrite H5.
@@ -342,7 +342,7 @@ Section AlignedEncodeM.
         rewrite (plus_assoc idx (numBytes t1) x).
         intros. erewrite (UIP_dec _ _ (eq_refl _)) in H6; simpl in H6.
         rewrite Heqo1 in H6; destruct p as [ [? ?] ?]; simpl in *; injections.
-        omega.
+        lia.
       - specialize (H env s idx);
         unfold sequence_Encode in *;
         destruct (encode1 s env) as [ [t1 env''] | ] eqn: ? ;
@@ -358,8 +358,8 @@ Section AlignedEncodeM.
         { eauto; simpl in l; eapply (proj1 (proj2 H)) in l; eauto; rewrite l in Heqo1; discriminate. }
         rewrite length_ByteString_no_padding in l by eauto.
         pose proof (proj1 (proj2 (proj2 (H0 env'' s (snd (fst p)))))) as H'.
-        assert (numBytes t1 + idx < Datatypes.S numBytes')%nat by omega; clear l.
-        assert (idx + numBytes t1 <= numBytes')%nat by omega.
+        assert (numBytes t1 + idx < Datatypes.S numBytes')%nat by lia; clear l.
+        assert (idx + numBytes t1 <= numBytes')%nat by lia.
         destruct (Vector_split_lt _ _ H4 v) as [? [? [? [? ?] ] ] ].
         pose proof (proj2 (proj2 (H))) as H'' .
         destruct (H1 (fst (Vector_split _ _ x0)) (snd (Vector_split _ _ x0)) _ x1) as [v' [? ?] ].
@@ -384,7 +384,7 @@ Section AlignedEncodeM.
           unfold length_ByteString in H2; rewrite e in H2; simpl in H2.
           assert (exists m, numBytes' = idx + (numBytes t1 + m)).
           exists (numBytes' - (idx + numBytes t1)).
-          omega.
+          lia.
           destruct H3.
           pose proof (proj1 H _ _ (eq_refl _) (encode1_OK _ _ (eq_refl _))) as H'.
           destruct (H' (fst (Vector_split _ _ (eq_rect _ _ v _ H3)))
@@ -402,16 +402,8 @@ Section AlignedEncodeM.
             rewrite <- !Vector_split_append; reflexivity.
           * erewrite (proj1 (proj2 (proj2 H))); eauto.
         + unfold AppendAlignedEncodeM; rewrite (proj2 (proj2 (proj2 H))); simpl; eauto.
-          Grab Existential Variables.
-          decide equality.
-          decide equality.
-          decide equality.
-          omega.
-          decide equality.
-          decide equality.
-          omega.
-          decide equality.
-          omega.
+          Unshelve.
+          all: eauto using Nat.eq_dec; lia.
   Qed.
 
   Definition CorrectAlignedEncoder
@@ -841,7 +833,7 @@ Proof.
            rewrite H1; simpl.
            specialize (H4 env s idx); eapply (proj1 (proj2 H4)); eauto.
            eapply PeanoNat.Nat.ltb_lt in Heqb.
-           Omega.omega.
+           lia.
         -- injections.
            apply H0 in Heqo.
            rewrite Heqo in H9; intuition.
@@ -858,7 +850,7 @@ Proof.
            rewrite H1; simpl.
            specialize (H4 env s idx); eapply (proj1 (proj2 H4)); eauto.
            eapply PeanoNat.Nat.ltb_lt in Heqb.
-           Omega.omega.
+           lia.
         -- injections.
            apply H0 in Heqo.
            rewrite Heqo in H9; intuition.
@@ -924,6 +916,7 @@ Definition SetByteAt (* Sets the bytes at the specified index and sets the curre
   : AlignedEncodeM n :=
   fun v idx s ce => if (Coq.Init.Nat.ltb idx' n) then Some (set_nth' v idx' s, Datatypes.S idx', addE ce 8) else None.
 
+Declare Scope AlignedEncodeM_scope.
 Delimit Scope AlignedEncodeM_scope with AlignedEncodeM.
 Notation "y >> z" := (AppendAlignedEncodeM y z) : AlignedEncodeM_scope.
 
@@ -956,7 +949,7 @@ Proof.
   intros.
   destruct (Nat.le_decidable (1 + sz) (numBytes b + n1)).
   edestruct enc_OK as [_ [? _]]. erewrite H2 in H; eauto. discriminate.
-  rewrite length_ByteString_no_padding by eauto. omega. omega.
+  rewrite length_ByteString_no_padding by eauto. lia. lia.
 Qed.
 
 Lemma AlignedEncoder_sz_destruct
@@ -979,8 +972,8 @@ Proof.
   intros. destruct (Vector_append_destruct3 t) as [t1 [t2 [t3 ?]]]. subst.
   edestruct enc_OK as [? _]. edestruct H2; eauto. clear H2. destruct_conjs.
   rewrite H2 in H. injections.
-  split. omega.
-  erewrite enc'_sz_eq; eauto. omega.
+  split. lia.
+  erewrite enc'_sz_eq; eauto. lia.
 Qed.
 
 Lemma AlignedEncoder_some_inv
@@ -1067,8 +1060,8 @@ Proof.
   repeat eexists; eauto;
     try (rewrite <- Eqdep_dec.eq_rect_eq_dec; eauto; apply Nat.eq_dec).
   congruence.
-  Grab Existential Variables.
-  omega.
+  Unshelve.
+  lia.
 Qed.
 
 Lemma AlignedEncoder_extr
@@ -1099,12 +1092,12 @@ Proof.
   rewrite <- H2. rewrite !build_aligned_ByteString_append. reflexivity.
 
   rename n' into n4. revert H0. clear. intros.
-  assert (n1 + (n2 + n3) + n4 = n1 + (n2 + (n3 + n4))) by omega.
+  assert (n1 + (n2 + n3) + n4 = n1 + (n2 + (n3 + n4))) by lia.
   assert (forall {A}
             (t1 : Vector.t A n1) (t2 : Vector.t A n2) (t3 : Vector.t A n3) (t4 : Vector.t A n4),
              t1 ++ t2 ++ t3 ++ t4 = eq_rect _ (Vector.t A) ((t1 ++ t2 ++ t3) ++ t4) _ H) as L. {
     clear. intros.
-    assert (n2 + n3 + n4 = n2 + (n3 + n4)) by omega.
+    assert (n2 + n3 + n4 = n2 + (n3 + n4)) by lia.
     rewrite <- (Vector_append_assoc' _ _ _ _ H0). f_equal.
     apply Vector_append_assoc.
   }
@@ -1145,7 +1138,7 @@ Proof.
   intros. edestruct @AlignedEncoder_inv as [n2 [n3 [t1 [t2 [t3 [v2 ?]]]]]]; eauto.
   destruct_conjs. subst. simpl in *.
   rewrite H5. repeat f_equal.
-  assert (n3 = 0) by omega. subst. clear.
+  assert (n3 = 0) by lia. subst. clear.
   apply Vector.case0 with (v:=t1). simpl.
   apply Vector.case0 with (v:=t3).
   rewrite Vector_append_nil_r'. generalize (plus_n_O n2). destruct e.
@@ -1165,8 +1158,8 @@ Lemma AlignedEncoder_none_inv
     (sz < n1 + numBytes b)%nat.
 Proof.
   intros.
-  destruct (Nat.le_decidable (1 + sz) (numBytes b + n1)). omega.
-  assert (sz = n1 + (numBytes b + (sz - (n1+numBytes b)))) by omega.
+  destruct (Nat.le_decidable (1 + sz) (numBytes b + n1)). lia.
+  assert (sz = n1 + (numBytes b + (sz - (n1+numBytes b)))) by lia.
   revert dependent t. rewrite H2. intros. destruct (Vector_append_destruct3 t) as [t1 [t2 [t3 ?]]].
   subst.
   edestruct enc_OK as [? _]. edestruct H3; eauto. clear H3. destruct_conjs.
@@ -1189,7 +1182,7 @@ Proof.
   | |- ?a = _ => destruct a eqn:?
   end. destruct_conjs.
   edestruct @AlignedEncoder_inv2 as [n2 [n3 [t2 [t23 [v23 ?]]]]]; try apply Heqo; eauto.
-  destruct_conjs. assert (n2 + n3 = n) as L by omega. destruct L.
+  destruct_conjs. assert (n2 + n3 = n) as L by lia. destruct L.
   rewrite <- Eqdep_dec.eq_rect_eq_dec in H3 by (apply Nat.eq_dec).
   rewrite <- Eqdep_dec.eq_rect_eq_dec in H4 by (apply Nat.eq_dec).
   subst.
@@ -1201,7 +1194,7 @@ Proof.
   edestruct @AlignedEncoder_some_inv; try apply H; eauto.
   eapply AlignedEncoder_none_inv in Heqo; eauto.
   eapply AlignedEncoder_sz_destruct' in H; eauto.
-  omega.
+  lia.
 Qed.
 
 Lemma AlignedEncoder_fixed
@@ -1226,7 +1219,7 @@ Proof.
   edestruct @AlignedEncoder_inv'; try apply Heqo; eauto. destruct_conjs.
   subst. repeat f_equal. eauto using build_aligned_ByteString_inj.
   exfalso. eapply AlignedEncoder_none_inv in Heqo; eauto.
-  omega.
+  lia.
 Qed.
 
 Lemma AlignedEncoder_append_inv
@@ -1259,7 +1252,7 @@ Proof.
   revert dependent tnil. intros tnil.
   apply Vector.case0 with (v:=tnil). clear tnil. simpl. intros. rename n1' into n1.
   edestruct @AlignedEncoder_inv2 as [n2 [n3 [v1' [t23' [v23 ?]]]]]; try apply enc2_OK; eauto.
-  destruct_conjs. assert (n2 + n3 = n23) by omega. destruct H6.
+  destruct_conjs. assert (n2 + n3 = n23) by lia. destruct H6.
   rewrite <- Eqdep_dec.eq_rect_eq_dec in H3 by (apply Nat.eq_dec).
   rewrite <- Eqdep_dec.eq_rect_eq_dec in H5 by (apply Nat.eq_dec).
   subst. apply Vector_append_inj in H3. destruct_conjs. subst.
@@ -1347,7 +1340,7 @@ Proof.
     assert (numBytes b = numBytes t) as L1. {
       assert (bin_measure b = bin_measure t) by eauto.
       rewrite !length_ByteString_no_padding in H1 by eauto.
-      omega.
+      lia.
     }
 
     edestruct enc1_OK as [? _]. specialize (H1 _ _ Heqe).
@@ -1371,7 +1364,7 @@ Proof.
       replace a' with a
     end.
     rewrite H3. simpl. reflexivity.
-    destruct L1. replace (idx + numBytes b - idx) with (numBytes b) by omega. eauto.
+    destruct L1. replace (idx + numBytes b - idx) with (numBytes b) by lia. eauto.
   } {
     destruct enc1' eqn:?; [| discriminate]; destruct_conjs; simpl in *.
     edestruct enc1_OK as [_ [? _]]. eapply H1 in Heqe.
@@ -1385,9 +1378,9 @@ Proof.
     destruct enc1' eqn:?; destruct_conjs; simpl in *; unfold EncodeAgain. {
       destruct (Nat.le_decidable (1 + numBytes') (numBytes b + idx)).
       edestruct enc1_OK as [_ [? _]]. erewrite H1; eauto.
-      rewrite length_ByteString_no_padding by eauto. omega.
+      rewrite length_ByteString_no_padding by eauto. lia.
       assert (exists m, numBytes' = idx + (numBytes b + m)). {
-        exists (numBytes' - (idx + numBytes b)). omega.
+        exists (numBytes' - (idx + numBytes b)). lia.
       } destruct H1 as [m ?]. subst.
       edestruct (enc1_OK env s idx) as [? _]; eauto.
       edestruct H1; eauto. destruct_conjs.
@@ -1396,7 +1389,7 @@ Proof.
       end. rewrite H2. simpl.
       edestruct enc2_OK as [_ [_ [_ ?]]]. rewrite H4; eauto.
       simpl. rewrite <- H. f_equal.
-      replace (idx + numBytes b - idx) with (numBytes b) by omega. symmetry.
+      replace (idx + numBytes b - idx) with (numBytes b) by lia. symmetry.
       eauto.
       repeat (rewrite Vector_split_append; f_equal).
     } {

@@ -205,7 +205,7 @@ Module PreO.
   Qed.
 
   (** The preorder on booleans given by False < True *)
-  Definition two : t Bool.leb.
+  Definition two : t Bool.le.
   Proof. constructor.
          - intros; auto. destruct x; simpl; trivial.
          - destruct x, y, z; auto. simpl in *. congruence.
@@ -395,7 +395,7 @@ Module PO.
     - unfold Proper, respectful. intuition.
   Qed.
 
-  Definition two : t Bool.leb Logic.eq.
+  Definition two : t Bool.le Logic.eq.
   Proof.
     constructor; intros.
     - apply PreO.two.
@@ -560,7 +560,7 @@ Module JoinLat.
 
   (** Max for booleans is the boolean OR. *)
   Definition two_ops : Ops bool :=
-    {| le := Bool.leb
+    {| le := Bool.le
        ; eq := Logic.eq
        ; max := orb
     |}.
@@ -770,7 +770,7 @@ Module MeetLat.
   Qed.
 
   Definition two_ops : Ops bool :=
-    {| le := Bool.leb
+    {| le := Bool.le
        ; eq := Logic.eq
        ; min := andb
     |}.
@@ -974,7 +974,7 @@ Module Lattice.
   Qed.
 
   Definition two_ops : Ops bool :=
-    {| le := Bool.leb
+    {| le := Bool.le
        ; eq := Logic.eq
        ; max := orb
        ; min := andb

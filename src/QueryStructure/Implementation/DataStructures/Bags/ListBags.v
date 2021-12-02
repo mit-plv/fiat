@@ -1,5 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
+Require Export Coq.micromega.Lia.
 Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface.
+Require Import Coq.ZArith.ZArith.
 Unset Implicit Arguments.
 
 Open Scope list_scope.
@@ -63,7 +65,6 @@ Section ListBags.
     firstorder.
   Qed.
 
-  Require Import Coq.ZArith.ZArith.
   Lemma List_BagCountCorrect_aux :
     forall (container: list TItem) (search_term: TSearchTerm) default,
       length (List.filter (bfind_matcher search_term) container) + default =
@@ -76,7 +77,7 @@ Section ListBags.
 
     + trivial.
     + simpl; destruct (bfind_matcher search_term a);
-      simpl; rewrite <- IHcontainer; omega.
+      simpl; rewrite <- IHcontainer; lia.
   Qed.
 
   Lemma List_BagCountCorrect :

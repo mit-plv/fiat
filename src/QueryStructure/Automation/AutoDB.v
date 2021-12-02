@@ -56,6 +56,7 @@ Ltac prove_decidability_for_functional_dependencies :=
   rewrite bool_equiv_true;
   reflexivity.
 
+#[export]
 Hint Extern 100 (DecideableEnsemble _) => prove_decidability_for_functional_dependencies : typeclass_instances.
 
 Ltac lmap A f seq :=

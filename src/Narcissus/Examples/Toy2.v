@@ -1,10 +1,7 @@
 Require Import
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Common.Compose
-        Fiat.Narcissus.BinLib.Core
-        Fiat.Narcissus.ib.FixList
-        Fiat.Narcissus.BinLib.FixInt.
+        Fiat.Narcissus.BinLib.Core.
 
 Set Implicit Arguments.
 

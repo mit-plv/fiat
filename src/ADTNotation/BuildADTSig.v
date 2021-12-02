@@ -8,6 +8,7 @@ Record consSig :=
     consDom : list Type }.
 
 Arguments Build_consSig consID%string consDom%type_scope.
+Declare Scope consSig_scope.
 Bind Scope consSig_scope with consSig.
 Delimit Scope consSig_scope with consSig.
 
@@ -18,6 +19,7 @@ Record methSig :=
   }.
 
 Arguments Build_methSig methID%string methDom%type_scope methCod%type_scope.
+Declare Scope methSig_scope.
 Bind Scope methSig_scope with methSig.
 Delimit Scope methSig_scope with methSig.
 
@@ -97,6 +99,7 @@ Definition BuildADTSig
      ConstructorNames := Vector.map consID consSigs;
      MethodNames := Vector.map methID methSigs |}.
 
+Declare Scope ADTSig_scope.
 Bind Scope ADTSig_scope with ADTSig.
 Delimit Scope ADTSig_scope with ADTSig.
 

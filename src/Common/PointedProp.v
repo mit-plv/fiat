@@ -5,7 +5,9 @@
 Require Import Coq.Setoids.Setoid.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
+Declare Scope pointed_prop_scope.
 Delimit Scope pointed_prop_scope with pointed_prop.
+Declare Scope option_pointed_prop_scope.
 Delimit Scope option_pointed_prop_scope with option_pointed_prop.
 Inductive pointed_Prop := trivial | inject (_ : Prop).
 Bind Scope pointed_prop_scope with pointed_Prop.
@@ -96,7 +98,9 @@ Ltac inversion_pointed_Prop := repeat inversion_pointed_Prop_step.
 
 Create HintDb push_prop_of_option discriminated.
 Create HintDb push_to_prop discriminated.
+#[export]
 Hint Extern 1 => progress autorewrite with push_prop_of_option in * : push_prop_of_option.
+#[export]
 Hint Extern 1 => progress autorewrite with push_to_prop in * : push_to_prop.
 
 Lemma to_prop_and P Q : to_prop (P /\ Q)%pointed_prop

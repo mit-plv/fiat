@@ -12,6 +12,7 @@ Require Import
 Require Export
         Fiat.Narcissus.Formats.ByteBuffer.
 
+#[export]
 Hint Unfold
      ByteBuffer.t
      ByteBuffer.nil ByteBuffer.cons
@@ -54,9 +55,9 @@ Definition ByteString_enqueue
                     padding := S (padding bs);
                     byteString := byteString bs |}
           end).
-  abstract omega.
+  abstract lia.
   exact (ByteString_enqueue_full_word b bs e).
-  abstract (pose proof (paddingOK bs); omega).
+  abstract (pose proof (paddingOK bs); lia).
 Defined.
 
 Fixpoint word_dequeue {sz}
@@ -126,9 +127,9 @@ Definition ByteString_dequeue
                                    byteString := ByteBuffer.nil |})
               end (byteString bs)
           end (front bs) (paddingOK bs)).
-  abstract omega.
-  abstract omega.
-  abstract omega.
+  abstract lia.
+  abstract lia.
+  abstract lia.
 Defined.
 
 Fixpoint ByteString_enqueue_word
@@ -152,7 +153,7 @@ Definition ByteString_enqueue_ByteString
 
 Definition ByteString_id : ByteString.
   refine {| front := WO; byteString := ByteBuffer.nil |}.
-  abstract omega.
+  abstract lia.
 Defined.
 
 Definition BoundedByteStringToByteString
@@ -203,7 +204,7 @@ Proof.
   apply Eqdep_dec.eq_rect_eq_dec; intros; eauto using Peano_dec.eq_nat_dec.
   instantiate (1 := ByteBuffer.to_list_length _ byteString0).
   apply ByteBuffer.of_list_to_list.
-  Grab Existential Variables.
+  Unshelve.
   reflexivity.
 Qed.
 
@@ -234,7 +235,7 @@ Proof.
   - unfold ByteStringToBoundedByteString; simpl.
     unfold ByteString_enqueue; simpl.
     match goal with
-      |- context [match ?z with _ => _ end] => destruct z; try omega
+      |- context [match ?z with _ => _ end] => destruct z; try lia
     end.
     eapply byteString_f_equal; simpl.
     + instantiate (1 := eq_refl _); reflexivity.
@@ -256,7 +257,7 @@ Proof.
   - unfold ByteStringToBoundedByteString; simpl.
     unfold ByteString_enqueue; simpl.
     match goal with
-      |- context [match ?z with _ => _ end] => destruct z; try omega
+      |- context [match ?z with _ => _ end] => destruct z; try lia
     end.
     eapply byteString_f_equal; simpl.
     + instantiate (1 := eq_refl); reflexivity.
@@ -367,12 +368,12 @@ Proof.
   destruct b'; simpl.
   unfold Core.ByteString_enqueue; simpl.
   match goal with
-    |- context [match ?z with _ => _ end] => destruct z; try omega
+    |- context [match ?z with _ => _ end] => destruct z; try lia
   end.
   - unfold ByteStringToBoundedByteString; simpl.
     unfold ByteString_enqueue; simpl.
     match goal with
-      |- context [match ?z with _ => _ end] => destruct z; try omega
+      |- context [match ?z with _ => _ end] => destruct z; try lia
     end.
     unfold  BoundedByteStringToByteString; simpl.
     f_equal.
@@ -390,7 +391,7 @@ Proof.
   - unfold BoundedByteStringToByteString; simpl.
     unfold ByteString_enqueue; simpl.
     match goal with
-      |- context [match ?z with _ => _ end] => destruct z; try omega
+      |- context [match ?z with _ => _ end] => destruct z; try lia
     end.
     f_equal.
     + apply le_uniqueness_proof.
@@ -430,7 +431,7 @@ Definition build_aligned_ByteString
   : ByteString.
   refine {| front := WO;
             byteString := v |}.
-  abstract omega.
+  abstract lia.
 Defined.
 
 Lemma build_aligned_ByteString_append
@@ -464,9 +465,9 @@ Proof.
      simpl; rewrite eq_rect_Vector_cons with (H' := H0); simpl.
      f_equal.
      eapply IHv.
-     Grab Existential Variables.
+     Unshelve.
+     lia.
      reflexivity.
-     omega.
 Qed.
 
 Lemma build_aligned_ByteString_cons
@@ -526,11 +527,11 @@ Proof.
     simpl.
     rewrite rev_app_distr, fold_right_app.
     simpl.
-    assert (lt padding0 8) by omega.
+    assert (lt padding0 8) by lia.
     erewrite <- (IHpadding0 _ H).
     unfold ByteString_enqueue; simpl.
     destruct (eq_nat_dec padding0 7).
-    subst; omega.
+    subst; lia.
     repeat f_equal.
     apply le_uniqueness_proof.
 Qed.
@@ -615,7 +616,7 @@ Lemma ByteString_enqueue_simpl
          byteString := byteString bs |}.
   destruct bs; simpl; intros.
   unfold ByteString_enqueue; simpl.
-  destruct (eq_nat_dec padding0 7); simpl in *; try omega.
+  destruct (eq_nat_dec padding0 7); simpl in *; try lia.
   repeat f_equal; eapply le_uniqueness_proof.
 Qed.
 
@@ -706,11 +707,11 @@ Proof.
       try match goal with
             |- exists _ : lt ?z 8, _ =>
             let H := fresh in
-            try (assert (lt z 8) as H by (simpl; omega); exists H;
+            try (assert (lt z 8) as H by (simpl; lia); exists H;
                  simpl in H);
               solve [unfold queue_into_ByteString, ByteString_id; simpl;
                      destruct b; simpl in *; subst;
-                     erewrite ByteString_enqueue_simpl by (simpl; omega);
+                     erewrite ByteString_enqueue_simpl by (simpl; lia);
                      shatter_word front0; repeat f_equal;
                      eauto using app_nil_r, le_uniqueness_proof;
                      simpl; intros;
@@ -734,9 +735,9 @@ Proof.
                                 paddingOK := lt_0_Sn _;
                                 byteString :=
                                   Vector.append byteString0 (Vector.cons _ (WS b7 (WS b6 (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO)))))))) _ (ByteBuffer.nil)) |}).
-      simpl in *; omega.
-      simpl in *; omega.
-      simpl in *; omega.
+      simpl in *; lia.
+      simpl in *; lia.
+      simpl in *; lia.
       simpl split_Vector_bool.
       revert x H0 H1; rewrite Heqp; intros; clear Heqp.
       exists x.
@@ -747,7 +748,7 @@ Proof.
       rewrite H0; intros.
       shatter_word front0.
       rewrite fold_left_enqueue_simpl, H1; intros; simpl.
-      assert (numBytes0 + (S (projT1 s)) = numBytes0 + 1 + projT1 s) by omega.
+      assert (numBytes0 + (S (projT1 s)) = numBytes0 + 1 + projT1 s) by lia.
       eapply byteString_f_equal; simpl;
         try (instantiate (1 := eq_refl); reflexivity).
       instantiate (1 := H2).
@@ -756,15 +757,8 @@ Proof.
         instantiate (1 := eq_refl); reflexivity.
       * unfold ByteBuffer.t in *; erewrite eq_rect_Vector_cons; f_equal.
         erewrite IHbyteString0; f_equal.
-        Grab Existential Variables.
-        omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
+        Unshelve.
+        all: simpl; lia.
 Qed.
 
 Lemma ByteString_enqueue_into_BitString
@@ -971,7 +965,7 @@ Proof.
       simpl.
       f_equal.
       apply Vector_append_nil_r.
-    + omega.
+    + lia.
   - intros.
     pose proof (IHl' _ (Vector.append l (Vector.cons _ h _ (ByteBuffer.nil)))) as e; simpl in e.
     unfold ByteString_enqueue_ByteString in *; simpl in *.
@@ -988,7 +982,7 @@ Proof.
     shatter_word h.
     simpl.
     intros H'.
-    assert (sz + 1 + n0 = sz + (S n0)) by omega.
+    assert (sz + 1 + n0 = sz + (S n0)) by lia.
     transitivity {|
         padding := n;
         front := w1;
@@ -1025,8 +1019,8 @@ Proof.
       eapply byteString_f_equal; simpl;
         try (instantiate (1 := eq_refl); reflexivity).
       rewrite <- H'; reflexivity.
-      Grab Existential Variables.
-      omega.
+      Unshelve.
+      lia.
 Qed.
 
 Lemma ByteString_dequeue_into_BitString
@@ -1095,7 +1089,7 @@ Proof.
       destruct (split_Vector_bool l) eqn : ? ; simpl in *.
       simpl in H.
       destruct (queue_into_ByteString_eq_split_Vector_bool l).
-      assert (length l <= n)%nat as l_OK by omega.
+      assert (length l <= n)%nat as l_OK by lia.
       pose proof (IHn l _ H1 l_OK).
       unfold queue_into_ByteString in H; simpl in H.
       unfold ByteString_enqueue at 7 in H; simpl in H;
@@ -1553,7 +1547,7 @@ Proof.
       destruct (ByteString_dequeue v) as [ [? ?] | ]; simpl in *.
       setoid_rewrite DecodeBindOpt_assoc in H; simpl.
       destruct (decode_word' (m + n) b0) as [ [? ?] | ]; simpl in *.
-      assert (n + S m = m + S n) by omega.
+      assert (n + S m = m + S n) by lia.
       assert (eq_rect _ (fun n => option (word n * ByteString)) (decode_word' (n + S m) v) (m + S n) H0
               = eq_rect _ (fun n => option (word n * ByteString))
                         (Some (eq_rect (S (m + n)) word (SW_word b w) (n + S m) (plus_comm (S m) n), b1))
@@ -1562,17 +1556,17 @@ Proof.
       rewrite Some_eq_rect_eq in H1.
       rewrite <- transport_pp in H1.
       erewrite Eqdep_dec.eq_proofs_unicity with (p1 := (plus_n_Sm m n));
-        intros; try omega.
+        intros; try lia.
       match goal with
         H: _ = ?a' |- ?a = _ => replace a with a' by reflexivity
       end.
-      assert (n + S m = m + S n) by omega.
+      assert (n + S m = m + S n) by lia.
       rewrite <- eq_rect_decode_word with (H := H0), H; simpl.
       destruct H0; reflexivity.
-      assert (n + S m = m + S n) by omega.
+      assert (n + S m = m + S n) by lia.
       rewrite <- eq_rect_decode_word with (H := H0), H; simpl.
       destruct H0; reflexivity.
-      assert (n + S m = m + S n) by omega.
+      assert (n + S m = m + S n) by lia.
       rewrite <- eq_rect_decode_word with (H := H0), H; simpl.
       destruct H0; reflexivity.
 Qed.
@@ -1602,9 +1596,9 @@ Proof.
     rewrite IHnumBytes'; simpl.
     destruct (Vector_split n numBytes (Vector.tl v)); simpl; repeat f_equal; clear.
     unfold DecodeBindOpt at 1; unfold BindOpt, If_Opt_Then_Else.
-    assert (8 + 8 * n = 8 * S n) by omega.
+    assert (8 + 8 * n = 8 * S n) by lia.
     rewrite <- eq_rect_decode_word with (H := H).
-    assert (8 * n + 8 = 8 + 8 * n) by omega.
+    assert (8 * n + 8 = 8 + 8 * n) by lia.
     match goal with
       |- context [decode_word' ?m (build_aligned_ByteString ?b) ] =>
       replace (decode_word' m (build_aligned_ByteString b))
@@ -1618,7 +1612,7 @@ Proof.
     rewrite Some_eq_rect_eq.
     rewrite <- transport_pp.
     repeat f_equal.
-    apply Eqdep_dec.eq_proofs_unicity; try intros; omega.
+    apply Eqdep_dec.eq_proofs_unicity; try intros; lia.
     simpl; symmetry; apply None_eq_rect_eq.
     rewrite <- aligned_decode_char_eq.
     simpl.
@@ -1632,8 +1626,8 @@ Proof.
     apply Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
     erewrite <- IHw; clear.
     erewrite WS_eq_rect_eq; reflexivity.
-    Grab Existential Variables.
-    omega.
+    Unshelve.
+    lia.
 Qed.
 
 Definition LetIn {A B} (a : A) (k : A -> B) : B := let a' := a in k a'.
@@ -1649,7 +1643,7 @@ Lemma VectorByteToWord_cons :
 Proof.
   induction v; simpl; intros.
   rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-  repeat f_equal; apply Eqdep_dec.eq_proofs_unicity; intros; omega.
+  repeat f_equal; apply Eqdep_dec.eq_proofs_unicity; intros; lia.
 Qed.
 
 Lemma Vector_nth_tl {A} : forall n (v : Vector.t A (S n)) p,
@@ -1716,9 +1710,9 @@ Proof.
   induction l1; simpl; intros.
   - destruct l1'; simpl; eauto.
     rewrite H0 in H; simpl in H.
-    rewrite app_length in H; omega.
+    rewrite app_length in H; lia.
   - destruct l1'; simpl in *; intros.
-    rewrite <- H0 in H; simpl in H; rewrite app_length in H; omega.
+    rewrite <- H0 in H; simpl in H; rewrite app_length in H; lia.
     injections.
     erewrite IHl1; eauto.
 Qed.
@@ -1750,7 +1744,7 @@ Proof.
   rewrite !length_ByteString_ByteStringToBoundedByteString_eq.
   unfold Core.length_ByteString.
   rewrite !length_wordToQueue.
-  omega.
+  lia.
 Qed.
 
 Lemma ByteString_enqueue_ByteString_inj
@@ -1806,7 +1800,7 @@ Proof.
     unfold length_ByteString at 1 in H0; simpl in H0.
     replace (length_ByteString (ByteString_enqueue_ByteString b (build_aligned_ByteString v')))
       with (length_ByteString b + (8 * m)) in H0.
-    omega.
+    lia.
     rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b).
     rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (build_aligned_ByteString _)).
     rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
@@ -1815,7 +1809,7 @@ Proof.
     unfold BoundedByteStringToByteString at 3.
     simpl.
     unfold Core.length_ByteString at 3; simpl.
-    rewrite <- !ByteBuffer.to_list_length; omega.
+    rewrite <- !ByteBuffer.to_list_length; lia.
   }
   revert v H; rewrite H0; intros; rewrite <- H0.
   rewrite (Vector_split_append v) in H.
@@ -1837,7 +1831,7 @@ Proof.
     unfold length_ByteString at 1 in H0; simpl in H0.
     replace (length_ByteString (ByteString_enqueue_ByteString (build_aligned_ByteString v') b))
       with (length_ByteString b + (8 * m)) in H0.
-    omega.
+    lia.
     rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b).
     rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq (build_aligned_ByteString _)).
     rewrite ByteString_enqueue_ByteString_ByteStringToBoundedByteString.
@@ -1847,7 +1841,7 @@ Proof.
     simpl.
     unfold Core.length_ByteString at 2; simpl.
     rewrite <- !ByteBuffer.to_list_length.
-    omega.
+    lia.
   }
   revert v H; rewrite H0; intros; rewrite <- H0.
   rewrite (Vector_split_append v) in H.
@@ -1878,7 +1872,7 @@ Proof.
   induction l; simpl; intros; eauto.
   rewrite IHl; simpl.
   pose proof (@measure_enqueue ByteString _ _ _ a bs) as H;
-    simpl in H; rewrite H; simpl; omega.
+    simpl in H; rewrite H; simpl; lia.
 Qed.
 
 Corollary length_ByteString_queue_into_ByteString
@@ -1886,7 +1880,7 @@ Corollary length_ByteString_queue_into_ByteString
     length_ByteString (queue_into_ByteString l) = List.length l.
 Proof.
   unfold queue_into_ByteString in *; intros; rewrite length_ByteString_queue_into_ByteString'.
-  unfold length_ByteString; simpl; omega.
+  unfold length_ByteString; simpl; lia.
 Qed.
 
 Lemma length_ByteString_enqueue_ByteString
@@ -1918,8 +1912,8 @@ Lemma padding_mod_8
     (padding bs) mod 8 = padding bs.
 Proof.
   intros; pose proof (paddingOK bs).
-  destruct (padding bs); simpl in *; try omega.
-  do 8 (destruct n; simpl in *; try omega).
+  destruct (padding bs); simpl in *; try lia.
+  do 8 (destruct n; simpl in *; try lia).
 Qed.
 
 Local Arguments modulo : simpl never.
@@ -1934,23 +1928,23 @@ Proof.
   - intros; simpl; rewrite !padding_mod_8; reflexivity.
   - intros.
     simpl; rewrite IHl.
-    rewrite <- !Nat.add_mod by omega.
+    rewrite <- !Nat.add_mod by lia.
     destruct (le_lt_dec (padding b) 6).
     erewrite ByteString_enqueue_simpl; simpl.
-    f_equal; omega.
+    f_equal; lia.
     unfold ByteString_enqueue.
     pose proof (paddingOK b).
-    destruct (eq_nat_dec (padding b) 7); try omega.
+    destruct (eq_nat_dec (padding b) 7); try lia.
     simpl.
     rewrite e.
-    replace (S (List.length l + 7)) with (List.length l + 8) by omega.
-    rewrite Nat.add_mod with (b := 8) by omega.
+    replace (S (List.length l + 7)) with (List.length l + 8) by lia.
+    rewrite Nat.add_mod with (b := 8) by lia.
     unfold modulo at 4; simpl.
-    rewrite Nat.add_mod by omega; f_equal.
-  - rewrite <- !Nat.add_mod by omega.
-    simpl; f_equal; omega.
-    Grab Existential Variables.
-    omega.
+    rewrite Nat.add_mod by lia; f_equal.
+  - rewrite <- !Nat.add_mod by lia.
+    simpl; f_equal; lia.
+    Unshelve.
+    lia.
 Qed.
 
 Lemma padding_ByteString_enqueue_ByteString
@@ -1963,7 +1957,7 @@ Proof.
   rewrite ByteString_enqueue_ByteString_into_BitString.
   rewrite !padding_ByteString_queue_into_ByteString.
   rewrite app_length.
-  rewrite Nat.add_mod by omega.
+  rewrite Nat.add_mod by lia.
   reflexivity.
 Qed.
 
@@ -1987,7 +1981,7 @@ Proof.
     unfold length_ByteString in H'.
   rewrite padding_ByteString_enqueue_ByteString, H, !plus_O_n,
   padding_mod_8 in H'.
-  omega.
+  lia.
 Qed.
 
 Lemma length_ByteString_no_padding
@@ -1995,7 +1989,7 @@ Lemma length_ByteString_no_padding
     padding bs = 0
     -> length_ByteString bs = 8* numBytes bs.
 Proof.
-  unfold length_ByteString; intros; rewrite H; omega.
+  unfold length_ByteString; intros; rewrite H; lia.
 Qed.
 
 Lemma Vector_append_assoc {A}
@@ -2010,8 +2004,8 @@ Proof.
   - erewrite IHv1.
     erewrite eq_rect_Vector_cons.
     reflexivity.
-    Grab Existential Variables.
-    omega.
+    Unshelve.
+    lia.
 Qed.
 
 Lemma Vector_append_assoc' {A}
@@ -2025,8 +2019,8 @@ Proof.
   - erewrite IHv1.
     erewrite eq_rect_Vector_cons.
     reflexivity.
-    Grab Existential Variables.
-    omega.
+    Unshelve.
+    lia.
 Qed.
 
 Lemma Vector_append_assoc'' {A}
@@ -2038,7 +2032,7 @@ Proof.
   intros; subst; simpl.
   erewrite (UIP_dec _ _ (eq_refl _)); simpl.
   reflexivity.
-  Grab Existential Variables.
+  Unshelve.
   decide equality.
 Qed.
 
@@ -2085,10 +2079,10 @@ Proof.
     rewrite <- Equality.transport_pp.
     erewrite (UIP_dec _ _ (eq_refl _)); simpl.
     reflexivity.
-    Grab Existential Variables.
+    Unshelve.
+    lia.
+    lia.
     decide equality.
-    omega.
-    omega.
 Qed.
 
 Fixpoint initialize_Aligned_ByteString (n : nat) : ByteBuffer.t n :=
@@ -2161,7 +2155,7 @@ Lemma padding_eq_mod_8
   : forall b : ByteString, padding b = length_ByteString b mod 8.
 Proof.
   intros; unfold length_ByteString.
-  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by omega.
+  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by lia.
   rewrite NPeano.Nat.mod_small; destruct b; eauto.
 Qed.
 
@@ -2173,9 +2167,9 @@ Proof.
   intros.
   rewrite padding_eq_mod_8.
   unfold length_ByteString.
-  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by omega.
+  rewrite <- Nat.add_mod_idemp_r, mult_comm, NPeano.Nat.mod_mul, <- plus_n_O by lia.
   destruct b; simpl.
-  destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ?] ] ] ] ] ] ] ]; simpl; try omega.
+  destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ?] ] ] ] ] ] ] ]; simpl; try lia.
   reflexivity.
 Qed.
 
@@ -2184,20 +2178,20 @@ Lemma queue_into_ByteString_padding_eq
     padding (queue_into_ByteString l) = NPeano.modulo (length l) 8.
 Proof.
   intro; replace (length l) with (length l + bin_measure ByteString_id)
-    by (simpl; rewrite length_ByteString_id; omega).
+    by (simpl; rewrite length_ByteString_id; lia).
   unfold queue_into_ByteString; generalize ByteString_id.
   induction l; intros; simpl fold_left.
   - apply padding_eq_mod_8.
   - simpl fold_left.
     rewrite IHl.
     replace bin_measure with length_ByteString by reflexivity.
-    rewrite <- NPeano.Nat.add_mod_idemp_r by omega.
-    rewrite <- NPeano.Nat.add_mod_idemp_r with (b := length_ByteString _) by omega.
+    rewrite <- NPeano.Nat.add_mod_idemp_r by lia.
+    rewrite <- NPeano.Nat.add_mod_idemp_r with (b := length_ByteString _) by lia.
     rewrite <- !padding_eq_mod_8.
     rewrite ByteString_enqueue_padding_eq.
-    rewrite NPeano.Nat.add_mod_idemp_r by omega.
+    rewrite NPeano.Nat.add_mod_idemp_r by lia.
     f_equal.
-    simpl; omega.
+    simpl; lia.
 Qed.
 
 Lemma ByteString_enqueue_ByteString_padding_eq
@@ -2211,17 +2205,17 @@ Proof.
   rewrite queue_into_ByteString_app.
   generalize (queue_into_ByteString (ByteString_into_queue b)).
   induction (ByteString_into_queue b'); intros; simpl fold_left.
-  - rewrite <- NPeano.Nat.add_mod_idemp_r by omega.
+  - rewrite <- NPeano.Nat.add_mod_idemp_r by lia.
     replace (padding (queue_into_ByteString []%list) mod 8) with 0 by reflexivity.
     rewrite NPeano.Nat.mod_small; destruct b0; simpl; eauto.
-    omega.
+    lia.
   - rewrite IHb0.
     rewrite !queue_into_ByteString_padding_eq.
-    rewrite !NPeano.Nat.add_mod_idemp_r by omega.
+    rewrite !NPeano.Nat.add_mod_idemp_r by lia.
     rewrite ByteString_enqueue_padding_eq.
     rewrite plus_comm.
-    rewrite !NPeano.Nat.add_mod_idemp_r by omega.
-    f_equal; simpl length; omega.
+    rewrite !NPeano.Nat.add_mod_idemp_r by lia.
+    f_equal; simpl length; lia.
 Qed.
 
 Definition length_ByteString_ByteString_id

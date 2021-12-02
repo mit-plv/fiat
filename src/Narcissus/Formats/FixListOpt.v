@@ -175,7 +175,7 @@ Section FixList.
     - computes_to_inv; injections.
       pose proof (mappend_measure mempty mempty) as H';
         rewrite mempty_left in H'.
-      simpl bin_measure in H'; simpl mempty in H'; omega.
+      simpl bin_measure in H'; simpl mempty in H'; lia.
     - unfold Bind2 in *; computes_to_inv; injections.
       destruct v; destruct v0; simpl in *.
       rewrite mappend_measure.

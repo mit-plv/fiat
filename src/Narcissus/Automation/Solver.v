@@ -107,7 +107,9 @@ Ltac subst_pow2 :=
   rewrite ?pow2_7 in *;
   rewrite ?pow2_8 in *.
 
+#[export]
 Hint Extern 4 => subst_pow2 : data_inv_hints.
+#[export]
 Hint Extern 4 => Lia.lia : data_inv_hints.
 
 Lemma unfold_cache_inv_Property :
@@ -212,21 +214,36 @@ Proof.
     destruct a_opt as [ [ [? ?] ?] | ]; simpl in *; eauto.
 Qed.
 
-Hint Extern 4 => eapply plus_minus.
-Hint Extern 4 => eapply (proj2 (NPeano.Nat.lt_add_lt_sub_l _ _ _)).
+#[export]
+Hint Extern 4 => eapply plus_minus : core.
+#[export]
+Hint Extern 4 => eapply (proj2 (NPeano.Nat.lt_add_lt_sub_l _ _ _)) : core.
+#[export]
 Hint Extern 4 => eapply Option_predicate_True : data_inv_hints.
+#[export]
 Hint Extern 4 => eapply decides_Option_eq_None : data_inv_hints.
+#[export]
 Hint Resolve lt_1_pow2_16 : data_inv_hints.
 
+#[export]
 Hint Resolve whd_word_1_refl' : decide_data_invariant_db.
+#[export]
 Hint Resolve decides_length_firstn_skipn_app'' : decide_data_invariant_db.
+#[export]
 Hint Resolve decides_length_firstn_skipn_app' : decide_data_invariant_db.
+#[export]
 Hint Resolve decides_length_firstn_skipn_app : decide_data_invariant_db.
+#[export]
 Hint Resolve firstn_lt_decides : decide_data_invariant_db.
+#[export]
 Hint Resolve firstn_skipn_self'' : decide_data_invariant_db.
+#[export]
 Hint Resolve decides_firstn_app : decide_data_invariant_db.
+#[export]
 Hint Resolve decides_firstn_self : decide_data_invariant_db.
+#[export]
 Hint Resolve decides_skipn_app : decide_data_invariant_db.
+#[export]
 Hint Resolve decides_firstn_skipn_app : decide_data_invariant_db.
 
 Ltac optimize_decoder_impl :=

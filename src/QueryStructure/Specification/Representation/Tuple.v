@@ -182,4 +182,5 @@ Definition GetAttributeRawBnd {heading : Heading}
   GetAttributeRaw tup (ibound (indexb idx)).
 
 (* Raw tuple field accessor notation *)
+Declare Scope TupleImpl_scope.
 Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.

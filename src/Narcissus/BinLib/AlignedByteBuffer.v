@@ -77,7 +77,7 @@ Section AlignedList.
     - destruct idx; simpl; try reflexivity.
     - inversion H; subst.
       + eapply IHv; eauto.
-      + eapply IHv; Omega.omega.
+      + eapply IHv; lia.
   Qed.
 
   Lemma AlignedDecodeByteBufferM {C : Type}
@@ -106,7 +106,7 @@ Section AlignedList.
       + simpl; destruct (Coq.Init.Nat.leb n0 (numBytes_hd)) eqn: ? ;
           repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
-          try Omega.omega; simpl; eauto.
+          try lia; simpl; eauto.
         pattern numBytes_hd, v; apply caseS; simpl; intros.
         rewrite (proj1 (H _)); reflexivity.
       + eapply H in H0; eauto.
@@ -115,12 +115,12 @@ Section AlignedList.
       + destruct (Coq.Init.Nat.leb 0 n0) eqn: ? ;
         repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
-          try Omega.omega; simpl; eauto.
+          try lia; simpl; eauto.
         apply (proj2 (proj2 (H _)) _ _ _) in H0; eauto.
       + destruct (Coq.Init.Nat.leb 0 n0) eqn: ? ;
         repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
-          try Omega.omega; simpl; eauto.
+          try lia; simpl; eauto.
         eapply H; eauto.
       + eapply H; eauto.
     - clear t' H; revert t; induction n; simpl; intros.
@@ -168,11 +168,11 @@ Section AlignedList.
         destruct (Coq.Init.Nat.leb (idx0 + S n) n0) as [ | ] eqn: ?; simpl;
           repeat apply_in_hyp Compare_dec.leb_complete;
           repeat apply_in_hyp Compare_dec.leb_complete_conv;
-          try Omega.omega; simpl; eauto.
-        * destruct (nth_opt_some _ v0 idx0); try Omega.omega;
+          try lia; simpl; eauto.
+        * destruct (nth_opt_some _ v0 idx0); try lia;
             rewrite H; simpl.
           pose proof (fun t' => IHn addD_addD_plus addD_0 _ (S idx0) v0 t' (addD c0 8)).
-          rewrite (Compare_dec.leb_correct (S idx0 + n) n0) in H0 by Omega.omega;
+          rewrite (Compare_dec.leb_correct (S idx0 + n) n0) in H0 by lia;
             simpl in H0.
           pose proof (H0 (fun n => t' (existT ByteBuffer.t (S (projT1 n)) (Vector.cons _ x _ (projT2 n))))).
           cbv beta in H1.
@@ -184,7 +184,7 @@ Section AlignedList.
           unfold bytebuffer_of_bytebuffer_range.
           unfold projT1; unfold projT2.
           f_equal; eauto.
-          2: f_equal; Omega.omega.
+          2: f_equal; lia.
           replace ((skipn idx0 (to_list v0))) with (x :: (skipn (S idx0) (to_list v0)));
             auto.
           generalize n0 v0 H; clear.
@@ -200,7 +200,7 @@ Section AlignedList.
              rewrite H; reflexivity.
         * destruct (nth_opt v0 idx0); simpl; eauto.
           assert (Coq.Init.Nat.leb (S idx0 + n) n0 = false)
-            by (apply Compare_dec.leb_correct_conv; Omega.omega).
+            by (apply Compare_dec.leb_correct_conv; lia).
           pose proof (fun t' => IHn addD_addD_plus addD_0 _ (S idx0) v0 t' (addD c0 8)).
           rewrite H in H0; simpl in H0.
           pose proof (H0 (fun n => t' (existT ByteBuffer.t (S (projT1 n)) (Vector.cons _ c1 _ (projT2 n))))).
@@ -268,26 +268,26 @@ Section AlignedList.
         unfold buffer_blit_buffer.
         destruct (Coq.Init.Nat.leb (idx + 0) sz) eqn: ?; intros.
         * eapply PeanoNat.Nat.leb_le in Heqb.
-          rewrite (proj2 (PeanoNat.Nat.ltb_lt idx (S sz))) by Omega.omega.
+          rewrite (proj2 (PeanoNat.Nat.ltb_lt idx (S sz))) by lia.
           unfold ReturnAlignedEncodeM.
           simpl. rewrite <- (addE_0 c) at 2.
-          simpl; repeat f_equal; try Omega.omega.
+          simpl; repeat f_equal; try lia.
         * eapply PeanoNat.Nat.leb_gt in Heqb.
-          rewrite (proj2 (PeanoNat.Nat.ltb_ge idx (S sz))) by Omega.omega.
+          rewrite (proj2 (PeanoNat.Nat.ltb_ge idx (S sz))) by lia.
           reflexivity.
       + simpl; intros.
         unfold buffer_blit_buffer.
         destruct (Coq.Init.Nat.leb (idx + (S n)) sz) eqn: ?; intros.
         * eapply PeanoNat.Nat.leb_le in Heqb.
           unfold SetCurrentByte at 1.
-          rewrite (proj2 (PeanoNat.Nat.ltb_lt idx sz)) by Omega.omega; simpl.
+          rewrite (proj2 (PeanoNat.Nat.ltb_lt idx sz)) by lia; simpl.
           rewrite <- IHt.
           simpl.
           unfold buffer_blit_buffer.
           destruct (Coq.Init.Nat.leb (S idx + n) sz) eqn: ?; intros.
           eapply PeanoNat.Nat.leb_le in Heqb0; simpl;
-            rewrite addE_addE_plus; repeat (f_equal; try Omega.omega).
-          eapply PeanoNat.Nat.leb_gt in Heqb0; Omega.omega.
+            rewrite addE_addE_plus; repeat (f_equal; try lia).
+          eapply PeanoNat.Nat.leb_gt in Heqb0; lia.
         * eapply PeanoNat.Nat.leb_gt in Heqb.
           unfold SetCurrentByte at 1.
           destruct (PeanoNat.Nat.ltb idx sz) eqn: ? ; simpl; auto.
@@ -295,7 +295,7 @@ Section AlignedList.
           unfold AlignedEncodeByteBuffer, buffer_blit_buffer.
           destruct (Coq.Init.Nat.leb (S idx + n) sz) eqn: ? ; simpl; auto.
           eapply PeanoNat.Nat.leb_le in Heqb0;
-            eapply PeanoNat.Nat.leb_le in Heqb1; Omega.omega.
+            eapply PeanoNat.Nat.leb_le in Heqb1; lia.
     - eexists (fun s env => _); repeat apply conj; intros;
         try eapply ((projT2 (CorrectAlignedEncoderForFormatList
                                _ _

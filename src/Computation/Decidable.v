@@ -51,6 +51,7 @@ Tactic Notation "decide" constr(P) "as" ident(H) :=
 Tactic Notation "decide" constr(P) :=
   let H := fresh "H" in _decide_ P H.
 
+#[export]
 Hint Extern 2 =>
   match goal with
     [ H : @Decidable ?P |- _ ] =>
@@ -58,12 +59,14 @@ Hint Extern 2 =>
     destruct (@Decidable_witness P H) eqn:Heqe
   end : decidability.
 
+#[export]
 Hint Extern 3 =>
   match goal with
     [ W : @Decidable_witness ?P ?H = true |- ?P ] =>
     exact (Decidable_sound P H W)
   end : decidability.
 
+#[export]
 Hint Extern 3 =>
   match goal with
     [ W : @Decidable_witness ?P ?H = false |- ~ ?P ] =>

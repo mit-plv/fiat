@@ -215,7 +215,7 @@ Section AlignedDecodeM.
              {C : Type}
              (f : DecodeM (C * ByteString) ByteString)
              (f' : forall {numBytes}, AlignedDecodeM C numBytes)
-    := (forall {numBytes_hd}
+    := (forall numBytes_hd
                (n : nat)
                (v : Vector.t _ (S numBytes_hd)) cd,
            f' v (S n) cd =
@@ -266,10 +266,10 @@ Section AlignedDecodeM.
     - discriminate.
     - discriminate.
     - unfold ReturnAlignedDecodeM, numBytes; injections.
-      simpl; repeat f_equal; omega.
+      simpl; repeat f_equal; lia.
     - unfold ReturnAlignedDecodeM in H; injections.
       assert ((n - numBytes (build_aligned_ByteString v)) = 0)
-        by (unfold numBytes; simpl; omega).
+        by (unfold numBytes; simpl; lia).
       rewrite H.
       setoid_rewrite <- build_aligned_ByteString_append.
       simpl; eexists (@Vector.nil _); reflexivity.
@@ -419,13 +419,13 @@ Section AlignedDecodeM.
     - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
       specialize (H0 x); intuition.
       eapply H in H4.
-      symmetry in H5; eapply H0 in H5; omega.
+      symmetry in H5; eapply H0 in H5; lia.
     - destruct (A_decode (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ?;
                                                                                      simpl in *; try discriminate.
       assert (numBytes b <= n)%nat as nb_le_n.
       { eapply H in Heqo.
         unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          omega. }
+          lia. }
       unfold BindAlignedDecodeM.
       apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
       rewrite H4; simpl; eauto.
@@ -434,7 +434,7 @@ Section AlignedDecodeM.
       rewrite H7 in *.
       apply H8 in H2.
       assert ((n - (n - numBytes b)) = numBytes b).
-      {rewrite sub_plus; try omega.
+      {rewrite sub_plus; try lia.
        rewrite H7; auto.
       }
       pose proof (fun v => proper_consumer_t_None (m := n - numBytes b) (t' a) H6 v x _ _ H2).
@@ -442,7 +442,7 @@ Section AlignedDecodeM.
                  build_aligned_ByteString v0 = build_aligned_ByteString (Vector.append x x0) ->
                  t' a n v0 (n - numBytes b) c = None).
       { revert H10; clear; intro.
-        assert (n = n - numBytes b + (n - (n - numBytes b))) by omega.
+        assert (n = n - numBytes b + (n - (n - numBytes b))) by lia.
         intros.
         specialize (H10 (eq_rect _ _ v0 _ H)).
         destruct H.
@@ -451,7 +451,7 @@ Section AlignedDecodeM.
       }
       replace (n - numBytes (build_aligned_ByteString x0)) with
           (n - numBytes b) by
-          (unfold numBytes at 2; simpl; clear; omega).
+          (unfold numBytes at 2; simpl; clear; lia).
       apply H11.
       rewrite H5.
       rewrite build_aligned_ByteString_append; f_equal; assumption.
@@ -462,7 +462,7 @@ Section AlignedDecodeM.
       assert (numBytes b <= n)%nat as nb_le_n.
       { eapply H in Heqo.
         unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          omega. }
+          lia. }
       apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
       rewrite H4 in H2; simpl in H2; eauto.
       specialize (H0 a); intuition.
@@ -470,21 +470,21 @@ Section AlignedDecodeM.
       rewrite H7 in *.
       apply H8.
       assert ((n - (n - numBytes b)) = numBytes b).
-      {rewrite sub_plus; try omega.
+      {rewrite sub_plus; try lia.
        rewrite H7; auto.
       }
-      assert (n = n - numBytes b + (n - (n - numBytes b))) by omega.
+      assert (n = n - numBytes b + (n - (n - numBytes b))) by lia.
       eapply proper_consumer_t_None' with (v1 := x) (v0 := (eq_rect _ _ v _ H10)); eauto.
       revert H2; clear.
       destruct H10; simpl; intros.
-      rewrite <- H2; f_equal; omega.
+      rewrite <- H2; f_equal; lia.
       revert H5 H7; clear; destruct H10; simpl; intros.
       rewrite H5, build_aligned_ByteString_append; f_equal; assumption.
     - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
       assert (numBytes x0 <= n)%nat as nb_le_n.
       { eapply H in H4.
         unfold build_aligned_ByteString, length_ByteString in H4; simpl in H4;
-          omega. }
+          lia. }
       assert (numBytes bs' <= numBytes x0)%nat as nbs_le_x0.
       { symmetry in H5.
         eapply H0 in H5.
@@ -493,8 +493,8 @@ Section AlignedDecodeM.
         rewrite H6 in H5.
         unfold length_ByteString in H5; simpl in H5.
         replace (n - (n - numBytes x0)) with (numBytes x0) in H5
-          by (revert nb_le_n; clear; intro; omega).
-        omega. }
+          by (revert nb_le_n; clear; intro; lia).
+        lia. }
       assert (numBytes bs' <= n)%nat as nbs_le_n.
       { etransitivity.
         apply nbs_le_x0.
@@ -511,25 +511,25 @@ Section AlignedDecodeM.
       eapply H8 in H5; intuition.
       unfold numBytes at 1; simpl.
       destruct_ex; intuition.
-      assert (n = n - numBytes x0 + (n - (n - numBytes x0))) by omega.
+      assert (n = n - numBytes x0 + (n - (n - numBytes x0))) by lia.
       pose proof (proper_consumer_t_Some _ H6 (eq_rect _ _ v _ H10) x2 x3 _ _ _ _ H9).
       destruct H10.
       simpl in H11.
       assert (n >= numBytes x0)%nat by
-          (rewrite H7; omega).
-      replace (n - (n - numBytes x0)) with (numBytes x0) by omega.
+          (rewrite H7; lia).
+      replace (n - (n - numBytes x0)) with (numBytes x0) by lia.
       rewrite H11.
       f_equal; f_equal; f_equal.
       assert (numBytes x0 >= numBytes bs')%nat.
-      rewrite H7; omega.
-      omega.
+      rewrite H7; lia.
+      lia.
       rewrite H4.
       rewrite build_aligned_ByteString_append; f_equal; eauto.
     - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
       assert (numBytes x0 <= n)%nat as nb_le_n.
       { eapply H in H4.
         unfold build_aligned_ByteString, length_ByteString in H4; simpl in H4;
-          omega. }
+          lia. }
       assert (numBytes bs' <= n)%nat as nbs_le_n.
       { symmetry in H5.
         eapply H0 in H5.
@@ -540,8 +540,8 @@ Section AlignedDecodeM.
         rewrite H6 in H5.
         unfold length_ByteString in H5; simpl in H5.
         replace (n - (n - numBytes x0)) with (numBytes x0) in H5
-          by (revert nb_le_n; clear; intro; omega).
-        omega. }
+          by (revert nb_le_n; clear; intro; lia).
+        lia. }
       eapply H3 in H4; intuition; destruct_ex.
       setoid_rewrite H4.
       eapply build_aligned_ByteString_split' in H4; destruct_ex.
@@ -552,7 +552,7 @@ Section AlignedDecodeM.
       assert ((n - numBytes x0 + (n - (n - numBytes x0) - numBytes bs')) =
               n - numBytes bs').
       { assert (n >= numBytes x0)%nat by
-            (rewrite H4; rewrite H5 in nb_le_n; omega).
+            (rewrite H4; rewrite H5 in nb_le_n; lia).
         replace (n - (n - numBytes x0)) with (numBytes x0).
         assert (numBytes x0 >= numBytes bs')%nat.
         { rewrite H4.
@@ -564,11 +564,11 @@ Section AlignedDecodeM.
           intro.
           generalize (n - (n - numBytes x0) - n0); intros.
           rewrite H8.
-          unfold numBytes; simpl; omega.
+          unfold numBytes; simpl; lia.
           rewrite build_aligned_ByteString_append; f_equal; eauto.
         }
-        omega.
-        omega.
+        lia.
+        lia.
       }
       generalize H7 H4; clear; intros.
       rewrite <- H7.
@@ -599,13 +599,13 @@ Section AlignedDecodeM.
     - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
       specialize (H0 x); intuition.
       eapply H in H4.
-      symmetry in H5; eapply H0 in H5; omega.
+      symmetry in H5; eapply H0 in H5; lia.
     - destruct (A_decode (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ?;
                                                                                      simpl in *; try discriminate.
       assert (numBytes b <= n)%nat as nb_le_n.
       { eapply H in Heqo.
         unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          omega. }
+          lia. }
       unfold BindResetAlignedDecodeM.
       apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
       rewrite H4; simpl; eauto.
@@ -614,7 +614,7 @@ Section AlignedDecodeM.
       rewrite H7 in *.
       apply H8 in H2.
       assert ((n - (n - numBytes b)) = numBytes b).
-      {rewrite sub_plus; try omega.
+      {rewrite sub_plus; try lia.
        rewrite H7; auto.
       }
       assumption.
@@ -625,7 +625,7 @@ Section AlignedDecodeM.
       assert (numBytes b <= n)%nat as nb_le_n.
       { eapply H in Heqo.
         unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          omega. }
+          lia. }
       apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
       rewrite H4 in H2; simpl in H2; eauto.
       specialize (H0 a); intuition.
@@ -637,7 +637,7 @@ Section AlignedDecodeM.
       assert (numBytes x0 <= n)%nat as nb_le_n.
       { eapply H in H4.
         unfold build_aligned_ByteString, length_ByteString in H4; simpl in H4;
-          omega. }
+          lia. }
       eapply H3 in H4.
       intuition.
       unfold BindResetAlignedDecodeM; rewrite H2; simpl; destruct_ex;
@@ -938,6 +938,7 @@ Proof.
 Qed.
 
 
+Declare Scope AlignedDecodeM_scope.
 Delimit Scope AlignedDecodeM_scope with AlignedDecodeM.
 Notation "x <- y ; z" := (BindAlignedDecodeM y (fun x => z)) : AlignedDecodeM_scope.
 Notation "'return' x" := (ReturnAlignedDecodeM x) (at level 10): AlignedDecodeM_scope.

@@ -1,4 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
+Require Export Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
@@ -138,7 +139,7 @@ Proof.
   { destruct n, m; reflexivity. }
   { simpl.
     destruct n, m; simpl; trivial; rewrite IHs; simpl;
-    try omega;
+    try lia;
     rewrite (plus_comm m (S n)); simpl;
     rewrite (plus_comm n m); simpl;
     reflexivity. }
@@ -234,7 +235,7 @@ Lemma substring_min_length str x y
 Proof.
   apply Min.min_case_strong; try reflexivity.
   intro H.
-  apply substring_correct4; omega.
+  apply substring_correct4; lia.
 Qed.
 
 Lemma string_copy_length n ch
@@ -272,9 +273,9 @@ Lemma well_founded_string_length
   : well_founded (fun y r : string => lt (String.length y) (String.length r)%nat).
 Proof.
   unfold well_founded; intro; induction a; econstructor.
-  - destruct y; simpl; omega.
+  - destruct y; simpl; lia.
   - intros; destruct y; simpl; intros.
-    + econstructor; destruct y; simpl; omega.
+    + econstructor; destruct y; simpl; lia.
     + econstructor; intros.
-      eapply IHa; simpl in *; omega.
+      eapply IHa; simpl in *; lia.
 Qed.

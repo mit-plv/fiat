@@ -1,4 +1,3 @@
-Require Import Bedrock.Platform.Facade.
 Require Import AutoDB.
 
 Definition bedrock_test :=

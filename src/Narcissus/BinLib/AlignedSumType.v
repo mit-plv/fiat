@@ -249,8 +249,6 @@ Section AlignedSumType.
       pose proof (projT2 (encoders_OK (SumType_index types s))); simpl in *; destruct H.
       unfold EncodeMEquivAlignedEncodeM in H0; intuition eauto;
         specialize (H2 env (SumType_proj types s) idx); intuition eauto.
-      + eapply H2; eauto.
-      + eapply H5; eauto.
   Qed.
 
   Lemma CorrectAlignedEncoderForFormatSumType
@@ -273,7 +271,7 @@ Section AlignedSumType.
   Definition SumTypeAlignedDecodeM {n m}
            {types : Vector.t Type (S n)}
            (aligned_decoders :
-              ilist (B := fun T => forall {n}, AlignedDecodeM T n) types)
+              ilist (B := fun T => forall n, AlignedDecodeM T n) types)
            (idx : Fin.t (S n))
     : AlignedDecodeM (SumType types) m :=
     (fun v idx' cd => `(i, bs, cd') <- (ith aligned_decoders idx _ v idx' cd); Some (inj_SumType types idx i, bs, cd')).
@@ -283,7 +281,7 @@ Section AlignedSumType.
         {types : Vector.t Type (S n)}
         (decoders : ilist (B := fun T => ByteString -> CacheDecode -> option (T * ByteString * CacheDecode)) types)
         (aligned_decoders :
-           ilist (B := fun T => forall {n}, AlignedDecodeM T n) types)
+           ilist (B := fun T => forall n, AlignedDecodeM T n) types)
         (idx : Fin.t (S n))
     : forall (t : SumType types -> DecodeM (C * _) ByteString)
              (t' : SumType types -> forall {numBytes}, AlignedDecodeM C numBytes),

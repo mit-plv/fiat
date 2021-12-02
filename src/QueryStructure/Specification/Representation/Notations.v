@@ -63,22 +63,41 @@ Reserved Notation "'For' bod"
          (right associativity, at level 3,
           format "'For'  '[v' bod ']'").
 
+Declare Scope Attribute_scope.
 Delimit Scope Attribute_scope with Attribute.
+Declare Scope Heading_scope.
 Delimit Scope Heading_scope with Heading.
+Declare Scope Component_scope.
 Delimit Scope Component_scope with Component.
+Declare Scope Tuple_scope.
 Delimit Scope Tuple_scope with Tuple.
+Declare Scope Relation_scope.
 Delimit Scope Relation_scope with Relation.
+Declare Scope SchemaConstraints_scope.
 Delimit Scope SchemaConstraints_scope with SchemaConstraints.
+Declare Scope Schema_scope.
 Delimit Scope Schema_scope with Schema.
+Declare Scope NamedSchema_scope.
 Delimit Scope NamedSchema_scope with NamedSchema.
+Declare Scope QSSchema_scope.
 Delimit Scope QSSchema_scope with QSSchema.
+Declare Scope QSSchemaConstraints_scope.
 Delimit Scope QSSchemaConstraints_scope with QSSchemaConstraints.
+Declare Scope QuerySpec_scope.
 Delimit Scope QuerySpec_scope with QuerySpec.
+Declare Scope QueryImpl_scope.
 Delimit Scope QueryImpl_scope with QueryImpl.
+Declare Scope QueryStructure_scope.
 Delimit Scope QueryStructure_scope with QueryStructure.
+Declare Scope QueryStructureParsing_scope.
 Delimit Scope QueryStructureParsing_scope with QueryStructureParsing.
+Declare Scope queryDefParsing_scope.
 Delimit Scope queryDefParsing_scope with queryDefParsing.
+Declare Scope queryDef_scope.
 Delimit Scope queryDef_scope with queryDef.
+Declare Scope updateDefParsing_scope.
 Delimit Scope updateDefParsing_scope with updateDefParsing.
+Declare Scope updateDef_scope.
 Delimit Scope updateDef_scope with updateDef.
+Declare Scope Update_scope.
 Delimit Scope Update_scope with Update.

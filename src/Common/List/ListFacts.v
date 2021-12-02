@@ -508,7 +508,7 @@ Section ListFacts.
     | [ |- context[take ?n (_::_)] ] => atomic n; destruct n
     | [ H : _ |- _ ] => rewrite H
     | _ => solve [ eauto with arith ]
-    | _ => exfalso; omega
+    | _ => exfalso; lia
     end.
 
   Local Ltac drop_take_t := repeat drop_take_t'.
@@ -539,7 +539,7 @@ Section ListFacts.
     : (List.length ls <= n) <-> drop n ls = nil.
   Proof.
     split; [ apply drop_all | ].
-    revert n; induction ls; [ simpl; intros; omega | ].
+    revert n; induction ls; [ simpl; intros; lia | ].
     intros [|n]; simpl.
     { intro; discriminate. }
     { intro; auto with arith. }
@@ -591,8 +591,8 @@ Section ListFacts.
     revert x y; induction ls; simpl; intros.
     { destruct x, y; reflexivity. }
     { destruct y; simpl.
-      { destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. }
-      { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. } }
+      { destruct x; simpl; repeat (f_equal; []); try reflexivity; lia. }
+      { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity; lia. } }
   Qed.
 
   Lemma nth_error_drop {A} x y (ls : list A)
@@ -601,7 +601,7 @@ Section ListFacts.
     revert x y; induction ls; simpl; intros.
     { destruct x, y; reflexivity. }
     { destruct y; simpl.
-      { destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. }
+      { destruct x; simpl; repeat (f_equal; []); try reflexivity; lia. }
       { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity.
         rewrite NPeano.Nat.add_succ_r; reflexivity. } }
   Qed.
@@ -703,7 +703,7 @@ Section ListFacts.
     destruct ls.
     { apply H; reflexivity. }
     { simpl length in H'.
-      omega. }
+      lia. }
   Qed.
 
   Lemma drop_S_non_empty {A} (n : nat) (ls : list A)
@@ -714,7 +714,7 @@ Section ListFacts.
     apply (f_equal (@List.length _)) in H'.
     simpl in H'.
     rewrite length_drop in H'.
-    omega.
+    lia.
   Qed.
 
   Lemma seq_S (start len : nat)
@@ -734,8 +734,8 @@ Section ListFacts.
       rewrite seq_S.
       rewrite map_map.
       apply f_equal2.
-      { omega. }
-      { apply map_ext; intro; omega. } }
+      { lia. }
+      { apply map_ext; intro; lia. } }
   Qed.
 
   Lemma seq_alt (start len : nat)
@@ -758,12 +758,12 @@ Section ListFacts.
     generalize dependent start; generalize x; induction len; intros; simpl in *.
     { assumption. }
     { destruct H as [H|H].
-      { exfalso; omega. }
+      { exfalso; lia. }
       { simpl in *.
         destruct (lt_eq_lt_dec start x0) as [[H' | H'] | H'];
           [ right; apply IHlen; assumption
           | left; assumption
-          | exfalso; omega ]. } }
+          | exfalso; lia ]. } }
   Qed.
 
   Lemma uniquize_idempotent {A} (beq : A -> A -> bool) (ls : list A)
@@ -830,7 +830,7 @@ Section ListFacts.
     : List.length (uniquize beq ls) <= List.length ls.
   Proof.
     induction ls as [|x xs IHxs]; simpl; trivial.
-    edestruct @Equality.list_bin; simpl; omega.
+    edestruct @Equality.list_bin; simpl; lia.
   Qed.
 
   Lemma uniquize_length {A} (ls : list A) beq
@@ -841,10 +841,10 @@ Section ListFacts.
     edestruct @Equality.list_bin; simpl.
     { pose proof (uniquize_shorter xs beq).
       split; intro H'.
-      { omega. }
+      { lia. }
       { apply (f_equal (@List.length _)) in H'.
         simpl in H'.
-        omega. } }
+        lia. } }
     { destruct IHxs.
       split; intro;
         first [ congruence
@@ -903,7 +903,7 @@ Section ListFacts.
   Lemma in_up_to {n m} (H : n < m) : List.In n (up_to m).
   Proof.
     revert n H; induction m; intros n H.
-    { exfalso; omega. }
+    { exfalso; lia. }
     { simpl.
       hnf in H.
       apply le_S_n in H.
@@ -914,11 +914,11 @@ Section ListFacts.
   Lemma in_up_to_iff {n m} : (n < m) <-> List.In n (up_to m).
   Proof.
     revert n; induction m; intros n; simpl.
-    { split; intro; exfalso; omega. }
+    { split; intro; exfalso; lia. }
     { simpl.
       specialize (IHm n).
       destruct IHm.
-      destruct (lt_eq_lt_dec n m) as [[?|?]|?]; split; intros; try omega; eauto; intuition. }
+      destruct (lt_eq_lt_dec n m) as [[?|?]|?]; split; intros; try lia; eauto; intuition. }
   Qed.
 
   Lemma first_index_helper_first_index_error
@@ -952,7 +952,7 @@ Section ListFacts.
        match goal with
        | _ => discriminate
        | _ => congruence
-       | _ => omega
+       | _ => lia
        | _ => progress unfold value in *
        | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
        | _ => progress subst
@@ -970,7 +970,7 @@ Section ListFacts.
        | [ H : S _ < S _ |- _ ] => apply lt_S_n in H
        | _ => solve [ eauto with nocore ]
        | [ |- context[if ?b then _ else _] ] => destruct b eqn:?
-       | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by (assumption || omega); specialize (H H'); clear H'
+       | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by (assumption || lia); specialize (H H'); clear H'
        | [ H : forall n, n < S _ -> _ |- _ ] => pose proof (H 0); specialize (fun n => H (S n))
        | _ => progress simpl in *
        | [ H : forall x, ?f x = ?f ?y -> _ |- _ ] => specialize (H _ eq_refl)
@@ -1051,7 +1051,7 @@ Section ListFacts.
       intros [|n]; try (specialize (IHls n); destruct IHls);
         simpl in *; split; intros;
           unfold value in *;
-          try (reflexivity || omega || congruence);
+          try (reflexivity || lia || congruence);
           intuition.
   Qed.
 
@@ -1112,18 +1112,18 @@ Section ListFacts.
         subst;
         rewrite ?minus_diag; trivial.
       destruct (n - offset) eqn:H''.
-      { omega. }
-      { rewrite IHxs by omega.
+      { lia. }
+      { rewrite IHxs by lia.
         f_equal.
-        omega. } }
+        lia. } }
   Qed.
 
   Lemma nth'_nth {A} n ls (default : A)
     : nth' n ls default = nth n ls default.
   Proof.
     change (nth'_helper n ls default 0 = nth n ls default).
-    rewrite nth'_helper_nth by omega.
-    f_equal; omega.
+    rewrite nth'_helper_nth by lia.
+    f_equal; lia.
   Qed.
 
 
@@ -1442,7 +1442,7 @@ Section ListFacts.
     { simpl.
       destruct n; simpl; trivial.
       rewrite IHxs; destruct xs; trivial; simpl.
-      apply drop_all; simpl; omega. }
+      apply drop_all; simpl; lia. }
   Qed.
 
   Lemma map_ext_in {A B} (f f' : A -> B) (ls : list A)
@@ -1595,7 +1595,7 @@ Section ListFacts.
       apply (f_equal (@List.length _)) in H';
       rewrite ?app_length in H';
       simpl in *;
-      omega. }
+      lia. }
   Qed.
 
   Lemma Forall_tl {A} P (ls : list A)
@@ -1946,9 +1946,9 @@ Section ListFacts.
     { edestruct f; simpl in *;
       f_equal;
       try apply IHls;
-      try omega.
+      try lia.
       { pose proof (length_filter f ls).
-        omega. } }
+        lia. } }
   Qed.
 
   Lemma fold_right_andb_true_map_filter {A} (f : A -> bool) (ls : list A)
@@ -2411,7 +2411,7 @@ Section ListFacts.
       -> length l3 = n3
       -> length (l1 ++ l2 ++ l3) = n1 + n2 + n3.
   Proof.
-    intros; rewrite !app_length; subst; omega.
+    intros; rewrite !app_length; subst; lia.
   Qed.
 
 End ListFacts.

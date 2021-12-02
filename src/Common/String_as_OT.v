@@ -1,6 +1,7 @@
 Require Import Coq.ZArith.ZArith Coq.Strings.String Coq.Strings.Ascii.
 Require Import Coq.Structures.OrderedType.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
+Require Export Coq.micromega.Lia.
 
 Lemma nat_compare_eq_refl : forall x, Nat.compare x x = Eq.
   intros; apply Nat.compare_eq_iff; trivial.
@@ -59,9 +60,9 @@ Module String_as_OT <: OrderedType.
       | [ |- context [Nat.compare ?a ?b] ] =>
         let H := fresh in
         first [
-            assert (Nat.compare a b = Eq) as H by (autorewrite_nat_compare; omega) |
-            assert (Nat.compare a b = Lt) as H by (autorewrite_nat_compare; omega) |
-            assert (Nat.compare a b = Gt) as H by (autorewrite_nat_compare; omega)
+            assert (Nat.compare a b = Eq) as H by (autorewrite_nat_compare; lia) |
+            assert (Nat.compare a b = Lt) as H by (autorewrite_nat_compare; lia) |
+            assert (Nat.compare a b = Gt) as H by (autorewrite_nat_compare; lia)
         ]; rewrite H; intuition
     end.
 
@@ -82,7 +83,8 @@ Module String_as_OT <: OrderedType.
 
   Definition eq := @eq string.
 
-  Hint Resolve string_compare_eq_refl.
+  #[export]
+  Hint Resolve string_compare_eq_refl : core.
 
   Lemma eq_Eq : forall x y, x = y -> string_compare x y = Eq.
   Proof.

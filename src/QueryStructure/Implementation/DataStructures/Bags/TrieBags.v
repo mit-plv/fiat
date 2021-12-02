@@ -2407,7 +2407,6 @@ Module TrieBag (X:OrderedType).
           rewrite H7 with (k := fst a); f_equiv; eauto.
           rewrite <- IHl; eauto.
           inversion H; eauto.
-          intros; eapply H7; simpl; econstructor 2; eauto.
           econstructor; destruct a; simpl; reflexivity.
           eauto with typeclass_instances.
           eauto with typeclass_instances.
@@ -2850,7 +2849,7 @@ Module TrieBag (X:OrderedType).
           inversion H; eauto.
           econstructor; destruct a; simpl; reflexivity.
       }
-      Grab Existential Variables.
+      Unshelve.
       eauto.
     Qed.
 

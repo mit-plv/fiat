@@ -1,61 +1,32 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
+Require Export Coq.micromega.Lia.
 Require Import Coq.Classes.Morphisms.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.ZArith.ZArith.
-
-Lemma min_def {x y} : min x y = x - (x - y).
-Proof. apply Min.min_case_strong; omega. Qed.
-Lemma max_def {x y} : max x y = x + (y - x).
-Proof. apply Max.max_case_strong; omega. Qed.
-Ltac coq_omega := omega.
-Ltac handle_min_max_for_omega :=
-  repeat match goal with
-         | [ H : context[min _ _] |- _ ] => rewrite !min_def in H
-         | [ H : context[max _ _] |- _ ] => rewrite !max_def in H
-         | [ |- context[min _ _] ] => rewrite !min_def
-         | [ |- context[max _ _] ] => rewrite !max_def
-         end.
-Ltac handle_min_max_for_omega_case :=
-  repeat match goal with
-         | [ H : context[min _ _] |- _ ] => revert H
-         | [ H : context[max _ _] |- _ ] => revert H
-         | [ |- context[min _ _] ] => apply Min.min_case_strong
-         | [ |- context[max _ _] ] => apply Max.max_case_strong
-         end;
-  intros.
-Ltac omega_with_min_max :=
-  handle_min_max_for_omega;
-  omega.
-Ltac omega_with_min_max_case :=
-  handle_min_max_for_omega_case;
-  omega.
-Tactic Notation "omega" := coq_omega.
-Tactic Notation "omega" "*" := omega_with_min_max_case.
-Tactic Notation "omega" "**" := omega_with_min_max.
 
 Section NatFacts.
   Lemma le_r_le_max :
     forall x y z,
       x <= z -> x <= max y z.
-  Proof. intros; omega *. Qed.
+  Proof. intros; lia. Qed.
 
   Lemma le_l_le_max :
     forall x y z,
       x <= y -> x <= max y z.
-  Proof. intros; omega *. Qed.
+  Proof. intros; lia. Qed.
 
   Lemma le_neq_impl :
     forall m n, m < n -> m <> n.
-  Proof. intros; omega. Qed.
+  Proof. intros; lia. Qed.
 
   Lemma gt_neq_impl :
     forall m n, m > n -> m <> n.
-  Proof. intros; omega. Qed.
+  Proof. intros; lia. Qed.
 
   Lemma lt_refl_False :
     forall x,
       lt x x -> False.
-  Proof. intros; omega. Qed.
+  Proof. intros; lia. Qed.
 
   Lemma beq_nat_eq_nat_dec :
     forall x y,
@@ -66,16 +37,16 @@ Section NatFacts.
 
   Lemma min_minus_l x y
   : min (x - y) x = x - y.
-  Proof. omega *. Qed.
+  Proof. lia. Qed.
   Lemma min_minus_r x y
   : min x (x - y) = x - y.
-  Proof. omega *. Qed.
+  Proof. lia. Qed.
 
   Lemma sub_twice x y : x - (x - y) = min x y.
-  Proof. omega *. Qed.
+  Proof. lia. Qed.
 
   Lemma minus_ge {x y : nat} (H : x - y >= x) : {x = 0} + {y = 0}.
-  Proof. destruct x; [ left | right]; omega. Qed.
+  Proof. destruct x; [ left | right]; lia. Qed.
 End NatFacts.
 
 Fixpoint minusr (n m : nat) {struct m} : nat
@@ -91,6 +62,7 @@ Proof.
   induction m; simpl; auto.
 Qed.
 
+Declare Scope natr_scope.
 Delimit Scope natr_scope with natr.
 Infix "-" := minusr : natr_scope.
 
@@ -190,14 +162,14 @@ Qed.
 
 Lemma minus_plus_min x y
 : x - y + min y x = x.
-Proof. omega *. Qed.
+Proof. lia. Qed.
 
 Lemma min_case_strong_r n m (P : nat -> Type)
 : (n <= m -> P n) -> (m < n -> P m) -> P (min n m).
 Proof.
   destruct (Compare_dec.le_lt_dec n m);
-  first [ rewrite Min.min_r by omega
-        | rewrite Min.min_l by omega ];
+  first [ rewrite Min.min_r by lia
+        | rewrite Min.min_l by lia ];
   auto.
 Qed.
 
@@ -205,8 +177,8 @@ Lemma min_case_strong_l n m (P : nat -> Type)
 : (n < m -> P n) -> (m <= n -> P m) -> P (min n m).
 Proof.
   destruct (Compare_dec.le_lt_dec m n);
-  first [ rewrite Min.min_r by omega
-        | rewrite Min.min_l by omega ];
+  first [ rewrite Min.min_r by lia
+        | rewrite Min.min_l by lia ];
   auto.
 Qed.
 
@@ -226,7 +198,7 @@ Qed.
 
 Lemma min_max_sub {a x f}
   : min a (x - f) = x - (max (x - a) f).
-Proof. omega *. Qed.
+Proof. lia. Qed.
 
 Lemma if_to_min {x y}
   : (if x <? y then x else y) = min x y.
@@ -236,24 +208,24 @@ Proof.
     reflexivity. }
   { destruct (x <? y) eqn:H'; [ | reflexivity ].
     apply Nat.ltb_lt in H'.
-    omega. }
+    lia. }
 Qed.
 
 Lemma min_sub_same {x y} : min x y - x = 0.
-Proof. omega *. Qed.
+Proof. lia. Qed.
 
 Lemma min_subr_same {x y} : (min x y - x)%natr = 0.
-Proof. clear; rewrite minusr_minus; omega *. Qed.
+Proof. clear; rewrite minusr_minus; lia. Qed.
 
 Lemma beq_nat_min_0 {x y}
   : EqNat.beq_nat (min x y) 0 = orb (EqNat.beq_nat x 0) (EqNat.beq_nat y 0).
 Proof. destruct x, y; simpl; reflexivity. Qed.
 
 Lemma max_min_n {x y} : max (min x y) y = y.
-Proof. omega *. Qed.
+Proof. lia. Qed.
 
 Global Instance S_Proper_le : Proper (le ==> le) S.
-Proof. repeat intro; omega. Qed.
+Proof. repeat intro; lia. Qed.
 
 Global Instance nat_rect_Proper_nondep {A}
   : Proper

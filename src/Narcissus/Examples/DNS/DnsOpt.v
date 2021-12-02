@@ -222,10 +222,10 @@ Section DnsPacket.
   Proof.
     Local Transparent pow2.
     induction m; simpl; intros.
-    - omega.
+    - lia.
     - rewrite <- IHm.
       rewrite <- !plus_n_O.
-      rewrite Mult.mult_plus_distr_r; omega.
+      rewrite Mult.mult_plus_distr_r; lia.
   Qed.
 
   Corollary mult_pow2_8 : forall n,
@@ -243,12 +243,12 @@ Section DnsPacket.
       -> lt (NPeano.div m 8) (pow2 14).
   Proof.
     intros.
-    eapply (NPeano.Nat.mul_lt_mono_pos_l 8); try omega.
+    eapply (NPeano.Nat.mul_lt_mono_pos_l 8); try lia.
     rewrite mult_pow2_8.
     eapply le_lt_trans.
-    apply NPeano.Nat.mul_div_le; try omega.
+    apply NPeano.Nat.mul_div_le; try lia.
     simpl.
-    omega.
+    lia.
   Qed.
 
   Lemma addPeekNone :
@@ -269,8 +269,8 @@ Section DnsPacket.
     pose proof (shatter_word_S x0); destruct_ex; subst.
     pose proof (shatter_word_S x2); destruct_ex; subst.
     simpl wtl.
-    rewrite <- (NPeano.Nat.div_div _ 2 4) by omega.
-    rewrite <- (NPeano.Nat.div_div _ 2 2) by omega.
+    rewrite <- (NPeano.Nat.div_div _ 2 4) by lia.
+    rewrite <- (NPeano.Nat.div_div _ 2 2) by lia.
     rewrite <- !NPeano.Nat.div2_div.
     rewrite !div2_WS.
     reflexivity.
@@ -282,17 +282,17 @@ Section DnsPacket.
       -> lt (p * n)  (p * m)
       -> lt n m.
   Proof.
-    induction m; simpl; intros; try omega.
-    rewrite (mult_comm p 0) in H0; simpl in *; try omega.
-    destruct p; try (elimtype False; auto with arith; omega).
+    induction m; simpl; intros; try lia.
+    rewrite (mult_comm p 0) in H0; simpl in *; try lia.
+    destruct p; try (elimtype False; auto with arith; lia).
     inversion H0.
     rewrite (mult_comm p (S m)) in H0.
     simpl in H0.
-    destruct n; try omega.
+    destruct n; try lia.
     rewrite (mult_comm p (S n)) in H0; simpl in H0.
     apply plus_lt_reg_l in H0.
     rewrite <- NPeano.Nat.succ_lt_mono.
-    eapply (IHm n p); try eassumption; try omega.
+    eapply (IHm n p); try eassumption; try lia.
     rewrite mult_comm.
     rewrite (mult_comm p m); auto.
   Qed.
@@ -304,16 +304,16 @@ Section DnsPacket.
       -> lt k p
       -> lt ((p * n) + k) (p * m).
   Proof.
-    induction p; intros; try omega.
+    induction p; intros; try lia.
     simpl.
     inversion H; subst; simpl.
-    inversion H1; subst; omega.
+    inversion H1; subst; lia.
     destruct k; simpl.
     - rewrite <- plus_n_O.
       eapply (mult_lt_compat_l n m (S p)); auto.
     - assert (lt (p * n + k) (p * m)) by
-          (apply IHp; try omega).
-      omega.
+          (apply IHp; try lia).
+      lia.
   Qed.
 
   Lemma addPeekNone' :
@@ -331,21 +331,21 @@ Section DnsPacket.
     elimtype False; apply H0.
     rewrite pointerT2Nat_Nat2pointerT in *;
       try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    destruct n; try omega.
+    eapply (mult_lt_compat_l' _ _ 8); try lia.
+    destruct n; try lia.
     elimtype False; apply H0.
     simpl.
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    eapply (mult_lt_compat_l' _ _ 8); try lia.
     - eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
+      apply NPeano.Nat.mul_div_le; lia.
       simpl in l.
-      rewrite mult_pow2_8; simpl; omega.
+      rewrite mult_pow2_8; simpl; lia.
     - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
+      assert (8 <> 0) by lia.
       pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
       apply le_lt_trans with (8 * S n + (wordToNat w)).
-      omega.
-      rewrite mult_pow2_8; simpl; omega.
+      lia.
+      rewrite mult_pow2_8; simpl; lia.
   Qed.
 
   Lemma addPeekSome :
@@ -367,24 +367,24 @@ Section DnsPacket.
       eexists; split; try reflexivity.
       rewrite wtl_div.
       rewrite wordToNat_natToWord_idempotent.
-      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
+      rewrite pointerT2Nat_Nat2pointerT in *; try lia.
+      rewrite NPeano.Nat.div_add; try lia.
+      rewrite NPeano.Nat.div_add; try lia.
       apply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id, Npow2_nat; auto.
     - elimtype False; apply n0.
       rewrite !wtl_div in *.
       rewrite pointerT2Nat_Nat2pointerT in *.
-      rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
+      rewrite (NPeano.div_mod (wordToNat w) 8); try lia.
       pose proof (mult_pow2_8 14) as H'; simpl plus in H'; rewrite <- H'.
       replace (8 * NPeano.div (wordToNat w) 8 + NPeano.modulo (wordToNat w) 8 + n * 8)
       with (8 * (NPeano.div (wordToNat w) 8 + n) + NPeano.modulo (wordToNat w) 8)
-        by omega.
-      eapply mult_lt_compat_l''; try omega.
-      apply NPeano.Nat.mod_upper_bound; omega.
-      eapply (mult_lt_compat_l' _ _ 8); try omega.
+        by lia.
+      eapply mult_lt_compat_l''; try lia.
+      apply NPeano.Nat.mod_upper_bound; lia.
+      eapply (mult_lt_compat_l' _ _ 8); try lia.
       eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
+      apply NPeano.Nat.mul_div_le; lia.
       rewrite mult_pow2_8; simpl.
       apply wordToNat_bound.
   Qed.
@@ -419,15 +419,15 @@ v
     rewrite !wtl_div in *.
     rewrite pointerT2Nat_Nat2pointerT in *;
       try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    eapply (mult_lt_compat_l' _ _ 8); try lia.
     - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
+      assert (8 <> 0) by lia.
       pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
       apply le_lt_trans with (8 * n + (wordToNat w)).
-      omega.
+      lia.
       rewrite mult_pow2_8.
       simpl plus at -1.
-      omega.
+      lia.
   Qed.
 
   Lemma addPeekESome :
@@ -449,24 +449,24 @@ v
       eexists; split; try reflexivity.
       rewrite wtl_div.
       rewrite wordToNat_natToWord_idempotent.
-      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
-      rewrite NPeano.Nat.div_add; try omega.
+      rewrite pointerT2Nat_Nat2pointerT in *; try lia.
+      rewrite NPeano.Nat.div_add; try lia.
+      rewrite NPeano.Nat.div_add; try lia.
       apply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id, Npow2_nat; auto.
     - elimtype False; apply n0.
       rewrite !wtl_div in *.
       rewrite pointerT2Nat_Nat2pointerT in *.
-      rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
+      rewrite (NPeano.div_mod (wordToNat w) 8); try lia.
       pose proof (mult_pow2_8 14) as H'; simpl plus in H'; rewrite <- H'.
       replace (8 * NPeano.div (wordToNat w) 8 + NPeano.modulo (wordToNat w) 8 + n * 8)
       with (8 * (NPeano.div (wordToNat w) 8 + n) + NPeano.modulo (wordToNat w) 8)
-        by omega.
-      eapply mult_lt_compat_l''; try omega.
-      apply NPeano.Nat.mod_upper_bound; omega.
-      eapply (mult_lt_compat_l' _ _ 8); try omega.
+        by lia.
+      eapply mult_lt_compat_l''; try lia.
+      apply NPeano.Nat.mod_upper_bound; lia.
+      eapply (mult_lt_compat_l' _ _ 8); try lia.
       eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
+      apply NPeano.Nat.mul_div_le; lia.
       rewrite mult_pow2_8; simpl.
       apply wordToNat_bound.
   Qed.
@@ -485,15 +485,15 @@ v
     rewrite !wtl_div in *.
     rewrite pointerT2Nat_Nat2pointerT in *;
       try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    eapply (mult_lt_compat_l' _ _ 8); try lia.
     - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
+      assert (8 <> 0) by lia.
       pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
       apply le_lt_trans with (8 * n + (wordToNat w)).
-      omega.
+      lia.
       rewrite mult_pow2_8.
       simpl plus at -1.
-      omega.
+      lia.
   Qed.
 
   Lemma addPeekENone :
@@ -520,21 +520,21 @@ v
     elimtype False; apply H0.
     rewrite pointerT2Nat_Nat2pointerT in *;
       try (eapply pow2_div; eassumption).
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
-    destruct n; try omega.
+    eapply (mult_lt_compat_l' _ _ 8); try lia.
+    destruct n; try lia.
     elimtype False; apply H0.
     simpl.
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    eapply (mult_lt_compat_l' _ _ 8); try lia.
     - eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
+      apply NPeano.Nat.mul_div_le; lia.
       simpl in l.
-      rewrite mult_pow2_8; simpl; omega.
+      rewrite mult_pow2_8; simpl; lia.
     - rewrite mult_plus_distr_l.
-      assert (8 <> 0) by omega.
+      assert (8 <> 0) by lia.
       pose proof (NPeano.Nat.mul_div_le (wordToNat w) 8 H).
       apply le_lt_trans with (8 * S n + (wordToNat w)).
-      omega.
-      rewrite mult_pow2_8; simpl; omega.
+      lia.
+      rewrite mult_pow2_8; simpl; lia.
   Qed.
 
   Lemma addZeroPeekE :
@@ -576,28 +576,28 @@ v
     rewrite !pointerT2Nat_Nat2pointerT in *;
       rewrite !wtl_div in *.
     rewrite wordToNat_natToWord_idempotent.
-    apply NPeano.Nat.div_le_mono; omega.
+    apply NPeano.Nat.div_le_mono; lia.
     apply Nomega.Nlt_in.
     rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    eapply (mult_lt_compat_l' _ _ 8); try lia.
     + eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
+      apply NPeano.Nat.mul_div_le; lia.
       rewrite wordToNat_natToWord_idempotent.
-      rewrite mult_pow2_8; simpl; omega.
+      rewrite mult_pow2_8; simpl; lia.
       apply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
+    + eapply (mult_lt_compat_l' _ _ 8); try lia.
       eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
+      apply NPeano.Nat.mul_div_le; lia.
+      rewrite mult_pow2_8; simpl; lia.
+    + eapply (mult_lt_compat_l' _ _ 8); try lia.
       eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
-    + eapply (mult_lt_compat_l' _ _ 8); try omega.
+      apply NPeano.Nat.mul_div_le; lia.
+      rewrite mult_pow2_8; simpl; lia.
+    + eapply (mult_lt_compat_l' _ _ 8); try lia.
       eapply le_lt_trans.
-      apply NPeano.Nat.mul_div_le; omega.
-      rewrite mult_pow2_8; simpl; omega.
+      apply NPeano.Nat.mul_div_le; lia.
+      rewrite mult_pow2_8; simpl; lia.
   Qed.
 
   Lemma cacheIndependent_add_2
@@ -900,7 +900,7 @@ v
       -> length l3 = n3
       -> length (l1 ++ l2 ++ l3) = n1 + n2 + n3.
   Proof.
-    intros; rewrite !app_length; subst; omega.
+    intros; rewrite !app_length; subst; lia.
   Qed.
   Hint Resolve length_app_3 : data_inv_hints .
 
