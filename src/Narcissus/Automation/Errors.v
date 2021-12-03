@@ -1,4 +1,5 @@
 From Fiat.Narcissus Require Import Examples.TutorialPrelude.
+From Fiat.Narcissus Require Import Formats.StringOpt.
 
 (** General errors *)
 Module wrong_circle.
@@ -309,9 +310,74 @@ Module list_nested_list.
   Abort.
 End list_nested_list.
 
-(** Record *)
+(** format_string *)
+
+Module string_const.
+  Record msg := { data : word 8 }.
+  Definition format :=
+    format_string ◦ const "<data>" ++
+    format_word ◦ data ++
+    format_string ◦ const "</data>".
+  Definition invariant (_ : msg) := True.
+
+  Definition dec : CorrectAlignedDecoderFor invariant format.
+  Proof.
+    synthesize_aligned_decoder.
+    (* More of a limitation than error: need to fix [solve_side_condition], add
+    a decides instance, disallow simplifying the decoder function, and add a
+    [DecodeMEquivAlignedDecodeM] instance. *)
+  Abort.
+End string_const.
+
 (* TODO *)
-(* field missing *)
-(* nested record *)
+
+(** Record *)
+
+Module format_record_correct.
+  Record msg := { data : word 8; tag : word 8 }.
+  Definition format := format_word ◦ data ++ format_word ◦ tag.
+  Definition invariant (_ : msg) := True.
+
+  Definition dec : CorrectAlignedDecoderFor invariant format.
+  Proof.
+    synthesize_aligned_decoder.
+  Defined.
+
+  Definition decode := simplify (decoder_impl' dec).
+End format_record_correct.
+
+Module field_missing.
+  Record msg := { data : word 8; tag : word 8 }.
+  Definition format := format_word ◦ data.
+  Definition invariant (_ : msg) := True.
+
+  Definition dec : CorrectAlignedDecoderFor invariant format.
+  Proof.
+    synthesize_aligned_decoder.
+  Abort.
+End field_missing.
+
+Module nested_record.
+  Record person := { age : word 8; salary : word 8 }.
+  Record msg := { data : word 8; who : person }.
+  (* Note that sometimes we have a dedicated format for the nested record. *)
+  Definition format :=
+    format_word ◦ data ++
+    format_word ◦ age ◦ who ++
+    format_word ◦ salary ◦ who.
+  Definition invariant (_ : msg) := True.
+
+  Definition dec : CorrectAlignedDecoderFor invariant format.
+  Proof.
+    synthesize_aligned_decoder.
+  Abort.
+
+End nested_record.
+
 (* invariant unsat *)
 (* list of records *)
+
+(* TODO *)
+
+(** Custom data types *)
+(* TODO *)
