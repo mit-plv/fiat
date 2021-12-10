@@ -244,6 +244,7 @@ src/Narcissus/BinLib/Core.v
 src/Narcissus/Common/ComposeCheckSum.v
 src/Narcissus/Common/ComposeIf.v
 src/Narcissus/Common/ComposeOpt.v
+src/Narcissus/Common/EquivFormat.v
 src/Narcissus/Common/Monoid.v
 src/Narcissus/Common/Notations.v
 src/Narcissus/Common/Sig.v
@@ -287,6 +288,7 @@ src/Narcissus/Formats/ASN1.v
 src/Narcissus/Formats/AsciiOpt.v
 src/Narcissus/Formats/Bool.v
 src/Narcissus/Formats/ByteBuffer.v
+src/Narcissus/Formats/Delimiter.v
 src/Narcissus/Formats/DomainNameOpt.v
 src/Narcissus/Formats/Empty.v
 src/Narcissus/Formats/EnumOpt.v
