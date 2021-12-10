@@ -37,7 +37,7 @@ module WITH_DB =
 				 tclORELSE this_tac tac
 			      | _ -> tac))
 	     tac hints)
-	  (tclFAIL 0 (Pp.str "No applicable tactic!")) !syms
+	  (tclFAIL (Pp.str "No applicable tactic!")) !syms
       end
 
   let add_resolve_to_db lem db =
