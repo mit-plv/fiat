@@ -291,7 +291,6 @@ src/Narcissus/Formats/DomainNameOpt.v
 src/Narcissus/Formats/Empty.v
 src/Narcissus/Formats/EnumOpt.v
 src/Narcissus/Formats/FixListOpt.v
-src/Narcissus/Formats/FixStringOpt.v
 src/Narcissus/Formats/IPChecksum.v
 src/Narcissus/Formats/InternetChecksum.v
 src/Narcissus/Formats/NatOpt.v

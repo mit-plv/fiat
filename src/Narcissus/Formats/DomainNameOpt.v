@@ -13,7 +13,7 @@ Require Import
         Fiat.Computation.Refinements.General
         Fiat.Common.DecideableEnsembles
         Fiat.Narcissus.Common.Specs
-        Fiat.Narcissus.Formats.FixStringOpt
+        Fiat.Narcissus.Formats.StringOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.AsciiOpt.
@@ -930,7 +930,6 @@ Section DomainName.
   Proof.
     unfold add_ptr_OK in *; induction n; simpl; intros.
     - injections; eauto.
-      rewrite IndependentCaches; eauto.
     - apply DecodeBindOpt2_inv in H0;
         destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
       destruct (decode_string n x0 x1) eqn: ?; simpl in *; try discriminate.

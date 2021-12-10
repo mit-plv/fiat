@@ -127,7 +127,7 @@ Section ASN1_Format.
           Fiat.Narcissus.Formats.EnumOpt
           Fiat.Narcissus.Formats.Bool
           Fiat.Narcissus.Formats.NatOpt
-          Fiat.Narcissus.Formats.FixStringOpt
+          Fiat.Narcissus.Formats.StringOpt
           Fiat.Narcissus.Common.ComposeOpt.
 
   Context {B : Type}.
