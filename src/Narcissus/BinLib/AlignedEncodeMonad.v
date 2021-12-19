@@ -1411,3 +1411,32 @@ Proof.
   intros. repeat split; simpl; intros;
             edestruct enc_OK as [? [? [? ?]]]; eauto.
 Qed.
+
+(* This provides a more convenient side-condition used in some aligned encoder,
+e.g., list and vector. *)
+Lemma encoder_format_eq_cache_OK {cache : Cache} {S1 S2}
+        (format_A : FormatM S1 ByteString)
+        (format_B : FormatM S2 ByteString)
+        (encode_B : forall sz, AlignedEncodeM sz)
+        (encoder_B_OK : CorrectAlignedEncoder format_B encode_B)
+        (encode_A_OK' : forall (s1 : S1) (s2 : S2) (env: CacheFormat)
+                          (tenv' tenv'' tenv3 : ByteString * CacheFormat),
+            format_B s2 env ∋ tenv' ->
+            format_A s1 (snd tenv') ∋ tenv'' ->
+            projT1 encoder_B_OK s2 env = Some tenv3 ->
+            snd tenv' = snd tenv3)
+    : forall (s1 : S1) (s2 : S2) (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
+      format_B s2 env ∋ tenv' ->
+      format_A s1 (snd tenv') ∋ tenv'' ->
+      exists tenv3 tenv4 : _ * CacheFormat,
+        projT1 encoder_B_OK s2 env = Some tenv3
+        /\ format_A s1 (snd tenv3) ∋ tenv4.
+Proof.
+  intros.
+  match goal with
+  | |- exists _ _, ?e = _ /\ _ => destruct e eqn:?
+  end.
+  - repeat esplit. erewrite <- encode_A_OK'; eauto.
+  - exfalso. destruct encoder_B_OK as [? [H' ?]]; simpl in *.
+    eapply H'; eauto.
+Qed.

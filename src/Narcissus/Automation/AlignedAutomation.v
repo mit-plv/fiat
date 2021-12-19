@@ -49,7 +49,7 @@ Ltac align_decoders_step :=
             try (instantiate (1 := ilist.icons _ _); simpl; intros; higher_order_reflexivity)]
         | try exact I]
       | |- context [ decode_string_with_term_char ?term_char _ _] =>
-      eapply (fun H H' => @AlignedString.AlignedDecodeStringM _ _ H H' _ (NToWord 8 (Ascii.N_of_ascii term_char))); intros; eauto
+      eapply (fun H H' => @AlignedDecodeStringTermM _ _ H H' _ (NToWord 8 (Ascii.N_of_ascii term_char))); intros; eauto
       end
     | eapply @AlignedDecodeNatM; intros
     | eapply @AlignedDecodeByteBufferM; intros; eauto

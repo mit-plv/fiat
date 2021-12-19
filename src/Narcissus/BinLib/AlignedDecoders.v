@@ -17,7 +17,6 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedEncodeMonad
         Fiat.Narcissus.BinLib.AlignedByteString
         Fiat.Narcissus.BinLib.AlignWord
-        Fiat.Narcissus.BinLib.AlignedString
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
