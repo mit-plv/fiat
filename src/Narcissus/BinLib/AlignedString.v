@@ -135,22 +135,16 @@ Section AlignedString.
         simpl.
         computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
-  Qed.
+  Defined.
 
-  Lemma AlignedDecodeStringM {C : Type}
+  Lemma AlignedDecodeStringM'
         (n : nat)
-    : forall (t : string -> DecodeM (C * _) ByteString)
-             (t' : string -> forall {numBytes}, AlignedDecodeM C numBytes),
-      (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
-      -> DecodeMEquivAlignedDecodeM
-           (fun v cd => `(l, bs, cd') <- decode_string n v cd;
-                          t l bs cd')
-           (fun numBytes => l <- AlignedDecodeString n;
-                            t' l)%AlignedDecodeM.
+      : DecodeMEquivAlignedDecodeM
+          (decode_string n)
+          (fun numBytes => AlignedDecodeString n).
   Proof.
     intros.
     unfold AlignedDecodeString.
-    eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
     eapply DecodeMEquivAlignedDecodeM_trans.
     3: intros; apply AlignedDecodeMEquiv_refl.
     - eapply AlignedDecodeListM.
@@ -165,6 +159,21 @@ Section AlignedString.
       rewrite !DecodeBindOpt2_assoc.
       eapply DecodeBindOpt2_under_bind; intros; simpl.
       reflexivity.
+  Qed.
+
+  Lemma AlignedDecodeStringM {C : Type}
+        (n : nat)
+    : forall (t : string -> DecodeM (C * _) ByteString)
+             (t' : string -> forall {numBytes}, AlignedDecodeM C numBytes),
+      (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
+      -> DecodeMEquivAlignedDecodeM
+           (fun v cd => `(l, bs, cd') <- decode_string n v cd;
+                          t l bs cd')
+           (fun numBytes => l <- AlignedDecodeString n;
+                            t' l)%AlignedDecodeM.
+  Proof.
+    intros.
+    eapply Bind_DecodeMEquivAlignedDecodeM; eauto using AlignedDecodeStringM'.
   Qed.
 
 

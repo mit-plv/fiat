@@ -41,7 +41,7 @@ Section Delimiter.
              (b : T) (cd : CacheDecode)
     : option (A * T * CacheDecode) :=
     `(s, b1, e1) <- decode_string (length open) b cd;
-    if string_dec open s
+    if String.eqb open s
     then decode_with_term_string close b1 e1
     else None.
 
@@ -81,8 +81,10 @@ Section Delimiter.
       eapply CorrectDecoderEmpty. intuition eauto.
 
       unfold IsProj.
-      instantiate (1:=(string_dec _ _)).
-      destruct string_dec; solve [ simpl; intuition eauto ].
+      instantiate (1:=(String.eqb _ _)).
+      match goal with
+      | |- context [String.eqb ?s ?s'] => destruct (String.eqb_spec s s')
+      end; simpl; solve [intuition eauto].
 
       repeat instantiate (1:=constant True); split; eauto.
 
@@ -91,7 +93,7 @@ Section Delimiter.
       unfold decode_delimiter.
       eapply DecodeBindOpt2_under_bind.
       intros.
-      destruct string_dec; subst; simpl;
+      destruct String.eqb; subst; simpl;
         destruct decode_A_with_term_string; destruct_conjs; reflexivity.
   Qed.
 
@@ -110,7 +112,7 @@ Section Delimiter.
     : option (A * T * CacheDecode) :=
     `(a, b1, e1) <- decode_A b cd;
     `(s, b2, e2) <- decode_string (length close) b1 e1;
-    if string_dec close s
+    if String.eqb close s
     then Some (a, b2, e2)
     else None.
 
@@ -137,8 +139,10 @@ Section Delimiter.
       eapply CorrectDecoderEmpty. intuition eauto.
 
       unfold IsProj.
-      instantiate (1:=(string_dec _ _)).
-      destruct string_dec; solve [ simpl; intuition eauto ].
+      instantiate (1:=(String.eqb _ _)).
+      match goal with
+      | |- context [String.eqb ?s ?s'] => destruct (String.eqb_spec s s')
+      end; simpl; solve [intuition eauto].
 
       repeat instantiate (1:=constant True); split; eauto.
 
@@ -147,7 +151,7 @@ Section Delimiter.
       unfold decode_with_term_string_simple.
       eapply DecodeBindOpt2_under_bind. intros.
       eapply DecodeBindOpt2_under_bind. intros.
-      destruct string_dec; subst; simpl; reflexivity.
+      destruct String.eqb; subst; simpl; reflexivity.
   Qed.
 
   Definition decode_delimiter_simple :=
