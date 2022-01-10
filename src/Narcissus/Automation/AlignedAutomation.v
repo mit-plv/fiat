@@ -51,6 +51,7 @@ Ltac align_decoders_step :=
       | |- context [ decode_string_with_term_char ?term_char _ _] =>
       eapply (fun H H' => @AlignedDecodeStringTermM _ _ H H' _ (NToWord 8 (Ascii.N_of_ascii term_char))); intros; eauto
       end
+    | eapply @AlignedDecodeDelimiterSimpleM; intros
     | eapply @AlignedDecodeNatM; intros
     | eapply @AlignedDecodeByteBufferM; intros; eauto
     | eapply @AlignedDecodeBind2CharM; intros; eauto
@@ -644,6 +645,10 @@ Ltac align_encoder_step :=
       | eexists; reflexivity ]
     end
   | new_encoder_rules
+  | eapply CorrectAlignedEncoderForFormatDelimiter; [
+      unshelve (instantiate (1:=_))
+    | unshelve (instantiate (1:=_)); [| unshelve (instantiate (2:=_)) ] ];
+    eauto using encoder_empty_cache_OK
   | eapply CorrectAlignedEncoderForFormatList; unshelve (instantiate (1 := _));
     eauto using encoder_empty_cache_OK
   | eapply CorrectAlignedEncoderForFormatVector; unshelve (instantiate (1 := _));
