@@ -9,6 +9,7 @@ Require Export
         Fiat.Narcissus.BinLib.AlignWord
         Fiat.Narcissus.BinLib.AlignedList
         Fiat.Narcissus.BinLib.AlignedString
+        Fiat.Narcissus.BinLib.AlignedDelimiter
         Fiat.Narcissus.BinLib.AlignedSumType
         Fiat.Narcissus.BinLib.AlignedDecoders
         Fiat.Narcissus.BinLib.AlignedDecodeMonad

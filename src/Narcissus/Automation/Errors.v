@@ -1,5 +1,4 @@
 From Fiat.Narcissus Require Import Examples.TutorialPrelude.
-From Fiat.Narcissus Require Import Formats.StringOpt.
 
 (** General errors *)
 Module wrong_circle.

@@ -10,4 +10,6 @@ Require Export
         Fiat.Narcissus.Formats.IPChecksum
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
+        Fiat.Narcissus.Formats.StringOpt
+        Fiat.Narcissus.Formats.Delimiter
         Fiat.Narcissus.Formats.Option.
