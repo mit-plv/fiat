@@ -53,14 +53,14 @@ Section AlignedDelimter.
         (encode_A_OK2 :
            forall (a : A) (env : CacheFormat) (tenv' tenv'' : ByteString * CacheFormat),
              (format_string ◦ constant open) a env ∋ tenv' ->
-             format_with_term_string close format_A a (snd tenv') ∋ tenv'' ->
+             format_with_term format_A close a (snd tenv') ∋ tenv'' ->
             exists tenv3 tenv4 : _ * CacheFormat,
               projT1 (CorrectAlignedEncoderForProjection_Format
                         (constant open) format_string
                         AlignedEncodeString
                         (CorrectAlignedEncoderForFormatString addE_addE_plus addE_0))
                      a env = Some tenv3
-              /\ format_with_term_string close format_A a (snd tenv3) ∋ tenv4)
+              /\ format_with_term format_A close a (snd tenv3) ∋ tenv4)
     : CorrectAlignedEncoder (format_delimiter (A:=A) open close format_A)
                             (AlignedEncodeDelimiter encode_A).
   Proof.
@@ -118,7 +118,7 @@ Section AlignedDelimter.
     : DecodeMEquivAlignedDecodeM decode_A (@decode_A_aligned) ->
       forall close,
         DecodeMEquivAlignedDecodeM
-          (decode_with_term_string_simple decode_A close)
+          (decode_with_term_simple decode_A close)
           (fun numBytes => AlignedDecodeWithTermStringSimple
                            (@decode_A_aligned) close).
   Proof.
@@ -138,7 +138,7 @@ Section AlignedDelimter.
       (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b)) ->
       forall close,
         DecodeMEquivAlignedDecodeM
-           (fun v cd => `(a, bs, cd') <- decode_with_term_string_simple
+           (fun v cd => `(a, bs, cd') <- decode_with_term_simple
                                          decode_A close v cd;
                           t a bs cd')
            (fun numBytes => a <- AlignedDecodeWithTermStringSimple
