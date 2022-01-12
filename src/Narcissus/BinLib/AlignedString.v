@@ -222,7 +222,7 @@ Section AlignedString.
                                                                    (fun s => ReturnAlignedDecodeM (String (ascii_of_N (wordToN c)) s)))
     end%AlignedDecodeM%list.
 
-  Lemma AlignedDecodeStringTermM {C : Type}
+  Lemma AlignedDecodeStringTermCharM {C : Type}
         (term_word : word 8)
         (term_char : ascii)
     : forall (t : string -> DecodeM (C * _) ByteString)
