@@ -311,6 +311,7 @@ src/Narcissus/Formats/Base/LaxTerminalFormat.v
 src/Narcissus/Formats/Base/SequenceFormat.v
 src/Narcissus/Formats/Base/StrictTerminalFormat.v
 src/Narcissus/Formats/Base/UnionFormat.v
+src/Narcissus/Formats/WithTerm/String.v
 src/Narcissus/OCamlExtraction/Extraction.v
 src/Narcissus/Stores/Cache.v
 src/Narcissus/Stores/DomainNameStore.v
