@@ -42,3 +42,5 @@ Section String.
                           t' s).
   Proof.
   Admitted.
+
+End String.

@@ -241,6 +241,7 @@ src/Narcissus/BinLib/AlignedIPChecksum.v
 src/Narcissus/BinLib/AlignedList.v
 src/Narcissus/BinLib/AlignedString.v
 src/Narcissus/BinLib/AlignedSumType.v
+src/Narcissus/BinLib/WithTerm/String.v
 src/Narcissus/BinLib/Core.v
 src/Narcissus/Common/ComposeCheckSum.v
 src/Narcissus/Common/ComposeIf.v
