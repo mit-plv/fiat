@@ -1,0 +1,13 @@
+From Fiat.Narcissus Require Import Examples.TutorialPrelude.
+
+Record msg := { data : list nat }.
+Definition format :=
+  format_nat 8 ◦ length ◦ data ++
+  format_list (format_nat 8) ◦ data.
+Definition invariant (m : msg) :=
+  length (m.(data)) < pow2 8 /\ forall n, In n m.(data) -> n < pow2 9.
+
+Definition dec : CorrectAlignedDecoderFor invariant format.
+Proof.
+  synthesize_aligned_decoder.
+Defined.
