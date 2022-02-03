@@ -7,7 +7,7 @@ open Tacarg
 
 }
 
-DECLARE PLUGIN "transparent_abstract_plugin"
+DECLARE PLUGIN "coq-fiat-parsers.transparent_abstract_plugin"
 
 TACTIC EXTEND transparentabstract
 | [ "cache" tactic(tac) "as" ident(name)]

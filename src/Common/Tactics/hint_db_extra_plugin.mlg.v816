@@ -7,7 +7,7 @@ open Tacarg
 
 }
 
-DECLARE PLUGIN "hint_db_extra_plugin"
+DECLARE PLUGIN "coq-fiat-parsers.hint_db_extra_plugin"
 
 TACTIC EXTEND foreach_db
   | [ "foreach" "[" ne_preident_list(l) "]" "run" tactic(k) ]  ->

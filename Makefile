@@ -55,77 +55,90 @@ ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around th
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 ML4_OR_MLG := ml4
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.5%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
 ML4_OR_MLG := ml4
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.6%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v86
 ML_DESCRIPTION := "Coq v8.6"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.7%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v87
 ML_DESCRIPTION := "Coq v8.7"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.8%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v88
 ML_DESCRIPTION := "Coq v8.8"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.9%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v89
 ML_DESCRIPTION := "Coq v8.9"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.10%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v810
 ML_DESCRIPTION := "Coq v8.10"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.11%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v811
 ML_DESCRIPTION := "Coq v8.11"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.12%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v812
 ML_DESCRIPTION := "Coq v8.12"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.13%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v813
 ML_DESCRIPTION := "Coq v8.13"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.14%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v814
 ML_DESCRIPTION := "Coq v8.14"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.15%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v815
 ML_DESCRIPTION := "Coq v8.15"
 OTHERFLAGS += -w "-notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
 else
 ifneq (,$(filter 8.16%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v816
 ML_DESCRIPTION := "Coq v8.16"
 OTHERFLAGS += -w "-notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@/META.coq-fiat-parsers/g'
 else
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
@@ -137,10 +150,12 @@ ML4_OR_MLG := ml4
 else
 ifdef COQ_VERSION # if not, we're just going to remake the relevant Makefile to include anyway, so we shouldn't error
 $(warning Unrecognized Coq version $(COQ_VERSION))
-EXPECTED_EXT:=.v815
-ML_DESCRIPTION := "Coq v8.15"
+EXPECTED_EXT:=.v816
+ML_DESCRIPTION := "Coq v8.16"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@/META.coq-fiat-parsers/g'
+
 endif
 endif
 endif
@@ -157,7 +172,7 @@ endif
 endif
 endif
 
-ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml
+ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml src/Common/Tactics/TransparentAbstract.v src/Common/Tactics/HintDbExtra.v
 
 ML_COMPATIBILITY_FILES := $(subst @ML4_OR_MLG@,$(ML4_OR_MLG),$(ML_COMPATIBILITY_FILES_PATTERN))
 
@@ -374,7 +389,7 @@ install-fiat install-fiat-core install-querystructures install-parsers install-p
 # This target is used to update the _CoqProject.in file.
 # Use -R, not -I for Bedrock, as it is Coq input, not OCaml input.
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-R Bedrock Bedrock'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.{ml4,mlg}" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES_PATTERN)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
+	(echo '@META@'; echo '-R src Fiat'; echo '-R Bedrock Bedrock'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.{ml4,mlg}" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES_PATTERN)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
 
 ifeq ($(IS_FAST),0)
 # see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))
@@ -382,6 +397,8 @@ $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_tactics.ml,$
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_plugin.$(ML4_OR_MLG),$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugin.$(ML4_OR_MLG),$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_tactics.ml,$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/TransparentAbstract.v,$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/HintDbExtra.v,$(EXPECTED_EXT)))
 endif
 
 
