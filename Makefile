@@ -55,90 +55,90 @@ ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around th
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 ML4_OR_MLG := ml4
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.5%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
 ML4_OR_MLG := ml4
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.6%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v86
 ML_DESCRIPTION := "Coq v8.6"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.7%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v87
 ML_DESCRIPTION := "Coq v8.7"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.8%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v88
 ML_DESCRIPTION := "Coq v8.8"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.9%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v89
 ML_DESCRIPTION := "Coq v8.9"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := ml4
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.10%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v810
 ML_DESCRIPTION := "Coq v8.10"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.11%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v811
 ML_DESCRIPTION := "Coq v8.11"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.12%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v812
 ML_DESCRIPTION := "Coq v8.12"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.13%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v813
 ML_DESCRIPTION := "Coq v8.13"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.14%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v814
 ML_DESCRIPTION := "Coq v8.14"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.15%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v815
 ML_DESCRIPTION := "Coq v8.15"
 OTHERFLAGS += -w "-notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@//g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@//g'
 else
 ifneq (,$(filter 8.16%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v816
 ML_DESCRIPTION := "Coq v8.16"
 OTHERFLAGS += -w "-notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@/META.coq-fiat-parsers/g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
 else
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
@@ -154,7 +154,7 @@ EXPECTED_EXT:=.v816
 ML_DESCRIPTION := "Coq v8.16"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
-EXTRA_PIPE_SED_FOR_COQPROJECT += | set 's/@META@/META.coq-fiat-parsers/g'
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
 
 endif
 endif
