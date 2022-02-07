@@ -2,6 +2,7 @@
 -R src Fiat
 -R Bedrock Bedrock
 -I src/Common/Tactics
+-I .
 Bedrock/Memory.v
 Bedrock/Nomega.v
 Bedrock/Word.v
