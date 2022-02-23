@@ -141,8 +141,6 @@ Section Specifications.
     : forall (monoid : Monoid T)
              (Source_Predicate : S -> Prop)
              (format : FormatM)
-             encode
-             (correctEncode : CorrectEncoder format encode)
              (decode : T -> CacheDecode -> option (S * T * CacheDecode))
              (decode_inv : CacheDecode -> Prop),
       (CorrectDecoder_id monoid Source_Predicate format decode decode_inv <->
