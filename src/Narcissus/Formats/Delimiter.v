@@ -23,7 +23,7 @@ Section Delimiter.
   Variable open : string.
   Variable close : string.
 
-  Variable format_A : A -> CacheFormat -> Comp (T * CacheFormat).
+  Variable format_A : FormatM A T.
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_cache_OK : cache_inv_Property A_cache_inv
                                            (fun P => forall b cd, P cd -> P (addD cd b)).
