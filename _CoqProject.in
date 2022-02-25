@@ -297,6 +297,7 @@ src/Narcissus/Formats/EnumOpt.v
 src/Narcissus/Formats/FixListOpt.v
 src/Narcissus/Formats/IPChecksum.v
 src/Narcissus/Formats/InternetChecksum.v
+src/Narcissus/Formats/Lexeme.v
 src/Narcissus/Formats/NatOpt.v
 src/Narcissus/Formats/Option.v
 src/Narcissus/Formats/Sequence.v
