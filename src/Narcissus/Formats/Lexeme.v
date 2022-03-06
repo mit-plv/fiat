@@ -1,9 +1,11 @@
 Require Import
+        Bedrock.Word
         Fiat.Narcissus.Common.Notations
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.EquivFormat
         Fiat.Narcissus.Formats.Base.FMapFormat
         Fiat.Narcissus.Formats.Base.SequenceFormat
+        Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.AsciiOpt
         Fiat.Narcissus.Formats.StringOpt
         Fiat.Narcissus.Formats.Empty
@@ -27,6 +29,30 @@ Section Lexeme.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {monoid : Monoid T}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
+
+  (* Some lemmas about cache noninterference of word and ascii decoders. Should
+  we move them somewhere else? *)
+  Lemma decode_word_cache_nonint sz t (w : word sz) t' cd1 cd1' cd2 :
+    decode_word t cd1 = Some (w, t', cd1') ->
+    exists cd2', decode_word t cd2 = Some (w, t', cd2').
+  Proof.
+    unfold decode_word. intros.
+    destruct decode_word'; simpl in *; injections; eauto.
+  Qed.
+
+  Lemma decode_ascii_cache_nonint t a t' cd1 cd1' cd2 :
+    decode_ascii t cd1 = Some (a, t', cd1') ->
+    exists cd2', decode_ascii t cd2 = Some (a, t', cd2').
+  Proof.
+    unfold decode_ascii. intros.
+    destruct decode_word as [ [[??]?] |] eqn:Hd; simpl in *; injections;
+      try discriminate.
+    eapply decode_word_cache_nonint in Hd.
+    destruct Hd as [? Hd].
+    rewrite Hd.
+    simpl. eauto.
+  Qed.
+
 
   Definition format_space : FormatM A T :=
     Compose_Format format_string
@@ -52,9 +78,12 @@ Section Lexeme.
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_cache_OK : cache_inv_Property A_cache_inv
                                            (fun P => forall b cd, P cd -> P (addD cd b)).
-  Variable A_decode_pf : CorrectDecoder monoid A_predicate A_predicate
-                                        eq format_A decode_A A_cache_inv
-                                        format_A.
+  Variable A_decode_pf : CorrectDecoder
+                           monoid
+                           A_predicate
+                           A_predicate
+                           eq format_A decode_A A_cache_inv format_A.
+
 
   (* Unlike lexeme in most parser combinator, we format whitespaces first. *)
   Definition format_lexeme : FormatM A T :=
@@ -63,6 +92,13 @@ Section Lexeme.
   Definition decode_lexeme (b : T) (cd : CacheDecode)
     : option (A * T * CacheDecode) :=
     let (b1, e1) := decode_space b cd in decode_A b1 e1.
+
+  Ltac t_Fix_eq :=
+    let Hext := fresh in
+    let cd := fresh in
+    intros ??? Hext; extensionality cd;
+    destruct Decode_w_Measure_lt; eauto;
+    destruct_conjs; simpl; rewrite Hext; eauto.
 
   (* This statement is similar to [CorrectDecoder], but with restriction on
   [ext]. We can certainly generalize [CorrectDecoder] the same way to, say,
@@ -103,7 +139,7 @@ Section Lexeme.
         injections.
         repeat esplit; eauto.
         unfold decode_space.
-        rewrite Init.Wf.Fix_eq by shelve.
+        rewrite Init.Wf.Fix_eq by t_Fix_eq.
         rewrite mempty_left.
         destruct (decode_ascii ext env') as [ [[??]?] |] eqn:Ha.
         - assert (is_space a = false) as Hs by eauto.
@@ -127,7 +163,7 @@ Section Lexeme.
         destruct_ex; split_and; subst.
         repeat esplit; eauto.
         unfold decode_space.
-        rewrite Init.Wf.Fix_eq by shelve.
+        rewrite Init.Wf.Fix_eq by t_Fix_eq.
         rewrite <- mappend_assoc.
         match goal with
         | H : decode_ascii _ _ = Some _ |- _ =>
@@ -150,7 +186,7 @@ Section Lexeme.
           rename H into Hs
       end.
       unfold decode_space in Hs.
-      rewrite Init.Wf.Fix_eq in Hs by shelve.
+      rewrite Init.Wf.Fix_eq in Hs by t_Fix_eq.
       destruct (decode_ascii x env') eqn:Ha. {
         destruct_conjs.
         pose proof Ha as Ha'.
@@ -200,28 +236,84 @@ Section Lexeme.
         eauto using Forall.
       }
     }
-
-    Unshelve.
-
-    all:
-      intros ??? Hext; extensionality cd;
-      destruct Decode_w_Measure_lt; eauto;
-      destruct_conjs; simpl; rewrite Hext; eauto.
   Qed.
 
-  (* [format_A] needs to produce a string that does not start with a
-  whitespace. *)
-  Definition format_lexeme_compatible :=
-    forall s env t xenv cd a t' cd' ext,
-      A_predicate s ->
-      format_A s env ∋ (t, xenv) ->
-      decode_ascii (mappend t ext) cd = Some (a, t', cd') ->
+  Definition no_head_space (t : T) :=
+    forall a cd t' cd',
+      decode_ascii t cd = Some (a, t', cd') ->
       is_space a = false.
 
+  Lemma decode_space_no_head_space : forall t cd t' cd',
+    decode_space t cd = (t', cd') ->
+    no_head_space t'.
+  Proof.
+    intros t.
+    eapply (well_founded_induction well_founded_lt_b) with (a:=t).
+    intros x IH cd ?? Hs.
+    unfold decode_space in Hs.
+    rewrite Init.Wf.Fix_eq in Hs by t_Fix_eq.
+    destruct (decode_ascii x cd) eqn:Ha. {
+      destruct_conjs.
+      pose proof Ha as Ha'.
+      eapply Decode_w_Measure_lt_eq in Ha.
+      destruct_conjs.
+      match goal with
+      | H : Decode_w_Measure_lt _ _ _ _ = _ |- _ =>
+          rewrite H in Hs
+      end.
+      destruct is_space eqn:Hi.
+      - simpl in Hs.
+        eapply IH in Hs; eauto.
+      - injections.
+        hnf. intros.
+        rewrite <- Hi. f_equal.
+        match goal with
+        | H : decode_ascii _ _ = _ |- _ =>
+            eapply decode_ascii_cache_nonint in H;
+            destruct H as [? H]; rewrite Ha' in H
+        end.
+        injections. eauto.
+    } {
+      pose proof Ha as Ha'.
+      eapply Decode_w_Measure_lt_eq' in Ha.
+      rewrite Ha in Hs. injections.
+      hnf. intros.
+      match goal with
+      | H : decode_ascii _ _ = _ |- _ =>
+          eapply decode_ascii_cache_nonint in H;
+          destruct H as [? H]; rewrite Ha' in H
+      end.
+      discriminate.
+    }
+  Qed.
+
+  (* A source [s] of [format_A] is compatible with the lexeme combinator if none
+  of its target monoid starts with whitespace. *)
+  Definition lexeme_source_compatible (s : A) :=
+    forall env t xenv ext,
+      format_A s env ∋ (t, xenv) ->
+      no_head_space (mappend t ext).
+
+  Definition lexeme_all_source_compatible :=
+    forall s, lexeme_source_compatible s.
+
+  (* [format_A] is compatible with the lexeme combinator if all its sources are
+  compatible when some of their target monoids do not start with whitespace. In
+  other words, no source produces some target monoids that start with
+  whitespaces and some target monoids that do not. *)
+  Definition lexeme_format_compatible :=
+    forall s env t xenv ext,
+      A_predicate s ->
+      format_A s env ∋ (t, xenv) ->
+      no_head_space (mappend t ext) ->
+      lexeme_source_compatible s.
+
   Theorem lexeme_decode_correct :
-    format_lexeme_compatible ->
-    CorrectDecoder monoid A_predicate A_predicate eq
-                   format_lexeme decode_lexeme A_cache_inv format_lexeme.
+    lexeme_format_compatible ->
+    CorrectDecoder monoid
+                   (fun s => A_predicate s /\ lexeme_source_compatible s)
+                   (fun s => A_predicate s /\ lexeme_source_compatible s)
+                   eq format_lexeme decode_lexeme A_cache_inv format_lexeme.
   Proof.
     intros Hc.
     unfold format_lexeme.
@@ -233,6 +325,7 @@ Section Lexeme.
       injections.
       unfold decode_lexeme.
       rewrite <- mappend_assoc.
+      unfold lexeme_source_compatible, no_head_space in *.
       match goal with
       | H : format_space _ _ ∋ _ |- _ =>
           eapply space_decode_correct in H; eauto;
@@ -249,9 +342,13 @@ Section Lexeme.
       eauto.
     } {
       unfold decode_lexeme in *.
-      destruct decode_space eqn:Hs.
-      eapply space_decode_correct in Hs; eauto.
-      destruct Hs; destruct_ex; destruct_conjs; subst.
+      destruct decode_space eqn:?.
+      match goal with
+      | H : decode_space _ _ = (?t, _) |- _ =>
+          assert (no_head_space t) by eauto using decode_space_no_head_space;
+          eapply space_decode_correct in H; eauto;
+          destruct H; destruct_ex; destruct_conjs; subst
+      end.
       match goal with
       | H : decode_A _ _ = _ |- _ =>
           eapply A_decode_pf in H; eauto;
@@ -266,5 +363,26 @@ Section Lexeme.
     }
   Qed.
 
+  Lemma lexeme_all_source_compatible_format_compatible :
+    lexeme_all_source_compatible ->
+    lexeme_format_compatible.
+  Proof.
+    easy.
+  Qed.
+
+  Theorem lexeme_decode_correct_all :
+    lexeme_all_source_compatible ->
+    CorrectDecoder monoid
+                   (fun s => A_predicate s)
+                   (fun s => A_predicate s)
+                   eq format_lexeme decode_lexeme A_cache_inv format_lexeme.
+  Proof.
+    intros.
+    eapply weaken_source_pred; cycle -1.
+    eapply strengthen_view_pred; cycle -1.
+    apply lexeme_decode_correct.
+    eauto using lexeme_all_source_compatible_format_compatible.
+    all : repeat (hnf; intros); destruct_conjs; eauto.
+  Qed.
 
 End Lexeme.
