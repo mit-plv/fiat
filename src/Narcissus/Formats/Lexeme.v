@@ -86,12 +86,14 @@ Section Lexeme.
 
 
   (* Unlike lexeme in most parser combinator, we format whitespaces first. *)
-  Definition format_lexeme : FormatM A T :=
-    format_space ++ format_A.
+  Definition format_lexeme (a : A) (ce : CacheFormat) : Comp (T * CacheFormat) :=
+    `(b1, _) <- format_space a ce;
+    `(b2, ce') <- format_A a ce;
+    ret (mappend b1 b2, ce').
 
   Definition decode_lexeme (b : T) (cd : CacheDecode)
     : option (A * T * CacheDecode) :=
-    let (b1, e1) := decode_space b cd in decode_A b1 e1.
+    let (b1, _) := decode_space b cd in decode_A b1 cd.
 
   Ltac t_Fix_eq :=
     let Hext := fresh in
@@ -319,7 +321,7 @@ Section Lexeme.
     unfold format_lexeme.
     rewrite <- CorrectDecoder_equiv_CorrectDecoder_id.
     split; intros. {
-      unfold sequence_Format, ComposeOpt.compose, Bind2 in *.
+      unfold Bind2 in *.
       computes_to_inv.
       destruct_conjs. simpl in *.
       injections.
@@ -330,7 +332,7 @@ Section Lexeme.
       | H : format_space _ _ ∋ _ |- _ =>
           eapply space_decode_correct in H; eauto;
           let H' := fresh in
-          destruct H as [? [H' [??]]]; rewrite H'
+          destruct H as [? [H' [_ _]]]; rewrite H'
       end.
       match goal with
       | H : format_A _ _ ∋ _ |- _ =>
