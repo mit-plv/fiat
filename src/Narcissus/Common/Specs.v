@@ -648,6 +648,27 @@ Add Parametric Morphism
     (cache : Cache)
     (monoid : Monoid T)
     (Source_Predicate : S -> Prop)
+    format
+    view
+    (decode : T -> CacheDecode -> option (V * T * CacheDecode))
+    (decode_inv : CacheDecode -> Prop)
+    view_format
+  : (fun View_Predicate =>
+       @CorrectDecoder S T cache V monoid Source_Predicate View_Predicate
+                                view format decode decode_inv view_format)
+    with signature (pointwise_relation _ impl ==> impl)
+      as strengthen_view_pred.
+Proof.
+  intros. hnf. intros.
+  eapply format_decode_correct_alt; eauto;
+    try reflexivity; try eapply EquivFormat_reflexive.
+Qed.
+
+Add Parametric Morphism
+    S T V
+    (cache : Cache)
+    (monoid : Monoid T)
+    (Source_Predicate : S -> Prop)
     (View_Predicate : V -> Prop)
     view
     (decode : T -> CacheDecode -> option (V * T * CacheDecode))
