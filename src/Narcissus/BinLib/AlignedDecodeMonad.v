@@ -339,42 +339,18 @@ Section AlignedDecodeM.
             (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
                                                                Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
     : forall {n m} (v : ByteBuffer.t (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
-      t' v2 0 cd = None ->
-      build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2)  ->
+      build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2) ->
+      t' v2 0 cd = None <->
       t' v m cd = None.
   Proof.
     intros.
-    apply build_aligned_ByteString_inj in H0; subst.
-    revert n v2 cd H; induction v1.
-    - simpl; intros; eauto.
+    apply build_aligned_ByteString_inj in H; subst.
+    revert n v2 cd; induction v1.
+    - easy.
     - simpl; intros.
       rewrite t'_OK.
-      eapply IHv1 in H.
-      simpl; rewrite H; reflexivity.
-  Qed.
-
-  Lemma proper_consumer_t_None' {C}
-        (t' : forall {numBytes}, AlignedDecodeM C numBytes)
-        (t'_OK : forall (numBytes_hd n0 : nat) (v0 : Vector.t char (S numBytes_hd)) (cd0 : CacheDecode),
-            @t' (S numBytes_hd) v0 (S n0) cd0 =
-            (Ifopt @t' numBytes_hd (Vector.tl v0) n0 cd0 as a0 Then
-                                                               Some (fst (fst a0), S (snd (fst a0)), snd a0) Else None))
-    : forall {n m} (v : ByteBuffer.t (m + n)) (v1 : Vector.t char m) (v2 : Vector.t char n) cd,
-      t' v m cd = None ->
-      build_aligned_ByteString v = build_aligned_ByteString (Vector.append v1 v2) ->
-      t' v2 0 cd = None.
-
-  Proof.
-    intros.
-    apply build_aligned_ByteString_inj in H0; subst.
-    revert n v2 cd H; induction v1.
-    - simpl; intros; eauto.
-    - simpl; intros.
-      rewrite t'_OK in H.
-      eapply IHv1.
-      simpl in *;
-        destruct (t' (n + n0) (Vector.append v1 v2) n cd)
-        as [ [ [? ?] ?] | ]; simpl in *; eauto; discriminate.
+      rewrite IHv1.
+      destruct t'; easy.
   Qed.
 
   Lemma proper_consumer_t_Some {C}
@@ -398,6 +374,102 @@ Section AlignedDecodeM.
       simpl; rewrite H; reflexivity.
   Qed.
 
+  Lemma Seq_DecodeMEquivAlignedDecodeM {A C : Type}
+        (A_decode : DecodeM (A * ByteString) ByteString)
+        (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
+        (t : A -> DecodeM (C * ByteString) ByteString)
+        (t' : A -> forall {numBytes}, AlignedDecodeM C numBytes)
+        (u : DecodeM (C * ByteString) ByteString)
+        (u' : forall {numBytes}, AlignedDecodeM C numBytes)
+        (* We can strengthen this by taking "equivalent" functions on buffer and
+        indices. However, it doesn't seem worth the effort as it complicates the
+        proof significantly. *)
+        (reset : bool)
+        (fcd : CacheDecode -> CacheDecode -> CacheDecode)
+    : DecodeMEquivAlignedDecodeM A_decode (@A_decode_aligned)
+      -> (forall a, DecodeMEquivAlignedDecodeM (t a) (@t' a))
+      -> (DecodeMEquivAlignedDecodeM u (@u'))
+      -> DecodeMEquivAlignedDecodeM
+           (fun (b : ByteString) (cd : CacheDecode) =>
+              match A_decode b cd with
+              | Some (a, b', cd') => t a (if reset then b else b') (fcd cd cd')
+              | None => u b cd
+              end)
+           (fun numBytes v idx cd =>
+              match A_decode_aligned v idx cd with
+              | Some (a, idx', cd') => t' a v (if reset then idx else idx') (fcd cd cd')
+              | None => u' v idx cd
+              end).
+  Proof.
+    intros Ha Ht Hu. split; [| split].
+    - intros.
+      rewrite (proj1 Ha).
+      destruct A_decode_aligned as [ [[??]?] |]; simpl.
+      2: eapply Hu; eauto.
+      destruct reset; apply Ht.
+    - intros ????? H.
+      destruct A_decode as [ [[??]?] |] eqn:Heq; simpl.
+      2: eapply Hu; eauto.
+      repeat
+        match goal with
+        | H : context [ DecodeMEquivAlignedDecodeM _ _ ], Heq : _ = Some _ |- _ =>
+            apply H in Heq
+        end.
+      destruct reset; lia.
+    - intros n v cd.
+      destruct A_decode as [ [[a b] cd'] |] eqn:Heq.
+      2: eapply Ha in Heq; rewrite Heq; eapply Hu; eauto.
+
+      assert (numBytes b <= n)%nat as L. {
+        eapply (proj1 (proj2 Ha)) in Heq.
+        eapply length_ByteString_le_numBytes in Heq; eauto.
+      }
+
+      eapply Ha in Heq.
+      destruct Heq as [Heq [v' Hv]].
+      rewrite Heq.
+      destruct reset; try eapply Ht.
+      rewrite Hv.
+
+      destruct (build_aligned_ByteString_split' _ _ _ Hv) as [vb Hb].
+      assert (numBytes b = n - (n - numBytes b)) as Hnb by lia.
+      destruct Hnb.
+      rewrite Hb in Hv at 2.
+      rewrite <- build_aligned_ByteString_append in Hv.
+
+      assert (n - numBytes b + numBytes b = n) as Hn by lia.
+      revert dependent v. revert v'. revert Hn.
+      generalize (n - numBytes b). intros m []. intros.
+
+      split.
+      + rewrite Hb at 1.
+        rewrite <- proper_consumer_t_None; eauto; try eapply Ht.
+      + intros ??? H.
+
+        assert (numBytes bs' <= numBytes b)%nat. {
+          apply Ht in H.
+          eauto using length_ByteString_le_numBytes.
+        }
+
+        rewrite Hb in H.
+        apply Ht in H. destruct H as [H [ v'' Hvb ]].
+        eapply proper_consumer_t_Some in H; eauto; try apply Ht.
+        rewrite H.
+        rewrite <- Nat.add_sub_assoc by eauto.
+        split; eauto.
+        exists (Vector.append v' v'').
+        rewrite !build_aligned_ByteString_append.
+        rewrite <- ByteString_enqueue_ByteString_assoc.
+        congruence.
+  Qed.
+
+  Lemma AlignedDecode_Throw {A}
+    : DecodeMEquivAlignedDecodeM (fun (_ : ByteString) (_ : CacheDecode) => None)
+                                 (fun sz : nat => ThrowAlignedDecodeM (A := A)).
+  Proof.
+    unfold DecodeMEquivAlignedDecodeM; intuition; try discriminate.
+  Qed.
+
   Lemma Bind_DecodeMEquivAlignedDecodeM {A C : Type}
         (A_decode : DecodeM (A * ByteString) ByteString)
         (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
@@ -410,172 +482,17 @@ Section AlignedDecodeM.
               `(a, bs, cd') <- A_decode b c; t a bs cd')
            (fun numBytes => BindAlignedDecodeM A_decode_aligned (fun a => @t' a numBytes)).
   Proof.
-    unfold DecodeMEquivAlignedDecodeM; intros; intuition.
-    - unfold BindAlignedDecodeM.
-      rewrite H1.
-      destruct (A_decode_aligned numBytes_hd (Vector.tl v) n cd) as [ [ [? ?] ?] | ]; simpl.
-      + specialize (H0 a); intuition.
-      + reflexivity.
-    - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
-      specialize (H0 x); intuition.
-      eapply H in H4.
-      symmetry in H5; eapply H0 in H5; lia.
-    - destruct (A_decode (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ?;
-                                                                                     simpl in *; try discriminate.
-      assert (numBytes b <= n)%nat as nb_le_n.
-      { eapply H in Heqo.
-        unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          lia. }
-      unfold BindAlignedDecodeM.
-      apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
-      rewrite H4; simpl; eauto.
-      specialize (H0 a); intuition.
-      generalize (build_aligned_ByteString_split' _ _ _ H5); intros; destruct_ex.
-      rewrite H7 in *.
-      apply H8 in H2.
-      assert ((n - (n - numBytes b)) = numBytes b).
-      {rewrite sub_plus; try lia.
-       rewrite H7; auto.
-      }
-      pose proof (fun v => proper_consumer_t_None (m := n - numBytes b) (t' a) H6 v x _ _ H2).
-      assert (forall v0 : ByteBuffer.t n,
-                 build_aligned_ByteString v0 = build_aligned_ByteString (Vector.append x x0) ->
-                 t' a n v0 (n - numBytes b) c = None).
-      { revert H10; clear; intro.
-        assert (n = n - numBytes b + (n - (n - numBytes b))) by lia.
-        intros.
-        specialize (H10 (eq_rect _ _ v0 _ H)).
-        destruct H.
-        eapply H10.
-        apply H0.
-      }
-      replace (n - numBytes (build_aligned_ByteString x0)) with
-          (n - numBytes b) by
-          (unfold numBytes at 2; simpl; clear; lia).
-      apply H11.
-      rewrite H5.
-      rewrite build_aligned_ByteString_append; f_equal; assumption.
-      unfold BindAlignedDecodeM; apply H3 in Heqo; rewrite Heqo; reflexivity.
-    - unfold BindAlignedDecodeM in H2.
-      destruct (A_decode (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ? ;
-        simpl in *; try eauto.
-      assert (numBytes b <= n)%nat as nb_le_n.
-      { eapply H in Heqo.
-        unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          lia. }
-      apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
-      rewrite H4 in H2; simpl in H2; eauto.
-      specialize (H0 a); intuition.
-      generalize (build_aligned_ByteString_split' _ _ _ H5); intros; destruct_ex.
-      rewrite H7 in *.
-      apply H8.
-      assert ((n - (n - numBytes b)) = numBytes b).
-      {rewrite sub_plus; try lia.
-       rewrite H7; auto.
-      }
-      assert (n = n - numBytes b + (n - (n - numBytes b))) by lia.
-      eapply proper_consumer_t_None' with (v1 := x) (v0 := (eq_rect _ _ v _ H10)); eauto.
-      revert H2; clear.
-      destruct H10; simpl; intros.
-      rewrite <- H2; f_equal; lia.
-      revert H5 H7; clear; destruct H10; simpl; intros.
-      rewrite H5, build_aligned_ByteString_append; f_equal; assumption.
-    - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
-      assert (numBytes x0 <= n)%nat as nb_le_n.
-      { eapply H in H4.
-        unfold build_aligned_ByteString, length_ByteString in H4; simpl in H4;
-          lia. }
-      assert (numBytes bs' <= numBytes x0)%nat as nbs_le_x0.
-      { symmetry in H5.
-        eapply H0 in H5.
-        eapply H3 in H4; intuition; destruct_ex.
-        generalize (build_aligned_ByteString_split' _ _ _ H4); intros; destruct_ex.
-        rewrite H6 in H5.
-        unfold length_ByteString in H5; simpl in H5.
-        replace (n - (n - numBytes x0)) with (numBytes x0) in H5
-          by (revert nb_le_n; clear; intro; lia).
-        lia. }
-      assert (numBytes bs' <= n)%nat as nbs_le_n.
-      { etransitivity.
-        apply nbs_le_x0.
-        apply nb_le_n.
-      }
-      eapply H3 in H4.
-      intuition.
-      unfold BindAlignedDecodeM; rewrite H2; simpl; destruct_ex;
-        intuition.
-      symmetry in H5.
-      specialize (H0 x); intuition.
-      generalize (build_aligned_ByteString_split' _ _ _ H4); intros; destruct_ex.
-      rewrite H7 in *|-*.
-      eapply H8 in H5; intuition.
-      unfold numBytes at 1; simpl.
-      destruct_ex; intuition.
-      assert (n = n - numBytes x0 + (n - (n - numBytes x0))) by lia.
-      pose proof (proper_consumer_t_Some _ H6 (eq_rect _ _ v _ H10) x2 x3 _ _ _ _ H9).
-      destruct H10.
-      simpl in H11.
-      assert (n >= numBytes x0)%nat by
-          (rewrite H7; lia).
-      replace (n - (n - numBytes x0)) with (numBytes x0) by lia.
-      rewrite H11.
-      f_equal; f_equal; f_equal.
-      assert (numBytes x0 >= numBytes bs')%nat.
-      rewrite H7; lia.
-      lia.
-      rewrite H4.
-      rewrite build_aligned_ByteString_append; f_equal; eauto.
-    - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
-      assert (numBytes x0 <= n)%nat as nb_le_n.
-      { eapply H in H4.
-        unfold build_aligned_ByteString, length_ByteString in H4; simpl in H4;
-          lia. }
-      assert (numBytes bs' <= n)%nat as nbs_le_n.
-      { symmetry in H5.
-        eapply H0 in H5.
-        eapply H3 in H4; intuition; destruct_ex.
-        generalize (build_aligned_ByteString_split' _ _ _ H4); intros; destruct_ex.
-        etransitivity.
-        2: apply nb_le_n.
-        rewrite H6 in H5.
-        unfold length_ByteString in H5; simpl in H5.
-        replace (n - (n - numBytes x0)) with (numBytes x0) in H5
-          by (revert nb_le_n; clear; intro; lia).
-        lia. }
-      eapply H3 in H4; intuition; destruct_ex.
-      setoid_rewrite H4.
-      eapply build_aligned_ByteString_split' in H4; destruct_ex.
-      rewrite H4 in *.
-      symmetry in H5.
-      eapply H0 in H5; intuition; destruct_ex.
-      rewrite H5 in H4.
-      assert ((n - numBytes x0 + (n - (n - numBytes x0) - numBytes bs')) =
-              n - numBytes bs').
-      { assert (n >= numBytes x0)%nat by
-            (rewrite H4; rewrite H5 in nb_le_n; lia).
-        replace (n - (n - numBytes x0)) with (numBytes x0).
-        assert (numBytes x0 >= numBytes bs')%nat.
-        { rewrite H4.
-          generalize (build_aligned_ByteString_split' _ _ _ H5); intros; destruct_ex.
-          replace (ByteString_enqueue_ByteString (build_aligned_ByteString x4) bs') with
-              (build_aligned_ByteString (Vector.append x4 x5)).
-          generalize x4 x5 H8; clear.
-          generalize (n - (n - numBytes x0) - numBytes bs').
-          intro.
-          generalize (n - (n - numBytes x0) - n0); intros.
-          rewrite H8.
-          unfold numBytes; simpl; lia.
-          rewrite build_aligned_ByteString_append; f_equal; eauto.
-        }
-        lia.
-        lia.
-      }
-      generalize H7 H4; clear; intros.
-      rewrite <- H7.
-      eexists (Vector.append x2 x4).
-      rewrite build_aligned_ByteString_append.
-      rewrite <- ByteString_enqueue_ByteString_assoc.
-      rewrite <- H4; reflexivity.
+    intros.
+    eapply DecodeMEquivAlignedDecodeM_trans.
+    eapply Seq_DecodeMEquivAlignedDecodeM with
+      (reset := false)
+      (fcd := fun _ cd' => cd')
+      (u := fun _ _ => None)
+      (u' := fun _ _ _ _ => None); eauto using AlignedDecode_Throw.
+    reflexivity.
+    intros. hnf. intros.
+    unfold BindAlignedDecodeM.
+    destruct A_decode_aligned; simpl; intuition eauto.
   Qed.
 
   Lemma Bind_Duplicate_DecodeMEquivAlignedDecodeM {A C : Type}
@@ -590,69 +507,17 @@ Section AlignedDecodeM.
               `(a, bs, cd') <- A_decode b c; t a b cd')
            (fun numBytes => BindResetAlignedDecodeM A_decode_aligned (fun a => @t' a numBytes)).
   Proof.
-    unfold DecodeMEquivAlignedDecodeM; intros; intuition.
-    - unfold BindResetAlignedDecodeM.
-      rewrite H1.
-      destruct (A_decode_aligned numBytes_hd (Vector.tl v) n cd) as [ [ [? ?] ?] | ]; simpl.
-      + specialize (H0 a); intuition.
-      + reflexivity.
-    - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
-      specialize (H0 x); intuition.
-      eapply H in H4.
-      symmetry in H5; eapply H0 in H5; lia.
-    - destruct (A_decode (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ?;
-                                                                                     simpl in *; try discriminate.
-      assert (numBytes b <= n)%nat as nb_le_n.
-      { eapply H in Heqo.
-        unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          lia. }
-      unfold BindResetAlignedDecodeM.
-      apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
-      rewrite H4; simpl; eauto.
-      specialize (H0 a); intuition.
-      generalize (build_aligned_ByteString_split' _ _ _ H5); intros; destruct_ex.
-      rewrite H7 in *.
-      apply H8 in H2.
-      assert ((n - (n - numBytes b)) = numBytes b).
-      {rewrite sub_plus; try lia.
-       rewrite H7; auto.
-      }
-      assumption.
-      unfold BindResetAlignedDecodeM; apply H3 in Heqo; rewrite Heqo; reflexivity.
-    - unfold BindResetAlignedDecodeM in H2.
-      destruct (A_decode (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ? ;
-        simpl in *; try eauto.
-      assert (numBytes b <= n)%nat as nb_le_n.
-      { eapply H in Heqo.
-        unfold build_aligned_ByteString, length_ByteString in Heqo; simpl in Heqo;
-          lia. }
-      apply H3 in Heqo; destruct_ex; intuition; subst; destruct_ex.
-      rewrite H4 in H2; simpl in H2; eauto.
-      specialize (H0 a); intuition.
-      generalize (build_aligned_ByteString_split' _ _ _ H5); intros; destruct_ex.
-      rewrite H7 in *.
-      apply H8.
-      assumption.
-    - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
-      assert (numBytes x0 <= n)%nat as nb_le_n.
-      { eapply H in H4.
-        unfold build_aligned_ByteString, length_ByteString in H4; simpl in H4;
-          lia. }
-      eapply H3 in H4.
-      intuition.
-      unfold BindResetAlignedDecodeM; rewrite H2; simpl; destruct_ex;
-        intuition.
-      symmetry in H5.
-      specialize (H0 x); intuition.
-      eapply H8 in H5; intuition.
-    - eapply DecodeBindOpt2_inv in H2; destruct_ex; intuition.
-      eapply H3 in H4; intuition; destruct_ex.
-      setoid_rewrite H4.
-      symmetry in H5.
-      eapply H0 in H5; intuition; destruct_ex.
-      rewrite H5 in H4.
-      rewrite <- H4.
-      eauto.
+    intros.
+    eapply DecodeMEquivAlignedDecodeM_trans.
+    eapply Seq_DecodeMEquivAlignedDecodeM with
+      (reset := true)
+      (fcd := fun _ cd' => cd')
+      (u := fun _ _ => None)
+      (u' := fun _ _ _ _ => None); eauto using AlignedDecode_Throw.
+    reflexivity.
+    intros. hnf. intros.
+    unfold BindResetAlignedDecodeM.
+    destruct A_decode_aligned; simpl; intuition eauto.
   Qed.
 
   Lemma AlignedDecode_assoc {A B C : Type}
@@ -676,13 +541,6 @@ Section AlignedDecodeM.
       intros; simpl; try reflexivity.
     simpl; destruct (decode_A b cd) as [ [ [? ?] ?] | ]; simpl; eauto.
     destruct (decode_B a b0 c) as [ [ [? ?] ?] | ]; simpl; eauto.
-  Qed.
-
-  Lemma AlignedDecode_Throw {A}
-    : DecodeMEquivAlignedDecodeM (fun (_ : ByteString) (_ : CacheDecode) => None)
-                                 (fun sz : nat => ThrowAlignedDecodeM (A := A)).
-  Proof.
-    unfold DecodeMEquivAlignedDecodeM; intuition; try discriminate.
   Qed.
 
   Lemma AlignedDecode_ifb {A : Type}

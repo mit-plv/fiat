@@ -30,6 +30,16 @@ Record ByteString :=
 
 Definition length_ByteString (bs : ByteString) := padding bs + 8 * numBytes bs.
 
+Lemma length_ByteString_le_numBytes b b' :
+  (length_ByteString b <= length_ByteString b' ->
+   numBytes b <= numBytes b')%nat.
+Proof.
+  unfold length_ByteString.
+  pose proof (paddingOK b).
+  pose proof (paddingOK b').
+  lia.
+Qed.
+
 Definition ByteString_enqueue_full_word
            (b : bool)
            (bs : ByteString)
