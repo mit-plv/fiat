@@ -80,9 +80,12 @@ Section recursive_descent_parser.
       : production_carrierT -> String -> nat -> nat -> list nat }.
 
   Class boolean_parser_dataT :=
-    { predata :> parser_computational_predataT;
-      split_data :> split_dataT }.
-
+    { predata : parser_computational_predataT;
+      split_data : split_dataT }.
+  (* Use :> and remove the four following lines,
+     once Coq 8.16 is the minimum required version. *)
+  Global Existing Instance predata.
+  Global Existing Instance split_data.
   Global Coercion predata : boolean_parser_dataT >-> parser_computational_predataT.
   Global Coercion split_data : boolean_parser_dataT >-> split_dataT.
 End recursive_descent_parser.
