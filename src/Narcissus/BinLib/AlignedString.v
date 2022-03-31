@@ -78,6 +78,23 @@ Section AlignedString.
   (* Definition AlignedEncodeString *)
   (*   : forall sz, AlignedEncodeM (S := string) sz := AlignedEncodeString'. *)
 
+  Definition AlignedDecodeAscii {m}
+    : AlignedDecodeM ascii m :=
+    (BindAlignedDecodeM GetCurrentByte
+                        (fun c => ReturnAlignedDecodeM
+                                  (ascii_of_N (wordToN c)))).
+
+  Lemma AlignedDecodeAsciiM'
+      : DecodeMEquivAlignedDecodeM
+          decode_ascii
+          (fun numBytes => AlignedDecodeAscii).
+  Proof.
+    unfold AlignedDecodeAscii, decode_ascii.
+    eapply Bind_DecodeMEquivAlignedDecodeM; intros.
+    eapply AlignedDecodeCharM.
+    eapply Return_DecodeMEquivAlignedDecodeM.
+  Qed.
+
   (* TODO: the aligned encoder and decoder for string reduce to those for list
   at the moment. We can (and should) write a more optimized (fused) version
   later and show they are equivalent. *)
@@ -209,57 +226,51 @@ Section AlignedString.
     apply (projT2 (CorrectAlignedEncoderForFormatStringTerm _)).
   Qed.
 
-  Fixpoint StringTermAlignedDecodeM {m}
-           (term_char : word 8)
-           (n : nat)
+  Definition StringTermAlignedDecodeM {m}
+           (term_char : ascii)
     : AlignedDecodeM string m :=
-    match n with
-    | 0 => ThrowAlignedDecodeM
-    | S n' => BindAlignedDecodeM GetCurrentByte
-                                 (fun c => if (weqb c term_char)
-                                           then ReturnAlignedDecodeM EmptyString
-                                           else BindAlignedDecodeM (StringTermAlignedDecodeM term_char n')
-                                                                   (fun s => ReturnAlignedDecodeM (String (ascii_of_N (wordToN c)) s)))
-    end%AlignedDecodeM%list.
+    fun v idx cd =>
+    Nat.iter (m - idx)
+             (fun rec =>
+                BindAlignedDecodeM
+                  AlignedDecodeAscii
+                  (fun c => If (ascii_dec c term_char)
+                          Then ReturnAlignedDecodeM EmptyString
+                          Else BindAlignedDecodeM
+                               rec
+                               (fun s => ReturnAlignedDecodeM
+                                         (String c s))))
+             ThrowAlignedDecodeM v idx cd.
 
   Lemma AlignedDecodeStringTermCharM {C : Type}
-        (term_word : word 8)
         (term_char : ascii)
     : forall (t : string -> DecodeM (C * _) ByteString)
              (t' : string -> forall {numBytes}, AlignedDecodeM C numBytes),
-      ascii_of_N (wordToN term_word) = term_char ->
       (forall b, DecodeMEquivAlignedDecodeM (t b) (@t' b))
       -> DecodeMEquivAlignedDecodeM
            (fun v cd => `(l, bs, cd') <- decode_string_with_term_char term_char v cd;
                           t l bs cd')
-           (fun numBytes => l <- @StringTermAlignedDecodeM numBytes term_word numBytes;
+           (fun numBytes => l <- @StringTermAlignedDecodeM numBytes term_char;
            t' l)%AlignedDecodeM%list.
   Proof.
     intros.
-    (* unfold DecodeMEquivAlignedDecodeM; intuition.
-    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
-    2: reflexivity.
-    2: apply AlignedDecodeMEquiv_sym; etransitivity; [apply ReturnAlignedDecodeM_LeftUnit;
-                                                      reflexivity | reflexivity ].
-    eauto.
-    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
-    2: set_evars; erewrite !DecodeBindOpt2_assoc; subst_evars; higher_order_reflexivity.
-    2: apply AlignedDecodeMEquiv_sym; etransitivity; [apply BindAlignedDecodeM_assoc;
-                                                      reflexivity | higher_order_reflexivity ].
-    simpl.
-    eapply Bind_DecodeMEquivAlignedDecodeM; intros.
-    eauto.
-    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
-    2: set_evars; erewrite !DecodeBindOpt2_assoc; subst_evars; higher_order_reflexivity.
-    2: apply AlignedDecodeMEquiv_sym; etransitivity; [apply BindAlignedDecodeM_assoc;
-                                                      reflexivity | higher_order_reflexivity ].
-    simpl.
-    eapply IHn; eauto.
-    intros.
-    eapply DecodeMEquivAlignedDecodeM_trans; simpl; intros.
-    2: higher_order_reflexivity.
-    2: apply AlignedDecodeMEquiv_sym; etransitivity; [eapply ReturnAlignedDecodeM_LeftUnit | higher_order_reflexivity].
-    eapply H0. *)
-  Admitted.
+    eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
+    unfold decode_string_with_term_char, StringTermAlignedDecodeM.
+
+    eapply AlignedDecode_iter_easy; intros.
+
+    eapply Bind_DecodeMEquivAlignedDecodeM_S; intros. {
+      unfold AlignedDecodeAscii, GetCurrentByte, BindAlignedDecodeM in *.
+      destruct nth_opt eqn:?; simpl in *; injections; try discriminate.
+      eauto using nth_opt_some_lt.
+    }
+    DecodeMEquivAlignedDecodeM_conv.
+    eapply AlignedDecodeAsciiM'.
+    injections.
+    eapply AlignedDecode_ifb_both'.
+    eapply Return_DecodeMEquivAlignedDecodeM'.
+    eapply Bind_DecodeMEquivAlignedDecodeM'; intros; eauto.
+    eapply Return_DecodeMEquivAlignedDecodeM.
+  Qed.
 
 End AlignedString.
