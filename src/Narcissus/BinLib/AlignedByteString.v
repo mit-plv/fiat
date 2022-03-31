@@ -444,6 +444,14 @@ Definition build_aligned_ByteString
   abstract lia.
 Defined.
 
+Lemma build_aligned_ByteString_length n (v : ByteBuffer.t n) :
+  length_ByteString (build_aligned_ByteString v) / 8 = n.
+Proof.
+  unfold length_ByteString.
+  rewrite Nat.mul_comm.
+  apply Nat.div_mul. lia.
+Qed.
+
 Lemma build_aligned_ByteString_append
       {numBytes'}
   : forall (v' : ByteBuffer.t numBytes') {numBytes} (v : ByteBuffer.t numBytes),
