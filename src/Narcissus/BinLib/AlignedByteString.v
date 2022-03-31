@@ -1375,6 +1375,13 @@ Proof.
     reflexivity.
 Defined.
 
+Instance ByteString_QueueMonoidOptFix
+  : QueueMonoidOptFix ByteString_QueueMonoidOpt :=
+  {
+    B_measure_fix := 1;
+    B_measure_fix_consistent := ltac:(eauto)
+  }.
+
 Lemma DecodeBindOpt_assoc:
   forall (A B C D : Type)
          (a_opt : option (A * B))

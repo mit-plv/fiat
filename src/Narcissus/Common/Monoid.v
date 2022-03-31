@@ -106,3 +106,18 @@ Class RichMonoidOpt (bin : Type) (trans : Monoid bin) :=
   {
     mappend_inj : forall (t1 t2 t : bin), mappend t1 t = mappend t2 t -> t1 = t2
   }.
+
+Class QueueMonoidOptFix (bin : Type) (trans : Monoid bin) (B : Type)
+      `(@QueueMonoidOpt bin trans B) :=
+  { B_measure_fix : nat;
+    B_measure_fix_consistent : forall b, B_measure b = B_measure_fix
+  }.
+
+Lemma B_measure_fix_gt_0 {bin} `{Monoid bin} {B} `{QueueMonoidOptFix bin B} :
+  (* [B] needs to be nonempty *)
+  B -> 0 < B_measure_fix.
+Proof.
+  intros b.
+  rewrite <- (B_measure_fix_consistent b).
+  apply B_measure_gt_0.
+Qed.

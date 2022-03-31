@@ -15,6 +15,7 @@ Section Word.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {monoid : Monoid T}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
+  Context {monoidfix : QueueMonoidOptFix monoidUnit}.
 
   Fixpoint encode_word' (s : nat) (w : word s) (b' : T) : T :=
     match w with
@@ -268,6 +269,31 @@ Section Word.
       simpl in *; try (subst; discriminate).
     injections.
     unfold lt_B in *.
+    lia.
+  Qed.
+
+  (* We can also prove one for [decode_word]. *)
+  Lemma format_word_measure
+    : forall (a : word sz) ce b ce',
+      format_word a ce ∋ (b, ce') ->
+      bin_measure b = sz * B_measure_fix.
+  Proof.
+    unfold format_word.
+    intros.
+    computes_to_inv. injections.
+    induction a; simpl.
+    apply measure_mempty.
+
+    rewrite measure_enqueue.
+    rewrite IHa.
+    rewrite B_measure_fix_consistent.
+    lia.
+  Qed.
+
+  Lemma word_B_measure_gt_0
+    : (0 < sz -> 0 < sz * B_measure_fix)%nat.
+  Proof.
+    assert (0 < B_measure_fix)%nat by eauto using (B_measure_fix_gt_0 true).
     lia.
   Qed.
 

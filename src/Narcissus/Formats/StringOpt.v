@@ -3,6 +3,7 @@ Require Import
         Fiat.Narcissus.Formats.AsciiOpt.
 Require Import
         Bedrock.Word
+        Coq.Arith.Arith
         Coq.Strings.Ascii
         Coq.Strings.String.
 
@@ -14,6 +15,7 @@ Section String.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
+  Context {monoidfix : QueueMonoidOptFix monoidUnit}.
 
   Fixpoint format_string (xs : string) (ce : CacheFormat)
     : Comp (B * CacheFormat) :=
@@ -103,18 +105,17 @@ Section String.
   Definition decode_string_with_term_char
            (term_char : Ascii.ascii)
            (b : B) (cd : CacheDecode)
-    : option (string * B * CacheDecode).
-    refine (Fix well_founded_lt_b
-           (fun _ => CacheDecode -> option (string * B * CacheDecode))
-      (fun b rec cd =>
-         (`(a, b1, e1) <- Decode_w_Measure_lt decode_ascii b cd _;
-      If ascii_dec a term_char Then
-        Some (EmptyString, proj1_sig b1, e1)
-      Else
-      (`(xs, b2, e2) <- rec _ (proj2_sig b1) e1;
-      Some (String a xs, b2, e2)))) b cd).
-    exact ascii_decode_lt.
-  Defined.
+    : option (string * B * CacheDecode) :=
+    Nat.iter (bin_measure b / ascii_B_measure)
+             (fun rec b cd =>
+                `(a, b1, e1) <- decode_ascii b cd;
+                If ascii_dec a term_char Then
+                  Some (EmptyString, b1, e1)
+                Else
+                  (`(xs, b2, e2) <- rec b1 e1;
+                   Some (String a xs, b2, e2)))
+             (fun _ _ => None)
+             b cd.
 
   Definition format_string_with_term_char
              (term_char : Ascii.ascii)
@@ -149,19 +150,17 @@ Section String.
         eapply Ascii_decode_correct in Penc; eauto.
         unfold id in *.
         destruct_ex; split_and.
-        eexists _, _; rewrite Init.Wf.Fix_eq.
-        eapply Decode_w_Measure_lt_eq in H0; destruct_ex.
+        pose proof H1.
+        apply format_ascii_measure in H1.
+        rewrite mappend_measure, H1.
+        rewrite ascii_B_measure_div_add.
+        eexists _, _. simpl.
         rewrite H0; simpl.
         subst; destruct (ascii_dec x x); simpl; try congruence.
         intuition eauto.
         unfold format_string_with_term_char; simpl; unfold Bind2;
           repeat computes_to_econstructor; eauto.
         simpl;rewrite mempty_right; eauto.
-        simpl.
-        intros.
-        repeat (apply functional_extensionality; intros; f_equal).
-        rewrite H3.
-        eauto.
       }
       { intros.
         unfold format_string_with_term_char in Penc;
@@ -177,9 +176,13 @@ Section String.
       destruct Penc'; intuition.
       subst.
       destruct_ex; split_and.
-      eexists _, _; rewrite Init.Wf.Fix_eq.
-      eapply Decode_w_Measure_lt_eq in H; destruct_ex.
-      rewrite <- mappend_assoc, H; simpl.
+      pose proof H3.
+      apply format_ascii_measure in H3.
+      rewrite <- mappend_assoc.
+      rewrite mappend_measure. rewrite H3.
+      rewrite ascii_B_measure_div_add.
+      eexists _, _. simpl.
+      rewrite H; simpl.
       destruct (ascii_dec x term_char); simpl.
       - elimtype False.
         subst; eapply (Ppred "")%string; simpl; reflexivity.
@@ -191,8 +194,6 @@ Section String.
         subst; computes_to_econstructor; eauto.
         subst; eauto.
         eauto.
-      - intros; repeat (apply functional_extensionality; intros; f_equal).
-        rewrite H7; reflexivity.
       - unfold id in *; unfold not; intros; eapply (Ppred (String a s1) s2); simpl; congruence.
       - intuition eauto.
       - intuition eauto.
@@ -201,43 +202,39 @@ Section String.
     { unfold decode_string_with_term_char, format_string_with_term_char;
         intros env env' xenv' data bin;
         revert env env' xenv' data.
-      eapply (@well_founded_induction _ _ well_founded_lt_b) with
-      (a := bin); intros.
-      rewrite Coq.Init.Wf.Fix_eq in H2; auto; simpl.
-      apply DecodeBindOpt2_inv in H2;
-        destruct H2 as [? [? [? [? ?] ] ] ]; injections; subst.
-      destruct (decode_ascii x env') as [ [ [? ?] ?] | ] eqn: ? .
-      - destruct (Decode_w_Measure_lt_eq _ _ _ ascii_decode_lt Heqo).
-        rewrite H4 in H2; injections.
-        destruct (ascii_dec x0 term_char) eqn: ?; simpl in H3.
-        + injections.
-          eapply (proj2 (Ascii_decode_correct P_OK)) in Heqo; eauto;
-            destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst.
-          simpl.
-          eexists _, _; intuition.
-          computes_to_econstructor; eauto.
-          computes_to_econstructor; eauto.
-          simpl; rewrite mempty_right; eauto.
-          destruct s1; simpl in *; discriminate.
-          eauto.
-        + eapply (proj2 (Ascii_decode_correct P_OK)) in Heqo; eauto;
-            destruct Heqo as [? [? ?] ]; destruct_ex.
-          symmetry in H3; apply DecodeBindOpt2_inv in H3;
-            destruct H3 as [? [? [? [? ?] ] ] ]; injections; subst.
-          eapply H in H3; intuition.
-          destruct_ex; intuition; subst; eauto.
-          eexists _, _; intuition.
-          simpl.
-          computes_to_econstructor; eauto.
-          computes_to_econstructor; eauto.
-          simpl; rewrite mappend_assoc; eauto.
-          unfold id in *; destruct s1; simpl in *; injections; intros; congruence.
-          simpl; eauto.
-          simpl; eauto.
-      - eapply Decode_w_Measure_lt_eq' in Heqo; rewrite Heqo in H2;
-          discriminate.
-      - intros; repeat (apply functional_extensionality; intros; f_equal).
-        rewrite H3; reflexivity.
+      remember (bin_measure bin / ascii_B_measure).
+      revert dependent bin.
+      induction n; intros. easy.
+      simpl in H1.
+      apply DecodeBindOpt2_inv in H1;
+        destruct H1 as [? [? [? [? ?] ] ] ]; injections; subst.
+      eapply (proj2 (Ascii_decode_correct P_OK)) in H1; eauto;
+        destruct H1 as [? [? ?] ]; destruct_ex; destruct_conjs.
+      destruct (ascii_dec x term_char) eqn: ?; simpl in H2.
+      + injections.
+        intuition; subst.
+        eexists _, _; intuition.
+        computes_to_econstructor; eauto.
+        computes_to_econstructor; eauto.
+        simpl; rewrite mempty_right; eauto.
+        destruct s1; simpl in *; discriminate.
+        eauto.
+      + symmetry in H2; apply DecodeBindOpt2_inv in H2;
+          destruct H2 as [? [? [? [? ?] ] ] ]; injections; subst.
+        eapply IHn in H2; intuition.
+        destruct_ex; intuition; subst; eauto.
+        eexists _, _; intuition eauto.
+        simpl.
+        computes_to_econstructor; eauto.
+        computes_to_econstructor; eauto.
+        simpl; rewrite mappend_assoc; eauto.
+        unfold id in *; destruct s1; simpl in *; injections; intros; congruence.
+        2: eauto.
+        eapply format_ascii_measure in H3.
+        rewrite mappend_measure in Heqn.
+        rewrite H3 in Heqn.
+        rewrite ascii_B_measure_div_add in Heqn.
+        lia.
     }
   Qed.
 

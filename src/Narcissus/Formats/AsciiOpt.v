@@ -16,6 +16,7 @@ Section Ascii.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
+  Context {monoidfix : QueueMonoidOptFix monoidUnit}.
 
   Definition format_ascii (c : ascii) (ce : CacheFormat)
     : Comp (B * CacheFormat) :=
@@ -78,6 +79,38 @@ Section Ascii.
     destruct (decode_word b cd) as [ [ [? ? ] ?] | ] eqn: decode_b; simpl in H;
       try discriminate; injections.
     eauto using decode_word_le.
+  Qed.
+
+  Definition ascii_B_measure := (8 * B_measure_fix).
+
+  Lemma format_ascii_measure
+    : forall (a : ascii) ce b ce',
+      format_ascii a ce ∋ (b, ce') ->
+      bin_measure b = ascii_B_measure.
+  Proof.
+    eauto using format_word_measure.
+  Qed.
+
+  Lemma ascii_B_measure_gt_0 : 0 < ascii_B_measure.
+  Proof.
+    apply word_B_measure_gt_0.
+    lia.
+  Qed.
+
+  Lemma ascii_B_measure_neq_0 : ascii_B_measure <> 0.
+  Proof.
+    pose proof ascii_B_measure_gt_0.
+    lia.
+  Qed.
+
+  Lemma ascii_B_measure_div_add n :
+    (ascii_B_measure + n) / ascii_B_measure = S (n / ascii_B_measure).
+  Proof.
+    assert (ascii_B_measure = 1 * ascii_B_measure) by lia.
+    rewrite H at 1.
+    rewrite Nat.div_add_l.
+    reflexivity.
+    apply ascii_B_measure_neq_0.
   Qed.
 
 End Ascii.
