@@ -11,6 +11,7 @@ Require Import
         Fiat.Narcissus.Formats.Empty
         Fiat.Narcissus.Formats.Sequence.
 Require Import
+        Coq.Arith.Arith
         Coq.Strings.Ascii
         Coq.Strings.String.
 
@@ -29,6 +30,7 @@ Section Lexeme.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {monoid : Monoid T}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
+  Context {monoidfix : QueueMonoidOptFix monoidUnit}.
 
   (* Some lemmas about cache noninterference of word and ascii decoders. Should
   we move them somewhere else? *)
@@ -54,23 +56,26 @@ Section Lexeme.
   Qed.
 
 
-  Definition format_space : FormatM A T :=
+  Definition format_space : FormatM unit T :=
     Compose_Format format_string
                    (fun _ => {s : string | Forall is_space
                                                 (list_ascii_of_string s) })%comp.
 
   (* [decode_space] is NOT a correct decoder for [format_space]. In fact, no
   decoder can be its correct decoder. *)
-  Definition decode_space : T -> CacheDecode -> T * CacheDecode :=
-    Fix well_founded_lt_b _
-        (fun b rec cd =>
-           match Decode_w_Measure_lt decode_ascii b cd ascii_decode_lt with
-           | Some (a, b1, e1) =>
-               if is_space a
-               then rec _ (proj2_sig b1) e1
-               else (b, cd)
-           | None => (b, cd)
-           end).
+  Definition decode_space (b : T) (cd : CacheDecode)
+    : option (unit * T * CacheDecode) :=
+    Nat.iter (bin_measure b / ascii_B_measure)
+             (fun rec b cd =>
+                match decode_ascii b cd with
+                | Some (a, b1, e1) =>
+                    if is_space a
+                    then rec b1 e1
+                    else Some (tt, b, cd)
+                | None => Some (tt, b, cd)
+                end)
+             (fun b cd => Some (tt, b, cd))
+             b cd.
 
   Variable format_A : FormatM A T.
   Variable decode_A : DecodeM (A * T) T.
@@ -87,26 +92,18 @@ Section Lexeme.
 
   (* Unlike lexeme in most parser combinator, we format whitespaces first. *)
   Definition format_lexeme (a : A) (ce : CacheFormat) : Comp (T * CacheFormat) :=
-    `(b1, _) <- format_space a ce;
+    `(b1, _) <- format_space tt ce;
     `(b2, ce') <- format_A a ce;
     ret (mappend b1 b2, ce').
 
   Definition decode_lexeme (b : T) (cd : CacheDecode)
     : option (A * T * CacheDecode) :=
-    let (b1, _) := decode_space b cd in decode_A b1 cd.
-
-  Ltac t_Fix_eq :=
-    let Hext := fresh in
-    let cd := fresh in
-    intros ??? Hext; extensionality cd;
-    destruct Decode_w_Measure_lt; eauto;
-    destruct_conjs; simpl; rewrite Hext; eauto.
+    `(_, b1, _) <- decode_space b cd;
+    decode_A b1 cd.
 
   (* This statement is similar to [CorrectDecoder], but with restriction on
   [ext]. We can certainly generalize [CorrectDecoder] the same way to, say,
-  [CorrectDecoderExt] if we have more use cases like this. In that case,
-  [format_space] should be a format from [unit] to [T], and [decode_space]
-  should trivially return [Some] of the current result and [tt]. *)
+  [CorrectDecoderExt] if we have more use cases like this. *)
   Lemma space_decode_correct :
     (forall env env' xenv s t ext,
         Equiv env env' ->
@@ -116,12 +113,12 @@ Section Lexeme.
             decode_ascii ext cd = Some (a, b, cd') ->
             is_space a = false) ->
         exists xenv',
-          decode_space (mappend t ext) env' = (ext, xenv')
+          decode_space (mappend t ext) env' = Some (s, ext, xenv')
           /\ Equiv xenv xenv' /\ A_cache_inv xenv') /\
     (forall env env' xenv' s t t',
         Equiv env env' ->
         A_cache_inv env' ->
-        decode_space t env' = (t', xenv') ->
+        decode_space t env' = Some (s, t', xenv') ->
         A_cache_inv xenv' /\
         exists (t'' : T) (xenv : CacheFormat),
           format_space s env ∋ (t'', xenv)
@@ -130,7 +127,7 @@ Section Lexeme.
   Proof.
     unfold format_space.
     split. {
-      intros env env' ?? t ext ?? [s [? H]].
+      intros env env' ? [] t ext ?? [s [? H]].
       rewrite unfold_computes in H.
       revert dependent env'.
       revert dependent env.
@@ -139,16 +136,19 @@ Section Lexeme.
         simpl in *.
         computes_to_inv.
         injections.
+        rewrite mempty_left.
         repeat esplit; eauto.
         unfold decode_space.
-        rewrite Init.Wf.Fix_eq by t_Fix_eq.
-        rewrite mempty_left.
         destruct (decode_ascii ext env') as [ [[??]?] |] eqn:Ha.
         - assert (is_space a = false) as Hs by eauto.
-          eapply Decode_w_Measure_lt_eq in Ha.
-          destruct Ha as [? Ha].
-          rewrite Ha. rewrite Hs. eauto.
-        - rewrite Decode_w_Measure_lt_eq'; eauto.
+          pose proof Ha as Ha'.
+          eapply decode_ascii_measure in Ha.
+          rewrite Ha, ascii_B_measure_div_add.
+          simpl.
+          rewrite Ha', Hs.
+          eauto.
+        - destruct (bin_measure ext / ascii_B_measure); simpl;
+            try rewrite Ha; eauto.
       } {
         simpl in *. unfold Bind2 in *. computes_to_inv.
         inversion H; subst.
@@ -165,79 +165,80 @@ Section Lexeme.
         destruct_ex; split_and; subst.
         repeat esplit; eauto.
         unfold decode_space.
-        rewrite Init.Wf.Fix_eq by t_Fix_eq.
         rewrite <- mappend_assoc.
+        rewrite mappend_measure.
+        match goal with
+        | H : format_ascii _ _ ∋ _ |- _ =>
+            eapply format_ascii_measure in H; rewrite H
+        end.
+        rewrite ascii_B_measure_div_add.
+        simpl.
         match goal with
         | H : decode_ascii _ _ = Some _ |- _ =>
-            let H' := fresh in
-            eapply Decode_w_Measure_lt_eq in H; destruct H as [? H'];
-            rewrite H'
+            rewrite H
         end.
         match goal with
         | H : context [ is_space ] |- _ => rewrite H; eauto
         end.
       }
     } {
-      intros env env' ?? t ?.
+      unfold decode_space, format_space.
+      intros env env' ? [] t ?.
       revert dependent env'.
       revert dependent env.
-      eapply (well_founded_induction well_founded_lt_b) with (a:=t).
-      intros x IH. intros.
-      match goal with
-      | H : decode_space _ _ = _ |- _ =>
-          rename H into Hs
-      end.
-      unfold decode_space in Hs.
-      rewrite Init.Wf.Fix_eq in Hs by t_Fix_eq.
-      destruct (decode_ascii x env') eqn:Ha. {
-        destruct_conjs.
-        pose proof Ha as Ha'.
-        eapply Ascii_decode_correct in Ha; eauto.
-        eapply Decode_w_Measure_lt_eq in Ha'.
-        destruct_conjs. subst.
-        match goal with
-        | H : Decode_w_Measure_lt _ _ _ _ = _ |- _ =>
-            rewrite H in Hs
-        end.
-        destruct is_space eqn:?.
-        - simpl in Hs.
-          eapply IH in Hs; eauto.
-          destruct_conjs. subst.
-          match goal with
-          | H : context [ Compose_Format ] |- _ =>
-              unfold Compose_Format in H;
-              rewrite unfold_computes in H;
-              destruct H as [? [? H]];
-              rewrite unfold_computes in H
-          end.
-          split; eauto.
-          eexists _, _. repeat split; eauto; rewrite ?mappend_assoc; eauto.
-          match goal with
-          | H : format_ascii ?a _ ∋ _, H' : format_string ?s _ ∋ _ |- _ =>
-              exists (String a s)
-          end. split.
-          computes_to_econstructor; eauto.
-          computes_to_econstructor; eauto.
-          rewrite unfold_computes.
-          eauto using Forall.
-        - injections.
-          split; eauto.
-          eexists _, _. repeat split; eauto; rewrite ?mempty_left; eauto.
-          exists ("")%string. split.
-          computes_to_econstructor; eauto.
-          rewrite unfold_computes.
-          eauto using Forall.
+      remember (bin_measure t / ascii_B_measure) as n.
+      revert dependent t.
+      induction n; intros; simpl in *; injections. {
+        shelve.
       } {
-        eapply Decode_w_Measure_lt_eq' in Ha.
-        rewrite Ha in Hs. injections.
-        split; eauto.
-        eexists _, _. repeat split; eauto; rewrite ?mempty_left; eauto.
-        exists ("")%string. split.
-        computes_to_econstructor; eauto.
-        rewrite unfold_computes.
-        eauto using Forall.
+        match goal with
+        | H : _ = Some _ |- _ => rename H into Hd
+        end.
+        destruct (decode_ascii t env') as [[[]]|] eqn:Ha. {
+          (* pose proof Ha as Ha'. *)
+          eapply Ascii_decode_correct in Ha; eauto.
+          destruct_conjs. subst.
+          destruct is_space eqn:?.
+          - eapply IHn in Hd; eauto.
+            destruct_conjs. subst.
+            match goal with
+            | H : context [ Compose_Format ] |- _ =>
+                unfold Compose_Format in H;
+                rewrite unfold_computes in H;
+                destruct H as [? [? H]];
+                rewrite unfold_computes in H
+            end.
+            split; eauto.
+            eexists _, _. repeat split; eauto; rewrite ?mappend_assoc; eauto.
+            match goal with
+            | H : format_ascii ?a _ ∋ _, H' : format_string ?s _ ∋ _ |- _ =>
+                exists (String a s)
+            end. split.
+            computes_to_econstructor; eauto.
+            computes_to_econstructor; eauto.
+            rewrite unfold_computes.
+            eauto using Forall.
+            match goal with
+            | H : format_ascii _ _ ∋ _,
+                H' : context [ bin_measure (mappend _ _) ] |- _ =>
+                eapply format_ascii_measure in H;
+                rewrite mappend_measure, H, ascii_B_measure_div_add in H'
+            end.
+            lia.
+          - shelve.
+        } {
+          shelve.
+        }
       }
     }
+
+    Unshelve.
+    all: injections;
+      split; eauto;
+      eexists _, _; repeat split; eauto; rewrite ?mempty_left; eauto.
+    all: exists ("")%string; split;
+                [ computes_to_econstructor; eauto
+                | rewrite unfold_computes; eauto using Forall].
   Qed.
 
   Definition no_head_space (t : T) :=
@@ -245,47 +246,41 @@ Section Lexeme.
       decode_ascii t cd = Some (a, t', cd') ->
       is_space a = false.
 
-  Lemma decode_space_no_head_space : forall t cd t' cd',
-    decode_space t cd = (t', cd') ->
+  Lemma decode_space_no_head_space : forall s t cd t' cd',
+    decode_space t cd = Some (s, t', cd') ->
     no_head_space t'.
   Proof.
-    intros t.
-    eapply (well_founded_induction well_founded_lt_b) with (a:=t).
-    intros x IH cd ?? Hs.
-    unfold decode_space in Hs.
-    rewrite Init.Wf.Fix_eq in Hs by t_Fix_eq.
-    destruct (decode_ascii x cd) eqn:Ha. {
-      destruct_conjs.
-      pose proof Ha as Ha'.
-      eapply Decode_w_Measure_lt_eq in Ha.
-      destruct_conjs.
-      match goal with
-      | H : Decode_w_Measure_lt _ _ _ _ = _ |- _ =>
-          rewrite H in Hs
-      end.
-      destruct is_space eqn:Hi.
-      - simpl in Hs.
-        eapply IH in Hs; eauto.
-      - injections.
-        hnf. intros.
-        rewrite <- Hi. f_equal.
-        match goal with
-        | H : decode_ascii _ _ = _ |- _ =>
-            eapply decode_ascii_cache_nonint in H;
-            destruct H as [? H]; rewrite Ha' in H
-        end.
-        injections. eauto.
+    unfold decode_space.
+    intros [] t.
+    remember (bin_measure t / ascii_B_measure) as n.
+    revert dependent t.
+    induction n. {
+      intros. simpl in *. injections. hnf. intros * H. exfalso.
+      eapply decode_ascii_measure in H.
+      pose proof ascii_B_measure_gt_0.
+      symmetry in Heqn.
+      rewrite Nat.div_small_iff in Heqn by lia.
+      lia.
     } {
-      pose proof Ha as Ha'.
-      eapply Decode_w_Measure_lt_eq' in Ha.
-      rewrite Ha in Hs. injections.
-      hnf. intros.
-      match goal with
-      | H : decode_ascii _ _ = _ |- _ =>
-          eapply decode_ascii_cache_nonint in H;
-          destruct H as [? H]; rewrite Ha' in H
-      end.
-      discriminate.
+      intros. simpl in *.
+      destruct decode_ascii as [ [[]]|] eqn: Ha. {
+        destruct is_space eqn:Hs.
+        - eapply IHn; eauto.
+          eapply decode_ascii_measure in Ha.
+          rewrite Ha, ascii_B_measure_div_add in Heqn.
+          lia.
+        - injections.
+          hnf. intros * H.
+          eapply decode_ascii_cache_nonint in H.
+          destruct H as [? H]. rewrite H in Ha.
+          injections. eauto.
+      } {
+        injections.
+        hnf. intros * H.
+        eapply decode_ascii_cache_nonint in H.
+        destruct H as [? H]. rewrite H in Ha.
+        discriminate.
+      }
     }
   Qed.
 
@@ -332,29 +327,31 @@ Section Lexeme.
       | H : format_space _ _ ∋ _ |- _ =>
           eapply space_decode_correct in H; eauto;
           let H' := fresh in
-          destruct H as [? [H' [_ _]]]; rewrite H'
+          destruct H as [? [H' [_ _]]]; rewrite H'; simpl
       end.
       match goal with
       | H : format_A _ _ ∋ _ |- _ =>
           eapply A_decode_pf in H; eauto;
           let H' := fresh in
-          destruct H as [? [? [H' ?]]]; rewrite H'
+          destruct H as [? [? [H' ?]]]; rewrite H'; simpl
       end.
       destruct_conjs. subst.
       eauto.
     } {
       unfold decode_lexeme in *.
-      destruct decode_space eqn:?.
+      destruct decode_space as [[[??]?]|] eqn:?; try discriminate.
       match goal with
-      | H : decode_space _ _ = (?t, _) |- _ =>
+      | H : decode_space _ _ = Some (_, ?t, _) |- _ =>
           assert (no_head_space t) by eauto using decode_space_no_head_space;
           eapply space_decode_correct in H; eauto;
-          destruct H; destruct_ex; destruct_conjs; subst
+          destruct H; destruct_ex; destruct_conjs; subst;
+          simpl in *
       end.
       match goal with
       | H : decode_A _ _ = _ |- _ =>
           eapply A_decode_pf in H; eauto;
-          destruct H; destruct_ex; destruct_conjs; subst
+          destruct H; destruct_ex; destruct_conjs; subst;
+          simpl in *
       end.
       split; eauto.
       eexists _, _. repeat split; eauto.
