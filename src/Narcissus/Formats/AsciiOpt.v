@@ -91,6 +91,18 @@ Section Ascii.
     eauto using format_word_measure.
   Qed.
 
+  Lemma decode_ascii_measure
+    : forall (a : ascii) b cd b' cd',
+      decode_ascii b cd = Some (a, b', cd') ->
+      bin_measure b = ascii_B_measure + bin_measure b'.
+  Proof.
+    unfold decode_ascii.
+    intros * H.
+    destruct decode_word as [[[??]?]|] eqn:Hd; try discriminate.
+    simpl in H. injections.
+    eauto using decode_word_measure_some.
+  Qed.
+
   Lemma ascii_B_measure_gt_0 : 0 < ascii_B_measure.
   Proof.
     apply word_B_measure_gt_0.

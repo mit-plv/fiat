@@ -272,7 +272,6 @@ Section Word.
     lia.
   Qed.
 
-  (* We can also prove one for [decode_word]. *)
   Lemma format_word_measure
     : forall (a : word sz) ce b ce',
       format_word a ce ∋ (b, ce') ->
@@ -288,6 +287,25 @@ Section Word.
     rewrite IHa.
     rewrite B_measure_fix_consistent.
     lia.
+  Qed.
+
+  (* A similar lemma for [None] is only provable if we have [dequeue_opt b =
+  None -> b = mempty]. *)
+  Lemma decode_word_measure_some
+    : forall (a : word sz) b cd b' cd',
+      decode_word b cd = Some (a, b', cd') ->
+      bin_measure b = sz * B_measure_fix + bin_measure b'.
+  Proof.
+    unfold decode_word.
+    intros * H. destruct (decode_word' sz b) as [ [] | ] eqn:?;
+      simpl in *; try discriminate; injections.
+    revert dependent b.
+    induction sz; intros; simpl in *; injections; eauto.
+    destruct dequeue_opt as [[??]|] eqn:H; try discriminate; simpl in *.
+    destruct decode_word' as [[??]|] eqn:H'; try discriminate; simpl in *.
+    eapply measure_dequeue_Some in H.
+    rewrite B_measure_fix_consistent in H.
+    injections. apply IHn in H'. lia.
   Qed.
 
   Lemma word_B_measure_gt_0
