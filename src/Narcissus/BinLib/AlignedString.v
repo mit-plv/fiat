@@ -230,17 +230,17 @@ Section AlignedString.
            (term_char : ascii)
     : AlignedDecodeM string m :=
     fun v idx cd =>
-    Nat.iter (m - idx)
-             (fun rec =>
-                BindAlignedDecodeM
-                  AlignedDecodeAscii
-                  (fun c => If (ascii_dec c term_char)
-                          Then ReturnAlignedDecodeM EmptyString
-                          Else BindAlignedDecodeM
+      Nat.iter (m - idx)
+               (fun rec =>
+                  BindAlignedDecodeM
+                    AlignedDecodeAscii
+                    (fun c => If (ascii_dec c term_char)
+                               Then ReturnAlignedDecodeM EmptyString
+                               Else BindAlignedDecodeM
                                rec
                                (fun s => ReturnAlignedDecodeM
                                          (String c s))))
-             ThrowAlignedDecodeM v idx cd.
+               ThrowAlignedDecodeM v idx cd.
 
   Lemma AlignedDecodeStringTermCharM {C : Type}
         (term_char : ascii)
