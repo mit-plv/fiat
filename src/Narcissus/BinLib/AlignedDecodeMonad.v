@@ -459,37 +459,41 @@ Section AlignedDecodeM.
         (* We can strengthen this by taking "equivalent" functions on buffer and
         indices. However, it doesn't seem worth the effort as it complicates the
         proof significantly. *)
-        (reset : bool)
-        (fcd : CacheDecode -> CacheDecode -> CacheDecode)
+        (reset : A -> bool)
+        (fcd : A -> CacheDecode -> CacheDecode -> CacheDecode)
     : DecodeMEquivAlignedDecodeM' avail A_decode (@A_decode_aligned)
-      -> (if reset
-          then (forall a, DecodeMEquivAlignedDecodeM' avail (t a) (@t' a))
-          else (forall a numBytes (v : ByteBuffer.t numBytes) idx cd idx' cd',
-                   A_decode_aligned v idx cd = Some (a, idx', cd') ->
-                   avail = numBytes - idx ->
-                   DecodeMEquivAlignedDecodeM' (numBytes - idx') (t a) (@t' a)))
+      -> (forall a, if reset a
+               then DecodeMEquivAlignedDecodeM' avail (t a) (@t' a)
+               else (forall numBytes (v : ByteBuffer.t numBytes) idx cd idx' cd',
+                        A_decode_aligned v idx cd = Some (a, idx', cd') ->
+                        avail = numBytes - idx ->
+                        DecodeMEquivAlignedDecodeM' (numBytes - idx') (t a) (@t' a)))
       -> DecodeMEquivAlignedDecodeM' avail u (@u')
       -> DecodeMEquivAlignedDecodeM' avail
            (fun b cd =>
               match A_decode b cd with
-              | Some (a, b', cd') => t a (if reset then b else b') (fcd cd cd')
+              | Some (a, b', cd') => t a (if reset a then b else b')
+                                       (fcd a cd cd')
               | None => u b cd
               end)
            (fun numBytes v idx cd =>
               match A_decode_aligned v idx cd with
-              | Some (a, idx', cd') => t' a v (if reset then idx else idx') (fcd cd cd')
+              | Some (a, idx', cd') => t' a v (if reset a then idx else idx')
+                                          (fcd a cd cd')
               | None => u' v idx cd
               end).
   Proof.
     intros Ha Ht Hu. split; [| split].
     - intros. subst.
       rewrite (proj1 Ha) by eauto.
-      destruct A_decode_aligned as [ [[??]?] |] eqn:?; simpl.
+      destruct A_decode_aligned as [ [[a ?]?] |] eqn:?; simpl.
       2: eapply Hu; eauto.
+      specialize (Ht a).
       destruct reset; eapply Ht; eauto.
     - intros * -> H.
-      destruct A_decode as [ [[??]?] |] eqn:Heq; simpl.
+      destruct A_decode as [ [[a ?]?] |] eqn:Heq; simpl.
       2: eapply Hu; eauto.
+      specialize (Ht a).
 
       destruct reset; intros. eapply Ht; eauto.
 
@@ -505,6 +509,7 @@ Section AlignedDecodeM.
       rewrite <- Hb in H. lia.
     - intros n v cd ->.
       destruct A_decode as [ [[a b] cd'] |] eqn:Heq.
+      specialize (Ht a).
       2: eapply Ha in Heq; eauto; rewrite Heq; eapply Hu; eauto.
 
       assert (numBytes b <= n)%nat as L. {
@@ -565,26 +570,30 @@ Section AlignedDecodeM.
         (t' : A -> forall {numBytes}, AlignedDecodeM C numBytes)
         (u : DecodeM (C * ByteString) ByteString)
         (u' : forall {numBytes}, AlignedDecodeM C numBytes)
-        (reset : bool)
-        (fcd : CacheDecode -> CacheDecode -> CacheDecode)
+        (reset : A -> bool)
+        (fcd : A -> CacheDecode -> CacheDecode -> CacheDecode)
     : DecodeMEquivAlignedDecodeM A_decode (@A_decode_aligned)
       -> (forall a, DecodeMEquivAlignedDecodeM (t a) (@t' a))
       -> (DecodeMEquivAlignedDecodeM u (@u'))
       -> DecodeMEquivAlignedDecodeM
            (fun (b : ByteString) (cd : CacheDecode) =>
               match A_decode b cd with
-              | Some (a, b', cd') => t a (if reset then b else b') (fcd cd cd')
+              | Some (a, b', cd') => t a (if reset a then b else b')
+                                       (fcd a cd cd')
               | None => u b cd
               end)
            (fun numBytes v idx cd =>
               match A_decode_aligned v idx cd with
-              | Some (a, idx', cd') => t' a v (if reset then idx else idx') (fcd cd cd')
+              | Some (a, idx', cd') => t' a v (if reset a then idx else idx')
+                                          (fcd a cd cd')
               | None => u' v idx cd
               end).
   Proof.
     setoid_rewrite DecodeMEquivAlignedDecodeM'_equiv.
-    intros.
+    intros ? Ht **.
     eapply Seq_DecodeMEquivAlignedDecodeM'; eauto.
+    intros a.
+    specialize (Ht a).
     destruct reset; eauto.
   Qed.
 
@@ -619,8 +628,8 @@ Section AlignedDecodeM.
     intros.
     eapply DecodeMEquivAlignedDecodeM_trans.
     eapply Seq_DecodeMEquivAlignedDecodeM with
-      (reset := false)
-      (fcd := fun _ cd' => cd')
+      (reset := fun _ => false)
+      (fcd := fun _ _ cd' => cd')
       (u := fun _ _ => None)
       (u' := fun _ _ _ _ => None); eauto using AlignedDecode_Throw.
     reflexivity.
@@ -644,8 +653,8 @@ Section AlignedDecodeM.
     intros.
     eapply DecodeMEquivAlignedDecodeM_trans.
     eapply Seq_DecodeMEquivAlignedDecodeM with
-      (reset := true)
-      (fcd := fun _ cd' => cd')
+      (reset := fun _ => true)
+      (fcd := fun _ _ cd' => cd')
       (u := fun _ _ => None)
       (u' := fun _ _ _ _ => None); eauto using AlignedDecode_Throw.
     reflexivity.
@@ -779,13 +788,47 @@ Section AlignedDecodeM.
     end.
 
   (* These bind lemmas are convenient when using the recursion combinator. *)
-  Lemma Bind_DecodeMEquivAlignedDecodeM' {A C : Type} avail
+
+  Lemma Seq_DecodeMEquivAlignedDecodeM'_easy {A C : Type} avail
+        (A_decode : DecodeM (A * ByteString) ByteString)
+        (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
+        (t : A -> DecodeM (C * ByteString) ByteString)
+        (t' : A -> forall {numBytes}, AlignedDecodeM C numBytes)
+        (u : DecodeM (C * ByteString) ByteString)
+        (u' : forall {numBytes}, AlignedDecodeM C numBytes)
+        (reset : A -> bool)
+        (fcd : A -> CacheDecode -> CacheDecode -> CacheDecode)
+    : DecodeMEquivAlignedDecodeM' avail A_decode (@A_decode_aligned)
+      -> (forall a, DecodeMEquivAlignedDecodeM (t a) (@t' a))
+      -> DecodeMEquivAlignedDecodeM' avail u (@u')
+      -> DecodeMEquivAlignedDecodeM' avail
+           (fun b cd =>
+              match A_decode b cd with
+              | Some (a, b', cd') => t a (if reset a then b else b')
+                                       (fcd a cd cd')
+              | None => u b cd
+              end)
+           (fun numBytes v idx cd =>
+              match A_decode_aligned v idx cd with
+              | Some (a, idx', cd') => t' a v (if reset a then idx else idx')
+                                          (fcd a cd cd')
+              | None => u' v idx cd
+              end).
+  Proof.
+    intros ? Ht **.
+    eapply Seq_DecodeMEquivAlignedDecodeM'; eauto.
+    intros a.
+    specialize (Ht a).
+    destruct reset; intros; DecodeMEquivAlignedDecodeM_conv; eauto.
+  Qed.
+
+  Lemma Bind_DecodeMEquivAlignedDecodeM'_easy {A C : Type} avail
         (A_decode : DecodeM (A * ByteString) ByteString)
         (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
         (t : A -> DecodeM (C * ByteString) ByteString)
         (t' : A -> forall {numBytes}, AlignedDecodeM C numBytes)
     : DecodeMEquivAlignedDecodeM' avail A_decode (@A_decode_aligned)
-      -> (forall a, DecodeMEquivAlignedDecodeM (t a) (@t' a))%nat
+      -> (forall a, DecodeMEquivAlignedDecodeM (t a) (@t' a))
       -> DecodeMEquivAlignedDecodeM' avail
            (fun (b : ByteString) (c : CacheDecode) =>
               `(a, bs, cd') <- A_decode b c; t a bs cd')
@@ -793,13 +836,11 @@ Section AlignedDecodeM.
   Proof.
     intros.
     eapply DecodeMEquivAlignedDecodeM'_trans.
-    eapply Seq_DecodeMEquivAlignedDecodeM' with
-      (reset := false)
-      (fcd := fun _ cd' => cd')
+    eapply Seq_DecodeMEquivAlignedDecodeM'_easy with
+      (reset := fun _ => false)
+      (fcd := fun _ _ cd' => cd')
       (u := fun _ _ => None)
       (u' := fun _ _ _ _ => None); eauto using AlignedDecode_Throw'.
-
-    intros. DecodeMEquivAlignedDecodeM_conv. eauto.
 
     reflexivity.
     intros. hnf. intros.
@@ -807,11 +848,11 @@ Section AlignedDecodeM.
     destruct A_decode_aligned; simpl; intuition eauto.
   Qed.
 
-  (* This lemma is somewhat restricted, although good enough for our current
-  applications. Ideally, we should allow [A_decode_aligned] to consume more than
-  1 byte, i.e. [avail' < avail] and [idx < idx' <= n]. However, it is nontrival
-  to support it. To do that, we probably need either or both of the following
-  two generalizations:
+  (* This lemma (and the derived next one) is somewhat restricted, although good
+  enough for our current applications. Ideally, we should allow
+  [A_decode_aligned] to consume more than 1 byte, i.e. [avail' < avail] and [idx
+  < idx' <= n]. However, it is nontrival to support it. To do that, we probably
+  need either or both of the following two generalizations:
 
   1. in [DecodeMEquivAlignedDecodeM'], instead of [avail = ...], we should write
   [avail <= ...]. In this case, the index [avail] no longer means the two
@@ -820,6 +861,50 @@ Section AlignedDecodeM.
 
   2. we might need to show "continuous" property of [A_decode_aligned], i.e. it
   will return the same result given more fuels than [avail]. *)
+  Lemma Seq_DecodeMEquivAlignedDecodeM_S {A C : Type} avail
+        (A_decode : DecodeM (A * ByteString) ByteString)
+        (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
+        (t : A -> DecodeM (C * ByteString) ByteString)
+        (t' : A -> forall {numBytes}, AlignedDecodeM C numBytes)
+        (u : DecodeM (C * ByteString) ByteString)
+        (u' : forall {numBytes}, AlignedDecodeM C numBytes)
+        (reset : A -> bool)
+        (fcd : A -> CacheDecode -> CacheDecode -> CacheDecode)
+    : (forall n (v : ByteBuffer.t n) idx cd a idx' cd',
+          A_decode_aligned v idx cd = Some (a, idx', cd') ->
+          S idx = idx' /\ idx < n)%nat
+      -> DecodeMEquivAlignedDecodeM' avail A_decode (@A_decode_aligned)
+      -> (forall a, if reset a
+               then DecodeMEquivAlignedDecodeM' avail (t a) (@t' a)
+               else (forall avail',
+                        S avail' = avail ->
+                        DecodeMEquivAlignedDecodeM' avail' (t a) (@t' a)))
+      -> DecodeMEquivAlignedDecodeM' avail u (@u')
+      -> DecodeMEquivAlignedDecodeM' avail
+           (fun b cd =>
+              match A_decode b cd with
+              | Some (a, b', cd') => t a (if reset a then b else b')
+                                       (fcd a cd cd')
+              | None => u b cd
+              end)
+           (fun numBytes v idx cd =>
+              match A_decode_aligned v idx cd with
+              | Some (a, idx', cd') => t' a v (if reset a then idx else idx')
+                                          (fcd a cd cd')
+              | None => u' v idx cd
+              end).
+  Proof.
+    intros ?? Ht **.
+    eapply Seq_DecodeMEquivAlignedDecodeM'; eauto.
+    intros a.
+    specialize (Ht a).
+    destruct reset; eauto.
+
+    intros * H' ->.
+    eapply Ht. eapply H in H'.
+    lia.
+  Qed.
+
   Lemma Bind_DecodeMEquivAlignedDecodeM_S {A C : Type} avail
         (A_decode : DecodeM (A * ByteString) ByteString)
         (A_decode_aligned : forall {numBytes}, AlignedDecodeM A numBytes)
@@ -839,15 +924,11 @@ Section AlignedDecodeM.
   Proof.
     intros.
     eapply DecodeMEquivAlignedDecodeM'_trans.
-    eapply Seq_DecodeMEquivAlignedDecodeM' with
-      (reset := false)
-      (fcd := fun _ cd' => cd')
+    eapply Seq_DecodeMEquivAlignedDecodeM_S with
+      (reset := fun _ => false)
+      (fcd := fun _ _ cd' => cd')
       (u := fun _ _ => None)
       (u' := fun _ _ _ _ => None); eauto using AlignedDecode_Throw'.
-
-    intros * H' ->.
-    eapply H1. eapply H in H'.
-    lia.
 
     reflexivity.
     intros. hnf. intros.

@@ -84,6 +84,16 @@ Section AlignedString.
                         (fun c => ReturnAlignedDecodeM
                                   (ascii_of_N (wordToN c)))).
 
+  Lemma AlignedDecodeAscii_S {n} (v : ByteBuffer.t n) idx cd a idx' cd'
+    : AlignedDecodeAscii v idx cd = Some (a, idx', cd') ->
+      S idx = idx' /\ (idx < n)%nat.
+  Proof.
+    unfold AlignedDecodeAscii, GetCurrentByte, BindAlignedDecodeM.
+    intros.
+    destruct nth_opt eqn:?; simpl in *; injections; try discriminate.
+    eauto using nth_opt_some_lt.
+  Qed.
+
   Lemma AlignedDecodeAsciiM'
       : DecodeMEquivAlignedDecodeM
           decode_ascii
@@ -259,17 +269,14 @@ Section AlignedString.
 
     eapply AlignedDecode_iter_easy; intros.
 
-    eapply Bind_DecodeMEquivAlignedDecodeM_S; intros. {
-      unfold AlignedDecodeAscii, GetCurrentByte, BindAlignedDecodeM in *.
-      destruct nth_opt eqn:?; simpl in *; injections; try discriminate.
-      eauto using nth_opt_some_lt.
-    }
+    eapply Bind_DecodeMEquivAlignedDecodeM_S; intros;
+      eauto using AlignedDecodeAscii_S.
     DecodeMEquivAlignedDecodeM_conv.
     eapply AlignedDecodeAsciiM'.
     injections.
     eapply AlignedDecode_ifb_both'.
     eapply Return_DecodeMEquivAlignedDecodeM'.
-    eapply Bind_DecodeMEquivAlignedDecodeM'; intros; eauto.
+    eapply Bind_DecodeMEquivAlignedDecodeM'_easy; intros; eauto.
     eapply Return_DecodeMEquivAlignedDecodeM.
   Qed.
 
