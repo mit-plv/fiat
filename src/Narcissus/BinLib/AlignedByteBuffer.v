@@ -109,7 +109,7 @@ Section AlignedList.
           try lia; simpl; eauto.
         pattern numBytes_hd, v; apply caseS; simpl; intros.
         rewrite (proj1 (H _)); reflexivity.
-      + eapply H in H0; eauto.
+      + eapply H; eauto.
       + rewrite (proj1 (proj2 (proj2 (H _)) _ _ _)) in H0; rewrite H0;
           find_if_inside; reflexivity.
       + destruct (Coq.Init.Nat.leb 0 n0) eqn: ? ;

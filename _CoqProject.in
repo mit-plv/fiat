@@ -238,6 +238,7 @@ src/Narcissus/BinLib/AlignedDomainName.v
 src/Narcissus/BinLib/AlignedEncodeMonad.v
 src/Narcissus/BinLib/AlignedFix.v
 src/Narcissus/BinLib/AlignedIPChecksum.v
+src/Narcissus/BinLib/AlignedLexeme.v
 src/Narcissus/BinLib/AlignedList.v
 src/Narcissus/BinLib/AlignedString.v
 src/Narcissus/BinLib/AlignedSumType.v
@@ -297,6 +298,7 @@ src/Narcissus/Formats/EnumOpt.v
 src/Narcissus/Formats/FixListOpt.v
 src/Narcissus/Formats/IPChecksum.v
 src/Narcissus/Formats/InternetChecksum.v
+src/Narcissus/Formats/Lexeme.v
 src/Narcissus/Formats/NatOpt.v
 src/Narcissus/Formats/Option.v
 src/Narcissus/Formats/Sequence.v

@@ -587,7 +587,7 @@ Section AlignEncodeWord.
     - pattern numBytes_hd, v; eapply Vector.caseS; simpl; intros.
       unfold GetCurrentByte, nth_opt; simpl.
       destruct (Vector_nth_opt t n); simpl; eauto.
-    - destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
+    - destruct (decode_word' 8 (build_aligned_ByteString v)) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
       eapply decode_word'_lt in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
       unfold lt_B in Heqo; simpl in Heqo.
       injections; lia.
@@ -836,7 +836,7 @@ Section AlignEncodeWord.
       unfold SkipCurrentByte, nth_opt; simpl.
       destruct (Vector_nth_opt t n); simpl; eauto.
     - unfold decode_unused_word, Compose_Decode, decode_word in H.
-      destruct (decode_word' 8 b) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
+      destruct (decode_word' 8 (build_aligned_ByteString v)) as [ [? ?] | ] eqn: ?; simpl in H; try discriminate.
       injections.
       eapply decode_word'_lt in Heqo; unfold le_B, bin_measure in Heqo; simpl in Heqo.
       unfold lt_B in Heqo; simpl in Heqo.

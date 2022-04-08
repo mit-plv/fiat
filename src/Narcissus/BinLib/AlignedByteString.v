@@ -30,6 +30,16 @@ Record ByteString :=
 
 Definition length_ByteString (bs : ByteString) := padding bs + 8 * numBytes bs.
 
+Lemma length_ByteString_le_numBytes b b' :
+  (length_ByteString b <= length_ByteString b' ->
+   numBytes b <= numBytes b')%nat.
+Proof.
+  unfold length_ByteString.
+  pose proof (paddingOK b).
+  pose proof (paddingOK b').
+  lia.
+Qed.
+
 Definition ByteString_enqueue_full_word
            (b : bool)
            (bs : ByteString)
@@ -433,6 +443,14 @@ Definition build_aligned_ByteString
             byteString := v |}.
   abstract lia.
 Defined.
+
+Lemma build_aligned_ByteString_length n (v : ByteBuffer.t n) :
+  length_ByteString (build_aligned_ByteString v) / 8 = n.
+Proof.
+  unfold length_ByteString.
+  rewrite Nat.mul_comm.
+  apply Nat.div_mul. lia.
+Qed.
 
 Lemma build_aligned_ByteString_append
       {numBytes'}
@@ -1356,6 +1374,13 @@ Proof.
     <-  (BoundedByteStringToByteString_ByteStringToBoundedByteString_eq b1), H1.
     reflexivity.
 Defined.
+
+Instance ByteString_QueueMonoidOptFix
+  : QueueMonoidOptFix ByteString_QueueMonoidOpt :=
+  {
+    B_measure_fix := 1;
+    B_measure_fix_consistent := ltac:(eauto)
+  }.
 
 Lemma DecodeBindOpt_assoc:
   forall (A B C D : Type)

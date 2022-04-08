@@ -1725,7 +1725,7 @@ Section AlignedDecoders.
     destruct (cond' numBytes_hd (Vector.tl v)) eqn: ? ;
       try eapply H; try eapply H0; try reflexivity.
     split; intros.
-    destruct (cond b).
+    destruct (cond (build_aligned_ByteString v)).
     eapply H; eauto.
     eapply H0; eauto.
     specialize (cond'OK _ v).
@@ -1940,7 +1940,7 @@ Section AlignedDecoders.
     destruct (cond' numBytes_hd (Vector.tl v)) eqn: ? ;
       try eapply H; try eapply H0; try reflexivity.
     split; intros.
-    destruct (cond b).
+    destruct (cond (build_aligned_ByteString v)).
     eapply H; eauto.
     eapply H0; eauto.
     rewrite cond'OK.
@@ -2167,7 +2167,7 @@ Section AlignedDecoders.
         destruct (aligned_decode_Some numBytes_hd (Vector.tl v) n cd)
         as [ [ [? ?] ] | ]; simpl; eauto. }
       split; intros.
-      { destruct (decode_Some b cd) as [ [ [? ?] ?] | ] eqn: ? ;
+      { destruct (decode_Some (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ? ;
           try discriminate.
         injections.
         eapply H; eauto. }
@@ -2196,7 +2196,7 @@ Section AlignedDecoders.
         destruct (aligned_decode_None numBytes_hd (Vector.tl v) n cd)
         as [ [ [? ?] ] | ]; simpl; eauto. }
       split; intros.
-      { destruct (decode_None b cd) as [ [ [? ?] ?] | ] eqn: ? ;
+      { destruct (decode_None (build_aligned_ByteString v) cd) as [ [ [? ?] ?] | ] eqn: ? ;
           try discriminate.
         injections.
         eapply H0; eauto. }
