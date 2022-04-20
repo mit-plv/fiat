@@ -15,23 +15,33 @@ Section String.
   Context {monoid : Monoid B}.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
 
-  Definition decode_string_with_term (close : string)
+  Variable decode_close : DecodeM (unit * B) B.
+
+  Definition decode_string_with_term
              (b : B) (cd : CacheDecode)
     : option (string * B * CacheDecode).
   Admitted.
 
+  Variable format_close : FormatM unit B.
+  Variable A_cache_inv : CacheDecode -> Prop.
+  Variable decode_close_OK :
+    CorrectDecoder monoid (fun _ => True) (fun _ => True)
+        eq format_close
+        decode_close
+        A_cache_inv
+        format_close.
+
+
   Theorem string_decode_with_term_correct
-          {P : CacheDecode -> Prop}
-          (close : string)
     : CorrectDecoder monoid
                      (* TODO *)
                      (fun s => True)
                      (fun s => True)
                      eq
-                     (format_with_term format_string close)
-                     (decode_string_with_term close)
-                     P
-                     (format_with_term format_string close).
+                     (format_with_term format_close format_string)
+                     (decode_string_with_term)
+                     A_cache_inv
+                     (format_with_term format_close format_string).
   Proof.
   Admitted.
 

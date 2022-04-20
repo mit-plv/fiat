@@ -168,11 +168,11 @@ Ltac apply_combinator_rule'
     apply_rules
 
   (* Delimiter *)
-  | |- context [CorrectDecoder _ _ _ _ (format_delimiter _ _ _) _ _ _] =>
-      (* FIXME: should try [delimiter_decode_correct] and synthesize decoder
-      for [format_with_term_string _ ?decoder] first. *)
-    intros; apply delimiter_decode_simple_correct; eauto;
-    apply_rules
+  (* | |- context [CorrectDecoder _ _ _ _ (format_delimiter _ _ _) _ _ _] => *)
+  (*     (* FIXME: should try [delimiter_decode_correct] and synthesize decoder *)
+  (*     for [format_with_term_string _ ?decoder] first. *) *)
+  (*   intros; apply delimiter_decode_simple_correct; eauto; *)
+  (*   apply_rules *)
 
   | |- context [CorrectDecoder _ _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _ _] =>
     let cache_inv_H := fresh in
