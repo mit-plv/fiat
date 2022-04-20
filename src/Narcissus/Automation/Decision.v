@@ -1,5 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import
+        Coq.Strings.String
         Coq.Bool.Bool
         Coq.ZArith.ZArith
         Coq.Lists.List
@@ -81,6 +82,16 @@ Lemma decides_unit_eq :
 Proof.
   unfold decides, If_Then_Else; intros;
     destruct b; destruct b'; simpl; congruence.
+Qed.
+
+Lemma decides_string_eq :
+  forall (s s' : string),
+    decides (String.eqb s s') (s = s').
+Proof.
+  unfold decides, If_Then_Else; intros.
+  destruct (s =? s')%string eqn:?.
+  eapply String.eqb_eq; eauto.
+  eapply String.eqb_neq; eauto.
 Qed.
 
 Lemma decides_Fin_eq {n} :

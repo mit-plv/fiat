@@ -115,6 +115,7 @@ Ltac decide_data_invariant :=
                | eapply decides_nat_eq
                | eapply decides_pair_eq
                | eapply decides_bool_eq
+               | eapply decides_string_eq
                | eapply decides_Fin_eq
                | eapply decides_EnumType_eq
                | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq, pair_eq_dec ].
