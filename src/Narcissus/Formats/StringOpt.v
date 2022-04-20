@@ -258,4 +258,16 @@ Section String.
     - eapply IHlen in Heqo0; eauto; unfold lt_B in *; lia.
   Qed.
 
+  Lemma format_string_det s : forall ce1 ce1' ce2 ce2' t1 t2,
+    format_string s ce1 ∋ (t1, ce1') ->
+    format_string s ce2 ∋ (t2, ce2') ->
+    t1 = t2.
+  Proof.
+    induction s; intros; simpl in *.
+    - computes_to_inv. injections. reflexivity.
+    - unfold Bind2 in *. computes_to_inv.
+      destruct_conjs. simpl in *. injections.
+      f_equal; eauto using format_ascii_det.
+  Qed.
+
 End String.

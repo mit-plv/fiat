@@ -125,4 +125,37 @@ Section Ascii.
     apply ascii_B_measure_neq_0.
   Qed.
 
+  Lemma format_ascii_det a : forall ce1 ce1' ce2 ce2' t1 t2,
+    format_ascii a ce1 ∋ (t1, ce1') ->
+    format_ascii a ce2 ∋ (t2, ce2') ->
+    t1 = t2.
+  Proof.
+    eapply format_word_det.
+  Qed.
+
+  Lemma decode_ascii_cache_nonint t a t' cd1 cd1' cd2 :
+    decode_ascii t cd1 = Some (a, t', cd1') ->
+    exists cd2', decode_ascii t cd2 = Some (a, t', cd2').
+  Proof.
+    unfold decode_ascii. intros.
+    destruct decode_word as [ [[??]?] |] eqn:Hd; simpl in *; injections;
+      try discriminate.
+    eapply decode_word_cache_nonint in Hd.
+    destruct Hd as [? Hd].
+    rewrite Hd.
+    simpl. eauto.
+  Qed.
+
+  Lemma decode_format_ascii a t ce ce' ext cd :
+      format_ascii a ce ∋ (t, ce') ->
+      exists cd', decode_ascii (mappend t ext) cd = Some (a, ext, cd').
+  Proof.
+    unfold format_ascii, decode_ascii.
+    intros H. eapply decode_format_word in H. destruct H.
+    rewrite H. simpl. eexists. repeat f_equal.
+    rewrite NToWord_nat, wordToN_nat, wordToNat_natToWord_idempotent,
+      Nnat.N2Nat.id, ascii_N_embedding; eauto.
+    rewrite Nnat.N2Nat.id. eapply N_ascii_bounded.
+  Qed.
+
 End Ascii.

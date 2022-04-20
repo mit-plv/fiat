@@ -297,15 +297,17 @@ Section Word.
       bin_measure b = sz * B_measure_fix + bin_measure b'.
   Proof.
     unfold decode_word.
-    intros * H. destruct (decode_word' sz b) as [ [] | ] eqn:?;
+    intros a * H. destruct (decode_word' sz b) as [ [] | ] eqn:Heq;
       simpl in *; try discriminate; injections.
-    revert dependent b.
-    induction sz; intros; simpl in *; injections; eauto.
-    destruct dequeue_opt as [[??]|] eqn:H; try discriminate; simpl in *.
-    destruct decode_word' as [[??]|] eqn:H'; try discriminate; simpl in *.
-    eapply measure_dequeue_Some in H.
-    rewrite B_measure_fix_consistent in H.
-    injections. apply IHn in H'. lia.
+    eapply decode_encode_word'_Some in Heq. subst.
+    rewrite mappend_measure. f_equal.
+    induction a; simpl; eauto using measure_mempty.
+    rewrite enqueue_opt_format_word.
+    rewrite mappend_measure.
+    rewrite measure_enqueue.
+    rewrite measure_mempty.
+    rewrite B_measure_fix_consistent.
+    lia.
   Qed.
 
   Lemma word_B_measure_gt_0
@@ -313,6 +315,34 @@ Section Word.
   Proof.
     assert (0 < B_measure_fix)%nat by eauto using (B_measure_fix_gt_0 true).
     lia.
+  Qed.
+
+  Lemma format_word_det (w : word sz) : forall ce1 ce1' ce2 ce2' t1 t2,
+      format_word w ce1 ∋ (t1, ce1') ->
+      format_word w ce2 ∋ (t2, ce2') ->
+      t1 = t2.
+  Proof.
+    unfold format_word. intros.
+    computes_to_inv. injections. eauto.
+  Qed.
+
+  Lemma decode_format_word (w : word sz) t ce ce' ext cd :
+      format_word w ce ∋ (t, ce') ->
+      exists cd', decode_word (mappend t ext) cd = Some (w, ext, cd').
+  Proof.
+    unfold format_word, decode_word.
+    intros. computes_to_inv. injections.
+    rewrite decode_encode_word'.
+    simpl.
+    eauto.
+  Qed.
+
+  Lemma decode_word_cache_nonint (w : word sz) t t' cd1 cd1' cd2 :
+    decode_word t cd1 = Some (w, t', cd1') ->
+    exists cd2', decode_word t cd2 = Some (w, t', cd2').
+  Proof.
+    unfold decode_word. intros.
+    destruct decode_word'; simpl in *; injections; eauto.
   Qed.
 
   Definition format_unused_word {S}

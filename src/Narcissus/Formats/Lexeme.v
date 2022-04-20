@@ -32,30 +32,6 @@ Section Lexeme.
   Context {monoidUnit : QueueMonoidOpt monoid bool}.
   Context {monoidfix : QueueMonoidOptFix monoidUnit}.
 
-  (* Some lemmas about cache noninterference of word and ascii decoders. Should
-  we move them somewhere else? *)
-  Lemma decode_word_cache_nonint sz t (w : word sz) t' cd1 cd1' cd2 :
-    decode_word t cd1 = Some (w, t', cd1') ->
-    exists cd2', decode_word t cd2 = Some (w, t', cd2').
-  Proof.
-    unfold decode_word. intros.
-    destruct decode_word'; simpl in *; injections; eauto.
-  Qed.
-
-  Lemma decode_ascii_cache_nonint t a t' cd1 cd1' cd2 :
-    decode_ascii t cd1 = Some (a, t', cd1') ->
-    exists cd2', decode_ascii t cd2 = Some (a, t', cd2').
-  Proof.
-    unfold decode_ascii. intros.
-    destruct decode_word as [ [[??]?] |] eqn:Hd; simpl in *; injections;
-      try discriminate.
-    eapply decode_word_cache_nonint in Hd.
-    destruct Hd as [? Hd].
-    rewrite Hd.
-    simpl. eauto.
-  Qed.
-
-
   Definition format_space : FormatM unit T :=
     Compose_Format format_string
                    (fun _ => {s : string | Forall is_space
@@ -372,8 +348,8 @@ Section Lexeme.
   Theorem lexeme_decode_correct_all :
     lexeme_all_source_compatible ->
     CorrectDecoder monoid
-                   (fun s => A_predicate s)
-                   (fun s => A_predicate s)
+                   A_predicate
+                   A_predicate
                    eq format_lexeme decode_lexeme A_cache_inv format_lexeme.
   Proof.
     intros.
