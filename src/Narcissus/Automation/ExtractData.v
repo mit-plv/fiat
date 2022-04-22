@@ -31,7 +31,8 @@ Require Import
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.StringOpt
         Fiat.Narcissus.Automation.Decision
-        Fiat.Narcissus.Automation.Common.
+        Fiat.Narcissus.Automation.Common
+        Fiat.Narcissus.Automation.Invertible.
 
 Lemma decompose_pair_eq {A B}
   : forall (ab ab' : A * B),
@@ -140,6 +141,9 @@ Ltac build_fully_determined_type :=
   (* any product types that might have been built up *)
   (* along the way *)
   subst_projections;
+  (* Also invert all invertible functions / relations to recover the
+  parsed element*)
+  subst_invertible;
   (* And unify with original object *) reflexivity.
 
 Ltac ExtractSource :=
