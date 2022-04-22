@@ -32,11 +32,9 @@ Lemma wreverse_lemma1
 : forall {sz} (b : bool) (w : word sz),
   wreverse (append_bit b w) = WS b (wreverse w).
 Proof.
-  induction w.
-  simpl. reflexivity.
+  induction w. simpl. reflexivity.
   simpl. rewrite IHw. simpl. reflexivity.
 Qed.
-
 Theorem inverse_wreverse
 : forall sz (s v : word sz),
   wreverse s = v  ->  s = wreverse v.
@@ -46,8 +44,8 @@ Proof.
   simpl. reflexivity. 
   simpl. rewrite wreverse_lemma1. rewrite <- IHs. reflexivity.
 Qed.
-Instance CInv_wreverse (sz:nat):
-  ConditionallyInvertible (@wreverse sz) (constant True) wreverse .
+
+Instance CInv_wreverse (sz:nat): ConditionallyInvertible (@wreverse sz) (constant True) wreverse .
 Proof.
   constructor; intros.
   rewrite <- (inverse_wreverse _ a); reflexivity.
