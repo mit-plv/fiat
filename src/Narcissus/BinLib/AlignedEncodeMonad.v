@@ -402,16 +402,16 @@ Section AlignedEncodeM.
             rewrite <- !Vector_split_append; reflexivity.
           * erewrite (proj1 (proj2 (proj2 H))); eauto.
         + unfold AppendAlignedEncodeM; rewrite (proj2 (proj2 (proj2 H))); simpl; eauto.
-          Grab Existential Variables.
+          Unshelve.
+          omega.
           decide equality.
+          omega.
           decide equality.
           decide equality.
           omega.
           decide equality.
           decide equality.
-          omega.
           decide equality.
-          omega.
   Qed.
 
   Definition CorrectAlignedEncoder
@@ -1067,7 +1067,7 @@ Proof.
   repeat eexists; eauto;
     try (rewrite <- Eqdep_dec.eq_rect_eq_dec; eauto; apply Nat.eq_dec).
   congruence.
-  Grab Existential Variables.
+  Unshelve.
   omega.
 Qed.
 

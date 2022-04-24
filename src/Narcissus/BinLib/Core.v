@@ -338,7 +338,9 @@ Corollary minus_inj'
     -> m * (S y) + y - q = (m' * (S y)) + y - q'
     -> m = m' /\ q = q'.
 Proof.
-  intros; destruct (@minus_inj m m' (S y) q q'); try omega.
+  intros; destruct (@minus_inj m m' (S y) q q').
+  omega.
+  omega.
   assert (m * S y + S y - q = S (m * S y + y - q)).
   rewrite plus_comm.
   assert (S y + m * S y - q = 1 + (y + m * S y - q)).
@@ -350,6 +352,7 @@ Proof.
   rewrite H2.
   rewrite H1.
   rewrite <- !Nat.add_sub_assoc; auto.
+  omega.
   omega.
 Qed.
 
@@ -1719,7 +1722,9 @@ Proof.
   - intros; destruct l; simpl; intros.
     + setoid_rewrite app_nil_r; eexists (lt_0_Sn _).
       eauto using empty_padding_ByteString_eq_byteString.
-    + inversion H0.
+    + match goal with
+      | [ H : (_ <= 0)%nat |- _ ] => inversion H
+      end.
   - intros l b H0 H;
       destruct l as [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? ] ] ] ] ] ] ] ];
       try match goal with
@@ -1764,15 +1769,15 @@ Proof.
       apply f_equal.
       apply f_equal.
       reflexivity.
-      Grab Existential Variables.
+      Unshelve.
+      simpl; omega.
+      simpl; omega.
+      simpl; omega.
+      simpl; omega.
+      simpl; omega.
+      simpl; omega.
+      simpl; omega.
       omega.
-      simpl; omega.
-      simpl; omega.
-      simpl; omega.
-      simpl; omega.
-      simpl; omega.
-      simpl; omega.
-      simpl; omega.
 Qed.
 
 Lemma queue_into_ByteString_app

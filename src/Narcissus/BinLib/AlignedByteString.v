@@ -203,7 +203,7 @@ Proof.
   apply Eqdep_dec.eq_rect_eq_dec; intros; eauto using Peano_dec.eq_nat_dec.
   instantiate (1 := ByteBuffer.to_list_length _ byteString0).
   apply ByteBuffer.of_list_to_list.
-  Grab Existential Variables.
+  Unshelve.
   reflexivity.
 Qed.
 
@@ -464,9 +464,9 @@ Proof.
      simpl; rewrite eq_rect_Vector_cons with (H' := H0); simpl.
      f_equal.
      eapply IHv.
-     Grab Existential Variables.
-     reflexivity.
+     Unshelve.
      omega.
+     reflexivity.
 Qed.
 
 Lemma build_aligned_ByteString_cons
@@ -756,15 +756,15 @@ Proof.
         instantiate (1 := eq_refl); reflexivity.
       * unfold ByteBuffer.t in *; erewrite eq_rect_Vector_cons; f_equal.
         erewrite IHbyteString0; f_equal.
-        Grab Existential Variables.
+        Unshelve.
+        simpl; omega.
+        simpl; omega.
+        simpl; omega.
+        simpl; omega.
+        simpl; omega.
+        simpl; omega.
+        simpl; omega.
         omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
-        simpl; omega.
 Qed.
 
 Lemma ByteString_enqueue_into_BitString
@@ -1025,7 +1025,7 @@ Proof.
       eapply byteString_f_equal; simpl;
         try (instantiate (1 := eq_refl); reflexivity).
       rewrite <- H'; reflexivity.
-      Grab Existential Variables.
+      Unshelve.
       omega.
 Qed.
 
@@ -1632,7 +1632,7 @@ Proof.
     apply Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
     erewrite <- IHw; clear.
     erewrite WS_eq_rect_eq; reflexivity.
-    Grab Existential Variables.
+    Unshelve.
     omega.
 Qed.
 
@@ -1949,7 +1949,7 @@ Proof.
     rewrite Nat.add_mod by omega; f_equal.
   - rewrite <- !Nat.add_mod by omega.
     simpl; f_equal; omega.
-    Grab Existential Variables.
+    Unshelve.
     omega.
 Qed.
 
@@ -2010,7 +2010,7 @@ Proof.
   - erewrite IHv1.
     erewrite eq_rect_Vector_cons.
     reflexivity.
-    Grab Existential Variables.
+    Unshelve.
     omega.
 Qed.
 
@@ -2025,7 +2025,7 @@ Proof.
   - erewrite IHv1.
     erewrite eq_rect_Vector_cons.
     reflexivity.
-    Grab Existential Variables.
+    Unshelve.
     omega.
 Qed.
 
@@ -2038,7 +2038,7 @@ Proof.
   intros; subst; simpl.
   erewrite (UIP_dec _ _ (eq_refl _)); simpl.
   reflexivity.
-  Grab Existential Variables.
+  Unshelve.
   decide equality.
 Qed.
 
@@ -2085,10 +2085,10 @@ Proof.
     rewrite <- Equality.transport_pp.
     erewrite (UIP_dec _ _ (eq_refl _)); simpl.
     reflexivity.
-    Grab Existential Variables.
+    Unshelve.
+    omega.
+    omega.
     decide equality.
-    omega.
-    omega.
 Qed.
 
 Fixpoint initialize_Aligned_ByteString (n : nat) : ByteBuffer.t n :=

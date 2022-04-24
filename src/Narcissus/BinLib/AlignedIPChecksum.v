@@ -904,7 +904,7 @@ Proof.
         destruct_unit.
         eapply @AlignedEncoder_fixed; eauto.
       } rewrite H11. simpl. reflexivity.
-      Grab Existential Variables.
+      Unshelve.
       eauto.
 Qed.
 
@@ -1074,7 +1074,7 @@ Proof.
   unfold format_word, format_checksum in *. simpl in *.
   apply refine_ret_ret_eq in H. injections. rewrite H0.
   rewrite ByteString2ListOfChar_eq'; eauto.
-  Grab Existential Variables.
+  Unshelve.
   simpl. exact ().
 Qed.
 

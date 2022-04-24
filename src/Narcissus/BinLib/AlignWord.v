@@ -549,7 +549,7 @@ Section AlignEncodeWord.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
     unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; repeat f_equal.
     instantiate (1 := eq_refl _); reflexivity.
-    Grab Existential Variables.
+    Unshelve.
     reflexivity.
   Qed.
 
@@ -653,7 +653,7 @@ Section AlignEncodeWord.
         rewrite SW_word_append.
         rewrite <- Equality.transport_pp.
         f_equal.
-        Grab Existential Variables.
+        Unshelve.
         omega.
         omega.
   Qed.
@@ -975,7 +975,7 @@ Section AlignEncodeWord.
     f_equal.
     erewrite VectorByteToWord_cons.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    Grab Existential Variables.
+    Unshelve.
     omega.
     omega.
   Qed.

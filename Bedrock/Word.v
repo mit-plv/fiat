@@ -165,7 +165,7 @@ Theorem div2_odd : forall n,
   induction n using strong; simpl; intuition.
 
   destruct n; simpl in *; intuition.
-    discriminate.
+    try discriminate.
   destruct n; simpl in *; intuition.
   do 2 f_equal.
   replace (div2 n + S (div2 n + 0)) with (S (div2 n + (div2 n + 0))); auto.
@@ -178,7 +178,7 @@ Theorem div2_even : forall n,
 
   destruct n; simpl in *; intuition.
   destruct n; simpl in *; intuition.
-    discriminate.
+    try discriminate.
   f_equal.
   replace (div2 n + S (div2 n + 0)) with (S (div2 n + (div2 n + 0))); auto.
 Qed.
@@ -591,10 +591,9 @@ Qed.
 Theorem Npow2_nat : forall n, nat_of_N (Npow2 n) = pow2 n.
   induction n; simpl; intuition.
   rewrite <- IHn; clear IHn.
-  case_eq (Npow2 n); intuition.
-  rewrite untimes2.
-  replace (Npos p~0) with (N.double (Npos p)) by reflexivity.
-  apply nat_of_Ndouble.
+  case_eq (Npow2 n); intuition;
+    rewrite untimes2; replace (Npos p~0) with (N.double (Npos p)) by reflexivity;
+    apply nat_of_Ndouble.
 Qed.
 
 Theorem wneg_alt : forall sz (x : word sz), wneg x = wnegN x.
@@ -1139,17 +1138,9 @@ Theorem natToWord_inj : forall sz n m, natToWord sz n = natToWord sz m
   intuition.
   rewrite H4 in H; rewrite H2 in H; clear H4 H2.
   assert (x = 0).
-  destruct x; auto.
-  simpl in *.
-  generalize dependent (x * pow2 sz).
-  intros.
-  omega.
+  destruct x; auto; simpl in *; generalize dependent (x * pow2 sz); intros; omega.
   assert (x0 = 0).
-  destruct x0; auto.
-  simpl in *.
-  generalize dependent (x0 * pow2 sz).
-  intros.
-  omega.
+  destruct x0; auto; simpl in *; generalize dependent (x0 * pow2 sz); intros; omega.
   subst; simpl in *; omega.
 Qed.
 

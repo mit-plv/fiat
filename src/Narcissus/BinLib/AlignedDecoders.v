@@ -471,7 +471,7 @@ Section AlignedDecoders.
     - destruct s; simpl in *.
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
-    - destruct s; simpl in .
+    - destruct s; simpl in *.
       eapply (proj1 (projT2 encode_Some_OK) s); eauto.
       eapply (proj1 (projT2 encode_None_OK)); eauto.
     - destruct s; simpl in *.
@@ -1027,7 +1027,7 @@ Section AlignedDecoders.
     unfold ByteBuffer.t; erewrite eq_rect_Vector_cons; eauto.
     f_equal.
     apply IHn.
-    Grab Existential Variables.
+    Unshelve.
     omega.
   Qed.
 
@@ -1087,7 +1087,7 @@ Section AlignedDecoders.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
     erewrite VectorByteToWord_cons.
     rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-    Grab Existential Variables.
+    Unshelve.
     omega.
     omega.
     omega.
