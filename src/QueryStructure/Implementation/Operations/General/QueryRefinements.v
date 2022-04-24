@@ -1409,9 +1409,9 @@ Global Instance IndexedDecideableEnsemble
        {heading}
        {P : Ensemble (@RawTuple heading)}
        {P_dec : DecideableEnsemble P}
-  : DecideableEnsemble (fun x : IndexedRawTuple => P (indexedRawTuple x)) :=
-  {| dec itup := @dec _ _ P_dec (indexedRawTuple itup)|}.
+  : DecideableEnsemble (fun x : IndexedRawTuple => P (indexedRawTuple x)).
 Proof.
+  refine {| dec itup := @dec _ _ P_dec (indexedRawTuple itup)|}.
   intuition; eapply dec_decides_P; simpl in *; eauto.
 Defined.
 

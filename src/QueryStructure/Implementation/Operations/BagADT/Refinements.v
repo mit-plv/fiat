@@ -509,7 +509,7 @@ Section BagsQueryStructureRefinements.
         computes_to_inv; subst.
         generalize (IHl1 _ Comp_v); intros;  computes_to_inv.
         computes_to_econstructor; subst; eauto.
-        rewrite filter_app, filter_map.
+        rewrite filter_app, ListFacts.filter_map.
         simpl.
         erewrite filter_by_equiv; eauto.
         unfold ExtensionalEq; intros; rewrite andb_true_r; auto.
@@ -556,7 +556,7 @@ Section BagsQueryStructureRefinements.
        computes_to_inv; subst.
       generalize (IHl1 _ Comp_v); intros;  computes_to_inv.
       computes_to_econstructor; subst; eauto.
-      rewrite filter_app, filter_map.
+      rewrite filter_app, ListFacts.filter_map.
       simpl.
       erewrite filter_by_equiv; eauto.
       unfold ExtensionalEq; intros; rewrite andb_true_r; auto.
@@ -570,9 +570,9 @@ Section BagsQueryStructureRefinements.
            (f : A -> Type)
            (P : Ensemble (ilist2 (n := n) (B := f) As))
            (P_dec : DecideableEnsemble P)
-  : DecideableEnsemble (fun ab : ilist2 (B := f) (a :: As) => P (ilist2_tl ab)) :=
-    { dec ab := dec (ilist2_tl ab) }.
+    : DecideableEnsemble (fun ab : ilist2 (B := f) (a :: As) => P (ilist2_tl ab)).
   Proof.
+    apply Build_DecideableEnsemble with (fun ab => DecideableEnsembles.dec (ilist2_tl ab)).
     intro; apply (dec_decides_P (DecideableEnsemble := P_dec) (ilist2_tl a0)).
   Defined.
 
@@ -584,9 +584,9 @@ Section BagsQueryStructureRefinements.
            (f : A -> Type)
            (P : Ensemble (f a))
            (P_dec : DecideableEnsemble P)
-  : DecideableEnsemble (fun ab : ilist2 (n := S n) (B := f) (a :: As) => P (ilist2_hd ab)) :=
-    { dec ab := dec (ilist2_hd ab) }.
+    : DecideableEnsemble (fun ab : ilist2 (n := S n) (B := f) (a :: As) => P (ilist2_hd ab)).
   Proof.
+    apply Build_DecideableEnsemble with (fun ab => DecideableEnsembles.dec (ilist2_hd ab)).
     intro; apply (dec_decides_P (DecideableEnsemble := P_dec) (ilist2_hd a0)).
   Defined.
 
@@ -626,7 +626,7 @@ Section BagsQueryStructureRefinements.
       pose (IHs1 _ (BindComputes _ (fun x => ret (filter filter_rest x)) _ _ Comp_v'0 (ReturnComputes _))).
        computes_to_inv; subst.
       repeat (computes_to_econstructor; eauto).
-      repeat rewrite filter_app, filter_map; simpl; eauto.
+      repeat rewrite filter_app, ListFacts.filter_map; simpl; eauto.
       rewrite <- filter_and, c'; eauto.
     - intros v Comp_v;  computes_to_inv; subst; eauto.
     - simplify with monad laws; intros v Comp_v;
@@ -634,8 +634,8 @@ Section BagsQueryStructureRefinements.
       pose proof (IHs1 _ (BindComputes _ (fun x => ret (_ x)) _ _ Comp_v'0 (ReturnComputes _))).
        computes_to_inv; subst.
       repeat (computes_to_econstructor; eauto).
-      rewrite filter_app, filter_map; simpl; eauto.
-      repeat rewrite filter_app, filter_map; simpl; eauto.
+      rewrite filter_app, ListFacts.filter_map; simpl; eauto.
+      repeat rewrite filter_app, ListFacts.filter_map; simpl; eauto.
       rewrite <- filter_and, H'; eauto.
   Qed.
 
@@ -860,7 +860,7 @@ Section BagsQueryStructureRefinements.
       pose (IHs1 _ (BindComputes _ (fun x => ret (_ x)) _ _ Comp_v'0 (ReturnComputes _))).
        computes_to_inv; subst.
       repeat (computes_to_econstructor; eauto).
-      repeat rewrite filter_app, filter_map; simpl; eauto.
+      repeat rewrite filter_app, ListFacts.filter_map; simpl; eauto.
       rewrite <- filter_and, c'; eauto.
     - intros v Comp_v;  computes_to_inv; subst; eauto.
     - simplify with monad laws; intros v Comp_v;
@@ -868,8 +868,8 @@ Section BagsQueryStructureRefinements.
       pose proof (IHs1 _ (BindComputes _ (fun x => ret (_ x)) _ _ Comp_v'0 (ReturnComputes _))).
        computes_to_inv; subst.
       repeat (computes_to_econstructor; eauto).
-      rewrite filter_app, filter_map; simpl; eauto.
-      repeat rewrite filter_app, filter_map; simpl; eauto.
+      rewrite filter_app, ListFacts.filter_map; simpl; eauto.
+      repeat rewrite filter_app, ListFacts.filter_map; simpl; eauto.
       rewrite <- filter_and, H'; eauto.
   Qed.
 
@@ -1033,7 +1033,7 @@ Section BagsQueryStructureRefinements.
                (Build_single_Tuple_list a)); eauto.
     simplify with monad laws; f_equiv.
     unfold Build_single_Tuple_list; simpl;
-    repeat rewrite filter_map; f_equiv.
+    repeat rewrite ListFacts.filter_map; f_equiv.
     setoid_rewrite refineEquiv_bind_bind; setoid_rewrite refineEquiv_unit_bind;
     reflexivity.
     intro; reflexivity.
@@ -1062,7 +1062,7 @@ Section BagsQueryStructureRefinements.
                 (DT : Ensemble RawTuple)
                 (DT_Dec : DecideableEnsemble DT)
                 search_pattern,
-           ExtensionalEq (@dec _ _ DT_Dec)
+           ExtensionalEq (@DecideableEnsembles.dec _ _ DT_Dec)
                          (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
            -> refine {x : list RawTuple |
                       QSDeletedTuples r_o idx DT x}
@@ -1101,7 +1101,7 @@ Section BagsQueryStructureRefinements.
                 (DT : Ensemble RawTuple)
                 (DT_Dec : DecideableEnsemble DT)
                 search_pattern,
-           ExtensionalEq (@dec _ _ DT_Dec)
+           ExtensionalEq (@DecideableEnsembles.dec _ _ DT_Dec)
                          (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
            -> refine
                 {r_n' |
@@ -1123,43 +1123,43 @@ Section BagsQueryStructureRefinements.
         destruct (H idx0) as
             [l [ [ [bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l'] ] ] ]
                   [ [bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l''] ] ] ] ] ].
-        exists (filter (fun a => negb (dec a)) l); repeat split.
+        exists (filter (fun a => negb (DecideableEnsembles.dec a)) l); repeat split.
         * exists bnd; unfold EnsembleDelete, UnConstrFreshIdx; intros.
           inversion H2; subst; eauto.
         * unfold UnIndexedEnsembleListEquivalence;
-          exists (filter (fun a => negb (dec (indexedElement a))) l'); split; eauto.
-          rewrite <- l'_eq; rewrite filter_map; reflexivity.
+          exists (filter (fun a => negb (DecideableEnsembles.dec (indexedElement a))) l'); split; eauto.
+          rewrite <- l'_eq; rewrite ListFacts.filter_map; reflexivity.
           intuition.
           apply filter_In; split.
           eapply l_eqv; inversion H2; eauto.
           inversion H2; subst; rewrite (proj2 (Decides_false _ _)); eauto.
           rewrite filter_In in H2; intuition; constructor;
           [ apply l_eqv; eauto
-          | case_eq (dec (indexedElement x)); intros H'; rewrite H' in H4;
+          | case_eq (DecideableEnsembles.dec (indexedElement x)); intros H'; rewrite H' in H4;
             try discriminate;
             eapply Decides_false in H'; eauto ].
-          eapply NoDup_filter_map with (f := fun a => negb (dec a)); eauto.
+          eapply NoDup_filter_map with (f := fun a => negb (DecideableEnsembles.dec a)); eauto.
         * exists bnd'; unfold EnsembleDelete, UnConstrFreshIdx; intros.
           inversion H2; subst; eauto.
         * unfold UnIndexedEnsembleListEquivalence;
-          exists (filter (fun a => negb (dec (indexedElement a))) l''); split; eauto.
-          rewrite <- l''_eq; rewrite filter_map; reflexivity.
+          exists (filter (fun a => negb (DecideableEnsembles.dec (indexedElement a))) l''); split; eauto.
+          rewrite <- l''_eq; rewrite ListFacts.filter_map; reflexivity.
           intuition.
           apply filter_In; split.
           eapply l''_eqv; inversion H2; eauto.
           inversion H2; subst; rewrite (proj2 (Decides_false _ _)); eauto.
-          unfold Complement, In in *.
+          unfold Complement, Ensembles.In in *.
           intro; apply H4.
           rewrite <- H0.
           apply dec_decides_P; eauto.
           rewrite filter_In in H2; intuition; constructor;
           [ apply l''_eqv; eauto
-          | case_eq (dec (indexedElement x)); intros H'; rewrite H' in H4;
+          | case_eq (DecideableEnsembles.dec (indexedElement x)); intros H'; rewrite H' in H4;
             try discriminate;
             eapply Decides_false in H'; eauto ].
-          unfold Complement, In; rewrite <- H0;
+          unfold Complement, Ensembles.In; rewrite <- H0;
           eapply Decides_false in H'; rewrite H'; congruence.
-          eapply NoDup_filter_map with (f := fun a => negb (dec a)); eauto.
+          eapply NoDup_filter_map with (f := fun a => negb (DecideableEnsembles.dec a)); eauto.
       + rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
   Qed.
 
@@ -1215,7 +1215,7 @@ Section BagsQueryStructureRefinements.
             apply l_eqv in H3. unfold UnConstrFreshIdx in H0;
             unfold In in H2; apply H0 in H3;
             unfold GetNRelSchema in *; omega.
-      + exists (S v1); unfold Add, UnConstrFreshIdx; intros.
+      + exists (S v1); unfold Ensembles.Add, UnConstrFreshIdx; intros.
         inversion H2; subst.
         unfold UnConstrFreshIdx in H1; intuition; subst; simpl; eauto.
         inversion H3; subst.
@@ -1226,7 +1226,7 @@ Section BagsQueryStructureRefinements.
         * simpl; destruct H2;
           [right; apply l''_eqv; eauto |
            left; inversion H2; reflexivity ].
-        * unfold Add; destruct H2;
+        * unfold Ensembles.Add; destruct H2;
           [ right; subst; econstructor
           | left; eapply l''_eqv; eauto ].
         * simpl; apply NoDup_cons; eauto.
@@ -1286,7 +1286,7 @@ Proof.
             apply l_eqv in H4. unfold UnConstrFreshIdx in H0;
             unfold In in H3; apply H0 in H4;
             unfold GetNRelSchema in *; omega.
-      + exists (S v2); unfold Add, UnConstrFreshIdx; intros.
+      + exists (S v2); unfold Ensembles.Add, UnConstrFreshIdx; intros.
         inversion H3; subst.
         unfold UnConstrFreshIdx in H2; intuition; subst; simpl; eauto.
         inversion H4; subst.
@@ -1297,7 +1297,7 @@ Proof.
         * simpl; destruct H3;
           [right; apply l''_eqv; eauto |
            left; inversion H3; reflexivity ].
-        * unfold Add; destruct H3;
+        * unfold Ensembles.Add; destruct H3;
           [ right; subst; econstructor
           | left; eapply l''_eqv; eauto ].
         * simpl; apply NoDup_cons; eauto.
@@ -1318,7 +1318,7 @@ Lemma refine_BagADT_QSDelete' {ResultT}
     (k  : _ -> Comp ResultT) (k' : _ -> Comp ResultT)
     (DT_Dec : DecideableEnsemble DeletedTuples)
     search_pattern,
-    ExtensionalEq (@dec _ _ DT_Dec)
+    ExtensionalEq (@DecideableEnsembles.dec _ _ DT_Dec)
                   (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
     -> DelegateToBag_AbsR r_o r_n
     -> (forall r_o r_n,
@@ -1343,15 +1343,15 @@ Proof.
                [ [bnd' fresh_bnd'] ? ] ] ].
     pose proof (UnIndexedEnsembleListEquivalence_Delete DT_Dec H3).
     pose proof (UnIndexedEnsembleListEquivalence_Delete DT_Dec H4).
-    eexists (filter (fun a : RawTuple => negb (dec a)) l); split;
+    eexists (filter (fun a : RawTuple => negb (DecideableEnsembles.dec a)) l); split;
       unfold EnsembleIndexedListEquivalence; split; eauto;
         try solve [eexists _; eauto using UnConstrFreshIdx_Delete].
     eapply UnIndexedEnsembleListEquivalence_Same_set; eauto.
     split; unfold Included; intros; inversion H7; subst;
       econstructor; eauto;
-        unfold Complement, In in *.
-    + eapply Decides_false in H9; rewrite H in H9; congruence.
-    + eapply Decides_false; rewrite <- H in H9; destruct (dec (indexedElement x));
+        unfold Complement, Ensembles.In in *.
+    + eapply Decides_false in H9; rewrite H in H9. congruence.
+    + eapply Decides_false; rewrite <- H in H9; destruct (DecideableEnsembles.dec (indexedElement x));
         congruence.
   - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
 Qed.
@@ -1446,7 +1446,7 @@ Lemma refine_BagFindBag_single {ResultT} :
          (f : _ -> ResultT)
          (P_dec : DecideableEnsemble P),
     @DelegateToBag_AbsR qs_schema BagIndexKeys r_o r_n
-    -> ExtensionalEq dec (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term)
+    -> ExtensionalEq DecideableEnsembles.dec (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term)
     -> refine (For (UnConstrQuery_In r_o idx
                                      (fun tup => Where (P tup) Return (f tup))))
               (r_n' <- CallBagFind qs_schema BagIndexKeys idx r_n search_term;
@@ -1467,7 +1467,7 @@ Proof.
             pose proof H'
       | ]
   end.
-  eapply (H2 {| dec := fun tup => dec (prim_fst tup) |}).
+  eapply (H2 {| DecideableEnsembles.dec := fun tup => DecideableEnsembles.dec (prim_fst tup) |}).
   simpl.
   finish honing.
   intros; finish honing.
@@ -1498,7 +1498,7 @@ Proof.
   2: reflexivity.
   rewrite map_map; simpl.
   induction a; simpl; eauto.
-  Grab Existential Variables.
+  Unshelve.
   simpl.
   intro; rewrite dec_decides_P; reflexivity.
 Qed.
@@ -1508,7 +1508,7 @@ Lemma refine_BagFindBagCount {ResultT} :
          (f : _ -> ResultT)
          (P_dec : DecideableEnsemble P),
     @DelegateToBag_AbsR qs_schema BagIndexKeys r_o r_n
-    -> ExtensionalEq dec (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term)
+    -> ExtensionalEq DecideableEnsembles.dec (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term)
     -> refine (Count For (UnConstrQuery_In r_o idx
                                            (fun tup => Where (P tup) Return (f tup))))
               (r_n' <- CallBagCount idx r_n search_term;

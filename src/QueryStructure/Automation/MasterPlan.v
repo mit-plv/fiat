@@ -132,7 +132,7 @@ Ltac master_plan_w_specific_indexes'
 Ltac master_plan_w_specific_indexes indexes IndexTactics := IndexTactics ltac:(master_plan_w_specific_indexes' indexes).
 
 
-Notation "attr # Ridx ## qs_sch " :=
+Notation "attr #! Ridx ##! qs_sch " :=
   (let heading' := GetHeading qs_sch Ridx in
    let attr' := (@Build_BoundedIndex _ _ (HeadingNames heading') attr _) in
    ibound (indexb attr'))  (at level 55).

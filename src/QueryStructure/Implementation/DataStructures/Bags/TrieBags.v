@@ -421,13 +421,14 @@ Module TrieBag (X:OrderedType).
         rewrite H0.
         apply eqlistA_app;
           repeat first [econstructor; eauto
-                       | try reflexivity ].
+                       | try reflexivity ]; try typeclasses eauto;
+          try (symmetry; assumption).
         apply H5.
         apply MapsTo_1 with (x := key0).
         symmetry; eauto.
         apply find_2; eassumption.
         apply H5.
-        eapply add_3 in H6; eauto.
+        eapply add_3 in H6; eauto; intuition.
       - econstructor; inversion H1; subst; simpl; eauto.
         + intros; destruct (X.eq_dec k key0).
           apply find_1 in H6; eauto.
@@ -438,14 +439,15 @@ Module TrieBag (X:OrderedType).
           rewrite H0.
           apply eqlistA_app;
             repeat first [econstructor; eauto
-                         | try reflexivity ].
+                         | try reflexivity ]; try typeclasses eauto;
+            try (symmetry; assumption).
           unfold TrieBagRepInv; intros; econstructor; simpl in *.
           apply bempty_RepInv.
           econstructor.
           intros; elimtype False; eapply benumerate_empty; eauto.
           intros; elimtype False; eapply empty_1; eauto.
           apply H5.
-          eapply add_3 in H6; eauto.
+          eapply add_3 in H6; eauto; intuition.
     Qed.
 
     Corollary TrieBag_binsert_Preserves_RepInv :
@@ -549,7 +551,7 @@ Module TrieBag (X:OrderedType).
               symmetry; eauto.
               apply find_2; eauto.
             * apply H3.
-              eapply add_3; eauto.
+              eapply add_3; eauto; intuition.
         - simpl; econstructor; inversion containerCorrect; subst; eauto.
           + pose proof (bdelete_RepInv bag search_term) as e'; simpl in *;
             rewrite e0 in e'; eapply e'.
@@ -642,7 +644,7 @@ Module TrieBag (X:OrderedType).
             symmetry; eauto.
             apply find_2; eauto.
           * apply H3.
-            eapply add_3; eauto.
+            eapply add_3; eauto; intuition.
       - simpl; econstructor; inversion containerCorrect; subst; eauto.
         + pose proof (bupdate_RepInv bag search_term updateTerm) as e'; simpl in *;  rewrite e0 in e'; eapply e'; eauto.
         + intros; destruct (bupdate_correct bag search_term updateTerm);
@@ -776,8 +778,8 @@ Module TrieBag (X:OrderedType).
     : forall key, Proper (X.eq ==> eq ==> eq) (KeyBasedPartitioningFunction Trie key).
       unfold Proper, respectful; intros; subst.
       unfold KeyBasedPartitioningFunction.
-      repeat find_if_inside; eauto.
-      rewrite H in e; intuition.
+      repeat find_if_inside; eauto;
+        rewrite H in *; intuition.
     Qed.
 
     Lemma TrieBag_BagEnumerateEmpty :
@@ -1178,7 +1180,7 @@ Module TrieBag (X:OrderedType).
         apply in_app_or in H1; intuition eauto.
         destruct a as [k' t]; simpl in *.
         assert (InA (PX.eqke (elt:=Trie)) (k', t) ((k', t) :: l))
-               by (econstructor; eauto).
+               by (econstructor; eauto || typeclasses eauto).
         generalize (H k' t H1).
         assert (k = k')
           by (revert H3; clear; induction (Trie_enumerate t);
@@ -1295,7 +1297,7 @@ Module TrieBag (X:OrderedType).
         apply in_app_or in H1; intuition eauto.
         destruct a.
         assert (InA (PX.eqke (elt:=Trie)) (t, t0) ((t, t0) :: l)) by
-            (econstructor; eauto).
+            (econstructor; eauto || typeclasses eauto).
         apply H in H1; simpl in *.
         assert (k = t).
         {
@@ -1521,7 +1523,7 @@ Module TrieBag (X:OrderedType).
         rewrite IHbags'; eauto.
         destruct a; simpl in *.
         assert (~ X.eq k key') by
-            (intros; eapply H1; econstructor; eauto).
+            (intros; eapply H1; econstructor; eauto || typeclasses eauto).
         generalize (fun item => H2 k b (or_introl (refl_equal _)) item) H3;
           clear.
         induction (benumerate b); simpl; eauto; intros.
@@ -1541,7 +1543,12 @@ Module TrieBag (X:OrderedType).
         intros.
         apply InA_app in H3; intuition eauto.
         assert (~X.eq k (fst a))
-          by (destruct a; intro; eapply H0; eauto; econstructor).
+          by (destruct a; intro; eapply H0; [
+                 constructor; typeclasses eauto
+               | simpl in *;
+                 repeat match goal with
+                        | [ H : X.eq ?k _ |- _ ] => rewrite H in *; clear H
+                        end; reflexivity ]).
         apply H3; revert H5; clear; induction (Trie_enumerate (snd a));
         intros; inversion H5; subst; eauto.
         destruct H0; simpl in *; eauto.
@@ -1653,7 +1660,7 @@ Module TrieBag (X:OrderedType).
         rewrite filter_app, IHbags'; eauto; f_equiv.
         destruct a; simpl in *.
         assert (~ X.eq k key') by
-            (intros; eapply H1; econstructor; eauto).
+          (intros; eapply H1; econstructor; eauto || typeclasses eauto).
         generalize (fun item => H2 k b (or_introl (refl_equal _)) item) H3;
           clear.
         induction (benumerate b); simpl; eauto; intros.
@@ -1690,7 +1697,12 @@ Module TrieBag (X:OrderedType).
         eapply H0; eauto.
         apply InA_app in H3; intuition eauto.
         assert (~X.eq k (fst a))
-          by (destruct a; intro; eapply H0; eauto; econstructor).
+          by (destruct a; intro; eapply H0; [
+                 constructor; typeclasses eauto
+               | simpl in *;
+                 repeat match goal with
+                        | [ H : X.eq ?k _ |- _ ] => rewrite H in *; clear H
+                        end; reflexivity ]).
         apply H3; revert H5; clear; induction (Trie_enumerate (snd a));
         intros; inversion H5; subst; eauto.
         destruct H0; simpl in *; eauto.
@@ -1766,24 +1778,34 @@ Module TrieBag (X:OrderedType).
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
             destruct a; simpl in *.
-            eapply XMap.add_3 in H0; eauto.
+            eapply XMap.add_3 in H0; eauto;
+              match goal with
+              | [ H : X.eq _ _ |- _ ] => rewrite H; auto
+              end.
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
-            eapply XMap.add_3 in H0; eauto.
+            eapply XMap.add_3 in H0; eauto;
+              match goal with
+              | [ H : X.eq _ _ |- _ ] => rewrite H; auto
+              end.
           * inversion H; subst.
             destruct H5; destruct a; simpl in *; subst.
             right; rewrite <- elements_mapsto_iff; simpl.
             unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec k key0); simpl in *; eauto; try congruence.
             rewrite e in H0; symmetry in H0; intuition.
-            apply add_1; eauto.
-            eauto.
+            apply add_1; eauto; try symmetry; eauto.
+            eauto;
+              match goal with
+              | [ H : X.eq _ _ |- _ ] => rewrite H; auto
+              end.
           * right; rewrite <- elements_mapsto_iff; simpl.
             unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
             rewrite <- elements_mapsto_iff in *; simpl; eauto.
             rewrite <- elements_mapsto_iff in *; simpl; eauto.
-            apply add_2; eauto.
+            apply add_2; eauto;
+              intuition; eapply H2; [ eassumption | left; symmetry; auto ].
           * unfold KeyBasedPartitioningFunction in *.
             destruct (F.eq_dec (fst a) key0); simpl in *; eauto.
             pose proof (proj1 (add_mapsto_iff _ _ _ _ _) H0); intuition; subst.
@@ -1852,7 +1874,9 @@ Module TrieBag (X:OrderedType).
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
             destruct a; simpl in *.
-            eapply XMap.add_3 in H; eauto.
+            eapply XMap.add_3 in H; eauto; try match goal with
+                                               | [ H : X.eq _ _ |- _ ] => rewrite H; solve [ eauto ]
+                                               end.
           * apply (proj1 (H0 v)); eauto.
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
@@ -1860,7 +1884,7 @@ Module TrieBag (X:OrderedType).
             rewrite <- elements_mapsto_iff in H.
             pose proof (proj1 (add_mapsto_iff _ _ _ _ _) H); intuition; subst.
             apply (proj1 (H0 (snd a))); econstructor.
-            constructor; eauto.
+            constructor; eauto; simpl; symmetry; assumption.
             apply (proj2 (H0 v)); rewrite <- elements_mapsto_iff; eauto.
           * unfold KeyBasedPartitioningFunction in *.
             destruct (X.eq_dec (fst a) key0); simpl in *; eauto; try congruence.
@@ -1934,10 +1958,15 @@ Module TrieBag (X:OrderedType).
           rewrite filter_app, app_nil_r; simpl.
           rewrite <- app_nil_r; f_equiv.
           + rewrite filter_Prefix; eauto; reflexivity.
-          + inversion H; subst.
-            eapply TrieBag_enumerateOK'; intros.
-            eapply H6.
-            eapply (@XMap.elements_2 _ (XMap.Bst (SubTrieMapBST' H))); eauto.
+          + match goal with
+            | [ H : TrieOK _ _ |- _ ] =>
+                inversion H; subst;
+                eapply TrieBag_enumerateOK'; intros;
+                match goal with
+                | [ H5 : _ |- _ ] => eapply H5;
+                                     eapply (@XMap.elements_2 _ (XMap.Bst (SubTrieMapBST' H))); eauto
+                end
+            end.
         - rewrite <- H; eauto.
           destruct trie; simpl in *.
           unfold TrieBag_benumerate; simpl.
@@ -1945,14 +1974,22 @@ Module TrieBag (X:OrderedType).
           rewrite Permutation_benumerate_fold_left, flatten_app; simpl;
           rewrite filter_app, app_nil_r; simpl; f_equiv.
           rewrite <- bfind_correct by eauto.
-          + inversion H0; subst.
+          + match goal with
+            | [ H0 : TrieOK _ _ |- _ ] => inversion H0; subst
+            end.
             rewrite filter_Prefix; eauto.
           + rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-            rewrite Permutation_KeyBasedPartition with (key0 := key0)
-                                                         (bst_m := SubTrieMapBST H0).
+            match goal with
+            | [ H0 : TrieOK _ _ |- _ ] =>
+                rewrite Permutation_KeyBasedPartition with (key0 := key0)
+                                                           (bst_m := SubTrieMapBST H0)
+            end.
             simpl.
             apply find_2 in e0.
-            pose proof (KeyBasedPartition_fst_singleton key0 subtrie (XMap.Bst (SubTrieMapBST H0)) e0) as singleton.
+            match goal with
+            | [ H0 : TrieOK _ _ |- _ ] =>
+                pose proof (KeyBasedPartition_fst_singleton key0 subtrie (XMap.Bst (SubTrieMapBST H0)) e0) as singleton
+            end.
             rewrite (fold_Equal_simpl (eqA := @Permutation BagType) singleton)
               by (eauto using Permutation_Equivalence, Tries_enumerate_app_Proper, Tries_enumerate_app_transpose_neqkey).
             rewrite !fold_add;
@@ -1974,11 +2011,20 @@ Module TrieBag (X:OrderedType).
           rewrite <- app_nil_r; f_equiv.
           + rewrite filter_Prefix; eauto.
           + rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-            rewrite Permutation_KeyBasedPartition with (key0 := key0)
-                                                         (bst_m := SubTrieMapBST' H).
+            match goal with
+            | [ H : TrieOK _ _ |- _ ] =>
+                rewrite Permutation_KeyBasedPartition with (key0 := key0)
+                                                           (bst_m := SubTrieMapBST' H)
+            end.
             simpl in *.
-            rewrite <- (@not_find_in_iff _ (XMap.Bst (SubTrieMapBST' H)) key0) in e0.
-            pose proof (KeyBasedPartition_fst_singleton_None key0 (XMap.Bst (SubTrieMapBST H)) e0) as singleton.
+            match goal with
+            | [ H : TrieOK _ _ |- _ ] =>
+                rewrite <- (@not_find_in_iff _ (XMap.Bst (SubTrieMapBST' H)) key0) in e0
+            end.
+            match goal with
+            | [ H : TrieOK _ _ |- _ ] =>
+                pose proof (KeyBasedPartition_fst_singleton_None key0 (XMap.Bst (SubTrieMapBST H)) e0) as singleton
+            end.
             rewrite (fold_Equal_simpl (eqA := @Permutation BagType) singleton)
               by (eauto using Permutation_Equivalence, Tries_enumerate_app_Proper, Tries_enumerate_app_transpose_neqkey).
             rewrite fold_empty, flatten_filter, map_map.
@@ -2079,8 +2125,8 @@ Module TrieBag (X:OrderedType).
       unfold KeyBasedPartitioningFunction in *.
       find_if_inside; simpl in *; try congruence.
       unfold Proper, respectful; intros; subst.
-      unfold KeyBasedPartitioningFunction; repeat find_if_inside; eauto.
-      rewrite <- e in n; intuition.
+      unfold KeyBasedPartitioningFunction; repeat find_if_inside; eauto;
+        rewrite <- e in n; intuition.
     Qed.
 
     Lemma Proper_negb_KeyBasedPartitioningFunction
@@ -2090,8 +2136,8 @@ Module TrieBag (X:OrderedType).
                   negb (KeyBasedPartitioningFunction Trie key' k0 e)).
     Proof.
       unfold Proper, respectful, KeyBasedPartitioningFunction; intros.
-      repeat find_if_inside; subst; simpl; eauto.
-      rewrite H in n; intuition.
+      repeat find_if_inside; subst; simpl; eauto;
+        rewrite H in *; intuition.
     Qed.
 
     Instance Proper_Trie_enumerate_app
@@ -2395,8 +2441,8 @@ Module TrieBag (X:OrderedType).
           unfold TrieBag_benumerate in H7.
           rewrite H7 with (k := fst a); f_equiv; eauto.
           rewrite <- IHl; eauto.
-          inversion H; eauto.
-          intros; eapply H7; simpl; econstructor 2; eauto.
+          inversion H; eauto;
+            intros; eapply H7; simpl; econstructor 2; eauto.
           econstructor; destruct a; simpl; reflexivity.
           eauto with typeclass_instances.
           eauto with typeclass_instances.
@@ -2839,7 +2885,7 @@ Module TrieBag (X:OrderedType).
           inversion H; eauto.
           econstructor; destruct a; simpl; reflexivity.
       }
-      Grab Existential Variables.
+      Unshelve.
       eauto.
     Qed.
 

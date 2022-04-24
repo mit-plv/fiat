@@ -671,13 +671,13 @@ Lemma In_flatten_CompList {A} :
          (il : list (@IndexedElement A))
          (l : list A)
          (a : A),
-    In a l
+    List.In a l
     -> flatten_CompList
          (map
             (fun x1 : IndexedElement =>
                Where (P (indexedElement x1))
                      Return (indexedElement x1) ) il) ↝ l
-    -> exists a', In a' il /\ indexedElement a' = a.
+    -> exists a', List.In a' il /\ indexedElement a' = a.
 Proof.
   induction il; simpl; intros;  computes_to_inv; subst; simpl in *; intuition.
   apply in_app_or in H; intuition.
@@ -744,7 +744,7 @@ Proof.
     computes_to_econstructor; [ | computes_to_constructor; symmetry; eassumption ].
     computes_to_econstructor.
     pose proof (EnsembleListEquivalence_slice x1_before x1_middle x1_after).
-    instantiate (2 := (fun x0 : IndexedRawTuple => ens x0 /\ ~ In x0 x1_middle)).
+    instantiate (2 := (fun x0 : IndexedRawTuple => ens x0 /\ ~ List.In x0 x1_middle)).
     eapply PickComputes with (a := map indexedElement (x1_before ++ x1_after)).
     econstructor; split; eauto; intuition.
     destruct (H1 ens).

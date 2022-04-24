@@ -23,6 +23,8 @@ Definition AlbumSchema :=
     ]
     enforcing [attribute EVENT_NAME for PHOTOS references EVENTS].
 
+Locate "#".
+
 Definition AlbumSig : ADTSig :=
   ADTsignature {
       Constructor "Init"

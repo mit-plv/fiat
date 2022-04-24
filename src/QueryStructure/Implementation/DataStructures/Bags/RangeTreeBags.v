@@ -30,7 +30,7 @@ Module RangeTreeBag (X : OrderedType).
   Proof.
     intros x y; unfold X_le_dec.
     destruct (X.compare x y); intuition.
-    - apply X.lt_not_eq in l; eauto.
+    - apply X.lt_not_eq in l; eauto; intuition.
     - apply Raw.Proofs.L.PX.MO.lt_le in l; eauto.
   Qed.
 
@@ -243,6 +243,7 @@ Module RangeTreeBag (X : OrderedType).
               destruct minkey; intuition; unfold Range_Min_le_Value in *.
               apply X_le_sound in min_cmp; apply X_le_sound.
               destruct min_cmp. eauto.
+              try (left; rewrite H; assumption).
               right; apply X.eq_sym in H; eapply Raw.Proofs.L.PX.MO.lt_eq; eauto.
             * inversion ctn_proof; subst.
               pose ({| this := ctn_raw2; is_bst := H9 |}).
@@ -272,10 +273,12 @@ Module RangeTreeBag (X : OrderedType).
             inversion hyp_m; subst; eauto; exfalso;
             destruct minkey; simpl in *; try discriminate.
             * rewrite <- not_true_iff_false in *.
-              rewrite X_le_sound in *. intuition eauto.
+              rewrite X_le_sound in *. intuition eauto;
+                rewrite <- H0 in *; tauto.
             * apply Raw.Proofs.MapsTo_In in H0.
               specialize (H6 _ H0). rewrite <- not_true_iff_false in *.
-              rewrite X_le_sound in *; intuition eauto.
+              rewrite X_le_sound in *; intuition eauto;
+                rewrite <- H in *; tauto.
       }
     Qed.
 
@@ -306,7 +309,7 @@ Module RangeTreeBag (X : OrderedType).
               split. econstructor. eauto.
               destruct maxkey; intuition; unfold Range_Value_le_Max in *.
               apply X_le_sound in max_cmp; apply X_le_sound.
-              destruct max_cmp; eauto.
+              destruct max_cmp; eauto; rewrite H; tauto.
             * apply IHctn_raw2 in hyp_r. split. apply Raw.MapsRight. tauto. tauto.
           + apply IHctn_raw1 in hyp. split. apply Raw.MapsLeft. tauto. tauto.
       }
@@ -328,11 +331,12 @@ Module RangeTreeBag (X : OrderedType).
             destruct maxkey; simpl in *; try discriminate.
             * rewrite <- not_true_iff_false in *.
               rewrite X_le_sound in *. intuition.
-              eapply H1; eapply X.eq_trans; eauto.
+              eapply H1; eapply X.eq_trans; eauto; rewrite H0; reflexivity.
               eapply H2; eapply X.eq_sym in H0; eapply Raw.Proofs.L.PX.MO.eq_lt; eauto.
             * apply Raw.Proofs.MapsTo_In in H0.
               specialize (H7 _ H0). rewrite <- not_true_iff_false in *.
-              rewrite X_le_sound in *; intuition eauto.
+              rewrite X_le_sound in *; intuition eauto;
+                rewrite <- H in *; tauto.
       }
     Qed.
 
@@ -360,9 +364,9 @@ Module RangeTreeBag (X : OrderedType).
               econstructor; eauto.
               unfold Range_InRange. simpl. apply andb_true_intro. split.
               destruct minkey; auto; simpl in *; rewrite X_le_sound in *; inversion min_cmp;
-              [ left | right; eapply Raw.Proofs.L.PX.MO.lt_eq ]; eauto.
+              [ left | right; eapply Raw.Proofs.L.PX.MO.lt_eq ]; eauto; rewrite H; reflexivity || auto.
               destruct maxkey; auto; simpl in *; rewrite X_le_sound in *; inversion max_cmp;
-              [ left | right; eapply Raw.Proofs.L.PX.MO.lt_eq ]; eauto.
+              [ left | right; eapply Raw.Proofs.L.PX.MO.lt_eq ]; eauto; try rewrite H; eauto; reflexivity.
             * change ctn_raw2 with {| this := ctn_raw2; is_bst := H5 |}.(this) in hyp_r.
               rewrite RangeTreeBag_btraverse_right_correct in hyp_r; destruct hyp_r; split.
               apply Raw.MapsRight; assumption.
@@ -587,7 +591,7 @@ Module RangeTreeBag (X : OrderedType).
         intros; eapply H; eapply InA_cons_tl; eauto.
         specialize (IHbs' H1); clear H1.
         assert (InA (eq_key_elt (elt:=BagType)) (key, bag) ((key, bag) :: bs')) by
-            (econstructor; econstructor; auto).
+            (econstructor; econstructor; reflexivity).
         specialize (H _ _ H1); clear H1; specialize (containerCorrect _ _ H).
         destruct containerCorrect; specialize (H0 _ searchterm H1).
         rewrite H0. rewrite IHbs'. reflexivity.
@@ -744,7 +748,7 @@ Module RangeTreeBag (X : OrderedType).
     Proof.
       intros. destruct (X_le_dec x y) eqn: eq.
       - rewrite X_le_sound in eq; inversion eq; clear eq.
-        + symmetry. rewrite X_le_sound. left. eapply X.eq_trans; eauto.
+        + symmetry. rewrite X_le_sound. left. eapply X.eq_trans; eauto; symmetry; auto.
         + symmetry. rewrite X_le_sound. right. symmetry in H. eapply Raw.Proofs.MX.eq_lt; eauto.
       - symmetry. rewrite <- not_true_iff_false. intro.
         rewrite <- not_true_iff_false in eq.
@@ -759,7 +763,8 @@ Module RangeTreeBag (X : OrderedType).
       intros. destruct (X_le_dec x y) eqn: eq.
       - rewrite X_le_sound in eq; inversion eq; clear eq.
         + symmetry. rewrite X_le_sound. left. eapply X.eq_trans; eauto.
-        + symmetry. rewrite X_le_sound. right. eapply Raw.Proofs.MX.eq_lt; eauto.
+        + symmetry. rewrite X_le_sound. right. eapply Raw.Proofs.MX.eq_lt; eauto;
+            try reflexivity; rewrite <- H; auto.
       - symmetry. rewrite <- not_true_iff_false. intro.
         rewrite <- not_true_iff_false in eq.
         rewrite X_le_sound in eq, H0.
@@ -1074,7 +1079,8 @@ Module RangeTreeBag (X : OrderedType).
                 apply H2. symmetry in H3. eapply InA_eqke_eqk; eauto.
                 eapply Htraverse. constructor 2. assumption.
                 eapply Htraverse. constructor 2. eassumption.
-                specialize (proj2 (Htraverse k0 b0) (conj H5 H4)). inversion 1; eauto.
+                specialize (proj2 (Htraverse k0 b0) (conj H5 H4)). inversion 1; eauto;
+                  destruct H7; simpl in *; symmetry in H7; tauto.
           }
           clear H. rename H0 into H.
           pose proof (fun k b => proj1 (RangeTreeBag_btraverse_correct container keys k b)) as Htraverse.
@@ -1117,8 +1123,8 @@ Module RangeTreeBag (X : OrderedType).
             (eqA := eq_key_elt (elt:=BagType))
             (ls' := (List.filter (fun x : TKey * BagType => Range_InRange keys (fst x)) (RangeTreeBag_btraverse container keys))) in H;
             try solve [ apply eqke_equiv ].
-          pose proof (filter_map (fun x => Range_InRange keys (fst x))
-                                 (fun x => (fst x, f (snd x))) (RangeTreeBag_btraverse container keys));
+          pose proof (ListFacts.filter_map (fun x => Range_InRange keys (fst x))
+                                           (fun x => (fst x, f (snd x))) (RangeTreeBag_btraverse container keys));
             simpl in H0; fold TKey in *; rewrite <- H0 in H; clear H0.
           rewrite filter_InA in H;
             try solve [ apply eqke_equiv ].
@@ -1131,7 +1137,7 @@ Module RangeTreeBag (X : OrderedType).
             + simpl in *; inversion H_in; clear H_in; subst.
               * rewrite Raw.Proofs.elements_mapsto in *.
                 unfold eq_key_elt, Raw.Proofs.PX.eqke in H0. destruct H0. simpl in *. subst.
-                apply Raw.Proofs.add_1; auto.
+                apply Raw.Proofs.add_1; auto; symmetry; auto.
               * inversion Htraverse_nodup; subst.
                 apply InA_ind_helper in Htraverse. destruct Htraverse as [Htraverse_s Htraverse_c].
                 specialize (IHls' H0 Htraverse_c H3); clear Htraverse_c.
@@ -1141,12 +1147,12 @@ Module RangeTreeBag (X : OrderedType).
                   exfalso. apply H2. rewrite InA_alt.
                   exists x. destruct H.
                   unfold eq_key_elt, Raw.Proofs.PX.eqke in H. destruct H. simpl in *.
-                  split. unfold eq_key, Raw.Proofs.PX.eqk. simpl. etransitivity; eauto.
+                  split. unfold eq_key, Raw.Proofs.PX.eqk. simpl. etransitivity; eauto; try symmetry; assumption.
                   assumption.
                 }
                 {
                   rewrite Raw.Proofs.elements_mapsto in *.
-                  apply Raw.Proofs.add_2; auto.
+                  apply Raw.Proofs.add_2; auto; intuition.
                 }
           - unfold Proper, respectful; intros; apply InRange_Proper.
             unfold eq_key_elt, Raw.Proofs.PX.eqke in *; intuition.

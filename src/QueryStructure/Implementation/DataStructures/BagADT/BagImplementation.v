@@ -350,8 +350,9 @@ Section SharpenedBagImplementation.
 
   Local Instance DecideableEnsemble_bool
         {A} (f : A -> bool)
-    : DecideableEnsemble (fun a => f a = true) :=
-    {| dec := f |}. Proof. intuition. Defined.
+    : DecideableEnsemble (fun a => f a = true).
+  Proof.
+    refine {| dec := f |}. intuition. Defined.
 
   Lemma refine_Update_invalid
   : forall or nr search_term update_term,

@@ -6,7 +6,7 @@ Require Import  Coq.Lists.List
 
 Lemma tupleAgree_empty :
   forall {heading} (tup1 tup2: @RawTuple heading),
-    tupleAgree tup1 tup2 [] <-> True.
+    tupleAgree tup1 tup2 nil <-> True.
 Proof.
   unfold tupleAgree; intuition.
 Qed.
@@ -24,7 +24,7 @@ Fixpoint tupleAgree_computational
          (tup1 tup2 : @RawTuple h)
          (attrlist : list (Attributes h)) :=
   match attrlist with
-    | [] => True
+    | nil => True
     | attr :: more => GetAttributeRaw tup1 attr = GetAttributeRaw tup2 attr /\ tupleAgree_computational tup1 tup2 more
   end.
 

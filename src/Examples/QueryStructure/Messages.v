@@ -19,7 +19,7 @@ Definition MessagesSchema :=
       relation CONTACTS has
               schema <PHONE_NUMBER :: nat,
                       NAME :: string>
-                      where attributes [NAME] depend on [PHONE_NUMBER]
+                      (*where attributes [NAME] depend on [PHONE_NUMBER]*)
     ]
     enforcing [attribute PHONE_NUMBER for MESSAGES references CONTACTS].
 
@@ -28,9 +28,9 @@ Definition MessagesSig : ADTSig :=
       Constructor "Init"
            : rep,
       Method "AddMessage"
-           : rep * (MessagesSchema#MESSAGES)  -> rep * bool,
+           : rep * (TupleDef MessagesSchema MESSAGES)  -> rep * bool,
       Method "AddContact"
-           : rep * (MessagesSchema#CONTACTS) -> rep * bool,
+           : rep * (TupleDef MessagesSchema CONTACTS) -> rep * bool,
       Method "ContactMessages"
            : rep * string                     -> rep * (list MessageT),
       Method "RelevantMessages"
@@ -43,10 +43,10 @@ Definition MessagesSpec : ADT MessagesSig :=
 
     Def Constructor0 "Init" : rep := empty,,
 
-    Def Method1 "AddMessage" (r : rep) (message : MessagesSchema#MESSAGES) : rep * bool :=
+    Def Method1 "AddMessage" (r : rep) (message : TupleDef MessagesSchema MESSAGES) : rep * bool :=
       Insert message into r ! MESSAGES,
 
-    Def Method1 "AddContact" (r : rep) (contact : MessagesSchema#CONTACTS) : rep * bool :=
+    Def Method1 "AddContact" (r : rep) (contact : TupleDef MessagesSchema CONTACTS) : rep * bool :=
       Insert contact into r ! CONTACTS,
 
     Def Method1 "ContactMessages" (r : rep) (name : string) : rep * list MessageT :=

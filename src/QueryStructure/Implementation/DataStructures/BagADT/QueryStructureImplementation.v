@@ -285,11 +285,11 @@ Section QueryStructureImplementation.
              fun upd => upd
         |}
         P
-        [dec].
+        [DecideableEnsembles.dec].
   Proof.
     econstructor; intros; simpl.
     unfold List.In in H; intuition; subst.
-    case_eq (dec tup); simpl.
+    case_eq (DecideableEnsembles.dec tup); simpl.
     - intros; eapply dec_decides_P; eauto.
     - intros; eapply Decides_false; eauto.
   Qed.

@@ -47,24 +47,28 @@ Section PrefixClauses.
   Ltac prefix_crush := intros; find_if_inside; intuition eauto; discriminate.
 
   Instance DecideableEnsemble_HasPrefix st :
-    DecideableEnsemble (IsPrefix st) :=
-    {| dec a := ?[IsPrefix_dec st a] |}. prefix_crush. Defined.
+    DecideableEnsemble (IsPrefix st).
+  Proof.
+    refine {| dec a := ?[IsPrefix_dec st a] |}. prefix_crush. Defined.
 
   Global Instance DecideableEnsemble_HasPrefix_f
          (A : Type)
          (f : A -> list X)
          b :
-    DecideableEnsemble (fun a => IsPrefix b (f a)) :=
-    {| dec a := ?[IsPrefix_dec b (f a)] |}. prefix_crush. Defined.
+    DecideableEnsemble (fun a => IsPrefix b (f a)).
+  Proof.
+    refine {| dec a := ?[IsPrefix_dec b (f a)] |}. prefix_crush. Defined.
 
   Instance DecideableEnsemble_FindPrefix st :
-    DecideableEnsemble (fun a => IsPrefix a st) :=
-    {| dec a := ?[IsPrefix_dec a st] |}. prefix_crush. Defined.
+    DecideableEnsemble (fun a => IsPrefix a st).
+  Proof.
+    refine {| dec a := ?[IsPrefix_dec a st] |}. prefix_crush. Defined.
 
   Global Instance DecideableEnsemble_FindPrefix_f
          (A : Type)
          (f : A -> list X)
          b :
-    DecideableEnsemble (fun a => IsPrefix (f a) b) :=
-    {| dec a := ?[IsPrefix_dec (f a) b] |}. prefix_crush. Defined.
+    DecideableEnsemble (fun a => IsPrefix (f a) b).
+  Proof.
+    refine {| dec a := ?[IsPrefix_dec (f a) b] |}. prefix_crush. Defined.
 End PrefixClauses.

@@ -742,7 +742,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         rewrite add_mapsto_iff in H'; intuition.
         eapply (H4 (S m)); unfold MValues.In in *; eauto.
         omega.
-        Grab Existential Variables.
+        Unshelve.
         exact x0.
     Qed.
 
@@ -1014,9 +1014,15 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             remember (fun (k : MValues.key) (_ : TItem) => bool_of_sumbool (in_dec eq_nat_dec k l)) as f.
             unfold not in f; setoid_rewrite <- Heqf.
             generalize MValues f; clear -projection; induction st; simpl; intros; eauto.
-            rewrite MValuesProperties.filter_iff in H; intuition.
+            match goal with
+            | [ H : MValues.MapsTo _ _ _ |- _ ] =>
+                rewrite MValuesProperties.filter_iff in H; intuition
+            end.
             destruct (MKeys.find a MKey); simpl in *.
-            setoid_rewrite Equal_filter_filter in H.
+            match goal with
+            | [ H : MValues.MapsTo _ _ _ |- _ ] =>
+                setoid_rewrite Equal_filter_filter in H
+            end.
             eapply (IHst _ f).
             setoid_rewrite Equal_filter_filter.
             eapply Equal_mapsto_iff; eauto.
@@ -1142,7 +1148,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
       InvertedIndex_bfind, InvertedIndex_benumerate;
       intros.
       unfold InvertedIndex_RepInv in *; intuition.
-      rewrite !filter_map.
+      rewrite !ListFacts.filter_map.
       rewrite <- Permutation_filter_elements
       with (f := fun (k : MValues.key) (item : TItem) =>
                    andb (if IncludedInA_dec (X_eq_dec := E.eq_dec) (fst search_term) (projection item)
