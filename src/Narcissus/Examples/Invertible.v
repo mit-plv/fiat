@@ -4,7 +4,7 @@ general sense), we use the invertibility of the function/relation to
 recover the encoded object.  *)
 
 Require Import Fiat.Narcissus.Examples.TutorialPrelude.
-Require Import Fiat.Narcissus.Formats.Reorder.
+(*Require Import Fiat.Narcissus.Formats.Reorder. *)
 Require Import 
         Coq.Sorting.Permutation.
 Require Import Fiat.Narcissus.Automation.Invertible.
@@ -107,6 +107,7 @@ Module FinT.
     apply (@Fin.of_nat_lt (min (wordToNat w) n) (S n)).
     lia.
   Defined.
+  Definition fin2Word {n:nat} (sz:nat) (idx: Fin.t n): word sz := Word.natToWord sz (FinFun.Fin2Restrict.f2n idx). 
   
   Instance CInv_finToWord (n sz:nat):
     ConditionallyInvertible (@fin2Word (S n) sz) (fun a => Fin2Restrict.f2n a < pow2 sz) (@word2Fin n sz).
