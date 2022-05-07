@@ -27,6 +27,13 @@ Section String.
   Variable decode_close_OK :
       DecodeMEquivAlignedDecodeM decode_close (@decode_close_aligned).
 
+  Lemma AlignedDecodeStringWithTermM'
+    : DecodeMEquivAlignedDecodeM
+        (decode_string_with_term decode_close)
+        (fun numBytes => AlignedDecodeStringWithTerm).
+  Proof.
+    Admitted.
+
   Lemma AlignedDecodeStringWithTermM {C : Type}
     : forall (t : string -> DecodeM (C * _) ByteString)
         (t' : string -> forall {numBytes}, AlignedDecodeM C numBytes),
@@ -37,6 +44,14 @@ Section String.
            (fun numBytes => s <- AlignedDecodeStringWithTerm;
                           t' s).
   Proof.
-  Admitted.
+    intros.
+    eapply Bind_DecodeMEquivAlignedDecodeM;
+      eauto using AlignedDecodeStringWithTermM'.
+  Qed.
 
 End String.
+
+#[export]
+Hint Extern 1 (has_prop_for (decode_string_with_term _)
+                 (@DecodeMEquivAlignedDecodeM)) =>
+  exact AlignedDecodeStringWithTermM' : typeclass_instances.
