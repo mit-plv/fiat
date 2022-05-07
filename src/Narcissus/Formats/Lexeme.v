@@ -57,13 +57,10 @@ Section Lexeme.
   Variable decode_A : DecodeM (A * T) T.
   Variable A_predicate : A -> Prop.
   Variable A_cache_inv : CacheDecode -> Prop.
-  Variable A_cache_OK : cache_inv_Property A_cache_inv
-                                           (fun P => forall b cd, P cd -> P (addD cd b)).
-  Variable A_decode_pf : CorrectDecoder
-                           monoid
-                           A_predicate
-                           A_predicate
-                           eq format_A decode_A A_cache_inv format_A.
+  Variable A_decode_pf :
+    cache_inv_Property A_cache_inv (fun P => forall b cd, P cd -> P (addD cd b)) ->
+    CorrectDecoder monoid A_predicate A_predicate
+      eq format_A decode_A A_cache_inv format_A.
 
 
   (* Unlike lexeme in most parser combinator, we format whitespaces first. *)
@@ -81,6 +78,7 @@ Section Lexeme.
   [ext]. We can certainly generalize [CorrectDecoder] the same way to, say,
   [CorrectDecoderExt] if we have more use cases like this. *)
   Lemma space_decode_correct :
+    cache_inv_Property A_cache_inv (fun P => forall b cd, P cd -> P (addD cd b)) ->
     (forall env env' xenv s t ext,
         Equiv env env' ->
         A_cache_inv env' ->
@@ -101,6 +99,7 @@ Section Lexeme.
           /\ t = mappend t'' t'
           /\ Equiv xenv xenv').
   Proof.
+    intros A_cache_inv_OK.
     unfold format_space.
     split. {
       intros env env' ? [] t ext ?? [s [? H]].
@@ -282,13 +281,14 @@ Section Lexeme.
       lexeme_source_compatible s.
 
   Theorem lexeme_decode_correct :
+    cache_inv_Property A_cache_inv (fun P => forall b cd, P cd -> P (addD cd b)) ->
     lexeme_format_compatible ->
     CorrectDecoder monoid
                    (fun s => A_predicate s /\ lexeme_source_compatible s)
                    (fun s => A_predicate s /\ lexeme_source_compatible s)
                    eq format_lexeme decode_lexeme A_cache_inv format_lexeme.
   Proof.
-    intros Hc.
+    intros A_cache_inv_OK Hc.
     unfold format_lexeme.
     rewrite <- CorrectDecoder_equiv_CorrectDecoder_id.
     split; intros. {
@@ -346,6 +346,7 @@ Section Lexeme.
   Qed.
 
   Theorem lexeme_decode_correct_all :
+    cache_inv_Property A_cache_inv (fun P => forall b cd, P cd -> P (addD cd b)) ->
     lexeme_all_source_compatible ->
     CorrectDecoder monoid
                    A_predicate
@@ -355,9 +356,40 @@ Section Lexeme.
     intros.
     eapply weaken_source_pred; cycle -1.
     eapply strengthen_view_pred; cycle -1.
-    apply lexeme_decode_correct.
+    apply lexeme_decode_correct. eauto.
     eauto using lexeme_all_source_compatible_format_compatible.
     all : repeat (hnf; intros); destruct_conjs; eauto.
+  Qed.
+
+  Corollary lexeme_sequence_decode_correct {S}
+    {P_inv2 : (CacheDecode -> Prop) -> Prop}
+    (P_inv_pf : cache_inv_Property A_cache_inv
+                  (fun P => (forall b cd, P cd -> P (addD cd b)) /\ P_inv2 P))
+    (f : S -> A) (Source_Predicate : S -> Prop)
+    (format : FormatM S T)
+    (decode : A -> DecodeM (S*T) T)
+    (View_Predicate_OK: forall s,
+        Source_Predicate s ->
+        A_predicate (f s) /\ lexeme_source_compatible (f s))
+    (compat_pf : lexeme_format_compatible)
+    (decode_pf : forall v1 : A,
+        cache_inv_Property A_cache_inv P_inv2 ->
+        A_predicate v1 -> lexeme_source_compatible v1 ->
+        CorrectDecoder monoid
+          (fun s => Source_Predicate s /\ IsProj f v1 s)
+          (fun s => Source_Predicate s /\ IsProj f v1 s)
+          eq
+          format (decode v1) A_cache_inv format)
+    : CorrectDecoder monoid
+        Source_Predicate
+        Source_Predicate
+        eq (format_lexeme ◦ f ++ format)
+        (sequence_Decode decode_lexeme decode)
+        A_cache_inv
+        (format_lexeme ◦ f ++ format).
+  Proof.
+    eapply (format_sequence_correct P_inv_pf);
+      eauto using lexeme_decode_correct; simpl; intuition eauto.
   Qed.
 
 End Lexeme.
