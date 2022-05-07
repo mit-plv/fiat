@@ -17,8 +17,8 @@ Require Import
 (* Decision procedures for propositions that crop up during
 synthesis.*)
 
-Lemma decides_True' {A}
-  : forall a, decides true ((fun _ : A => True) a).
+Lemma decides_True'
+  : decides true True.
 Proof.
   simpl; intros; exact I.
 Qed.

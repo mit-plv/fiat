@@ -99,12 +99,7 @@ Ltac decide_data_invariant :=
   unfold GetAttribute, GetAttributeRaw, IsProj in *;
   simpl in *; intros; intuition;
   repeat first [ progress subst
-               | match goal with
-                   |- decides ?A (?B ?C)  =>
-                   let T := type of C in
-                   unify B (fun _ : T => True);
-                   apply (@decides_True' T C)
-                 end
+               | apply decides_True'
                | apply decides_eq_refl
                | solve [eauto with decide_data_invariant_db]
                | eapply decides_and
