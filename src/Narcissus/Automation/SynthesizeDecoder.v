@@ -31,6 +31,8 @@ Require Import
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.StringOpt
         Fiat.Narcissus.Formats.Delimiter
+        Fiat.Narcissus.Formats.Lexeme
+        Fiat.Narcissus.Automation.NormalizeFormats
         Fiat.Narcissus.Automation.Decision
         Fiat.Narcissus.Automation.Common
         Fiat.Narcissus.Automation.ExtractData.
@@ -105,7 +107,7 @@ Ltac apply_base_rule :=
   (* Strings *)
   | H : cache_inv_Property _ _
   |- context[CorrectDecoder _ _ _ _ StringOpt.format_string _ _ _ ] =>
-    eapply StringOpt.String_decode_correct
+    eapply (StringOpt.String_decode_correct _ H)
 
   (* Enumerated Types *)
   | H : cache_inv_Property _ _
@@ -168,11 +170,38 @@ Ltac apply_combinator_rule'
     apply_rules
 
   (* Delimiter *)
-  (* | |- context [CorrectDecoder _ _ _ _ (format_delimiter _ _ _) _ _ _] => *)
-  (*     (* FIXME: should try [delimiter_decode_correct] and synthesize decoder *)
-  (*     for [format_with_term_string _ ?decoder] first. *) *)
-  (*   intros; apply delimiter_decode_simple_correct; eauto; *)
-  (*   apply_rules *)
+  (* TODO: performance optimization: don't go to the second delimiter case if
+  the first one fails after looking up lemmas. *)
+  | H : cache_inv_Property ?P ?P_inv
+    |- context [CorrectDecoder ?mnd _ _ _ (format_delimiter _ ?close ?format) _ _ _] =>
+      let lem := constr:(_ : has_prop_for (format_with_term close format)
+                               CorrectDecoder) in
+      eapply (delimiter_decode_correct (monoid := mnd));
+      try lazymatch goal with
+        | |- cache_inv_Property _ _ => apply H
+        end;
+      [ clear H; intros; normalize_format; apply_rules
+      | clear H; intros; eapply lem; normalize_format; apply_rules ]
+
+  | H : cache_inv_Property ?P ?P_inv
+    |- context [CorrectDecoder ?mnd _ _ _ (format_delimiter _ _ _) _ _ _] =>
+      eapply (delimiter_decode_simple_correct (monoid := mnd));
+      try lazymatch goal with
+        | |- cache_inv_Property _ _ => apply H
+        end;
+      clear H; intros; normalize_format; apply_rules
+
+  | H : cache_inv_Property ?P ?P_inv
+    |- CorrectDecoder ?mnd _ _ _ (format_lexeme _ ◦ _ ++ _)%format _ _ _ =>
+      eapply (lexeme_sequence_decode_correct (monoid := mnd));
+      try lazymatch goal with
+        | |- cache_inv_Property _ _ => apply H
+        end;
+      (* TODO: do we want to use sequence_some_tactics? *)
+      [ clear H; intros; apply_rules
+      | clear H; solve [ solve_side_condition ]
+      | clear H; solve [ eauto with lexeme_compatible_hints ]
+      | clear H; intros; apply_rules ]
 
   | |- context [CorrectDecoder _ _ _ _ (format_SumType (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _ _] =>
     let cache_inv_H := fresh in

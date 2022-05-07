@@ -12,4 +12,5 @@ Require Export
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.StringOpt
         Fiat.Narcissus.Formats.Delimiter
+        Fiat.Narcissus.Formats.Lexeme
         Fiat.Narcissus.Formats.Option.

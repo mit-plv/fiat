@@ -1134,3 +1134,7 @@ Notation "a ∌ b" := (~ @computes_to _ a b) (at level 65) : format_scope.
 
 (* Nicer notation for formating constants *)
 Notation "'constant' n" := (fun _ => n) (at level 20) : format_scope.
+
+(* [t] has proposition of type [P] for the classifier [c]. This type class is
+used to enable a form of composable automation. *)
+Class has_prop_for {T C : Type} (t : T) (c : C) {P : Prop} := prop_pf_for : P.
