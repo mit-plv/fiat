@@ -80,6 +80,17 @@ Section AlignedDelimter.
     : AlignedDecodeM A m :=
     _ <- decode_open_aligned; decode_with_term_aligned.
 
+  Lemma AlignedDecodeDelimiterM'
+        (decode_with_term : DecodeM (A * _) ByteString)
+        (decode_with_term_aligned : forall {m}, AlignedDecodeM A m)
+    : DecodeMEquivAlignedDecodeM decode_with_term (@decode_with_term_aligned) ->
+      DecodeMEquivAlignedDecodeM
+           (decode_delimiter decode_open decode_with_term)
+           (fun numBytes => AlignedDecodeDelimiter (@decode_with_term_aligned)).
+  Proof.
+    eauto using Bind_DecodeMEquivAlignedDecodeM.
+  Qed.
+
   Lemma AlignedDecodeDelimiterM {C : Type}
         (decode_with_term : DecodeM (A * _) ByteString)
         (decode_with_term_aligned : forall {m}, AlignedDecodeM A m)
@@ -95,9 +106,7 @@ Section AlignedDelimter.
                                  (@decode_with_term_aligned);
                             t' a).
   Proof.
-    intros.
-    eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
-    eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
+    eauto using AlignedDecodeDelimiterM', Bind_DecodeMEquivAlignedDecodeM.
   Qed.
 
   Definition AlignedDecodeWithTermSimple {m}
@@ -109,9 +118,7 @@ Section AlignedDelimter.
         (decode_with_term_simple decode_close decode_A)
         (fun numBytes => AlignedDecodeWithTermSimple).
   Proof.
-    intros; eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
-    intros; eapply Bind_DecodeMEquivAlignedDecodeM; eauto.
-    intros. eapply Return_DecodeMEquivAlignedDecodeM.
+    eauto using Bind_DecodeMEquivAlignedDecodeM, Return_DecodeMEquivAlignedDecodeM.
   Qed.
 
   Theorem AlignedDecodeWithTermSimpleM {C : Type}
@@ -132,6 +139,14 @@ Section AlignedDelimter.
     : AlignedDecodeM A m :=
     AlignedDecodeDelimiter (@AlignedDecodeWithTermSimple).
 
+  Theorem AlignedDecodeDelimiterSimpleM'
+    : DecodeMEquivAlignedDecodeM
+        (decode_delimiter_simple decode_open decode_close decode_A)
+           (fun numBytes => AlignedDecodeDelimiterSimple).
+  Proof.
+    eauto using AlignedDecodeDelimiterM', AlignedDecodeWithTermSimpleM'.
+  Qed.
+
   Theorem AlignedDecodeDelimiterSimpleM {C : Type}
     : forall (t : A -> DecodeM (C * _) ByteString)
         (t' : A -> forall {numBytes}, AlignedDecodeM C numBytes),
@@ -143,7 +158,7 @@ Section AlignedDelimter.
            (fun numBytes => a <- AlignedDecodeDelimiterSimple;
                             t' a).
   Proof.
-    eauto using AlignedDecodeDelimiterM, AlignedDecodeWithTermSimpleM'.
+    eauto using Bind_DecodeMEquivAlignedDecodeM, AlignedDecodeDelimiterSimpleM'.
   Qed.
 
 End AlignedDelimter.
