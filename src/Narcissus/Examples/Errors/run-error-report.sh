@@ -4,9 +4,9 @@
 # output into a report file.
 
 # Configuration.
-examples_dir="src/Narcissus/Examples/Errors"
+examples_dir="./src/Narcissus/Examples/Errors"
 coqc_args="-R src Fiat -R Bedrock Bedrock -I src/Common/Tactics"
-time_limit="10s"
+time_limit="60s"
 output_file="error-report.txt"
 
 # Write a header to the output file.

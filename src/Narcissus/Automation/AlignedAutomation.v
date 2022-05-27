@@ -1,6 +1,8 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import
+        Coq.Strings.String
         Coq.ZArith.ZArith
+        Fiat.Narcissus.Automation.Error
         Fiat.Narcissus.BinLib
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Common.ComposeOpt
@@ -15,7 +17,7 @@ Require Import
 Require Import Bedrock.Word.
 
 Ltac start_synthesizing_decoder :=
-  match goal with
+  lazymatch goal with
   | |- CorrectAlignedDecoderFor ?Invariant ?Spec =>
     try unfold Spec (*; try unfold Invariant *)
   end;
@@ -176,6 +178,8 @@ Ltac synthesize_aligned_decoder :=
     continue_on_fail_1
     continue_on_fail
 .
+
+Ltac maybe_synthesize_aligned_decoder := maybe ltac:(fun _ => timeout 30 synthesize_aligned_decoder) "Unable to synthesize decoder."%string.
 
 Lemma length_encode_word' sz :
   forall (w : word sz) (b : ByteString),

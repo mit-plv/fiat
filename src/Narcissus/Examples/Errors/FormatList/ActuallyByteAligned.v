@@ -1,4 +1,5 @@
 From Fiat.Narcissus Require Import Examples.TutorialPrelude.
+Require Import Fiat.Narcissus.Automation.Error.
 
 Record msg := { data : list bool }.
 Definition format :=
@@ -7,7 +8,7 @@ Definition format :=
 Definition invariant (m : msg) :=
   length (m.(data)) < pow2 8 /\ length (m.(data)) mod 8 = 0.
 
-Definition dec : CorrectAlignedDecoderFor invariant format.
+Definition dec : Maybe (CorrectAlignedDecoderFor invariant format).
 Proof.
-  synthesize_aligned_decoder.
+  maybe_synthesize_aligned_decoder.
 Defined.

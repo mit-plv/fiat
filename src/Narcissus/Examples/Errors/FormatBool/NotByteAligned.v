@@ -1,10 +1,16 @@
-From Fiat.Narcissus Require Import Examples.TutorialPrelude.
+Require Import
+        Fiat.Narcissus.Automation.AlignedAutomation
+        Fiat.Narcissus.Automation.Error
+        Fiat.Narcissus.Automation.Solver
+        Fiat.Narcissus.BaseFormats
+        Fiat.Narcissus.BinLib
+        Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.Formats.
 
 Record msg := { data : bool }.
 Definition format := format_bool ◦ data.
 Definition invariant (_ : msg) := True.
-
-Definition dec : CorrectAlignedDecoderFor invariant format.
+Definition dec : Maybe (CorrectAlignedDecoderFor invariant format).
 Proof.
-  synthesize_aligned_decoder.
+  maybe_synthesize_aligned_decoder.
 Defined.
