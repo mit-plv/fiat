@@ -4,7 +4,7 @@ Require Import
 
 Inductive Maybe (A : Type) :=
 | Failure (s : string)
-| Success (a : Type).
+| Success (a : A).
 
 Arguments Failure {A} _.
 Arguments Success {A} _.
@@ -43,14 +43,3 @@ Ltac maybe tac errorMsg :=
               end ]
   | _ => fail "Expected a goal with type Maybe."
   end.
-
-
-(* Example *)
-
-(* Ltac foo := intros; auto. *)
-(* Ltac bar := ltac:(foo). *)
-
-(* Lemma baz : Maybe (forall n : nat, n = n). *)
-(*   maybe ltac:(fun _ => bar) "error in baz"%string. *)
-(*   Show Proof. *)
-(* Defined. *)
