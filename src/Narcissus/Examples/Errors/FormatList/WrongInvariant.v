@@ -10,4 +10,5 @@ Definition invariant (m : msg) := length (m.(data)) < pow2 9.
 Definition dec : Maybe (CorrectAlignedDecoderFor invariant format).
 Proof.
   maybe_synthesize_aligned_decoder.
+  Show Proof.
 Defined.
