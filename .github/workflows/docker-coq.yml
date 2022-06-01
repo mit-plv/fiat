@@ -15,7 +15,7 @@ jobs:
     - name: all
       uses: coq-community/docker-coq-action@v1
       with:
-        coq_version: dev
+        coq_version: dev-ocaml-4.13-flambda
         ocaml_version: 4.05
         custom_script: |
           sudo chmod -R a+rw .
