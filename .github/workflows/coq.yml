@@ -9,7 +9,6 @@ jobs:
   build:
 
     strategy:
-      fail-fast: false
       matrix:
         include:
           - env: { COQ_VERSION: "v8.15" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.15-daily" }
