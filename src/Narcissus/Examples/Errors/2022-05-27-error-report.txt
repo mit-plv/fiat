@@ -1,0 +1,2531 @@
+--------------------------------------------
+-- Narcissus Error Examples Output Report --
+--------------------------------------------
+
+./src/Narcissus/Examples/Errors/General/PointedComposition.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     (fun m : msg => format_word (data m))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (FormatM msg ByteString))
+                 (fun m : msg => format_word (data m))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (EquivFormat (fun m : msg => format_word (data m))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (FormatM msg ByteString))))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (FormatM msg ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (FormatM msg ByteString)))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/General/WrongCircle.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant (format_word ∘ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant failing_case (ErrorMessage "Unable to synthesize decoder.")
+                 (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                    invariant invariant eq (format_word ∘ data)
+                    (failing_case
+                       (ErrorMessage "Unable to synthesize decoder.")
+                       (DecodeM (msg * ByteString) ByteString))
+                    (failing_case
+                       (ErrorMessage "Unable to synthesize decoder.")
+                       (CacheDecode -> Prop)) (format_word ∘ data)))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatNat/NonStandardConst1.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     (format_nat 7 ◦ const 0 ++ format_bool ◦ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (format_nat 7 ◦ const 0 ++
+                  format_bool ◦ data ++ empty_Format)
+                 (format_nat 7 ◦ const 0 ++ format_bool ◦ data)
+                 (EquivFormat_UnderSequence' (format_nat 7 ◦ const 0)
+                    (format_nat 7 ◦ const 0) (format_bool ◦ data)
+                    (format_bool ◦ data ++ empty_Format)
+                    (EquivFormat_reflexive (format_nat 7 ◦ const 0))
+                    (EquivFormat_Projection_Format_Empty_Format' format_bool
+                       format_bool data data
+                       (EquivFormat_reflexive (format_bool ◦ data))))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (format_nat 7 ◦ const 0 ++
+                        format_bool ◦ data ++ empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (format_nat 7 ◦ const 0 ++
+                        format_bool ◦ data ++ empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatNat/NonStandardConst2.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     (constant format_nat 7 0 ++ format_bool ◦ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (constant format_nat 7 0 ++
+                  format_bool ◦ data ++ empty_Format)
+                 (constant format_nat 7 0 ++ format_bool ◦ data)
+                 (EquivFormat_UnderSequence' (constant format_nat 7 0)
+                    (constant format_nat 7 0) (format_bool ◦ data)
+                    (format_bool ◦ data ++ empty_Format)
+                    (EquivFormat_reflexive (constant format_nat 7 0))
+                    (EquivFormat_Projection_Format_Empty_Format' format_bool
+                       format_bool data data
+                       (EquivFormat_reflexive (format_bool ◦ data))))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (constant format_nat 7 0 ++
+                        format_bool ◦ data ++ empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (constant format_nat 7 0 ++
+                        format_bool ◦ data ++ empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatWord/BigWordHang.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatWord/BigWordHang.v", line 10, characters 2-34:
+Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!.
+
+./src/Narcissus/Examples/Errors/FormatWord/Endian.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     (format_word ◦ split1 8 8 ∘ data ++ format_word ◦ split2 8 8 ∘ data)
+     (sequence_Decode decode_word
+        (constant sequence_Decode decode_word
+                    (failing_case
+                       (ErrorMessage "Unable to synthesize decoder.")
+                       (word 8 -> DecodeM (msg * ByteString) ByteString))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (fun P : CacheDecode -> Prop =>
+      (fun P0 : CacheDecode -> Prop =>
+       forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b)) P /\
+      (fun P0 : CacheDecode -> Prop =>
+       (fun P1 : CacheDecode -> Prop =>
+        forall (b : nat) (cd : CacheDecode), P1 cd -> P1 (addD cd b)) P0 /\
+       failing_case (ErrorMessage "Unable to synthesize decoder.")
+         ((CacheDecode -> Prop) -> Prop) P0) P)
+     (fun
+        H3 : cache_inv_Property
+               (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  (CacheDecode -> Prop))
+               (fun P : CacheDecode -> Prop =>
+                (fun P0 : CacheDecode -> Prop =>
+                 forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b))
+                  P /\
+                (fun P0 : CacheDecode -> Prop =>
+                 (fun P1 : CacheDecode -> Prop =>
+                  forall (b : nat) (cd : CacheDecode),
+                  P1 cd -> P1 (addD cd b)) P0 /\
+                 failing_case (ErrorMessage "Unable to synthesize decoder.")
+                   ((CacheDecode -> Prop) -> Prop) P0) P) =>
+      format_decode_correct_refineEquiv msg ByteString test_cache
+        AlignedByteString.ByteStringQueueMonoid invariant
+        (sequence_Decode decode_word
+           (constant sequence_Decode decode_word
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (word 8 -> DecodeM (msg * ByteString) ByteString))))
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (CacheDecode -> Prop))
+        (format_word ◦ split1 8 8 ∘ data ++
+         format_word ◦ split2 8 8 ∘ data ++ empty_Format)
+        (format_word ◦ split1 8 8 ∘ data ++ format_word ◦ split2 8 8 ∘ data)
+        (EquivFormat_UnderSequence' (format_word ◦ split1 8 8 ∘ data)
+           (format_word ◦ split1 8 8 ∘ data)
+           (format_word ◦ split2 8 8 ∘ data)
+           (format_word ◦ split2 8 8 ∘ data ++ empty_Format)
+           (EquivFormat_reflexive (format_word ◦ split1 8 8 ∘ data))
+           (EquivFormat_Projection_Format_Empty_Format' format_word
+              format_word (split2 8 8 ∘ data) (split2 8 8 ∘ data)
+              (EquivFormat_reflexive (format_word ◦ split2 8 8 ∘ data))))
+        (let H4 := true in
+         let H5 := true in
+         format_sequence_correct H3 AlignedByteString.ByteStringQueueMonoid
+           (split1 8 8 ∘ data) invariant (constant True) format_word
+           (format_word ◦ split2 8 8 ∘ data ++ empty_Format) decode_word
+           (fun
+              H6 : cache_inv_Property
+                     (failing_case
+                        (ErrorMessage "Unable to synthesize decoder.")
+                        (CacheDecode -> Prop))
+                     (fun P : CacheDecode -> Prop =>
+                      forall (b : nat) (cd : CacheDecode),
+                      P cd -> P (addD cd b)) => Word_decode_correct H6)
+           (fun s : msg => constant I)
+           (constant sequence_Decode decode_word
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (word 8 -> DecodeM (msg * ByteString) ByteString)))
+           (fun (v1 : word 8)
+              (H6 : cache_inv_Property
+                      (failing_case
+                         (ErrorMessage "Unable to synthesize decoder.")
+                         (CacheDecode -> Prop))
+                      (fun P : CacheDecode -> Prop =>
+                       (fun P0 : CacheDecode -> Prop =>
+                        forall (b : nat) (cd : CacheDecode),
+                        P0 cd -> P0 (addD cd b)) P /\
+                       failing_case
+                         (ErrorMessage "Unable to synthesize decoder.")
+                         ((CacheDecode -> Prop) -> Prop) P)) =>
+            constant (let H8 := true in
+                      let H9 := true in
+                      format_sequence_correct H6
+                        AlignedByteString.ByteStringQueueMonoid
+                        (split2 8 8 ∘ data)
+                        (fun s : msg =>
+                         invariant s /\ IsProj (split1 8 8 ∘ data) v1 s)
+                        (constant True) format_word empty_Format decode_word
+                        (fun
+                           H10 : cache_inv_Property
+                                   (failing_case
+                                      (ErrorMessage
+                                         "Unable to synthesize decoder.")
+                                      (CacheDecode -> Prop))
+                                   (fun P : CacheDecode -> Prop =>
+                                    forall (b : nat) (cd : CacheDecode),
+                                    P cd -> P (addD cd b)) =>
+                         Word_decode_correct H10) 
+                        (fun s : msg => constant I)
+                        (failing_case
+                           (ErrorMessage "Unable to synthesize decoder.")
+                           (word 8 -> DecodeM (msg * ByteString) ByteString))
+                        (fun v0 : word 8 =>
+                         constant (constant failing_case
+                                              (ErrorMessage
+                                                 "Unable to synthesize decoder.")
+                                              (CorrectDecoder
+                                                 AlignedByteString.ByteStringQueueMonoid
+                                                 (fun s : msg =>
+                                                 (invariant s /\
+                                                 IsProj 
+                                                 (split1 8 8 ∘ data) v1 s) /\
+                                                 IsProj 
+                                                 (split2 8 8 ∘ data) v0 s)
+                                                 (fun s : msg =>
+                                                 (invariant s /\
+                                                 IsProj 
+                                                 (split1 8 8 ∘ data) v1 s) /\
+                                                 IsProj 
+                                                 (split2 8 8 ∘ data) v0 s) eq
+                                                 empty_Format
+                                                 (failing_case
+                                                 (ErrorMessage
+                                                 "Unable to synthesize decoder.")
+                                                 (word 8 ->
+                                                 DecodeM 
+                                                 (msg * ByteString)
+                                                 ByteString) v0)
+                                                 (failing_case
+                                                 (ErrorMessage
+                                                 "Unable to synthesize decoder.")
+                                                 (CacheDecode -> Prop))
+                                                 empty_Format)))))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (fun P : CacheDecode -> Prop =>
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop) P)))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (sequence_Decode decode_word
+           (constant sequence_Decode decode_word
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (word 8 -> DecodeM (msg * ByteString) ByteString)))
+           b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatWord/NotByteAligned.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatWord/NotByteAligned.v", line 10, characters 2-34:
+Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!.
+
+./src/Narcissus/Examples/Errors/FormatString/StringConst.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     (format_string ◦ const "<data>" ++
+      format_word ◦ data ++ format_string ◦ const "</data>")
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (format_string ◦ const "<data>" ++
+                  format_word ◦ data ++
+                  format_string ◦ const "</data>" ++ empty_Format)
+                 (format_string ◦ const "<data>" ++
+                  format_word ◦ data ++ format_string ◦ const "</data>")
+                 (EquivFormat_UnderSequence' (format_string ◦ const "<data>")
+                    (format_string ◦ const "<data>")
+                    (format_word ◦ data ++ format_string ◦ const "</data>")
+                    (format_word ◦ data ++
+                     format_string ◦ const "</data>" ++ empty_Format)
+                    (EquivFormat_reflexive (format_string ◦ const "<data>"))
+                    (EquivFormat_UnderSequence' (format_word ◦ data)
+                       (format_word ◦ data) (format_string ◦ const "</data>")
+                       (format_string ◦ const "</data>" ++ empty_Format)
+                       (EquivFormat_reflexive (format_word ◦ data))
+                       (EquivFormat_Projection_Format_Empty_Format'
+                          format_string format_string 
+                          (const "</data>") (const "</data>")
+                          (EquivFormat_reflexive
+                             (format_string ◦ const "</data>")))))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (format_string ◦ const "<data>" ++
+                        format_word ◦ data ++
+                        format_string ◦ const "</data>" ++ empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (format_string ◦ const "<data>" ++
+                        format_word ◦ data ++
+                        format_string ◦ const "</data>" ++ empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/Record/NestedRecord.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     (format_word ◦ data ++
+      (format_word ◦ age) ◦ who ++ (format_word ◦ salary) ◦ who)
+     (sequence_Decode decode_word
+        (constant sequence_Decode decode_word
+                    (constant sequence_Decode decode_word
+                                (failing_case
+                                   (ErrorMessage
+                                      "Unable to synthesize decoder.")
+                                   (word 8 ->
+                                    DecodeM (msg * ByteString) ByteString)))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (fun P : CacheDecode -> Prop =>
+      (fun P0 : CacheDecode -> Prop =>
+       forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b)) P /\
+      (fun P0 : CacheDecode -> Prop =>
+       (fun P1 : CacheDecode -> Prop =>
+        forall (b : nat) (cd : CacheDecode), P1 cd -> P1 (addD cd b)) P0 /\
+       (fun P1 : CacheDecode -> Prop =>
+        (fun P2 : CacheDecode -> Prop =>
+         forall (b : nat) (cd : CacheDecode), P2 cd -> P2 (addD cd b)) P1 /\
+        failing_case (ErrorMessage "Unable to synthesize decoder.")
+          ((CacheDecode -> Prop) -> Prop) P1) P0) P)
+     (fun
+        H3 : cache_inv_Property
+               (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  (CacheDecode -> Prop))
+               (fun P : CacheDecode -> Prop =>
+                (fun P0 : CacheDecode -> Prop =>
+                 forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b))
+                  P /\
+                (fun P0 : CacheDecode -> Prop =>
+                 (fun P1 : CacheDecode -> Prop =>
+                  forall (b : nat) (cd : CacheDecode),
+                  P1 cd -> P1 (addD cd b)) P0 /\
+                 (fun P1 : CacheDecode -> Prop =>
+                  (fun P2 : CacheDecode -> Prop =>
+                   forall (b : nat) (cd : CacheDecode),
+                   P2 cd -> P2 (addD cd b)) P1 /\
+                  failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    ((CacheDecode -> Prop) -> Prop) P1) P0) P) =>
+      format_decode_correct_refineEquiv msg ByteString test_cache
+        AlignedByteString.ByteStringQueueMonoid invariant
+        (sequence_Decode decode_word
+           (constant sequence_Decode decode_word
+                       (constant sequence_Decode decode_word
+                                   (failing_case
+                                      (ErrorMessage
+                                         "Unable to synthesize decoder.")
+                                      (word 8 ->
+                                       DecodeM (msg * ByteString) ByteString)))))
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (CacheDecode -> Prop))
+        (format_word ◦ data ++
+         format_word ◦ age ∘ who ++
+         format_word ◦ salary ∘ who ++ empty_Format)
+        (format_word ◦ data ++
+         (format_word ◦ age) ◦ who ++ (format_word ◦ salary) ◦ who)
+        (EquivFormat_UnderSequence' (format_word ◦ data) 
+           (format_word ◦ data)
+           ((format_word ◦ age) ◦ who ++ (format_word ◦ salary) ◦ who)
+           (format_word ◦ age ∘ who ++
+            format_word ◦ salary ∘ who ++ empty_Format)
+           (EquivFormat_reflexive (format_word ◦ data))
+           (EquivFormat_UnderSequence' ((format_word ◦ age) ◦ who)
+              (format_word ◦ age ∘ who) ((format_word ◦ salary) ◦ who)
+              (format_word ◦ salary ∘ who ++ empty_Format)
+              (EquivFormat_trans ((format_word ◦ age) ◦ who)
+                 (format_word ◦ age ∘ who) (format_word ◦ age ∘ who)
+                 (EquivFormat_compose_map format_word who age)
+                 (EquivFormat_reflexive (format_word ◦ age ∘ who)))
+              (EquivFormat_Projection_Format_Empty_Format'
+                 (format_word ◦ salary) format_word who 
+                 (salary ∘ who)
+                 (EquivFormat_compose_map format_word who salary))))
+        (let H4 := true in
+         let H5 := true in
+         format_sequence_correct H3 AlignedByteString.ByteStringQueueMonoid
+           data invariant (constant True) format_word
+           (format_word ◦ age ∘ who ++
+            format_word ◦ salary ∘ who ++ empty_Format) decode_word
+           (fun
+              H6 : cache_inv_Property
+                     (failing_case
+                        (ErrorMessage "Unable to synthesize decoder.")
+                        (CacheDecode -> Prop))
+                     (fun P : CacheDecode -> Prop =>
+                      forall (b : nat) (cd : CacheDecode),
+                      P cd -> P (addD cd b)) => Word_decode_correct H6)
+           (fun s : msg => constant I)
+           (constant sequence_Decode decode_word
+                       (constant sequence_Decode decode_word
+                                   (failing_case
+                                      (ErrorMessage
+                                         "Unable to synthesize decoder.")
+                                      (word 8 ->
+                                       DecodeM (msg * ByteString) ByteString))))
+           (fun (v1 : word 8)
+              (H6 : cache_inv_Property
+                      (failing_case
+                         (ErrorMessage "Unable to synthesize decoder.")
+                         (CacheDecode -> Prop))
+                      (fun P : CacheDecode -> Prop =>
+                       (fun P0 : CacheDecode -> Prop =>
+                        forall (b : nat) (cd : CacheDecode),
+                        P0 cd -> P0 (addD cd b)) P /\
+                       (fun P0 : CacheDecode -> Prop =>
+                        (fun P1 : CacheDecode -> Prop =>
+                         forall (b : nat) (cd : CacheDecode),
+                         P1 cd -> P1 (addD cd b)) P0 /\
+                        failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          ((CacheDecode -> Prop) -> Prop) P0) P)) =>
+            constant (let H8 := true in
+                      let H9 := true in
+                      format_sequence_correct H6
+                        AlignedByteString.ByteStringQueueMonoid 
+                        (age ∘ who)
+                        (fun s : msg => invariant s /\ IsProj data v1 s)
+                        (constant True) format_word
+                        (format_word ◦ salary ∘ who ++ empty_Format)
+                        decode_word
+                        (fun
+                           H10 : cache_inv_Property
+                                   (failing_case
+                                      (ErrorMessage
+                                         "Unable to synthesize decoder.")
+                                      (CacheDecode -> Prop))
+                                   (fun P : CacheDecode -> Prop =>
+                                    forall (b : nat) (cd : CacheDecode),
+                                    P cd -> P (addD cd b)) =>
+                         Word_decode_correct H10) 
+                        (fun s : msg => constant I)
+                        (constant sequence_Decode decode_word
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (word 8 ->
+                                        DecodeM (msg * ByteString) ByteString)))
+                        (fun (v0 : word 8)
+                           (H10 : cache_inv_Property
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (CacheDecode -> Prop))
+                                    (fun P : CacheDecode -> Prop =>
+                                     (fun P0 : CacheDecode -> Prop =>
+                                      forall (b : nat) (cd : CacheDecode),
+                                      P0 cd -> P0 (addD cd b)) P /\
+                                     failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       ((CacheDecode -> Prop) -> Prop) P)) =>
+                         constant (let H12 := true in
+                                   let H13 := true in
+                                   format_sequence_correct H10
+                                     AlignedByteString.ByteStringQueueMonoid
+                                     (salary ∘ who)
+                                     (fun s : msg =>
+                                      (invariant s /\ IsProj data v1 s) /\
+                                      IsProj (age ∘ who) v0 s)
+                                     (constant True) format_word empty_Format
+                                     decode_word
+                                     (fun
+                                        H14 : cache_inv_Property
+                                                (failing_case
+                                                 (ErrorMessage
+                                                 "Unable to synthesize decoder.")
+                                                 (CacheDecode -> Prop))
+                                                (fun P : CacheDecode -> Prop
+                                                 =>
+                                                 forall 
+                                                 (b : nat) 
+                                                 (cd : CacheDecode),
+                                                 P cd -> P (addD cd b)) =>
+                                      Word_decode_correct H14)
+                                     (fun s : msg => constant I)
+                                     (failing_case
+                                        (ErrorMessage
+                                           "Unable to synthesize decoder.")
+                                        (word 8 ->
+                                         DecodeM (msg * ByteString)
+                                           ByteString))
+                                     (fun v2 : word 8 =>
+                                      constant (constant 
+                                                failing_case
+                                                 (ErrorMessage
+                                                 "Unable to synthesize decoder.")
+                                                 (CorrectDecoder
+                                                 AlignedByteString.ByteStringQueueMonoid
+                                                 (fun s : msg =>
+                                                 ((invariant s /\
+                                                 IsProj data v1 s) /\
+                                                 IsProj (age ∘ who) v0 s) /\
+                                                 IsProj (salary ∘ who) v2 s)
+                                                 (fun s : msg =>
+                                                 ((invariant s /\
+                                                 IsProj data v1 s) /\
+                                                 IsProj (age ∘ who) v0 s) /\
+                                                 IsProj (salary ∘ who) v2 s)
+                                                 eq empty_Format
+                                                 (failing_case
+                                                 (ErrorMessage
+                                                 "Unable to synthesize decoder.")
+                                                 (word 8 ->
+                                                 DecodeM 
+                                                 (msg * ByteString)
+                                                 ByteString) v2)
+                                                 (failing_case
+                                                 (ErrorMessage
+                                                 "Unable to synthesize decoder.")
+                                                 (CacheDecode -> Prop))
+                                                 empty_Format)))))))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (fun P : CacheDecode -> Prop =>
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop) P)))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (sequence_Decode decode_word
+           (constant sequence_Decode decode_word
+                       (constant sequence_Decode decode_word
+                                   (failing_case
+                                      (ErrorMessage
+                                         "Unable to synthesize decoder.")
+                                      (word 8 ->
+                                       DecodeM (msg * ByteString) ByteString))))
+           b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/Record/FieldMissing.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant (format_word ◦ data)
+     (sequence_Decode decode_word
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (word 8 -> DecodeM (msg * ByteString) ByteString)))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (fun P : CacheDecode -> Prop =>
+      (fun P0 : CacheDecode -> Prop =>
+       forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b)) P /\
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop) P)
+     (fun
+        H3 : cache_inv_Property
+               (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  (CacheDecode -> Prop))
+               (fun P : CacheDecode -> Prop =>
+                (fun P0 : CacheDecode -> Prop =>
+                 forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b))
+                  P /\
+                failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  ((CacheDecode -> Prop) -> Prop) P) =>
+      format_decode_correct_refineEquiv msg ByteString test_cache
+        AlignedByteString.ByteStringQueueMonoid invariant
+        (sequence_Decode decode_word
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (word 8 -> DecodeM (msg * ByteString) ByteString)))
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (CacheDecode -> Prop)) (format_word ◦ data ++ empty_Format)
+        (format_word ◦ data)
+        (EquivFormat_Projection_Format_Empty_Format' format_word format_word
+           data data (EquivFormat_reflexive (format_word ◦ data)))
+        (let H4 := true in
+         let H5 := true in
+         format_sequence_correct H3 AlignedByteString.ByteStringQueueMonoid
+           data invariant (constant True) format_word empty_Format
+           decode_word
+           (fun
+              H6 : cache_inv_Property
+                     (failing_case
+                        (ErrorMessage "Unable to synthesize decoder.")
+                        (CacheDecode -> Prop))
+                     (fun P : CacheDecode -> Prop =>
+                      forall (b : nat) (cd : CacheDecode),
+                      P cd -> P (addD cd b)) => Word_decode_correct H6)
+           (fun s : msg => constant I)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (word 8 -> DecodeM (msg * ByteString) ByteString))
+           (fun v1 : word 8 =>
+            constant (constant failing_case
+                                 (ErrorMessage
+                                    "Unable to synthesize decoder.")
+                                 (CorrectDecoder
+                                    AlignedByteString.ByteStringQueueMonoid
+                                    (fun s : msg =>
+                                     invariant s /\ IsProj data v1 s)
+                                    (fun s : msg =>
+                                     invariant s /\ IsProj data v1 s) eq
+                                    empty_Format
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (word 8 ->
+                                        DecodeM (msg * ByteString) ByteString)
+                                       v1)
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (CacheDecode -> Prop)) empty_Format)))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (fun P : CacheDecode -> Prop =>
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop) P)))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (sequence_Decode decode_word
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (word 8 -> DecodeM (msg * ByteString) ByteString)) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/MissingInvariant.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+      format_list format_word ◦ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (format_nat 8 ◦ Datatypes.length ∘ data ++
+                  format_list format_word ◦ data ++ empty_Format)
+                 ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+                  format_list format_word ◦ data)
+                 (EquivFormat_UnderSequence'
+                    ((format_nat 8 ◦ Datatypes.length) ◦ data)
+                    (format_nat 8 ◦ Datatypes.length ∘ data)
+                    (format_list format_word ◦ data)
+                    (format_list format_word ◦ data ++ empty_Format)
+                    (EquivFormat_trans
+                       ((format_nat 8 ◦ Datatypes.length) ◦ data)
+                       (format_nat 8 ◦ Datatypes.length ∘ data)
+                       (format_nat 8 ◦ Datatypes.length ∘ data)
+                       (EquivFormat_compose_map (format_nat 8) data
+                          Datatypes.length)
+                       (EquivFormat_reflexive
+                          (format_nat 8 ◦ Datatypes.length ∘ data)))
+                    (EquivFormat_Projection_Format_Empty_Format'
+                       (format_list format_word) (format_list format_word)
+                       data data
+                       (EquivFormat_reflexive
+                          (format_list format_word ◦ data))))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (format_nat 8 ◦ Datatypes.length ∘ data ++
+                        format_list format_word ◦ data ++ empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (format_nat 8 ◦ Datatypes.length ∘ data ++
+                        format_list format_word ◦ data ++ empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/NatNonStandardInvariant.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+      format_list (format_nat 8) ◦ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (format_nat 8 ◦ Datatypes.length ∘ data ++
+                  format_list (format_nat 8) ◦ data ++ empty_Format)
+                 ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+                  format_list (format_nat 8) ◦ data)
+                 (EquivFormat_UnderSequence'
+                    ((format_nat 8 ◦ Datatypes.length) ◦ data)
+                    (format_nat 8 ◦ Datatypes.length ∘ data)
+                    (format_list (format_nat 8) ◦ data)
+                    (format_list (format_nat 8) ◦ data ++ empty_Format)
+                    (EquivFormat_trans
+                       ((format_nat 8 ◦ Datatypes.length) ◦ data)
+                       (format_nat 8 ◦ Datatypes.length ∘ data)
+                       (format_nat 8 ◦ Datatypes.length ∘ data)
+                       (EquivFormat_compose_map (format_nat 8) data
+                          Datatypes.length)
+                       (EquivFormat_reflexive
+                          (format_nat 8 ◦ Datatypes.length ∘ data)))
+                    (EquivFormat_Projection_Format_Empty_Format'
+                       (format_list (format_nat 8))
+                       (format_list (format_nat 8)) data data
+                       (EquivFormat_reflexive
+                          (format_list (format_nat 8) ◦ data))))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (format_nat 8 ◦ Datatypes.length ∘ data ++
+                        format_list (format_nat 8) ◦ data ++ empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (format_nat 8 ◦ Datatypes.length ∘ data ++
+                        format_list (format_nat 8) ◦ data ++ empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/MissingLength.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant (format_list format_word ◦ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (format_list format_word ◦ data ++ empty_Format)
+                 (format_list format_word ◦ data)
+                 (EquivFormat_Projection_Format_Empty_Format'
+                    (format_list format_word) (format_list format_word) data
+                    data
+                    (EquivFormat_reflexive (format_list format_word ◦ data)))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (format_list format_word ◦ data ++ empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (format_list format_word ◦ data ++ empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/LengthAfterData.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     (format_list format_word ◦ data ++
+      (format_nat 8 ◦ Datatypes.length) ◦ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (format_list format_word ◦ data ++
+                  format_nat 8 ◦ Datatypes.length ∘ data ++ empty_Format)
+                 (format_list format_word ◦ data ++
+                  (format_nat 8 ◦ Datatypes.length) ◦ data)
+                 (EquivFormat_UnderSequence' (format_list format_word ◦ data)
+                    (format_list format_word ◦ data)
+                    ((format_nat 8 ◦ Datatypes.length) ◦ data)
+                    (format_nat 8 ◦ Datatypes.length ∘ data ++ empty_Format)
+                    (EquivFormat_reflexive (format_list format_word ◦ data))
+                    (EquivFormat_Projection_Format_Empty_Format'
+                       (format_nat 8 ◦ Datatypes.length) 
+                       (format_nat 8) data (Datatypes.length ∘ data)
+                       (EquivFormat_compose_map (format_nat 8) data
+                          Datatypes.length)))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (format_list format_word ◦ data ++
+                        format_nat 8 ◦ Datatypes.length ∘ data ++
+                        empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (format_list format_word ◦ data ++
+                        format_nat 8 ◦ Datatypes.length ∘ data ++
+                        empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/WrongInvariant.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+      format_list format_word ◦ data)
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop))
+     (constant format_decode_correct_refineEquiv msg ByteString test_cache
+                 AlignedByteString.ByteStringQueueMonoid invariant
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (DecodeM (msg * ByteString) ByteString))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CacheDecode -> Prop))
+                 (format_nat 8 ◦ Datatypes.length ∘ data ++
+                  format_list format_word ◦ data ++ empty_Format)
+                 ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+                  format_list format_word ◦ data)
+                 (EquivFormat_UnderSequence'
+                    ((format_nat 8 ◦ Datatypes.length) ◦ data)
+                    (format_nat 8 ◦ Datatypes.length ∘ data)
+                    (format_list format_word ◦ data)
+                    (format_list format_word ◦ data ++ empty_Format)
+                    (EquivFormat_trans
+                       ((format_nat 8 ◦ Datatypes.length) ◦ data)
+                       (format_nat 8 ◦ Datatypes.length ∘ data)
+                       (format_nat 8 ◦ Datatypes.length ∘ data)
+                       (EquivFormat_compose_map (format_nat 8) data
+                          Datatypes.length)
+                       (EquivFormat_reflexive
+                          (format_nat 8 ◦ Datatypes.length ∘ data)))
+                    (EquivFormat_Projection_Format_Empty_Format'
+                       (format_list format_word) (format_list format_word)
+                       data data
+                       (EquivFormat_reflexive
+                          (format_list format_word ◦ data))))
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (CorrectDecoder AlignedByteString.ByteStringQueueMonoid
+                       invariant invariant eq
+                       (format_nat 8 ◦ Datatypes.length ∘ data ++
+                        format_list format_word ◦ data ++ empty_Format)
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (DecodeM (msg * ByteString) ByteString))
+                       (failing_case
+                          (ErrorMessage "Unable to synthesize decoder.")
+                          (CacheDecode -> Prop))
+                       (format_nat 8 ◦ Datatypes.length ∘ data ++
+                        format_list format_word ◦ data ++ empty_Format))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop))))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/NotByteAligned.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := true in
+   let H2 := true in
+   Start_CorrectAlignedDecoderFor invariant
+     ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+      format_list format_bool ◦ data)
+     (sequence_Decode (decode_nat 8)
+        (fun v1 : nat =>
+         sequence_Decode (decode_list decode_bool v1)
+           (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+            if (true && true && true)%bool
+            then Some ({| data := v0 |}, t', ctxD)
+            else None)))
+     (fun (b : ByteString) (cd : ()) =>
+      `(a, b0, env) <- decode_word b cd;
+      (fun (a0 : word 8) (b1 : ByteString) (d : ()) =>
+       `(a1, b2, env0) <- decode_list decode_bool (wordToNat a0) b1 d;
+       (fun (l : list bool) (b3 : ByteString) (u : ()) =>
+        Some ({| data := l |}, b3, u)) a1 b2 env0) a b0 env)
+     (fun numBytes : nat =>
+      b <- GetCurrentByte;
+      (fun (b0 : word 8) (numBytes0 : nat) =>
+       l <- ListAlignedDecodeM
+              (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                 (forall m : nat, AlignedDecodeM bool m)) 
+              (wordToNat b0);
+       (fun (b1 : list bool) (numBytes1 : nat) => return {| data := b1 |}) l
+         numBytes0) b numBytes) (constant True)
+     (fun P : CacheDecode -> Prop =>
+      (fun P0 : CacheDecode -> Prop =>
+       forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b)) P /\
+      (fun P0 : CacheDecode -> Prop =>
+       (fun P1 : CacheDecode -> Prop =>
+        forall (b : nat) (cd : CacheDecode), P1 cd -> P1 (addD cd b)) P0 /\
+       (constant True) P0) P)
+     (fun
+        H3 : cache_inv_Property (constant True)
+               (fun P : CacheDecode -> Prop =>
+                (fun P0 : CacheDecode -> Prop =>
+                 forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b))
+                  P /\
+                (fun P0 : CacheDecode -> Prop =>
+                 (fun P1 : CacheDecode -> Prop =>
+                  forall (b : nat) (cd : CacheDecode),
+                  P1 cd -> P1 (addD cd b)) P0 /\ (constant True) P0) P) =>
+      format_decode_correct_refineEquiv msg ByteString test_cache
+        AlignedByteString.ByteStringQueueMonoid invariant
+        (sequence_Decode (decode_nat 8)
+           (fun v1 : nat =>
+            sequence_Decode (decode_list decode_bool v1)
+              (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+               if (true && true && true)%bool
+               then Some ({| data := v0 |}, t', ctxD)
+               else None))) (constant True)
+        (format_nat 8 ◦ Datatypes.length ∘ data ++
+         format_list format_bool ◦ data ++ empty_Format)
+        ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+         format_list format_bool ◦ data)
+        (EquivFormat_UnderSequence'
+           ((format_nat 8 ◦ Datatypes.length) ◦ data)
+           (format_nat 8 ◦ Datatypes.length ∘ data)
+           (format_list format_bool ◦ data)
+           (format_list format_bool ◦ data ++ empty_Format)
+           (EquivFormat_trans ((format_nat 8 ◦ Datatypes.length) ◦ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (EquivFormat_compose_map (format_nat 8) data Datatypes.length)
+              (EquivFormat_reflexive (format_nat 8 ◦ Datatypes.length ∘ data)))
+           (EquivFormat_Projection_Format_Empty_Format'
+              (format_list format_bool) (format_list format_bool) data data
+              (EquivFormat_reflexive (format_list format_bool ◦ data))))
+        (let H4 := true in
+         let H5 := true in
+         format_sequence_correct H3 AlignedByteString.ByteStringQueueMonoid
+           (Datatypes.length ∘ data) invariant (fun n : nat => n < pow2 8)
+           (format_nat 8) (format_list format_bool ◦ data ++ empty_Format)
+           (decode_nat 8)
+           (fun
+              H6 : cache_inv_Property (constant True)
+                     (fun P : CacheDecode -> Prop =>
+                      forall (b : nat) (cd : CacheDecode),
+                      P cd -> P (addD cd b)) => Nat_decode_correct 8 H6)
+           (fun (H6 : msg) (H7 : invariant H6) => H7)
+           (fun v1 : nat =>
+            sequence_Decode (decode_list decode_bool v1)
+              (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+               if (true && true && true)%bool
+               then Some ({| data := v0 |}, t', ctxD)
+               else None))
+           (fun (v1 : nat)
+              (H6 : cache_inv_Property (constant True)
+                      (fun P : CacheDecode -> Prop =>
+                       (fun P0 : CacheDecode -> Prop =>
+                        forall (b : nat) (cd : CacheDecode),
+                        P0 cd -> P0 (addD cd b)) P /\ 
+                       (constant True) P))
+              (H7 : (fun n : nat => n < pow2 8) v1) =>
+            let H8 := true in
+            let H9 := true in
+            format_sequence_correct H6
+              AlignedByteString.ByteStringQueueMonoid data
+              (fun s : msg =>
+               invariant s /\ IsProj (Datatypes.length ∘ data) v1 s)
+              (fun ls : list bool =>
+               (| ls |) = v1 /\
+               (forall x : bool, In x ls -> (constant True) x))
+              (format_list format_bool) empty_Format
+              (decode_list decode_bool v1)
+              (fun
+                 H10 : cache_inv_Property (constant True)
+                         (fun P : CacheDecode -> Prop =>
+                          forall (b : nat) (cd : CacheDecode),
+                          P cd -> P (addD cd b)) =>
+               FixList_decode_correct (constant True) format_bool decode_bool
+                 (constant True) (bool_decode_correct H10) v1)
+              (fun (H10 : msg)
+                 (H11 : invariant H10 /\
+                        IsProj (Datatypes.length ∘ data) v1 H10) =>
+               let H12 : invariant H10 := proj1 H11 in
+               let H13 : IsProj (Datatypes.length ∘ data) v1 H10 := 
+                 proj2 H11 in
+               let H14 : (Datatypes.length ∘ data) H10 = v1 := 
+                 IsProj_eq H13 in
+               eq_ind_r
+                 (fun n : nat =>
+                  n = v1 /\ (forall x : bool, In x (data H10) -> True))
+                 (let H15 : v1 < pow2 8 :=
+                    eq_ind (| data H10 |) (fun n : nat => n < pow2 8) H12 v1
+                      H14 in
+                  conj eq_refl (fun x : bool => constant I)) H14)
+              (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+               if (true && true && true)%bool
+               then Some ({| data := v0 |}, t', ctxD)
+               else None)
+              (fun v0 : list bool =>
+               constant (fun
+                           H11 : (fun ls : list bool =>
+                                  (| ls |) = v1 /\
+                                  (forall x : bool,
+                                   In x ls -> (constant True) x)) v0 =>
+                         CorrectDecoderEmpty test_cache ByteStringQueueMonoid
+                           (fun s : msg =>
+                            (invariant s /\
+                             IsProj (Datatypes.length ∘ data) v1 s) /\
+                            IsProj data v0 s) (constant True)
+                           {| data := v0 |} (true && true && true)
+                           (fun H12 : msg =>
+                            match
+                              H12 as m
+                              return
+                                ((invariant m /\
+                                  IsProj (fun x : msg => | data x |) v1 m) /\
+                                 IsProj data v0 m -> 
+                                 m = {| data := v0 |})
+                            with
+                            | {| data := data0 |} =>
+                                match H11 with
+                                | conj H13 _ =>
+                                    fun
+                                      H15 : (invariant {| data := data0 |} /\
+                                             IsProj
+                                               (fun x : msg => | data x |) v1
+                                               {| data := data0 |}) /\
+                                            IsProj data v0
+                                              {| data := data0 |} =>
+                                    let H16 :
+                                      invariant {| data := data0 |} /\
+                                      IsProj (fun x : msg => | data x |) v1
+                                        {| data := data0 |} := 
+                                      proj1 H15 in
+                                    let H17 :
+                                      IsProj data v0 {| data := data0 |} :=
+                                      proj2 H15 in
+                                    let H18 :
+                                      invariant {| data := data0 |} :=
+                                      proj1 H16 in
+                                    let H19 :
+                                      IsProj (fun x : msg => | data x |) v1
+                                        {| data := data0 |} := 
+                                      proj2 H16 in
+                                    let H20 :
+                                      data {| data := data0 |} = v0 :=
+                                      IsProj_eq H17 in
+                                    eq_ind_r
+                                      (fun data1 : list bool =>
+                                       {| data := data1 |} = {| data := v0 |})
+                                      (let H21 :
+                                         IsProj (fun x : msg => | data x |)
+                                           v1 {| data := v0 |} :=
+                                         eq_ind data0
+                                           (fun data1 : ... =>
+                                            IsProj (...) v1 {| ... |}) H19 v0
+                                           H20 in
+                                       let H22 : (| data ... |) < pow2 8 :=
+                                         eq_ind data0 
+                                           (fun ... => ... < ...) H18 v0 H20
+                                         in
+                                       let H23 : (...) {| ... |} = v1 :=
+                                         IsProj_eq H21 in
+                                       let H24 : v1 = v1 :=
+                                         eq_ind (...) (...) H13 v1 H23 in
+                                       eq_refl) H20
+                                end
+                            end)
+                           (and_ind
+                              (fun H12 : (| v0 |) = v1 =>
+                               constant eq_ind (| v0 |)
+                                          (fun v2 : nat =>
+                                           v2 < pow2 8 ->
+                                           decides 
+                                             (true && true && true)
+                                             ((invariant {| data := v0 |} /\
+                                               (Datatypes.length ∘ data)
+                                                 {| data := v0 |} = v2) /\
+                                              v0 = v0))
+                                          (fun H14 : (| v0 |) < pow2 8 =>
+                                           decides_and 
+                                             (true && true) true
+                                             (invariant {| data := v0 |} /\
+                                              (Datatypes.length ∘ data)
+                                                {| data := v0 |} = 
+                                              (| v0 |)) 
+                                             (v0 = v0)
+                                             (decides_and true true
+                                                (invariant {| data := v0 |})
+                                                ((Datatypes.length ∘ data)
+                                                 {| data := v0 |} = 
+                                                 (| v0 |))
+                                                (decides_assumption H14)
+                                                (decides_eq_refl (| v0 |)))
+                                             (decides_eq_refl v0)) v1 H12 H7)
+                              H11))))))
+     (unfold_cache_inv_Property test_cache (constant True)
+        (fun P : CacheDecode -> Prop =>
+         (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+         (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\ True)
+        (conj (constant (constant (constant I)))
+           (conj (constant (constant (constant I))) I)))
+     (fun (b : ByteString) (cd : ()) =>
+      eq_ind_r
+        (fun o : option (msg * ByteString * ()) =>
+         o =
+         (fun (b0 : ByteString) (cd0 : ()) =>
+          `(a, b1, env) <- decode_word b0 cd0;
+          (fun (a0 : word 8) (b2 : ByteString) (d : ()) =>
+           `(a1, b3, env0) <- decode_list decode_bool (wordToNat a0) b2 d;
+           (fun (l : list bool) (b4 : ByteString) (u : ()) =>
+            Some ({| data := l |}, b4, u)) a1 b3 env0) a b1 env) b cd)
+        (DecodeBindOpt2_under_bind' (word 8) ByteString msg CacheDecode
+           ByteString (decode_word b cd)
+           (fun (a : word 8) (b0 : ByteString) (env : CacheDecode) =>
+            `(s', t', env') <- decode_list decode_bool (wordToNat a) b0 env;
+            Some ({| data := s' |}, t', env'))
+           (fun (a : word 8) (b0 : ByteString) (d : ()) =>
+            `(a0, b1, env) <- decode_list decode_bool (wordToNat a) b0 d;
+            (fun (l : list bool) (b2 : ByteString) (u : ()) =>
+             Some ({| data := l |}, b2, u)) a0 b1 env)
+           (fun (a : word 8) (b0 : ByteString) (d : ()) =>
+            constant DecodeBindOpt2_under_bind' (list bool) ByteString msg
+                       CacheDecode ByteString
+                       (decode_list decode_bool (wordToNat a) b0 d)
+                       (fun (a0 : list bool) (b1 : ByteString)
+                          (env : CacheDecode) =>
+                        Some ({| data := a0 |}, b1, env))
+                       (fun (l : list bool) (b1 : ByteString) (u : ()) =>
+                        Some ({| data := l |}, b1, u))
+                       (fun (a0 : list bool) (b1 : ByteString) (d0 : ()) =>
+                        constant reflexivity
+                                   (Some ({| data := a0 |}, b1, d0)))))
+        (DecodeBindOpt2_assoc (decode_word b cd)
+           (fun (w : word 8) (b0 : ByteString) (cd0 : ()) =>
+            Some (wordToNat w, b0, cd0))
+           (fun (s' : nat) (t' : ByteString) (env' : ()) =>
+            `(s'0, t'0, env'0) <- decode_list decode_bool s' t' env';
+            Some ({| data := s'0 |}, t'0, env'0))))
+     (AlignedDecodeBindCharM
+        (fun (a : word 8) (b0 : ByteString) (cd' : CacheDecode) =>
+         `(a0, b, env) <- decode_list decode_bool (wordToNat a) b0 cd';
+         Some ({| data := a0 |}, b, env))
+        (fun (b : word 8) (numBytes : nat) =>
+         l <- ListAlignedDecodeM
+                (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                   (forall m : nat, AlignedDecodeM bool m)) 
+                (wordToNat b);
+         (fun (b0 : list bool) (numBytes0 : nat) => return {| data := b0 |})
+           l numBytes)
+        (fun b : word 8 =>
+         AlignedDecodeListM decode_bool
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall m : nat, AlignedDecodeM bool m)) 
+           (wordToNat b)
+           (fun (l : list bool) (bs : ByteString) (cd' : CacheDecode) =>
+            Some ({| data := l |}, bs, cd'))
+           (fun (b0 : list bool) (numBytes : nat) => return {| data := b0 |})
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeMEquivAlignedDecodeM decode_bool
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (forall m : nat, AlignedDecodeM bool m))))
+           (fun b0 : list bool =>
+            Return_DecodeMEquivAlignedDecodeM {| data := b0 |}))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/ActuallyByteAligned.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := true in
+   let H2 := true in
+   Start_CorrectAlignedDecoderFor invariant
+     ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+      format_list format_bool ◦ data)
+     (sequence_Decode (decode_nat 8)
+        (fun v1 : nat =>
+         sequence_Decode (decode_list decode_bool v1)
+           (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+            if
+             (true && ((| data {| data := v0 |} |) mod 8 =? 0) && true &&
+              true)%bool
+            then Some ({| data := v0 |}, t', ctxD)
+            else None)))
+     (fun (b : ByteString) (cd : ()) =>
+      `(a, b0, env) <- decode_word b cd;
+      (fun (a0 : word 8) (b1 : ByteString) (d : ()) =>
+       `(a1, b2, env0) <- decode_list decode_bool (wordToNat a0) b1 d;
+       (fun (a2 : list bool) (b3 : ByteString) (d0 : ()) =>
+        if
+         match snd (Nat.divmod (| a2 |) 7 0 7) with
+         | 0 => 7
+         | 1 => 6
+         | 2 => 5
+         | 3 => 4
+         | 4 => 3
+         | 5 => 2
+         | 6 => 1
+         | S (S (S (S (S (S (S _)))))) => 0
+         end =? 0
+        then Some ({| data := a2 |}, b3, d0)
+        else None) a1 b2 env0) a b0 env)
+     (fun numBytes : nat =>
+      b <- GetCurrentByte;
+      (fun (b0 : word 8) (numBytes0 : nat) =>
+       l <- ListAlignedDecodeM
+              (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                 (forall m : nat, AlignedDecodeM bool m)) 
+              (wordToNat b0);
+       (fun (b1 : list bool) (sz : nat) =>
+        if
+         match snd (Nat.divmod (| b1 |) 7 0 7) with
+         | 0 => 7
+         | 1 => 6
+         | 2 => 5
+         | 3 => 4
+         | 4 => 3
+         | 5 => 2
+         | 6 => 1
+         | S (S (S (S (S (S (S _)))))) => 0
+         end =? 0
+        then (fun numBytes1 : nat => return {| data := b1 |}) sz
+        else fail) l numBytes0) b numBytes) (constant True)
+     (fun P : CacheDecode -> Prop =>
+      (fun P0 : CacheDecode -> Prop =>
+       forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b)) P /\
+      (fun P0 : CacheDecode -> Prop =>
+       (fun P1 : CacheDecode -> Prop =>
+        forall (b : nat) (cd : CacheDecode), P1 cd -> P1 (addD cd b)) P0 /\
+       (constant True) P0) P)
+     (fun
+        H3 : cache_inv_Property (constant True)
+               (fun P : CacheDecode -> Prop =>
+                (fun P0 : CacheDecode -> Prop =>
+                 forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b))
+                  P /\
+                (fun P0 : CacheDecode -> Prop =>
+                 (fun P1 : CacheDecode -> Prop =>
+                  forall (b : nat) (cd : CacheDecode),
+                  P1 cd -> P1 (addD cd b)) P0 /\ (constant True) P0) P) =>
+      format_decode_correct_refineEquiv msg ByteString test_cache
+        AlignedByteString.ByteStringQueueMonoid invariant
+        (sequence_Decode (decode_nat 8)
+           (fun v1 : nat =>
+            sequence_Decode (decode_list decode_bool v1)
+              (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+               if
+                (true && ((| data {| data := v0 |} |) mod 8 =? 0) && true &&
+                 true)%bool
+               then Some ({| data := v0 |}, t', ctxD)
+               else None))) (constant True)
+        (format_nat 8 ◦ Datatypes.length ∘ data ++
+         format_list format_bool ◦ data ++ empty_Format)
+        ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+         format_list format_bool ◦ data)
+        (EquivFormat_UnderSequence'
+           ((format_nat 8 ◦ Datatypes.length) ◦ data)
+           (format_nat 8 ◦ Datatypes.length ∘ data)
+           (format_list format_bool ◦ data)
+           (format_list format_bool ◦ data ++ empty_Format)
+           (EquivFormat_trans ((format_nat 8 ◦ Datatypes.length) ◦ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (EquivFormat_compose_map (format_nat 8) data Datatypes.length)
+              (EquivFormat_reflexive (format_nat 8 ◦ Datatypes.length ∘ data)))
+           (EquivFormat_Projection_Format_Empty_Format'
+              (format_list format_bool) (format_list format_bool) data data
+              (EquivFormat_reflexive (format_list format_bool ◦ data))))
+        (let H4 := true in
+         let H5 := true in
+         format_sequence_correct H3 AlignedByteString.ByteStringQueueMonoid
+           (Datatypes.length ∘ data) invariant (fun n : nat => n < pow2 8)
+           (format_nat 8) (format_list format_bool ◦ data ++ empty_Format)
+           (decode_nat 8)
+           (fun
+              H6 : cache_inv_Property (constant True)
+                     (fun P : CacheDecode -> Prop =>
+                      forall (b : nat) (cd : CacheDecode),
+                      P cd -> P (addD cd b)) => Nat_decode_correct 8 H6)
+           (fun (H6 : msg) (H7 : invariant H6) =>
+            let H8 : (| data H6 |) < pow2 8 := proj1 H7 in
+            let H9 : (| data H6 |) mod 8 = 0 := proj2 H7 in H8)
+           (fun v1 : nat =>
+            sequence_Decode (decode_list decode_bool v1)
+              (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+               if
+                (true && ((| data {| data := v0 |} |) mod 8 =? 0) && true &&
+                 true)%bool
+               then Some ({| data := v0 |}, t', ctxD)
+               else None))
+           (fun (v1 : nat)
+              (H6 : cache_inv_Property (constant True)
+                      (fun P : CacheDecode -> Prop =>
+                       (fun P0 : CacheDecode -> Prop =>
+                        forall (b : nat) (cd : CacheDecode),
+                        P0 cd -> P0 (addD cd b)) P /\ 
+                       (constant True) P))
+              (H7 : (fun n : nat => n < pow2 8) v1) =>
+            let H8 := true in
+            let H9 := true in
+            format_sequence_correct H6
+              AlignedByteString.ByteStringQueueMonoid data
+              (fun s : msg =>
+               invariant s /\ IsProj (Datatypes.length ∘ data) v1 s)
+              (fun ls : list bool =>
+               (| ls |) = v1 /\
+               (forall x : bool, In x ls -> (constant True) x))
+              (format_list format_bool) empty_Format
+              (decode_list decode_bool v1)
+              (fun
+                 H10 : cache_inv_Property (constant True)
+                         (fun P : CacheDecode -> Prop =>
+                          forall (b : nat) (cd : CacheDecode),
+                          P cd -> P (addD cd b)) =>
+               FixList_decode_correct (constant True) format_bool decode_bool
+                 (constant True) (bool_decode_correct H10) v1)
+              (fun (H10 : msg)
+                 (H11 : invariant H10 /\
+                        IsProj (Datatypes.length ∘ data) v1 H10) =>
+               let H12 : invariant H10 := proj1 H11 in
+               let H13 : IsProj (Datatypes.length ∘ data) v1 H10 := 
+                 proj2 H11 in
+               let H14 : (| data H10 |) < pow2 8 := proj1 H12 in
+               let H15 : (| data H10 |) mod 8 = 0 := proj2 H12 in
+               let H16 : (Datatypes.length ∘ data) H10 = v1 := 
+                 IsProj_eq H13 in
+               let H17 :
+                 match snd (Nat.divmod v1 7 0 7) with
+                 | 0 => 7
+                 | 1 => 6
+                 | 2 => 5
+                 | 3 => 4
+                 | 4 => 3
+                 | 5 => 2
+                 | 6 => 1
+                 | S (S (S (S (S (S (S _)))))) => 0
+                 end = 0 :=
+                 eq_ind (| data H10 |)
+                   (fun n : nat =>
+                    match snd (Nat.divmod n 7 0 7) with
+                    | 0 => 7
+                    | 1 => 6
+                    | 2 => 5
+                    | 3 => 4
+                    | 4 => 3
+                    | 5 => 2
+                    | 6 => 1
+                    | S (S (S (S (S (S (S _)))))) => 0
+                    end = 0) H15 v1 H16 in
+               let H18 : v1 < pow2 8 :=
+                 eq_ind (| data H10 |) (fun n : nat => n < pow2 8) H14 v1 H16
+                 in
+               conj H16 (fun x : bool => constant I))
+              (fun (v0 : list bool) (t' : ByteString) (ctxD : CacheDecode) =>
+               if
+                (true && ((| data {| data := v0 |} |) mod 8 =? 0) && true &&
+                 true)%bool
+               then Some ({| data := v0 |}, t', ctxD)
+               else None)
+              (fun v0 : list bool =>
+               constant (fun
+                           H11 : (fun ls : list bool =>
+                                  (| ls |) = v1 /\
+                                  (forall x : bool,
+                                   In x ls -> (constant True) x)) v0 =>
+                         CorrectDecoderEmpty test_cache ByteStringQueueMonoid
+                           (fun s : msg =>
+                            (invariant s /\
+                             IsProj (Datatypes.length ∘ data) v1 s) /\
+                            IsProj data v0 s) (constant True)
+                           {| data := v0 |}
+                           (true && ((| data {| data := v0 |} |) mod 8 =? 0) &&
+                            true && true)
+                           (fun H12 : msg =>
+                            match
+                              H12 as m
+                              return
+                                ((invariant m /\
+                                  IsProj (fun x : msg => | data x |) v1 m) /\
+                                 IsProj data v0 m -> 
+                                 m = {| data := v0 |})
+                            with
+                            | {| data := data0 |} =>
+                                match H11 with
+                                | conj _ _ =>
+                                    fun
+                                      H15 : (invariant {| data := data0 |} /\
+                                             IsProj
+                                               (fun x : msg => | data x |) v1
+                                               {| data := data0 |}) /\
+                                            IsProj data v0
+                                              {| data := data0 |} =>
+                                    let H16 :
+                                      invariant {| data := data0 |} /\
+                                      IsProj (fun x : msg => | data x |) v1
+                                        {| data := data0 |} := 
+                                      proj1 H15 in
+                                    let H17 :
+                                      IsProj data v0 {| data := data0 |} :=
+                                      proj2 H15 in
+                                    let H18 :
+                                      invariant {| data := data0 |} :=
+                                      proj1 H16 in
+                                    let H19 :
+                                      IsProj (fun x : msg => | data x |) v1
+                                        {| data := data0 |} := 
+                                      proj2 H16 in
+                                    let H20 :
+                                      (| data {| data := data0 |} |) < pow2 8 :=
+                                      proj1 H18 in
+                                    let H21 :
+                                      (| data {| ... |} |) mod 8 = 0 :=
+                                      proj2 H18 in
+                                    let H22 :
+                                      (fun x : msg => | data x |)
+                                        {| data := data0 |} = v1 :=
+                                      IsProj_eq H19 in
+                                    let H23 :
+                                      match ... with
+                                      | 0 => 7
+                                      | 1 => 6
+                                      | 2 => 5
+                                      | 3 => 4
+                                      | 4 => 3
+                                      | 5 => 2
+                                      | 6 => 1
+                                      | S ... => 0
+                                      end = 0 :=
+                                      eq_ind (| data0 |)
+                                        (fun n : nat =>
+                                         ...
+                                         ...
+                                         ...
+                                         ...
+                                         ...
+                                         ...
+                                         ...
+                                         ...
+                                         ...
+                                         end = 0) H21 v1 H22 in
+                                    let H24 : v1 < pow2 8 :=
+                                      eq_ind (| data0 |) 
+                                        (fun ... => n < ...) H20 v1 H22 in
+                                    let H25 : data {| ... |} = v0 :=
+                                      IsProj_eq H17 in
+                                    eq_ind_r (fun ... => ... = ...)
+                                      (let H26 : ... := ... in eq_refl) H25
+                                end
+                            end)
+                           (and_ind
+                              (fun H12 : (| v0 |) = v1 =>
+                               constant eq_ind (| v0 |)
+                                          (fun v2 : nat =>
+                                           v2 < pow2 8 ->
+                                           decides
+                                             (true &&
+                                              ((| data {| ... |} |) mod 8 =?
+                                               0) && true && true)
+                                             ((invariant {| data := v0 |} /\
+                                               (Datatypes.length ∘ data)
+                                                 {| data := v0 |} = v2) /\
+                                              v0 = v0))
+                                          (fun H14 : (| v0 |) < pow2 8 =>
+                                           decides_and
+                                             (true &&
+                                              ((| data {| data := v0 |} |)
+                                               mod 8 =? 0) && true) true
+                                             (invariant {| data := v0 |} /\
+                                              (Datatypes.length ∘ data)
+                                                {| data := v0 |} = 
+                                              (| v0 |)) 
+                                             (v0 = v0)
+                                             (decides_and
+                                                (true &&
+                                                 ((| data {| data := v0 |} |)
+                                                 mod 8 =? 0)) true
+                                                (invariant {| data := v0 |})
+                                                ((Datatypes.length ∘ data)
+                                                 {| data := v0 |} = 
+                                                 (| v0 |))
+                                                (decides_and true
+                                                 ((| data {| data := v0 |} |)
+                                                 mod 8 =? 0)
+                                                 ((| data {| data := v0 |} |) <
+                                                 pow2 8)
+                                                 ((| data {| data := v0 |} |)
+                                                 mod 8 = 0)
+                                                 (decides_assumption H14)
+                                                 (decides_nat_eq
+                                                 ((| data {| ... |} |) mod 8)
+                                                 0))
+                                                (decides_eq_refl (| v0 |)))
+                                             (decides_eq_refl v0)) v1 H12 H7)
+                              H11))))))
+     (unfold_cache_inv_Property test_cache (constant True)
+        (fun P : CacheDecode -> Prop =>
+         (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+         (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\ True)
+        (conj (constant (constant (constant I)))
+           (conj (constant (constant (constant I))) I)))
+     (fun (b : ByteString) (cd : ()) =>
+      eq_ind_r
+        (fun o : option (msg * ByteString * ()) =>
+         o =
+         (fun (b0 : ByteString) (cd0 : ()) =>
+          `(a, b1, env) <- decode_word b0 cd0;
+          (fun (a0 : word 8) (b2 : ByteString) (d : ()) =>
+           `(a1, b3, env0) <- decode_list decode_bool (wordToNat a0) b2 d;
+           (fun (a2 : list bool) (b4 : ByteString) (d0 : ()) =>
+            if
+             match snd (Nat.divmod (| a2 |) 7 0 7) with
+             | 0 => 7
+             | 1 => 6
+             | 2 => 5
+             | 3 => 4
+             | 4 => 3
+             | 5 => 2
+             | 6 => 1
+             | S (S (S (S (S (S (S _)))))) => 0
+             end =? 0
+            then Some ({| data := a2 |}, b4, d0)
+            else None) a1 b3 env0) a b1 env) b cd)
+        (DecodeBindOpt2_under_bind' (word 8) ByteString msg CacheDecode
+           ByteString (decode_word b cd)
+           (fun (a : word 8) (b0 : ByteString) (env : CacheDecode) =>
+            `(s', t', env') <- decode_list decode_bool (wordToNat a) b0 env;
+            (if
+              (true &&
+               (match snd (Nat.divmod (| s' |) 7 0 7) with
+                | 0 => 7
+                | 1 => 6
+                | 2 => 5
+                | 3 => 4
+                | 4 => 3
+                | 5 => 2
+                | 6 => 1
+                | S (S (S (S (S (S (S _)))))) => 0
+                end =? 0) && true && true)%bool
+             then Some ({| data := s' |}, t', env')
+             else None))
+           (fun (a : word 8) (b0 : ByteString) (d : ()) =>
+            `(a0, b1, env) <- decode_list decode_bool (wordToNat a) b0 d;
+            (fun (a1 : list bool) (b2 : ByteString) (d0 : ()) =>
+             if
+              match snd (Nat.divmod (| a1 |) 7 0 7) with
+              | 0 => 7
+              | 1 => 6
+              | 2 => 5
+              | 3 => 4
+              | 4 => 3
+              | 5 => 2
+              | 6 => 1
+              | S (S (S (S (S (S (S _)))))) => 0
+              end =? 0
+             then Some ({| data := a1 |}, b2, d0)
+             else None) a0 b1 env)
+           (fun (a : word 8) (b0 : ByteString) (d : ()) =>
+            constant DecodeBindOpt2_under_bind' (list bool) ByteString msg
+                       CacheDecode ByteString
+                       (decode_list decode_bool (wordToNat a) b0 d)
+                       (fun (a0 : list bool) (b1 : ByteString)
+                          (env : CacheDecode) =>
+                        if
+                         (true &&
+                          (match snd (Nat.divmod (| a0 |) 7 0 7) with
+                           | 0 => 7
+                           | 1 => 6
+                           | 2 => 5
+                           | 3 => 4
+                           | 4 => 3
+                           | 5 => 2
+                           | 6 => 1
+                           | S (S (S (S (S (S (S _)))))) => 0
+                           end =? 0) && true && true)%bool
+                        then Some ({| data := a0 |}, b1, env)
+                        else None)
+                       (fun (a0 : list bool) (b1 : ByteString) (d0 : ()) =>
+                        if
+                         match snd (Nat.divmod (| a0 |) 7 0 7) with
+                         | 0 => 7
+                         | 1 => 6
+                         | 2 => 5
+                         | 3 => 4
+                         | 4 => 3
+                         | 5 => 2
+                         | 6 => 1
+                         | S (S (S (S (S (S (S _)))))) => 0
+                         end =? 0
+                        then Some ({| data := a0 |}, b1, d0)
+                        else None)
+                       (fun (a0 : list bool) (b1 : ByteString) (d0 : ()) =>
+                        constant eq_ind_r
+                                   (fun b2 : bool =>
+                                    (if b2
+                                     then Some ({| data := a0 |}, b1, d0)
+                                     else None) =
+                                    (fun (a1 : list bool) 
+                                       (b3 : ByteString) 
+                                       (d1 : ()) =>
+                                     if
+                                      match
+                                        snd (Nat.divmod (| a1 |) 7 0 7)
+                                      with
+                                      | 0 => 7
+                                      | 1 => 6
+                                      | 2 => 5
+                                      | 3 => 4
+                                      | 4 => 3
+                                      | 5 => 2
+                                      | 6 => 1
+                                      | S (S (S (S (S (S (S _)))))) => 0
+                                      end =? 0
+                                     then Some ({| data := a1 |}, b3, d1)
+                                     else None) a0 b1 d0)
+                                   (eq_ind_r
+                                      (fun b2 : bool =>
+                                       (if b2
+                                        then Some ({| data := a0 |}, b1, d0)
+                                        else None) =
+                                       (fun (a1 : list bool)
+                                          (b3 : ByteString) 
+                                          (d1 : ()) =>
+                                        if
+                                         match
+                                           snd (Nat.divmod (| a1 |) 7 0 7)
+                                         with
+                                         | 0 => 7
+                                         | 1 => 6
+                                         | 2 => 5
+                                         | 3 => 4
+                                         | 4 => 3
+                                         | 5 => 2
+                                         | 6 => 1
+                                         | S (S (S (S (S (S (S _)))))) => 0
+                                         end =? 0
+                                        then Some ({| data := a1 |}, b3, d1)
+                                        else None) a0 b1 d0)
+                                      (eq_ind_r
+                                         (fun b2 : bool =>
+                                          (if b2
+                                           then
+                                            Some ({| data := a0 |}, b1, d0)
+                                           else None) =
+                                          (fun (a1 : list bool)
+                                             (b3 : ByteString) 
+                                             (d1 : ()) =>
+                                           if
+                                            match
+                                              snd (Nat.divmod (| a1 |) 7 0 7)
+                                            with
+                                            | 0 => 7
+                                            | 1 => 6
+                                            | 2 => 5
+                                            | 3 => 4
+                                            | 4 => 3
+                                            | 5 => 2
+                                            | 6 => 1
+                                            | S (S (S (S (S (S (S _)))))) =>
+                                                0
+                                            end =? 0
+                                           then
+                                            Some ({| data := a1 |}, b3, d1)
+                                           else None) a0 b1 d0)
+                                         (optimize_under_if_bool
+                                            (match
+                                               snd
+                                                 (Nat.divmod (| a0 |) 7 0 7)
+                                             with
+                                             | 0 => 7
+                                             | 1 => 6
+                                             | 2 => 5
+                                             | 3 => 4
+                                             | 4 => 3
+                                             | 5 => 2
+                                             | 6 => 1
+                                             | S (S (S (S (S (S (S _)))))) =>
+                                                 0
+                                             end =? 0)
+                                            (Some ({| data := a0 |}, b1, d0))
+                                            (Some ({| data := a0 |}, b1, d0))
+                                            None None eq_refl eq_refl)
+                                         (Bool.andb_true_l
+                                            (match
+                                               snd
+                                                 (Nat.divmod (| a0 |) 7 0 7)
+                                             with
+                                             | 0 => 7
+                                             | 1 => 6
+                                             | 2 => 5
+                                             | 3 => 4
+                                             | 4 => 3
+                                             | 5 => 2
+                                             | 6 => 1
+                                             | S (S (S (S (S (S (S _)))))) =>
+                                                 0
+                                             end =? 0)))
+                                      (Bool.andb_true_r
+                                         (true &&
+                                          (match
+                                             snd (Nat.divmod (| a0 |) 7 0 7)
+                                           with
+                                           | 0 => 7
+                                           | 1 => 6
+                                           | 2 => 5
+                                           | 3 => 4
+                                           | 4 => 3
+                                           | 5 => 2
+                                           | 6 => 1
+                                           | S (S (S (S (S (S (S _)))))) => 0
+                                           end =? 0))))
+                                   (Bool.andb_true_r
+                                      (true &&
+                                       (match
+                                          snd (Nat.divmod (| a0 |) 7 0 7)
+                                        with
+                                        | 0 => 7
+                                        | 1 => 6
+                                        | 2 => 5
+                                        | 3 => 4
+                                        | 4 => 3
+                                        | 5 => 2
+                                        | 6 => 1
+                                        | S (S (S (S (S (S (S _)))))) => 0
+                                        end =? 0) && true)))))
+        (DecodeBindOpt2_assoc (decode_word b cd)
+           (fun (w : word 8) (b0 : ByteString) (cd0 : ()) =>
+            Some (wordToNat w, b0, cd0))
+           (fun (s' : nat) (t' : ByteString) (env' : ()) =>
+            `(s'0, t'0, env'0) <- decode_list decode_bool s' t' env';
+            (if
+              (true &&
+               (match snd (Nat.divmod (| s'0 |) 7 0 7) with
+                | 0 => 7
+                | 1 => 6
+                | 2 => 5
+                | 3 => 4
+                | 4 => 3
+                | 5 => 2
+                | 6 => 1
+                | S (S (S (S (S (S (S _)))))) => 0
+                end =? 0) && true && true)%bool
+             then Some ({| data := s'0 |}, t'0, env'0)
+             else None))))
+     (AlignedDecodeBindCharM
+        (fun (a : word 8) (b0 : ByteString) (cd' : CacheDecode) =>
+         `(a0, b, env) <- decode_list decode_bool (wordToNat a) b0 cd';
+         (if
+           match snd (Nat.divmod (| a0 |) 7 0 7) with
+           | 0 => 7
+           | 1 => 6
+           | 2 => 5
+           | 3 => 4
+           | 4 => 3
+           | 5 => 2
+           | 6 => 1
+           | S (S (S (S (S (S (S _)))))) => 0
+           end =? 0
+          then Some ({| data := a0 |}, b, env)
+          else None))
+        (fun (b : word 8) (numBytes : nat) =>
+         l <- ListAlignedDecodeM
+                (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                   (forall m : nat, AlignedDecodeM bool m)) 
+                (wordToNat b);
+         (fun (b0 : list bool) (sz : nat) =>
+          if
+           match snd (Nat.divmod (| b0 |) 7 0 7) with
+           | 0 => 7
+           | 1 => 6
+           | 2 => 5
+           | 3 => 4
+           | 4 => 3
+           | 5 => 2
+           | 6 => 1
+           | S (S (S (S (S (S (S _)))))) => 0
+           end =? 0
+          then (fun numBytes0 : nat => return {| data := b0 |}) sz
+          else fail) l numBytes)
+        (fun b : word 8 =>
+         AlignedDecodeListM decode_bool
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall m : nat, AlignedDecodeM bool m)) 
+           (wordToNat b)
+           (fun (l : list bool) (bs : ByteString) (cd' : CacheDecode) =>
+            if
+             match snd (Nat.divmod (| l |) 7 0 7) with
+             | 0 => 7
+             | 1 => 6
+             | 2 => 5
+             | 3 => 4
+             | 4 => 3
+             | 5 => 2
+             | 6 => 1
+             | S (S (S (S (S (S (S _)))))) => 0
+             end =? 0
+            then Some ({| data := l |}, bs, cd')
+            else None)
+           (fun (b0 : list bool) (sz : nat) =>
+            if
+             match snd (Nat.divmod (| b0 |) 7 0 7) with
+             | 0 => 7
+             | 1 => 6
+             | 2 => 5
+             | 3 => 4
+             | 4 => 3
+             | 5 => 2
+             | 6 => 1
+             | S (S (S (S (S (S (S _)))))) => 0
+             end =? 0
+            then (fun numBytes : nat => return {| data := b0 |}) sz
+            else fail)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeMEquivAlignedDecodeM decode_bool
+                 (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                    (forall m : nat, AlignedDecodeM bool m))))
+           (fun b0 : list bool =>
+            AlignedDecode_ifb
+              (fun (bs : ByteString) (cd : CacheDecode) =>
+               Some ({| data := b0 |}, bs, cd))
+              (match snd (Nat.divmod (| b0 |) 7 0 7) with
+               | 0 => 7
+               | 1 => 6
+               | 2 => 5
+               | 3 => 4
+               | 4 => 3
+               | 5 => 2
+               | 6 => 1
+               | S (S (S (S (S (S (S _)))))) => 0
+               end =? 0) (fun numBytes : nat => return {| data := b0 |})
+              (Return_DecodeMEquivAlignedDecodeM {| data := b0 |})))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/NestedList.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+      format_list
+        (format_nat 8 ◦ Datatypes.length ++ format_list format_word) ◦ data)
+     (sequence_Decode (decode_nat 8)
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (nat -> DecodeM (msg * ByteString) ByteString)))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (fun P : CacheDecode -> Prop =>
+      (fun P0 : CacheDecode -> Prop =>
+       forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b)) P /\
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop) P)
+     (fun
+        H3 : cache_inv_Property
+               (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  (CacheDecode -> Prop))
+               (fun P : CacheDecode -> Prop =>
+                (fun P0 : CacheDecode -> Prop =>
+                 forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b))
+                  P /\
+                failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  ((CacheDecode -> Prop) -> Prop) P) =>
+      format_decode_correct_refineEquiv msg ByteString test_cache
+        AlignedByteString.ByteStringQueueMonoid invariant
+        (sequence_Decode (decode_nat 8)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (nat -> DecodeM (msg * ByteString) ByteString)))
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (CacheDecode -> Prop))
+        (format_nat 8 ◦ Datatypes.length ∘ data ++
+         format_list
+           (format_nat 8 ◦ Datatypes.length ++ format_list format_word)
+         ◦ data ++ empty_Format)
+        ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+         format_list
+           (format_nat 8 ◦ Datatypes.length ++ format_list format_word)
+         ◦ data)
+        (EquivFormat_UnderSequence'
+           ((format_nat 8 ◦ Datatypes.length) ◦ data)
+           (format_nat 8 ◦ Datatypes.length ∘ data)
+           (format_list
+              (format_nat 8 ◦ Datatypes.length ++ format_list format_word)
+            ◦ data)
+           (format_list
+              (format_nat 8 ◦ Datatypes.length ++ format_list format_word)
+            ◦ data ++ empty_Format)
+           (EquivFormat_trans ((format_nat 8 ◦ Datatypes.length) ◦ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (EquivFormat_compose_map (format_nat 8) data Datatypes.length)
+              (EquivFormat_reflexive (format_nat 8 ◦ Datatypes.length ∘ data)))
+           (EquivFormat_Projection_Format_Empty_Format'
+              (format_list
+                 (format_nat 8 ◦ Datatypes.length ++ format_list format_word))
+              (format_list
+                 (format_nat 8 ◦ Datatypes.length ++ format_list format_word))
+              data data
+              (EquivFormat_reflexive
+                 (format_list
+                    (format_nat 8 ◦ Datatypes.length ++
+                     format_list format_word) ◦ data))))
+        (let H4 := true in
+         let H5 := true in
+         format_sequence_correct H3 AlignedByteString.ByteStringQueueMonoid
+           (Datatypes.length ∘ data) invariant (fun n : nat => n < pow2 8)
+           (format_nat 8)
+           (format_list
+              (format_nat 8 ◦ Datatypes.length ++ format_list format_word)
+            ◦ data ++ empty_Format) (decode_nat 8)
+           (fun
+              H6 : cache_inv_Property
+                     (failing_case
+                        (ErrorMessage "Unable to synthesize decoder.")
+                        (CacheDecode -> Prop))
+                     (fun P : CacheDecode -> Prop =>
+                      forall (b : nat) (cd : CacheDecode),
+                      P cd -> P (addD cd b)) => Nat_decode_correct 8 H6)
+           (fun (H6 : msg) (H7 : invariant H6) =>
+            let H8 : (| data H6 |) < pow2 8 := proj1 H7 in
+            let H9 :
+              forall l : list (word 8), In l (data H6) -> (| l |) < pow2 8 :=
+              proj2 H7 in
+            H8)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (nat -> DecodeM (msg * ByteString) ByteString))
+           (fun v1 : nat =>
+            constant (constant failing_case
+                                 (ErrorMessage
+                                    "Unable to synthesize decoder.")
+                                 (CorrectDecoder
+                                    AlignedByteString.ByteStringQueueMonoid
+                                    (fun s : msg =>
+                                     invariant s /\
+                                     IsProj (Datatypes.length ∘ data) v1 s)
+                                    (fun s : msg =>
+                                     invariant s /\
+                                     IsProj (Datatypes.length ∘ data) v1 s)
+                                    eq
+                                    (format_list
+                                       (format_nat 8 ◦ Datatypes.length ++
+                                        format_list format_word) ◦ data ++
+                                     empty_Format)
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (nat ->
+                                        DecodeM (msg * ByteString) ByteString)
+                                       v1)
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (CacheDecode -> Prop))
+                                    (format_list
+                                       (format_nat 8 ◦ Datatypes.length ++
+                                        format_list format_word) ◦ data ++
+                                     empty_Format))))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (fun P : CacheDecode -> Prop =>
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop) P)))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (sequence_Decode (decode_nat 8)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (nat -> DecodeM (msg * ByteString) ByteString)) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatList/NatWrongInvariant.v
+---------------------------------------------
+(let H := "Unable to synthesize decoder." in
+ let e := ErrorMessage "Unable to synthesize decoder." in
+ let H0 :=
+   let H0 := true in
+   let H1 := false in
+   let H2 := false in
+   Start_CorrectAlignedDecoderFor invariant
+     ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+      format_list (format_nat 8) ◦ data)
+     (sequence_Decode (decode_nat 8)
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (nat -> DecodeM (msg * ByteString) ByteString)))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeM (msg * ByteString) ByteString))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (forall sz : nat, AlignedDecodeM msg sz))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (CacheDecode -> Prop))
+     (fun P : CacheDecode -> Prop =>
+      (fun P0 : CacheDecode -> Prop =>
+       forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b)) P /\
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        ((CacheDecode -> Prop) -> Prop) P)
+     (fun
+        H3 : cache_inv_Property
+               (failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  (CacheDecode -> Prop))
+               (fun P : CacheDecode -> Prop =>
+                (fun P0 : CacheDecode -> Prop =>
+                 forall (b : nat) (cd : CacheDecode), P0 cd -> P0 (addD cd b))
+                  P /\
+                failing_case (ErrorMessage "Unable to synthesize decoder.")
+                  ((CacheDecode -> Prop) -> Prop) P) =>
+      format_decode_correct_refineEquiv msg ByteString test_cache
+        AlignedByteString.ByteStringQueueMonoid invariant
+        (sequence_Decode (decode_nat 8)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (nat -> DecodeM (msg * ByteString) ByteString)))
+        (failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (CacheDecode -> Prop))
+        (format_nat 8 ◦ Datatypes.length ∘ data ++
+         format_list (format_nat 8) ◦ data ++ empty_Format)
+        ((format_nat 8 ◦ Datatypes.length) ◦ data ++
+         format_list (format_nat 8) ◦ data)
+        (EquivFormat_UnderSequence'
+           ((format_nat 8 ◦ Datatypes.length) ◦ data)
+           (format_nat 8 ◦ Datatypes.length ∘ data)
+           (format_list (format_nat 8) ◦ data)
+           (format_list (format_nat 8) ◦ data ++ empty_Format)
+           (EquivFormat_trans ((format_nat 8 ◦ Datatypes.length) ◦ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (format_nat 8 ◦ Datatypes.length ∘ data)
+              (EquivFormat_compose_map (format_nat 8) data Datatypes.length)
+              (EquivFormat_reflexive (format_nat 8 ◦ Datatypes.length ∘ data)))
+           (EquivFormat_Projection_Format_Empty_Format'
+              (format_list (format_nat 8)) (format_list (format_nat 8)) data
+              data
+              (EquivFormat_reflexive (format_list (format_nat 8) ◦ data))))
+        (let H4 := true in
+         let H5 := true in
+         format_sequence_correct H3 AlignedByteString.ByteStringQueueMonoid
+           (Datatypes.length ∘ data) invariant (fun n : nat => n < pow2 8)
+           (format_nat 8) (format_list (format_nat 8) ◦ data ++ empty_Format)
+           (decode_nat 8)
+           (fun
+              H6 : cache_inv_Property
+                     (failing_case
+                        (ErrorMessage "Unable to synthesize decoder.")
+                        (CacheDecode -> Prop))
+                     (fun P : CacheDecode -> Prop =>
+                      forall (b : nat) (cd : CacheDecode),
+                      P cd -> P (addD cd b)) => Nat_decode_correct 8 H6)
+           (fun (H6 : msg) (H7 : invariant H6) =>
+            let H8 : (| data H6 |) < pow2 8 := proj1 H7 in
+            let H9 : forall n : nat, In n (data H6) -> n < pow2 9 := 
+              proj2 H7 in
+            H8)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (nat -> DecodeM (msg * ByteString) ByteString))
+           (fun v1 : nat =>
+            constant (constant failing_case
+                                 (ErrorMessage
+                                    "Unable to synthesize decoder.")
+                                 (CorrectDecoder
+                                    AlignedByteString.ByteStringQueueMonoid
+                                    (fun s : msg =>
+                                     invariant s /\
+                                     IsProj (Datatypes.length ∘ data) v1 s)
+                                    (fun s : msg =>
+                                     invariant s /\
+                                     IsProj (Datatypes.length ∘ data) v1 s)
+                                    eq
+                                    (format_list (format_nat 8) ◦ data ++
+                                     empty_Format)
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (nat ->
+                                        DecodeM (msg * ByteString) ByteString)
+                                       v1)
+                                    (failing_case
+                                       (ErrorMessage
+                                          "Unable to synthesize decoder.")
+                                       (CacheDecode -> Prop))
+                                    (format_list (format_nat 8) ◦ data ++
+                                     empty_Format))))))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (cache_inv_Property
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (CacheDecode -> Prop))
+           (fun P : CacheDecode -> Prop =>
+            (forall (b : nat) (cd : CacheDecode), P cd -> P (addD cd b)) /\
+            failing_case (ErrorMessage "Unable to synthesize decoder.")
+              ((CacheDecode -> Prop) -> Prop) P)))
+     (fun (b : ByteString) (cd : ()) =>
+      failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (sequence_Decode (decode_nat 8)
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (nat -> DecodeM (msg * ByteString) ByteString)) b cd =
+         failing_case (ErrorMessage "Unable to synthesize decoder.")
+           (DecodeM (msg * ByteString) ByteString) b cd))
+     (failing_case (ErrorMessage "Unable to synthesize decoder.")
+        (DecodeMEquivAlignedDecodeM
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (DecodeM (msg * ByteString) ByteString))
+           (failing_case (ErrorMessage "Unable to synthesize decoder.")
+              (forall sz : nat, AlignedDecodeM msg sz)))) in
+ Failure "Unable to synthesize decoder.")
+
+./src/Narcissus/Examples/Errors/FormatBool/NotByteAligned.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatBool/NotByteAligned.v", line 15, characters 2-34:
+Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!.
