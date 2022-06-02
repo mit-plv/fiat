@@ -8,5 +8,8 @@ Definition invariant (_ : msg) := True.
 Definition dec : Maybe (CorrectAlignedDecoderFor invariant format).
 Proof.
   maybe_synthesize_aligned_decoder.
-  Show Proof.
 Defined.
+
+Let dec' := Eval simpl in extractDecoder dec.
+Print dec'.
+Print Assumptions dec'.

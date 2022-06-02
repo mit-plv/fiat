@@ -181,6 +181,14 @@ Ltac synthesize_aligned_decoder :=
 
 Ltac maybe_synthesize_aligned_decoder := maybe ltac:(fun _ => timeout 30 synthesize_aligned_decoder) "Unable to synthesize decoder."%string.
 
+Definition extractDecoder {S inv fmt}
+           (d : Maybe (CorrectAlignedDecoderFor (S := S) inv fmt))
+  : MaybeT (forall sz : nat, AlignedDecodeM S sz) d :=
+  match d with
+  | Failure s => s
+  | Success a => projT1 a
+  end.
+
 Lemma length_encode_word' sz :
   forall (w : word sz) (b : ByteString),
     bin_measure (encode_word' _ w b) = sz + bin_measure b.

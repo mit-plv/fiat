@@ -67,6 +67,13 @@ Inductive ErrorReport :=
   ErrorMessage (s : string).
 
 (**
+   The axiom we will use to provide "dummy" proof terms in failure cases.
+   Indexed on <<ErrorReport>>s to formalize the intuition that errors "inhabit"
+   arbitrary types.
+ *)
+Axiom failing_case : forall (e: ErrorReport) (A: Type), A.
+
+(**
     If there is an un-unified error in the proof context, unifies it with a
     dummy string and clears it. Fails otherwise. This tactic is used to check the
     error state at the end of a <<maybe>> tactic application.
@@ -85,15 +92,9 @@ Ltac throw s :=
   match goal with
     H := ErrorMessage ?s' |- _ => first [ is_evar s'; unify s s'
                                       (* TODO: Something better when there is already an error? *)
-                                      | idtac ]
+                                      | idtac ] ;
+                                apply failing_case; exact (ErrorMessage s)
   end.
-
-(**
-   The axiom we will use to provide "dummy" proof terms in failure cases.
-   Indexed on ErrorReports to formalize the intuition that errors "inhabit"
-   arbitrary types.
- *)
-Axiom failing_case : forall (e: ErrorReport) (A: Type), A.
 
 (**
    The core tactic for proving a goal of type <<Maybe>>. Callers should provide
@@ -122,3 +123,21 @@ Ltac maybe tac errorMsg :=
               end ]
   | _ => fail "Expected a goal with type Maybe."
   end.
+
+(** A large elimination from <<Maybe A>> to either some type <<B>> in case of
+    success or <<string>> in case of failure. *)
+Definition MaybeT {A : Type} (B : Type) (m : Maybe A) : Type :=
+  match m with
+  | Failure _ => string
+  | Success _ => B
+  end.
+
+
+Ltac foo := throw "foo"%string.
+Ltac bar := foo.
+Lemma baz : Maybe (forall n : nat, n = n).
+Proof.
+  maybe ltac:(fun _ => bar) "baz"%string.
+Defined.
+
+Print baz.
