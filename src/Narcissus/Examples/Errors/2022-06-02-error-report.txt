@@ -1,0 +1,194 @@
+--------------------------------------------
+-- Narcissus Error Examples Output Report --
+--------------------------------------------
+
+./src/Narcissus/Examples/Errors/General/PointedComposition.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/General/PointedComposition.v", line 13, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/General/WrongCircle.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/General/WrongCircle.v", line 13, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatNat/NonStandardConst1.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatNat/NonStandardConst1.v", line 13, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatNat/NonStandardConst2.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatNat/NonStandardConst2.v", line 13, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatWord/BigWordHang.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatWord/BigWordHang.v", line 10, characters 2-34:
+Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!.
+
+./src/Narcissus/Examples/Errors/FormatWord/Endian.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatWord/Endian.v", line 16, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatWord/NotByteAligned.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatWord/NotByteAligned.v", line 10, characters 2-34:
+Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!.
+
+./src/Narcissus/Examples/Errors/FormatString/StringConst.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatString/StringConst.v", line 19, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/Record/NestedRecord.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/Record/NestedRecord.v", line 18, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/Record/FieldMissing.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/Record/FieldMissing.v", line 13, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/MissingInvariant.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/MissingInvariant.v", line 15, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/NatNonStandardInvariant.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/NatNonStandardInvariant.v", line 17, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/.#LengthAfterData.v
+---------------------------------------------
+Error:
+Can't find file
+./src/Narcissus/Examples/Errors/FormatList/.#LengthAfterData.v
+
+./src/Narcissus/Examples/Errors/FormatList/MissingLength.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/MissingLength.v", line 13, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/LengthAfterData.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/LengthAfterData.v", line 15, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/WrongInvariant.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/WrongInvariant.v", line 15, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/NotByteAligned.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/NotByteAligned.v", line 15, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/ActuallyByteAligned.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/ActuallyByteAligned.v", line 16, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/NestedList.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/NestedList.v", line 16, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatList/NatWrongInvariant.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatList/NatWrongInvariant.v", line 16, characters 0-45:
+Warning: Interpreting this declaration as if a global declaration prefixed by
+"Local", i.e. as a global declaration which shall not be available without
+qualification when imported. [local-declaration,scope]
+dec' = "Unable to synthesize decoder."
+     : string
+Closed under the global context
+
+./src/Narcissus/Examples/Errors/FormatBool/NotByteAligned.v
+---------------------------------------------
+File "./src/Narcissus/Examples/Errors/FormatBool/NotByteAligned.v", line 15, characters 2-34:
+Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!.
