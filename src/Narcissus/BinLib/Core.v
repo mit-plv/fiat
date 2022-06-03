@@ -1708,7 +1708,7 @@ Proof.
   - intros; destruct l; simpl; intros.
     + setoid_rewrite app_nil_r; eexists (lt_0_Sn _).
       eauto using empty_padding_ByteString_eq_byteString.
-    + inversion H0.
+    + simpl in *; lia.
   - intros l b H0 H;
       destruct l as [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? ] ] ] ] ] ] ] ];
       try match goal with

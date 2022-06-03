@@ -228,6 +228,7 @@ src/Narcissus/Automation/NormalizeFormats.v
 src/Narcissus/Automation/Solver.v
 src/Narcissus/Automation/Solver_8_5.v
 src/Narcissus/Automation/SynthesizeDecoder.v
+src/Narcissus/Automation/Invertible.v
 src/Narcissus/BinLib/AlignWord.v
 src/Narcissus/BinLib/AlignedByteBuffer.v
 src/Narcissus/BinLib/AlignedByteString.v
