@@ -651,7 +651,7 @@ Section ListFacts.
     revert n.
     induction ls as [|x xs IHxs]; simpl; intros.
     { destruct n; reflexivity. }
-    { destruct n; simpl; trivial; [].
+    { destruct n; simpl; [trivial|]; [].
       rewrite IHxs; simpl; reflexivity. }
   Qed.
 
