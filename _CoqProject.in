@@ -2,6 +2,7 @@
 -R src Fiat
 -R Bedrock Bedrock
 -I src/Common/Tactics
+-I .
 -arg -w -arg unsupported-attributes
 Bedrock/Memory.v
 Bedrock/Nomega.v
