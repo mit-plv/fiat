@@ -2,7 +2,7 @@
 -R src Fiat
 -R Bedrock Bedrock
 -I src/Common/Tactics
--I .
+-arg -w -arg unsupported-attributes
 Bedrock/Memory.v
 Bedrock/Nomega.v
 Bedrock/Word.v
@@ -683,6 +683,8 @@ src/QueryStructure/Specification/SearchTerms/InRange.v
 src/QueryStructure/Specification/SearchTerms/ListInclusion.v
 src/QueryStructure/Specification/SearchTerms/ListPrefix.v
 src/Common/Coq__8_4__8_5__Compat.v
+src/Common/Tactics/HintDbExtra.v
+src/Common/Tactics/TransparentAbstract.v
 src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@
 src/Common/Tactics/hint_db_extra_plugin.mllib
 src/Common/Tactics/hint_db_extra_tactics.ml
