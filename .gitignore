@@ -56,6 +56,8 @@
 /src/Common/Tactics/transparent_abstract_plugin.ml4
 /src/Common/Tactics/transparent_abstract_plugin.mlg
 /src/Common/Tactics/transparent_abstract_tactics.ml
+/src/Common/Tactics/TransparentAbstract.v
+/src/Common/Tactics/HintDbExtra.v
 /src/Computation/State.v
 /src/Examples/*coq*
 /src/Examples/ADTExamples/PLLunch.v

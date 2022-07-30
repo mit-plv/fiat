@@ -199,13 +199,11 @@ src/Common/Tactics/FoldIsTrue.v
 src/Common/Tactics/FreeIn.v
 src/Common/Tactics/GetGoal.v
 src/Common/Tactics/Head.v
-src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/IsClosed.v
 src/Common/Tactics/PrintContext.v
 src/Common/Tactics/SetoidSubst.v
 src/Common/Tactics/SpecializeBy.v
 src/Common/Tactics/SplitInContext.v
-src/Common/Tactics/TransparentAbstract.v
 src/Common/Telescope/Core.v
 src/Common/Telescope/Equality.v
 src/Common/Telescope/Instances.v
