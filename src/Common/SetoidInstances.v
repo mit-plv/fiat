@@ -5,6 +5,7 @@ Set Implicit Arguments.
 
 Local Coercion is_true : bool >-> Sortclass.
 
+#[global]
 Instance proper_if {A B R}
          {test : bool} {then_case else_case}
          `{Proper (A -> B) R then_case, Proper (A -> B) R else_case}
@@ -12,9 +13,11 @@ Instance proper_if {A B R}
 Proof.
   destruct test; trivial.
 Qed.
+#[global]
 Instance proper_idmap {A R}
 : Proper (R ==> R) (fun x : A => x).
 Proof. repeat intro; assumption. Qed.
+#[global]
 Instance proper_const {A B} {R1 : relation A} {R2}
          `{Reflexive B R2} v
 : Proper (R1 ==> R2) (fun _ => v).
@@ -29,6 +32,7 @@ Proof.
   repeat intro; trivial.
 Qed.
 
+#[global]
 Hint Extern 10 (Proper (pointwise_relation _ _) _) => class_apply @pointwise_Proper : typeclass_instances.
 
 Global Instance sumbool_rect_Proper {L R : Prop} {P} {R1}
@@ -134,7 +138,9 @@ Global Instance and_flip_impl_Proper
   : Proper (Basics.flip Basics.impl ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) and | 10.
 Proof. lazy; tauto. Qed.
 
+#[global]
 Hint Extern 0 (Proper (_ ==> Basics.impl --> _) and) => apply and_flip_impl_Proper : typeclass_instances.
+#[global]
 Hint Extern 0 (Proper (Basics.impl --> _ ==> _) and) => apply and_flip_impl_Proper : typeclass_instances.
 
 Global Instance eq_eq_impl_impl_Proper
@@ -155,6 +161,7 @@ Proof.
 Qed.
 
 (** If we don't know the relation, default to assuming that it's equality, if the type is not a function *)
+#[global]
 Hint Extern 0 (@Reflexive ?T ?e)
  => is_evar e;
       lazymatch T with
@@ -167,6 +174,7 @@ Lemma pointwise_Reflexive {A B R} {_ : @Reflexive B R}
 Proof.
   repeat intro; reflexivity.
 Qed.
+#[global]
 Hint Extern 1 (Reflexive (pointwise_relation _ _)) => apply @pointwise_Reflexive : typeclass_instances.
 
 Ltac solve_Proper_eqs :=
@@ -185,11 +193,15 @@ Ltac is_evar_or_eq e :=
 Ltac is_evar_or_eq_or_evar_free e :=
   first [ is_evar_or_eq e
         | try (has_evar e; fail 1) ].
+#[global]
 Hint Extern 1 (Proper ?e _) =>
 is_evar_or_eq e; solve_Proper_eqs : typeclass_instances.
+#[global]
 Hint Extern 1 (Proper (?e1 ==> ?e2) _) =>
 is_evar_or_eq e1; is_evar_or_eq_or_evar_free e2; solve_Proper_eqs : typeclass_instances.
+#[global]
 Hint Extern 1 (Proper (?e1 ==> ?e2 ==> ?e3) _) =>
 is_evar_or_eq e1; is_evar_or_eq e2; is_evar_or_eq_or_evar_free e3; solve_Proper_eqs : typeclass_instances.
+#[global]
 Hint Extern 1 (Proper (?e1 ==> ?e2 ==> ?e3 ==> ?e4) _) =>
 is_evar_or_eq e1; is_evar_or_eq e2; is_evar_or_eq e3; is_evar_or_eq_or_evar_free e4; solve_Proper_eqs : typeclass_instances.

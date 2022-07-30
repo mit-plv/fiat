@@ -44,5 +44,6 @@ Proof.
   lazy; intros ?????? [?|?]; trivial.
 Qed.
 
+#[global]
 Hint Extern 0 (Proper (_ ==> pointwise_relation _ _ ==> forall_relation _) (ritem_rect _))
 => refine ritem_rect_Proper_forall_R : typeclass_instances.

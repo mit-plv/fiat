@@ -151,6 +151,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Lemma equal_sym_b x y : equal x y = equal y x.
   Proof. to_caps; fsetdec. Qed.
 
+#[global]
   Hint Immediate equal_sym_b : sets.
 
   Lemma union_subset_1b
@@ -169,6 +170,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     : forall s s', subset (inter s s') s'.
   Proof. to_caps; auto with sets. Qed.
 
+#[global]
   Hint Rewrite union_subset_1b union_subset_2b inter_subset_1b inter_subset_2b equal_refl_b : setsb.
 
   Lemma union_idempotent x : Equal (union x x) x.
@@ -177,6 +179,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Lemma inter_idempotent x : Equal (inter x x) x.
   Proof. fsetdec. Qed.
 
+#[global]
   Hint Immediate union_idempotent inter_idempotent : sets.
 
   Lemma union_idempotent_b x : equal (union x x) x.
@@ -185,6 +188,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Lemma inter_idempotent_b x : equal (inter x x) x.
   Proof. to_caps; auto with sets. Qed.
 
+#[global]
   Hint Rewrite union_idempotent_b inter_idempotent_b : sets.
 
   Global Instance Subset_Proper_Equal_iff
@@ -210,7 +214,9 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
       intuition.
   Qed.
 
+#[global]
   Hint Rewrite @equal_or_subset_and_not_equal_subset : sets.
+#[global]
   Hint Rewrite @equal_or_subset_and_not_equal_subset_b : setsb.
 
   Ltac handle_known_comparisons_step :=

@@ -16,11 +16,17 @@ Require Import Fiat.Common.SetoidInstances. (* must come after the above for ins
 Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
 
+#[global]
 Instance: Params (@PositiveMapExtensions.defaulted_f) 5 := {}.
+#[global]
 Instance: Params (@PositiveMap.find) 1 := {}.
+#[global]
 Instance: Params (@PositiveMap.mapi) 2 := {}.
+#[global]
 Instance: Params (option_rect_nodep) 4 := {}.
+#[global]
 Instance: Params (@least_upper_bound) 2 := {}.
+#[global]
 Instance: Params (@eq) 1 := {}.
 
 Section grammar_fixedpoint.

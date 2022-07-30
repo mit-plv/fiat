@@ -160,17 +160,22 @@ Notation "'Query' 'Structure' 'Schema' relList " :=
 Bind Scope QSSchema_scope with QueryStructureSchema.
 Require Export Fiat.Common.DecideableEnsembles.
 
+#[global]
 Instance Astring_eq : Query_eq string := {| A_eq_dec := string_dec |}.
 
+#[global]
 Instance Anat_eq : Query_eq nat := {| A_eq_dec := eq_nat_dec |}.
 
+#[global]
 Instance Query_eq_list {A : Type}
          {a_eq_dec : Query_eq A}
 : Query_eq (list A) :=
   {| A_eq_dec := list_eq_dec (@A_eq_dec A a_eq_dec) |}.
 
 Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
+#[global]
 Instance AN_eq : Query_eq N := {| A_eq_dec := N.eq_dec |}.
+#[global]
 Instance AZ_eq : Query_eq Z := {| A_eq_dec := Z.eq_dec |}.
 
 (*Notation GetAttributeKey Rel index :=

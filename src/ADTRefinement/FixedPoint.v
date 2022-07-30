@@ -4,6 +4,7 @@ Require Export Fiat.Computation.FixComp.
 
 Import LeastFixedPointFun.
 
+#[global]
 Instance refineFun_Reflexive fDom fCod : Reflexive (@refineFun fDom fCod).
 Proof.
   intro x.
@@ -39,6 +40,7 @@ Proof.
   firstorder.
 Qed.
 
+#[global]
 Instance refineFun_Transitive fDom fCod : Transitive (@refineFun fDom fCod).
 Proof.
   intros x y z H1 H2.
@@ -46,6 +48,7 @@ Proof.
   exact H2.
 Qed.
 
+#[global]
 Program Instance refineFun_PreOrder fDom fCod : PreOrder (@refineFun fDom fCod).
 
 Definition refineFunEquiv
@@ -79,6 +82,7 @@ Proof.
   assumption.
 Qed.
 
+#[global]
 Program Instance refineFunEquiv_Equivalence fDom fCod :
   Equivalence (@refineFunEquiv fDom fCod).
 Obligation 1.
@@ -99,6 +103,7 @@ transitivity y; trivial.
 transitivity y; trivial.
 Qed.
 
+#[global]
 Instance refineFun_refineFunEquiv_subrelation fDom fCod :
   subrelation (@refineFunEquiv fDom fCod) (@refineFun fDom fCod).
 Proof. intros ? ? [? ?]; assumption. Qed.

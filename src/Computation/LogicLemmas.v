@@ -170,4 +170,5 @@ Lemma impl_exists A P Q (H : exists x : A, impl Q (P x))
 : impl Q (exists x : A, P x).
 Proof. firstorder. Defined.
 
+#[global]
 Hint Resolve impl_exists : typeclass_instances.

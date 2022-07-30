@@ -181,10 +181,12 @@ Arguments ValidUpdatePlus [TItem] _ _.
 Arguments BagPlus [TItem] _.
 Arguments CorrectBagPlus [TItem] _.
 
+#[global]
 Instance BagPlusProofAsBag {TItem}
          (bag : BagPlusProof TItem)
 : Bag _ _ _ _ := BagPlus bag.
 
+#[global]
 Instance BagPlusProofAsCorrectBag {TItem}
          (bag : BagPlusProof TItem)
 : CorrectBag _ _ _ := CorrectBagPlus bag.
@@ -193,6 +195,7 @@ Instance BagPlusProofAsCorrectBag {TItem}
 Definition WFBagPlusType {TItem} (Index : BagPlusProof TItem)
   := sigT (RepInvPlus Index).
 
+#[global]
 Instance WFBagPlusTypeAsBag {TItem}
          (Index : BagPlusProof TItem)
 : Bag (WFBagPlusType Index) TItem (SearchTermTypePlus Index)
@@ -230,6 +233,7 @@ Proof.
     simpl; apply search_term.
 Defined.
 
+#[global]
 Instance WFBagPlusTypeAsCorrectBag {TItem}
          (Index : BagPlusProof TItem)
 : CorrectBag (fun _ => True) (fun _ => True) (WFBagPlusTypeAsBag Index).

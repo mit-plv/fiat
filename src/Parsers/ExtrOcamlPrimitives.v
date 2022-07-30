@@ -151,6 +151,8 @@ Module Export OcamlProperties.
       := proj2 (compare_eq s s') H.
   End StringProperties.
 
+#[global]
   Hint Rewrite explode_implode implode_explode length_correct safe_get_correct sub_correct compare_eq : ocaml.
+#[global]
   Hint Rewrite compare_eq' using reflexivity : ocaml.
 End OcamlProperties.

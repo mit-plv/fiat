@@ -123,6 +123,7 @@ End monad_refine.
 
 Create HintDb refine_monad discriminated.
 
+#[global]
 Hint Rewrite @refineEquiv_bind_bind @refineEquiv_bind_unit @refineEquiv_unit_bind : refine_monad.
 (** We guard the [setoid_rewrite] with a [match] to work around
     "Anomaly: Uncaught exception

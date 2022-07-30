@@ -1137,4 +1137,5 @@ Section IndexedImpl.
   Qed.
 End IndexedImpl.
 
+#[global]
 Hint Unfold forall_reachable_productions_if_eq expanded_fallback_list' : parser_sharpen_db.

@@ -69,6 +69,7 @@ Proof.
   - eauto.
 Qed.
 
+#[global]
 Instance PreOrder_refineFun
          {fDom : list Type}
          {fCod : Type}
@@ -133,6 +134,7 @@ Fixpoint FunMin
 Module LeastFixedPointFun.
   Import Fiat.Common.Frame.
 
+#[global]
   Instance funDefOps
            {fDom : list Type}
            {fCod : Type}
@@ -143,6 +145,7 @@ Module LeastFixedPointFun.
       min := FunMin
     }.
 
+#[global]
   Instance PreO_refineFun
            {fDom : list Type}
            {fCod : Type}
@@ -172,6 +175,7 @@ Module LeastFixedPointFun.
     unfold refineEquivFun; intuition.
   Qed.
 
+#[global]
   Instance PO_refineFun
            {fDom : list Type}
            {fCod : Type}
@@ -268,6 +272,7 @@ Module LeastFixedPointFun.
       + intros; eapply IHfDom; eauto.
   Qed.
 
+#[global]
   Instance Lattice_funDef
            {fDom : list Type}
            {fCod : Type}
@@ -454,6 +459,7 @@ Module LeastFixedPointFun.
       eapply H0.
   Qed.
 
+#[global]
   Instance refineFun_Proper'
            {fDom : list Type}
            {fCod : Type}
@@ -465,6 +471,7 @@ Module LeastFixedPointFun.
     rewrite H3, H1; eauto.
   Qed.
 
+#[global]
   Instance refineFun_Proper''
            {fDom : list Type}
            {fCod : Type}
@@ -537,6 +544,7 @@ Module LeastFixedPointFun.
       eapply refineFun_unCurry in H2; apply H2; eauto.
   Qed.
 
+#[global]
   Instance CompleteLattice_funDef
            {fDom : list Type}
            {fCod : Type}
