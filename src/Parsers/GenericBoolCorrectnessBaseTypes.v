@@ -54,6 +54,7 @@ Section correctness.
 End correctness.
 
 Create HintDb generic_parser_decidable_correctness discriminated.
+#[global]
 Hint Rewrite @ret_Terminal_true_to_bool @ret_Terminal_false_to_bool @ret_NonTerminal_true_to_bool @ret_NonTerminal_false_to_bool @ret_production_nil_true_to_bool @ret_production_nil_false_to_bool @ret_orb_production_base_to_bool @ret_orb_production_to_bool @ret_production_cons_to_bool @ret_orb_productions_base_to_bool @ret_orb_productions_to_bool @ret_nt_to_bool @ret_nt_invalid_to_bool : generic_parser_decidable_correctness.
 
 Lemma fold_right_ret_orb_production_eq
@@ -84,4 +85,5 @@ Proof.
   autorewrite with generic_parser_decidable_correctness; trivial.
 Qed.
 
+#[global]
 Hint Rewrite @fold_right_ret_orb_production_eq @fold_right_ret_orb_productions_eq : generic_parser_decidable_correctness.

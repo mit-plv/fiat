@@ -13,6 +13,7 @@ Local Open Scope list_scope.
 Local Open Scope string_scope.
 
 Class cidtac_error {T T'} (msg0 : T) (msg1 : T') := dummy_idtac : True.
+#[global]
 Hint Extern 0 (cidtac_error ?msg0 ?msg1) => idtac "<infomsg>Error:" msg0 msg1 "</infomsg>"; fail : typeclass_instances.
 Ltac cidtac_error msg0 msg1 := constr:(_ : cidtac_error msg0 msg1).
 
@@ -294,6 +295,7 @@ Ltac reify_Term var term
      | ?term'
        => cidtac_error "Unable to reify term:" term'
      end.
+#[global]
 Hint Extern 0 (reif_Term_of ?var ?term)
 => (let term' := reify_Term var term in eexact term') : typeclass_instances.
 

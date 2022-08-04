@@ -3,6 +3,7 @@ Require Import Fiat.Common.
 
 Create HintDb ensembles discriminated.
 
+#[global]
 Hint Constructors Singleton Union Intersection : ensembles.
 
 Ltac finish_union_with t :=

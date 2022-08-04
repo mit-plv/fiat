@@ -89,7 +89,9 @@ Definition bool_of_sum_orb_true_l {A B} (x : sum A B) b
     = orb (bool_of_sum x) b.
 Proof. destruct x, b; reflexivity. Qed.
 
+#[global]
 Hint Rewrite @bool_of_sum_inl @bool_of_sum_inr @bool_of_sum_distr_match_eta @bool_of_sum_distr_match_sumbool_eta @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool @bool_of_sum_distr_match_fun @bool_of_sum_distr_match_sumbool_fun @bool_of_sum_eta @bool_of_sum_orb_true_l : push_bool_of_sum.
+#[global]
 Hint Rewrite @bool_of_sumbool_left @bool_of_sumbool_right @bool_of_sumbool_distr_match_eta @bool_of_sumbool_distr_match_sum_eta @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum @bool_of_sumbool_distr_match_fun @bool_of_sumbool_distr_match_sum_fun @bool_of_sumbool_eta : push_bool_of_sumbool.
 
 (** Runs [abstract] after clearing the environment, solving the goal
@@ -298,8 +300,10 @@ Ltac apply_reflexivity := lazymatch goal with
   end
 end.
 
+#[global]
 Hint Extern 0 => apply_reflexivity : typeclass_instances.
 
+#[global]
 Hint Extern 10 (Proper _ _) => progress cbv beta : typeclass_instances.
 
 Ltac set_evars :=
@@ -314,16 +318,19 @@ Ltac subst_evars :=
 
 Tactic Notation "eunify" open_constr(A) open_constr(B) := unify A B.
 
+#[global]
 Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
 Proof.
   compute in *; auto.
 Defined.
 
+#[global]
 Instance pointwise_sym A B (eqB : relation B) `{Symmetric _ eqB} : Symmetric (pointwise_relation A eqB).
 Proof.
   compute in *; auto.
 Defined.
 
+#[global]
 Instance pointwise_transitive A B (eqB : relation B) `{Transitive _ eqB} : Transitive (pointwise_relation A eqB).
 Proof.
   compute in *; eauto.
@@ -413,14 +420,17 @@ Ltac inversion_by rule :=
 
 Class can_transform_sigma A B := do_transform_sigma : A -> B.
 
+#[global]
 Instance can_transform_sigT_base {A} {P : A -> Type}
   : can_transform_sigma (sigT P) (sigT P) | 0
   := fun x => x.
 
+#[global]
 Instance can_transform_sig_base {A} {P : A -> Prop}
   : can_transform_sigma (sig P) (sig P) | 0
   := fun x => x.
 
+#[global]
 Instance can_transform_sigT {A B B' C'}
          `{forall x : A, can_transform_sigma (B x) (@sigT (B' x) (C' x))}
   : can_transform_sigma (forall x : A, B x)
@@ -430,6 +440,7 @@ Instance can_transform_sigT {A B B' C'}
                 (fun x => projT1 (do_transform_sigma (f x)))
                 (fun x => projT2 (do_transform_sigma (f x))).
 
+#[global]
 Instance can_transform_sig {A B B' C'}
          `{forall x : A, can_transform_sigma (B x) (@sig (B' x) (C' x))}
   : can_transform_sigma (forall x : A, B x)
@@ -1277,6 +1288,7 @@ Proof.
 Defined.
 
 Class constr_eq_helper {T0 T1} (a : T0) (b : T1) := mkconstr_eq : True.
+#[global]
 Hint Extern 0 (constr_eq_helper ?a ?b) => constr_eq a b; exact I : typeclass_instances.
 (** return the first hypothesis with head [h] *)
 Ltac hyp_with_head h
@@ -1572,6 +1584,7 @@ Ltac flatten_ex H :=
 Ltac progress_flatten_ex H :=
   flatten_ex_helper H progress_flatten_ex flatten_ex.
 
+#[global]
 Hint Extern 0 (flatten_exC ?H) => let ret := progress_flatten_ex H in exact ret : typeclass_instances.
 
 Ltac flatten_all_ex :=

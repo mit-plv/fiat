@@ -34,8 +34,11 @@ Proof.
   lazy; intros ?????? [?|?]; trivial.
 Qed.
 
+#[global]
 Hint Extern 1 (Proper _ (@item_rect _ _)) => exact item_rect_Proper : typeclass_instances.
+#[global]
 Hint Extern 0 (Proper _ (@item_rect _ _)) => exact item_rect_Proper_forall : typeclass_instances.
+#[global]
 Hint Extern 0 (Proper (pointwise_relation _ _ ==> pointwise_relation _ _ ==> forall_relation _) (item_rect _))
 => refine item_rect_Proper_forall_R : typeclass_instances.
 

@@ -38,36 +38,46 @@ Arguments MonadTransformerLaws T {_}.
 
 Create HintDb monad discriminated.
 Create HintDb monad' discriminated.
+#[global]
 Hint Rewrite @bind_bind @bind_unit @unit_bind @lift_ret @lift_bind : monad.
+#[global]
 Hint Rewrite @bind_unit @unit_bind @lift_ret @lift_bind : monad'.
+#[global]
 Hint Rewrite <- @bind_bind : monad'.
 
+#[global]
 Instance idM : MonadOps idmap
   := { bind A B x f := f x;
        ret A x := x }.
+#[global]
 Instance idML : MonadLaws idmap.
 Proof.
   constructor; trivial.
 Defined.
 
+#[global]
 Instance idT : MonadTransformerOps idmap
   := { Tops M H := H;
        lift M H A x := x }.
+#[global]
 Instance idTL : MonadTransformerLaws idmap.
 Proof.
   constructor; trivial.
 Defined.
 
+#[global]
 Instance monad_of_transformer T `{MonadTransformerOps T}
 : MonadOps (T idmap) | 1000
   := _.
 Coercion monad_of_transformer : MonadTransformerOps >-> MonadOps.
 
+#[global]
 Instance monad_laws_of_transformer T `{MonadTransformerLaws T}
 : MonadLaws (T idmap)
   := _.
 Coercion monad_laws_of_transformer : MonadTransformerLaws >-> MonadLaws.
 
+#[global]
 Instance optionT : MonadTransformerOps (fun M => M ∘ option) | 2.
 Proof.
   refine {| Tops M H := {| ret A x := ret (Some x);
@@ -92,6 +102,7 @@ Local Ltac t_option :=
            | _ => progress autorewrite with monad; try assumption; []
          end.
 
+#[global]
 Instance optionTLaws : MonadTransformerLaws (fun M => M ∘ option) | 2.
 Proof.
   refine {| Tlaws M H L := _ |}.
@@ -100,7 +111,9 @@ Proof.
   { simpl; t_option. }
 Defined.
 
+#[global]
 Instance optionM : MonadOps option | 2 := optionT.
+#[global]
 Instance optionLaws : MonadLaws option | 2 := optionTLaws.
 
 Definition liftA {T} `{MonadTransformerOps T} {M} `{MonadOps M} {A B}

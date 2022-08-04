@@ -219,18 +219,22 @@ Definition pointwise2_relation :=
   fun (A A': Type) {B : Type} (R : relation B) (f g : A -> A' -> B) =>
     forall a a', R (f a a') (g a a').
 
+#[global]
 Instance pointwise2_subrelation {A A' B} (R : relation B) :
   subrelation (pointwise2_relation A A' R) (pointwise_relation A (pointwise_relation A' R)).
 Proof. intros x y r. apply r. Qed.
 
+#[global]
 Instance pointwise2_subrelation_inv {A A' B} (R : relation B) :
   subrelation (pointwise_relation A (pointwise_relation A' R)) (pointwise2_relation A A' R).
 Proof. intros x y r. apply r. Qed.
 
+#[global]
 Instance pointwise2_forall_relation {A A' B} (R : relation B) :
   subrelation (pointwise2_relation A A' R) (forall_relation (fun _ : A => forall_relation (fun _ : A' => R))).
 Proof. intros x y r. apply r. Qed.
 
+#[global]
 Instance pointwise2_forall_relation_inv {A A' B} (R : relation B) :
   subrelation (forall_relation (fun _ : A => forall_relation (fun _ : A' => R))) (pointwise2_relation A A' R).
 Proof. intros x y r. apply r. Qed.
@@ -429,6 +433,7 @@ Proof.
     trivial.
 Qed.
 
+#[global]
 Hint Extern 0 (Proper (_ ==> _ ==> SetoidList.eqlistA _) (@List.map _ _))
 => refine map_eqlistA_Proper : typeclass_instances.
 
@@ -441,6 +446,7 @@ Global Instance list_caset_Proper_forall_R {A B} {R : relation B}
 Proof.
   lazy; intros ?????? [|??]; trivial.
 Qed.
+#[global]
 Hint Extern 0 (Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> forall_relation _) (list_caset _))
 => refine list_caset_Proper_forall_R : typeclass_instances.
 
@@ -451,6 +457,7 @@ Proof.
   intros ?? H ls1 ls2 H'.
   induction H'; simpl; eauto with nocore.
 Qed.
+#[global]
 Hint Extern 0 (Proper (_ ==> SetoidList.eqlistA _ ==> _ ==> _) (@fold_left _ _))
 => refine fold_left_eqlistA_Proper : typeclass_instances.
 

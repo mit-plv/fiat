@@ -48,6 +48,7 @@ Ltac let_in_to_Let_In e :=
     with fun x => @?C x => C end (* match drops the type cast *)
   | ?x => x
   end.
+#[global]
 Hint Extern 0 (_call_let_in_to_Let_In ?e) => (
   let e := let_in_to_Let_In e in eexact e
 ) : typeclass_instances.

@@ -6,10 +6,15 @@ Lemma nat_compare_eq_refl : forall x, Nat.compare x x = Eq.
   intros; apply Nat.compare_eq_iff; trivial.
 Qed.
 
+#[global]
 Hint Rewrite <- nat_compare_lt : nat_comp_hints.
+#[global]
 Hint Rewrite <- nat_compare_gt : nat_comp_hints.
+#[global]
 Hint Rewrite    Nat.compare_eq_iff : nat_comp_hints.
+#[global]
 Hint Rewrite <- Nat.compare_eq_iff : nat_comp_hints.
+#[global]
 Hint Rewrite    nat_compare_eq_refl : nat_comp_hints.
 
 Ltac autorewrite_nat_compare :=
@@ -82,6 +87,7 @@ Module String_as_OT <: OrderedType.
 
   Definition eq := @eq string.
 
+#[global]
   Hint Resolve string_compare_eq_refl.
 
   Lemma eq_Eq : forall x y, x = y -> string_compare x y = Eq.

@@ -4,6 +4,7 @@ Require Import Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADTRefinement.Core.
 (** Definitions for integrating [refineADT] into the setoid rewriting
     framework. *)
 
+#[global]
 Instance refineConstructor_refl rep Dom
 : Reflexive (@refineConstructor rep rep eq Dom).
 Proof.
@@ -12,6 +13,7 @@ Proof.
   - intro; simpl; intros; subst; apply IHDom.
 Qed.
 
+#[global]
 Instance refineMethod_refl rep Dom Cod
 : Reflexive (@refineMethod rep rep eq Dom Cod).
 Proof.
@@ -59,6 +61,7 @@ Proof.
     eapply H0.
 Qed.
 
+#[global]
 Instance refineConstructor_trans' rep Dom
 : Transitive (@refineConstructor rep rep eq Dom).
 Proof.
@@ -122,6 +125,7 @@ Proof.
     intros; eapply H0.
 Qed.
 
+#[global]
 Instance refineMethod_trans' rep Dom Cod
 : Transitive (@refineMethod rep rep eq Dom Cod).
 Proof.

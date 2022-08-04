@@ -163,6 +163,7 @@ End local_opt.
 
 
 Class change_snd {A} (x : A) := dummy_change_snd : A.
+#[global]
 Hint Extern 0 (change_snd _) => change @snd with @Common.opt.snd; match goal with |- change_snd ?x => exact x end : typeclass_instances.
 
 Local Ltac do_change_snd h impl :=

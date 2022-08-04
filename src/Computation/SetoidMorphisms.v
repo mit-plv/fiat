@@ -127,10 +127,14 @@ Proof.
   destruct c; eauto.
 Qed.
 
+#[global]
 Instance subrelation_refine {A} : subrelation (pointwise_relation A impl) (flip refine) := fun x y R => R.
+#[global]
 Instance subrelation_refine_impl {A} : subrelation (pointwise_relation A (flip impl)) refine := fun x y R => R.
+#[global]
 Instance subrelation_refine_equiv_flip_impl {A} : subrelation refineEquiv (pointwise_relation A (flip impl)).
 Proof. intros x y [H H0]. apply H. Qed.
+#[global]
 Instance subrelation_refine_equiv_impl {A} : subrelation refineEquiv (pointwise_relation A impl).
 Proof. intros x y [H H0]. apply H0. Qed.
 
@@ -177,6 +181,7 @@ Proof.
   destruct_ex; eauto.
 Qed.
 
+#[global]
 Instance refine_refineEquiv_subrelation A
 : subrelation (@refineEquiv A) (@refine A).
 Proof.
@@ -294,6 +299,7 @@ Add Parametric Relation {A} : _ (@Monad.equiv A)
     transitivity proved by equiv_trans
       as MonadEquivRel.
 
+#[global]
 Typeclasses Opaque If_Then_Else.
 
 Global Instance computes_to_to_refine_Proper_fun {T} {A B RA RB f} {v : T}

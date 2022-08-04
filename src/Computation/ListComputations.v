@@ -121,6 +121,7 @@ Section UpperBound.
 
 End UpperBound.
 
+#[global]
 Instance DecideableEnsembleUpperBound {A}
          (f : A -> nat)
          (ns : list A)

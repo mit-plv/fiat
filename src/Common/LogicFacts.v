@@ -226,6 +226,7 @@ Section LogicFacts.
 End LogicFacts.
 
 Create HintDb logic discriminated.
+#[global]
 Hint Rewrite and_distr_or_l and_distr_or_r @ex_distr_or @impl_distr_or @forall_distr_and @ex_eq'_and @ex_eq_and @ex_eq'_fst_and @ex_eq'_snd_and @ex_eq_fst_and @ex_eq_snd_and @forall_eq'_fst_and @forall_eq'_snd_and @forall_eq_fst_and @forall_eq_snd_and and_assoc (True_iff (eq_refl true)) (False_iff nnTrue) @and_False_r @and_False_l @ex_False @and_True_l @and_True_r @or_False_l @or_False_r @or_True_l @or_True_r @forall_True (True_iff Bool.diff_false_true) (False_iff Bool.diff_false_true) @False_impl_iff_True @ex_True : logic.
 Ltac setoid_rewrite_logic_step :=
   first [ rewrite_strat repeat topdown hints logic

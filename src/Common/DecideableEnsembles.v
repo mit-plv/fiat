@@ -15,6 +15,7 @@ Proof.
     apply dec_decides_P in H0; intuition.
 Qed.
 
+#[global]
 Program Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
   : DecideableEnsemble (fun a => f a > f' a) :=
   {| dec a := if le_lt_dec (f a) (f' a) then false else true |}.
@@ -22,6 +23,7 @@ Next Obligation.
   intros; find_if_inside; intuition.
 Defined.
 
+#[global]
 Program Instance DecideableEnsemble_And
          {A : Type}
          {P P' : Ensemble A}
@@ -41,17 +43,21 @@ Class Query_eq (A : Type) :=
 
 Infix "==" := (A_eq_dec) (at level 1).
 
+#[global]
 Instance Query_eq_nat : Query_eq nat :=
   {| A_eq_dec := eq_nat_dec |}.
 
+#[global]
 Instance Query_eq_bool : Query_eq bool :=
   {| A_eq_dec := bool_dec |}.
 
+#[global]
 Instance Query_eq_list {A}
          (_ : Query_eq A)
   : Query_eq (list A) :=
   {| A_eq_dec := List.list_eq_dec A_eq_dec |}.
 
+#[global]
 Program Instance DecideableEnsemble_NEqDec
          {A B : Type}
          {b_eq_dec : Query_eq B}
@@ -62,6 +68,7 @@ Next Obligation.
   intros; find_if_inside; intuition.
 Defined.
 
+#[global]
 Program Instance DecideableEnsemble_EqDec {A B : Type}
          (B_eq_dec : Query_eq B)
          (f f' : A -> B)
@@ -71,6 +78,7 @@ Next Obligation.
   intros; find_if_inside; split; congruence.
 Defined.
 
+#[global]
 Program Instance DecideableEnsemble_Not
          {A : Type}
          (P : Ensemble A)
@@ -84,6 +92,7 @@ Next Obligation.
   - rewrite <- dec_decides_P in H1; congruence.
 Defined.
 
+#[global]
 Program Instance DecideableEnsemble_True
          {A : Type}
 : DecideableEnsemble (fun a : A => True) :=
@@ -92,6 +101,7 @@ Next Obligation.
   intros; intuition eauto.
 Defined.
 
+#[global]
 Program Instance DecideableEnsemble_False
          {A : Type}
 : DecideableEnsemble (fun a : A => False) :=
@@ -100,6 +110,7 @@ Next Obligation.
   intros; intuition eauto; discriminate.
 Defined.
 
+#[global]
 Program Instance DecideableEnsemble_Or
          {A : Type}
          (P P' : Ensemble A)

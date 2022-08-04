@@ -18,6 +18,7 @@ Bind Scope grammar_scope with grammar.
 
 (** [abstract] doesn't work in definitions *)
 Class NoDupR {T} beq (ls : list T) := nodupr : uniquize beq ls = ls.
+#[global]
 Hint Extern 5 (NoDupR _ _) => clear; (*abstract*) (vm_compute; reflexivity) : typeclass_instances.
 
 Definition list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
@@ -109,6 +110,7 @@ Global Arguments pregrammar_nonterminals / _ _.
 Global Arguments Lookup_idx {_} !_ !_  / .
 Global Arguments Lookup_string {_} !_ !_ / .
 
+#[global]
 Existing Instance nonterminals_unique.
 Arguments nonterminals_unique {_} _.
 

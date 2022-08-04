@@ -17,6 +17,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Local Open Scope string_scope.
 
 (* TODO: find a better place for this *)
+#[global]
 Instance match_item_Proper {Char A}
   : Proper (eq ==> pointwise_relation _ eq ==> pointwise_relation _ eq ==> eq)
            (fun (it : Core.item Char) T NT
@@ -28,6 +29,7 @@ Proof.
   intros []; repeat intro; subst; auto.
 Qed.
 
+#[global]
 Instance option_rect_Proper {A P}
   : Proper (pointwise_relation _ eq ==> eq ==> eq ==> eq)
            (@option_rect A (fun _ => P)).
