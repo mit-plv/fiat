@@ -72,7 +72,7 @@ Proof.
   find_if_inside.
   - eapply ExtractViewFrom; eauto; unfold empty_Format; eauto.
   - unfold CorrectDecoder, empty_Format; split; intros.
-    + elimtype False; eapply H0.
+    + exfalso; eapply H0.
       rewrite <- (H _ H2); eassumption.
     + discriminate.
 Qed.

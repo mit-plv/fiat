@@ -653,7 +653,7 @@ Section BoundedStringCacheADT.
     unfold StringIndexedMap.MapsTo, StringIndexedMap.remove in H0;
     simpl in H0; eauto.
     destruct (string_dec k0 k); subst; simpl in *.
-    elimtype False.
+    exfalso.
     eapply StringIndexedMap.remove_1; try reflexivity;
     unfold StringIndexedMap.In, StringIndexedMap.Raw.In0;
     simpl; apply StringIndexedMap.find_2 in H0;
@@ -727,7 +727,7 @@ Section BoundedStringCacheADT.
   Proof.
     unfold FMapCommonKeys; intuition;
     (destruct (string_dec k0 k);
-     [subst; elimtype False;
+     [subst; exfalso;
       eapply (StringIndexedMap.remove_1); eauto;
       unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
       StringIndexedMap.MapsTo in *; simpl in *; eauto
@@ -764,7 +764,7 @@ Section BoundedStringCacheADT.
     apply StringIndexedMap.find_2 in H0.
     eapply StringIndexedMap.add_3 in H0; eauto.
     destruct (string_dec k' k0).
-    elimtype False;
+    exfalso;
       eapply (StringIndexedMap.remove_1); eauto;
       unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
       StringIndexedMap.MapsTo in *; simpl in *; eauto.
@@ -916,7 +916,7 @@ Section BoundedStringCacheADT.
     eapply H1 with (p' := p); eauto.
     simpl.
     destruct (lt_dec (snd p) (snd p)); eauto.
-    elimtype False.
+    exfalso.
     omega.
     rewrite <- H; f_equal.
     repeat (apply functional_extensionality; intros); f_equal.
@@ -1075,12 +1075,12 @@ Definition BoundedStringCacheADT
         repeat split; intuition; simpl in *;
         try (eapply (StringIndexedMap.empty_1); eauto;
              eapply (StringIndexedMap.find_2); eauto).
-        - elimtype False;
+        - exfalso;
           eapply StringIndexedMap.empty_1; eauto.
-        - elimtype False;
+        - exfalso;
           eapply StringIndexedMap.empty_1; eauto.
         - unfold indexBound; intros;
-          elimtype False;
+          exfalso;
           eapply (StringIndexedMap.empty_1);
           eapply (StringIndexedMap.find_2); eauto.
       }
@@ -1130,7 +1130,7 @@ Definition BoundedStringCacheADT
         simplify with monad laws; simpl.
         reflexivity.
         caseEq (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n)));
-          try solve [elimtype False; eapply H3; eauto];
+          try solve [exfalso; eapply H3; eauto];
           intuition; eauto using AbsR_add_EnsembleUpdate'.
         eapply AbsR_add_EnsembleUpdate'; eauto using FMapCommonKeys_find_None.
       }

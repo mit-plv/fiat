@@ -465,7 +465,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     + generalize (proj1 (H4 k0 v) (InA_cons_tl _ H5)); intros.
       inversion H8; subst; eauto.
       destruct H12; simpl in *.
-      elimtype False; apply H6.
+      exfalso; apply H6.
       revert H5 H9 H3; clear; induction (l'1 ++ l'2); intros;
         inversion H5; subst;
           [ constructor; destruct H0; simpl in *; unfold eq_key;
@@ -475,7 +475,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       eapply InA_app_cons_swap in H8; eauto using eqke_equiv.
       inversion H8; subst; eauto.
       destruct H12; simpl in *.
-      elimtype False; apply H10.
+      exfalso; apply H10.
       revert H5 H9 H3; clear; induction l; intros;
         inversion H5; subst;
           [ constructor; destruct H0; simpl in *; unfold eq_key;
@@ -603,34 +603,34 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intros; case_eq (find y (map f bag)); intros; eauto.
     - apply find_2 in H; apply find_2 in H0.
       apply FMap_Insert_fold_add_MapsTo in H; destruct H.
-      elimtype False; apply empty_mapsto_iff in H; eauto.
+      exfalso; apply empty_mapsto_iff in H; eauto.
       apply map_mapsto_iff in H0; destruct H0 as [a [eq_a MapsTo_y]]; subst.
       generalize (elements_3w bag); apply elements_1 in MapsTo_y;
         induction MapsTo_y; intros.
       + inversion H1; subst; destruct H0; simpl in *; subst.
         inversion H; subst;
           [destruct H3; simpl in *; subst; eauto
-          | elimtype False; apply H4; revert H0 H3; clear; induction l;
+          | exfalso; apply H4; revert H0 H3; clear; induction l;
             intros; inversion H3; subst; unfold eq_key in *].
         destruct H1; simpl in *; subst; constructor; eauto.
         constructor 2; eauto.
       + inversion H0; subst; eapply IHMapsTo_y; eauto.
         inversion H; subst; eauto.
         destruct H2; simpl in *; subst.
-        elimtype False; apply H3; revert H1 MapsTo_y; clear; induction l;
+        exfalso; apply H3; revert H1 MapsTo_y; clear; induction l;
           intros; inversion MapsTo_y; subst; unfold eq_key in *.
         destruct H0; simpl in *; subst; constructor; eauto.
         constructor 2; eauto.
     - apply find_2 in H; apply FMap_Insert_fold_add_MapsTo in H; destruct H.
-      elimtype False; apply empty_mapsto_iff in H; eauto.
+      exfalso; apply empty_mapsto_iff in H; eauto.
       apply InA_Map in H; destruct H as [[k v'] [eq_k In_k]]; simpl in *.
       destruct eq_k; simpl in *; rewrite H in H0.
-      apply not_find_in_iff in H0; elimtype False; eapply H0.
+      apply not_find_in_iff in H0; exfalso; eapply H0.
       apply map_in_iff; exists v'; apply elements_2.
       apply InA_alt; eexists; repeat split; eauto.
     - apply find_2 in H0; apply not_find_in_iff in H.
       apply map_mapsto_iff in H0; destruct H0 as [k [k_eq MapsTo_k]]; subst.
-      elimtype False; apply H.
+      exfalso; apply H.
       econstructor 1 with (x := f k); apply FMap_fold_add_MapsTo_In.
       apply elements_1 in MapsTo_k; revert MapsTo_k; clear;
         intro; induction MapsTo_k; simpl.

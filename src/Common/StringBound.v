@@ -59,7 +59,7 @@ Require Export Fiat.Common.BoundedLookup.
   : AnyT.
   Proof.
     destruct idx as [idx [n nth_n]].
-    elimtype False; eapply lt_n_0.
+    exfalso; eapply lt_n_0.
     apply (lt_nth _ _ nth_n).
   Defined.
 

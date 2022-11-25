@@ -98,12 +98,12 @@ Section LRUCache.
       repeat split; intuition; simpl in *;
       try (eapply (StringIndexedMap.empty_1); eauto;
            eapply (StringIndexedMap.find_2); eauto).
-      - elimtype False;
+      - exfalso;
         eapply StringIndexedMap.empty_1; eauto.
-      - elimtype False;
+      - exfalso;
         eapply StringIndexedMap.empty_1; eauto.
       - unfold indexBound; intros;
-        elimtype False;
+        exfalso;
         eapply (StringIndexedMap.empty_1);
         eapply (StringIndexedMap.find_2); eauto.
     }
@@ -156,7 +156,7 @@ Section LRUCache.
         autorewrite with monad laws; simpl.
         reflexivity.
         caseEq (StringIndexedMap.find (elt:=Value) (fst n) (fst (fst r_n)));
-          try solve [elimtype False; eapply H3; eauto];
+          try solve [exfalso; eapply H3; eauto];
           intuition; eauto using AbsR_add_EnsembleUpdateKey'.
         eapply AbsR_add_EnsembleUpdateKey'; eauto using FMapCommonKeys_find_None.
       }

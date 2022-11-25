@@ -170,7 +170,7 @@ Section StringKEnsembles.
     unfold StringIndexedMap.MapsTo, StringIndexedMap.remove in H0;
     simpl in H0; eauto.
     destruct (string_dec k0 k); subst; simpl in *.
-    elimtype False.
+    exfalso.
     eapply StringIndexedMap.remove_1; try reflexivity;
     unfold StringIndexedMap.In, StringIndexedMap.Raw.In0;
     simpl; apply StringIndexedMap.find_2 in H0;
@@ -244,7 +244,7 @@ Section StringKEnsembles.
   Proof.
     unfold FMapCommonKeys; intuition;
     (destruct (string_dec k0 k);
-     [subst; elimtype False;
+     [subst; exfalso;
       eapply (StringIndexedMap.remove_1); eauto;
       unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
       StringIndexedMap.MapsTo in *; simpl in *; eauto
@@ -398,7 +398,7 @@ Section StringKEnsembles.
     eapply H1 with (p' := p); eauto.
     simpl.
     destruct (lt_dec (snd p) (snd p)); eauto.
-    elimtype False.
+    exfalso.
     omega.
     rewrite <- H; f_equal.
     repeat (apply functional_extensionality; intros); f_equal.
@@ -518,7 +518,7 @@ Section BoundedCacheFMap.
     apply StringIndexedMap.find_2 in H0.
     eapply StringIndexedMap.add_3 in H0; eauto.
     destruct (string_dec k' k0).
-    elimtype False;
+    exfalso;
       eapply (StringIndexedMap.remove_1); eauto;
       unfold StringIndexedMap.In, StringIndexedMap.Raw.In0,
       StringIndexedMap.MapsTo in *; simpl in *; eauto.

@@ -161,7 +161,7 @@ Section InsertRefinements.
       cbv delta [decides] beta in *; simpl in *;
       repeat (computes_to_inv; destruct_ex); eauto;
       computes_to_econstructor; unfold QSInsertSpec; intros;
-      solve [elimtype False; intuition].
+      solve [exfalso; intuition].
   Qed.
 
   Lemma QSInsertSpec_refine :
@@ -1102,7 +1102,7 @@ Section InsertRefinements.
       unfold QSInsertSpec; intros; intuition.
       computes_to_econstructor; unfold QSInsertSpec; intros;
         intros.
-      solve [elimtype False; intuition].
+      solve [exfalso; intuition].
   Qed.
 
   Lemma QSInsertSpec_refine_short_circuit :

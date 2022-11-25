@@ -550,7 +550,7 @@ Qed.
     : (forall (v : ByteString * CacheFormat), (format_word ◦ f) s env ∌ v) ->
       P.
   Proof.
-    intros; elimtype False.
+    intros; exfalso.
     eapply H.
     eapply refine_Projection_Format.
     unfold format_word.

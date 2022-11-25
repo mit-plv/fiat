@@ -74,7 +74,7 @@ Section GenSym.
   Proof.
     simpl; intros.
     destruct n.
-    - elimtype False; eapply Gt.gt_irrefl; eauto.
+    - exfalso; eapply Gt.gt_irrefl; eauto.
     - simpl; destruct (Compare_dec.lt_dec m 10).
       + reflexivity.
       + tauto.
@@ -264,9 +264,9 @@ Section GenSym.
     omega.
     omega.
     symmetry in H1; apply string_append_single in H1; intuition.
-    elimtype False.
+    exfalso.
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3).
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3).
     omega.
     pose proof (divmod_lt_self n); omega.
     intros.
@@ -278,7 +278,7 @@ Section GenSym.
     omega.
     apply string_append_single in H1; intuition.
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3).
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3).
     omega.
     pose proof (divmod_lt_self m); omega.
     destruct fuel_m; simpl in *; try omega.
@@ -288,131 +288,131 @@ Section GenSym.
     do 9 (try destruct m; try discriminate; try omega; auto).
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     destruct n.
     apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self m); omega ].
     omega.
     destruct (Compare_dec.lt_dec (S m) 10).
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     destruct m.
     symmetry in H1; apply string_append_single in H1; intuition;
-    [ elimtype False;
+    [ exfalso;
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H3); try omega | ].
     destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-    elimtype False; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
+    exfalso; eapply (fun H H' => NumberToString_rec_10 _ _ H H' H3);
     [ omega | pose proof (divmod_lt_self n); omega ].
     omega.
     destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | ].

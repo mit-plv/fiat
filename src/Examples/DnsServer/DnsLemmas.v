@@ -119,7 +119,7 @@ Proof.
   - destruct (dec (indexedElement tup')) eqn: ?.
     rewrite dec_decides_P in Heqb; eauto.
     rewrite Decides_false in Heqb.
-    elimtype False; eauto.
+    exfalso; eauto.
 Qed.
 
 Lemma refine_forall_to_exists_independent {A}
@@ -646,7 +646,7 @@ Proof.
   computes_to_constructor.
   destruct v; simpl in *; intros.
   case_eq (dec x); intros; try rewrite <- (dec_decides_P); eauto.
-  elimtype False; eapply H; eexists; intuition eauto.
+  exfalso; eapply H; eexists; intuition eauto.
   rewrite <- dec_decides_P in H2; congruence.
   unfold not in *; intros.
   eapply H; intros.

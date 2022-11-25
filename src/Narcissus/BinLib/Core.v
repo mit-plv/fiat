@@ -312,7 +312,7 @@ Proof.
         - etransitivity.
           apply IHn.
           omega. }
-      elimtype False.
+      exfalso.
       rewrite H1 in H2.
       omega.
   - destruct m'.
@@ -323,7 +323,7 @@ Proof.
         - etransitivity.
           apply IHn.
           omega. }
-      elimtype False.
+      exfalso.
       rewrite <- H1 in H2; omega.
     + destruct (IHm m' _ _ _ H H0).
       simpl in H1.
@@ -732,7 +732,7 @@ Proof.
     simpl; erewrite <- (IHpadding0 _ H).
     unfold ByteString_push; simpl.
     destruct (eq_nat_dec padding0 7); simpl.
-    elimtype False; rewrite e in paddingOK0; eapply Lt.lt_irrefl; eauto.
+    exfalso; rewrite e in paddingOK0; eapply Lt.lt_irrefl; eauto.
     f_equal.
     apply le_uniqueness_proof.
 Qed.
@@ -872,7 +872,7 @@ Proof.
                paddingOK := paddingOK1;
                byteString := byteString1 |})) 7).
         simpl; reflexivity.
-        elimtype False; apply n.
+        exfalso; apply n.
         apply e.
       }
       apply ByteString_mappend_f_equal with (p_eq := H).
@@ -1166,7 +1166,7 @@ Proof.
     unfold ByteString_push.
     destruct (Peano_dec.eq_nat_dec (padding (BitString_into_ByteString l)) 7).
     simpl; eauto.
-    elimtype False.
+    exfalso.
     rewrite IHl in n; congruence.
     eauto.
   - rewrite NatModulo_S_Not_Full; eauto.
@@ -1324,13 +1324,13 @@ Proof.
   - destruct byteString0; intros; try discriminate.
     injection H; injection H0; intros.
     rewrite <- H1 in H3; injection H3; intros.
-    elimtype False.
+    exfalso.
     generalize H7 paddingOK1; clear; intro; rewrite H7.
     intros; omega.
   - destruct byteString1; intros; try discriminate.
     injection H; injection H0; intros.
     rewrite <- H1 in H3; injection H3; intros.
-    elimtype False.
+    exfalso.
     generalize H7 paddingOK0; clear; intro; rewrite H7.
     intros; omega.
   - intros; injection H; injection H0; intros.

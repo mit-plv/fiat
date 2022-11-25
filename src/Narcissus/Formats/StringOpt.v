@@ -181,7 +181,7 @@ Section String.
       eapply Decode_w_Measure_lt_eq in H; destruct_ex.
       rewrite <- mappend_assoc, H; simpl.
       destruct (ascii_dec x term_char); simpl.
-      - elimtype False.
+      - exfalso.
         subst; eapply (Ppred "")%string; simpl; reflexivity.
       - intuition.
         unfold decode_string_with_term_char in H1.
