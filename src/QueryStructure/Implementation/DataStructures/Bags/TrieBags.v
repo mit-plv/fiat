@@ -299,7 +299,7 @@ Module TrieBag (X:OrderedType).
         + inversion H.
         + inversion H; subst; destruct (F.eq_dec a t).
           destruct (Prefix_dec F.eq_dec s s'); eauto.
-          elimtype False; apply n; eexists; eauto.
+          exfalso; apply n; eexists; eauto.
           congruence.
     Qed.
 
@@ -387,8 +387,8 @@ Module TrieBag (X:OrderedType).
       unfold TrieBagRepInv; intros; econstructor; simpl in *.
       apply bempty_RepInv.
       econstructor.
-      intros; elimtype False; eapply benumerate_empty; eauto.
-      intros; elimtype False; eapply empty_1; eauto.
+      intros; exfalso; eapply benumerate_empty; eauto.
+      intros; exfalso; eapply empty_1; eauto.
     Qed.
 
     Functional Scheme Trie_add_ind := Induction for Trie_add Sort Prop.
@@ -444,8 +444,8 @@ Module TrieBag (X:OrderedType).
           unfold TrieBagRepInv; intros; econstructor; simpl in *.
           apply bempty_RepInv.
           econstructor.
-          intros; elimtype False; eapply benumerate_empty; eauto.
-          intros; elimtype False; eapply empty_1; eauto.
+          intros; exfalso; eapply benumerate_empty; eauto.
+          intros; exfalso; eapply empty_1; eauto.
           apply H5.
           eapply add_3 in H6; eauto; intuition.
     Qed.
@@ -771,7 +771,7 @@ Module TrieBag (X:OrderedType).
       benumerate bempty = nil.
       pose proof benumerate_empty; unfold BagEnumerateEmpty in *.
       induction (benumerate bempty); eauto.
-      simpl in *; elimtype False; eapply H; eauto.
+      simpl in *; exfalso; eapply H; eauto.
     Qed.
 
     Lemma Proper_KeyBasedPartitioningFunction
@@ -1136,7 +1136,7 @@ Module TrieBag (X:OrderedType).
         rewrite <- app_assoc; eauto.
         econstructor; eauto using bempty_RepInv.
         + rewrite benumerate_bempty_nil in *; simpl in *; intuition.
-        + intros; elimtype False; eapply empty_1; eauto.
+        + intros; exfalso; eapply empty_1; eauto.
         + intro H4.
           destruct H4.
           apply (@partition_iff_1 _
@@ -1281,7 +1281,7 @@ Module TrieBag (X:OrderedType).
         find_if_inside; eauto.
         intros.
         pose proof (H _ (or_introl (refl_equal _))).
-        elimtype False.
+        exfalso.
         generalize st1 p H0; clear.
         induction (projection a); simpl.
         + destruct st1; simpl; intros;  destruct H0; inversion H.
@@ -1536,7 +1536,7 @@ Module TrieBag (X:OrderedType).
         etransitivity; eauto.
         pose proof (Prefix_app_inv _ _ _ H2).
         destruct H4; inversion H4; subst.
-        elimtype False; eapply H3; eauto.
+        exfalso; eapply H3; eauto.
       - intros.
         rewrite <- (IHl0 ((List.map (fun a' => (fst a, a')) (Trie_enumerate (snd a))) ++ bags')); eauto.
         rewrite map_app, map_map, map_id; reflexivity.
@@ -1673,7 +1673,7 @@ Module TrieBag (X:OrderedType).
           by (etransitivity; eauto).
         pose proof (Prefix_app_inv _ _ _ H2).
         destruct H4; inversion H4; subst.
-        elimtype False; eapply H3; eauto.
+        exfalso; eapply H3; eauto.
         simpl; intros; f_equiv.
         generalize (fun item In_item => H item (or_intror In_item)).
         generalize H3; clear; induction l; simpl; intros; eauto.

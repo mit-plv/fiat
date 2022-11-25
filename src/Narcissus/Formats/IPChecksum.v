@@ -455,7 +455,7 @@ Proof.
   - intros; rewrite (shatter_word front); injections.
     unfold ByteString_push; simpl.
     destruct (Peano_dec.eq_nat_dec padding 7).
-    subst; elimtype False; omega.
+    subst; exfalso; omega.
     f_equal.
     eapply le_uniqueness_proof.
 Qed.

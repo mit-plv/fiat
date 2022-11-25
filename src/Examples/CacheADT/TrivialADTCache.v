@@ -185,7 +185,7 @@ Section CachingRefinement.
         destruct_ex; split_and; subst.
         rewrite (H6 _ _ H8).
         simplify with monad laws; simpl; reflexivity.
-        unfold EnsembleRemove in H3; simpl in H3; elimtype False; eapply H3;
+        unfold EnsembleRemove in H3; simpl in H3; exfalso; eapply H3;
         reflexivity.
       }
       {

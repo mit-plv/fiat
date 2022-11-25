@@ -102,7 +102,7 @@ Proof.
   destruct (Tuple_Agree_dec _ _ attr_eq_dec' tup a); auto;
   [ apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in t; rewrite t
   | apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n0; rewrite n0]; auto.
-  elimtype False; eapply (Tuple_Agree_eq_dec' _ _ attr_eq_dec); eauto.
+  exfalso; eapply (Tuple_Agree_eq_dec' _ _ attr_eq_dec); eauto.
   match goal with
     | [ H : _ |- _ ]
       => apply H; eapply Tuple_Agree_eq_dec; solve [ eauto ]
@@ -132,7 +132,7 @@ Proof.
     apply (proj1 (Tuple_Agree_eq_dec' _ _ _ _ _ )) in n; rewrite n];
   simpl; intuition.
   right;   eapply Tuple_Agree_eq_dec; eauto.
-  elimtype False;
+  exfalso;
     match goal with
       | [ H : _ |- _ ] => apply H; eapply Tuple_Agree_eq_dec; eauto
     end.

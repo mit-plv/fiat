@@ -17,7 +17,7 @@ Fixpoint related {T} : interp_TypeCode T -> normalized_of interp_TypeCode T -> P
 
 Local Ltac concretize := cbv zeta.
 Local Ltac simpler' := concretize; simpl in *; try subst; intros; auto; try subst; intros; auto;
-  try congruence; try omega; try (elimtype False; omega).
+  try congruence; try omega; try (exfalso; omega).
 Local Ltac simplerGoal :=
   idtac;
   match goal with

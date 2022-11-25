@@ -203,7 +203,7 @@ Require Export
           destruct (Decode_w_Measure_lt_eq _ _ _ A_decode_lt H1) as [? H'];
             rewrite H'; simpl; clear H'.
           destruct (A_halt_dec a); simpl.
-          elimtype False; apply (proj2 (Ppredh _ (or_introl _ eq_refl)));
+          exfalso; apply (proj2 (Ppredh _ (or_introl _ eq_refl)));
             eauto.
           eapply (fun H => IHl H _ ext0) in Penc'''; intros.
           destruct_ex; intuition.
@@ -229,7 +229,7 @@ Require Export
           destruct (Decode_w_Measure_lt_eq _ _ _ A_decode_lt H1) as [? H'];
             rewrite H'; simpl; clear H'.
           destruct (A_halt_dec a); simpl.
-          elimtype False; apply (proj2 (Ppredh _ (or_introl _ eq_refl)));
+          exfalso; apply (proj2 (Ppredh _ (or_introl _ eq_refl)));
             eauto.
           eapply (fun H => IHl H _ ext0) in Penc'''; intros.
           destruct_ex; intuition.
@@ -260,7 +260,7 @@ Require Export
         destruct (Decode_w_Measure_lt_eq _ _ _ A_decode_lt H1) as [? H'];
           rewrite H'; simpl; clear H'.
         destruct (A_halt_dec a); simpl.
-        elimtype False; apply (proj2 (Ppredh _ (or_introl _ eq_refl)));
+        exfalso; apply (proj2 (Ppredh _ (or_introl _ eq_refl)));
           eauto.
         eapply (fun H => IHl H _ ext0) in Penc''; intros; eauto.
         destruct_ex; intuition.

@@ -499,10 +499,10 @@ Definition BuildCompileUnit2TSpec
     injections.
     destruct x; destruct y; simpl.
     + congruence.
-    + elimtype False.
+    + exfalso.
       symmetry in H1; apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
       auto with arith.
-    + elimtype False.
+    + exfalso.
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
         auto with arith.
     + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
@@ -518,10 +518,10 @@ Definition BuildCompileUnit2TSpec
     injections.
     destruct x; destruct y; simpl.
     + congruence.
-    + elimtype False.
+    + exfalso.
       symmetry in H1; apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
       auto with arith.
-    + elimtype False.
+    + exfalso.
       apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
         auto with arith.
     + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
@@ -1361,7 +1361,7 @@ Proof.
                                                           (NumberToString_rec (Datatypes.length l)
                                                                               (pred (Datatypes.length l)))))) st'); intros; eauto.
           destruct v; eauto.
-          elimtype False; generalize st' H0 H; clear.
+          exfalso; generalize st' H0 H; clear.
           induction RepT'.
           + simpl; intros; unfold WeakEq in *; intuition.
             unfold SameADTs in H0.
@@ -1515,7 +1515,7 @@ Proof.
           apply StringMap.find_2 in H0.
           apply (StringMap.remove_2 (x := "ret")) in H0; try congruence.
           apply StringMap.find_1 in H0.
-          elimtype False; generalize st' H0 H; clear.
+          exfalso; generalize st' H0 H; clear.
           induction RepT'.
           + simpl; intros; unfold WeakEq in *; intuition.
             unfold SameADTs in H1.

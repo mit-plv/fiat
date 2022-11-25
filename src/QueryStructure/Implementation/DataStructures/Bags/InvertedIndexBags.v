@@ -197,8 +197,8 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
       InvertedIndex_RepInv (InvertedIndex_bempty).
     Proof.
       unfold InvertedIndex_RepInv; intros; repeat split; simpl; intros.
-      - elimtype False; eapply MKeys.empty_1; eauto.
-      - elimtype False; eapply MValues.empty_1; eauto.
+      - exfalso; eapply MKeys.empty_1; eauto.
+      - exfalso; eapply MValues.empty_1; eauto.
       - intro H'; destruct H'; eapply MValues.empty_1; eauto.
     Qed.
 
@@ -265,9 +265,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
     Proof.
       setoid_rewrite MoreMKeysFacts.BasicFacts.elements_mapsto_iff.
       induction l; simpl; split; intros; intuition.
-      - elimtype False; apply H.
+      - exfalso; apply H.
         eapply (inA_map (f := fst)) in H0; eauto using RelationPairs.fst_compat with typeclass_instances.
-      - elimtype False; apply H.
+      - exfalso; apply H.
         eapply (inA_map (f := fst)) in H0; eauto using RelationPairs.fst_compat with typeclass_instances.
       - inversion H1.
       - destruct (E.eq_dec k a).
@@ -472,7 +472,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             repeat case_InA; eauto.
             rewrite H2 in i0; intuition.
             rewrite <- H2 in i0; intuition.
-            elimtype False; apply n; econstructor; eauto.
+            exfalso; apply n; econstructor; eauto.
             apply IHi; eauto.
             repeat case_InA.
             intro.
@@ -1130,7 +1130,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         exists e, InA E.eq e l /\ ~ InA E.eq e l'.
     Proof.
       induction l; simpl; intros.
-      - elimtype False; eapply H; unfold inclA; intros; inversion H0.
+      - exfalso; eapply H; unfold inclA; intros; inversion H0.
       - unfold inclA in *.
         destruct (InA_dec E.eq_dec a l').
         + destruct (IHl l').

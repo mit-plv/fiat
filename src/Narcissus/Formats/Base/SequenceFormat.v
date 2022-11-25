@@ -85,7 +85,7 @@ Section SequenceFormat.
        specialize (encode1_consistent _ _ _ _ H4 H4');
          destruct_ex; split_and.
        rewrite H6 in Heqo; injections; simpl in *.
-       destruct x0; elimtype False; eauto.
+       destruct x0; exfalso; eauto.
   Qed.
 
   Lemma Sequence_decode_correct

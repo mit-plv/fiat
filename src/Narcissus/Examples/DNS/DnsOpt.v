@@ -137,7 +137,7 @@ Section DnsPacket.
       + inversion H2; subst; intros.
         find_if_inside; subst; simpl; eauto; try congruence.
         apply IHa0 in H1; eauto.
-        elimtype False; apply H3; revert H1; clear.
+        exfalso; apply H3; revert H1; clear.
         induction a0; simpl; intros; try congruence.
         destruct a; find_if_inside; injections; auto.
       + inversion H2; subst; intros.
@@ -284,7 +284,7 @@ Section DnsPacket.
   Proof.
     induction m; simpl; intros; try omega.
     rewrite (mult_comm p 0) in H0; simpl in *; try omega.
-    destruct p; try (elimtype False; auto with arith; omega).
+    destruct p; try (exfalso; auto with arith; omega).
     inversion H0.
     rewrite (mult_comm p (S m)) in H0.
     simpl in H0.
@@ -328,12 +328,12 @@ Section DnsPacket.
     find_if_inside; try reflexivity.
     unfold If_Opt_Then_Else.
     rewrite !wtl_div in *.
-    elimtype False; apply H0.
+    exfalso; apply H0.
     rewrite pointerT2Nat_Nat2pointerT in *;
       try (eapply pow2_div; eassumption).
     eapply (mult_lt_compat_l' _ _ 8); try omega.
     destruct n; try omega.
-    elimtype False; apply H0.
+    exfalso; apply H0.
     simpl.
     eapply (mult_lt_compat_l' _ _ 8); try omega.
     - eapply le_lt_trans.
@@ -372,7 +372,7 @@ Section DnsPacket.
       rewrite NPeano.Nat.div_add; try omega.
       apply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    - elimtype False; apply n0.
+    - exfalso; apply n0.
       rewrite !wtl_div in *.
       rewrite pointerT2Nat_Nat2pointerT in *.
       rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
@@ -397,7 +397,7 @@ Section DnsPacket.
     destruct (fst xenv); simpl; eauto.
     find_if_inside; unfold If_Opt_Then_Else.
     rewrite <- plus_n_O, natToWord_wordToNat; auto.
-    elimtype False; apply n.
+    exfalso; apply n.
     rewrite <- plus_n_O.
     apply wordToNat_bound.
   Qed.
@@ -454,7 +454,7 @@ v
       rewrite NPeano.Nat.div_add; try omega.
       apply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id, Npow2_nat; auto.
-    - elimtype False; apply n0.
+    - exfalso; apply n0.
       rewrite !wtl_div in *.
       rewrite pointerT2Nat_Nat2pointerT in *.
       rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
@@ -517,12 +517,12 @@ v
     find_if_inside; try reflexivity.
     unfold If_Opt_Then_Else.
     rewrite !wtl_div in *.
-    elimtype False; apply H0.
+    exfalso; apply H0.
     rewrite pointerT2Nat_Nat2pointerT in *;
       try (eapply pow2_div; eassumption).
     eapply (mult_lt_compat_l' _ _ 8); try omega.
     destruct n; try omega.
-    elimtype False; apply H0.
+    exfalso; apply H0.
     simpl.
     eapply (mult_lt_compat_l' _ _ 8); try omega.
     - eapply le_lt_trans.
@@ -545,7 +545,7 @@ v
     destruct (fst xenv); simpl; eauto.
     find_if_inside; unfold If_Opt_Then_Else.
     rewrite <- plus_n_O, natToWord_wordToNat; auto.
-    elimtype False; apply n.
+    exfalso; apply n.
     rewrite <- plus_n_O.
     apply wordToNat_bound.
   Qed.

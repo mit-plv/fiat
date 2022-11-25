@@ -438,8 +438,8 @@ Section DomainName.
           eapply index_correct3 with (m := String.length label) in H4;
             try omega; try congruence.
           destruct label.
-          elimtype False; destruct H; simpl in H5; omega.
-          elimtype False; apply H4; clear.
+          exfalso; destruct H; simpl in H5; omega.
+          exfalso; apply H4; clear.
           induction label; simpl.
           + destruct subdomain; simpl; reflexivity.
           + apply IHlabel.
@@ -797,7 +797,7 @@ Section DomainName.
     destruct s''; try solve [simpl in H1; discriminate].
     eapply index_correct3 with (m := S (String.length s')) in H1;
       try omega; try congruence.
-    elimtype False; apply H1; clear.
+    exfalso; apply H1; clear.
     induction s'; simpl.
     destruct s''; simpl; reflexivity.
     assumption.
@@ -821,7 +821,7 @@ Section DomainName.
     destruct subdomain; try solve [simpl in H1; discriminate].
     eapply index_correct3 with (m := S (String.length s)) in H1;
       try omega; try congruence.
-    elimtype False; apply H1; clear.
+    exfalso; apply H1; clear.
     induction s; simpl.
     destruct subdomain; simpl; reflexivity.
     assumption.
@@ -1115,7 +1115,7 @@ Section DomainName.
       unfold format_ascii, format_word in H2;
         computes_to_inv; subst; simpl in *; injections.
       eapply addPeekENone; eauto.
-      elimtype False; omega.
+      exfalso; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
         unfold format_ascii, format_word in H2;
@@ -1197,7 +1197,7 @@ Section DomainName.
       unfold format_ascii, format_word in H2;
         computes_to_inv; subst; simpl in *; injections.
       rewrite H in H4; intuition.
-      elimtype False; omega.
+      exfalso; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
         unfold format_ascii, format_word in H2;
@@ -1288,7 +1288,7 @@ Section DomainName.
         simpl in *; rewrite H2 in H4; try discriminate.
       injections.
       rewrite pointerT2Nat_Nat2pointerT; eauto.
-      elimtype False; omega.
+      exfalso; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
         unfold format_ascii, format_word in H2;
@@ -1394,7 +1394,7 @@ Section DomainName.
       unfold format_ascii, format_word in H2;
         computes_to_inv; subst; simpl in *; injections.
       rewrite H in H3; intuition.
-      elimtype False; omega.
+      exfalso; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
         unfold format_ascii, format_word in H2;
@@ -1717,7 +1717,7 @@ Section DomainName.
                   reflexivity.
                 * destruct ptr1 as [ptr1 ptr1_OK].
                   simpl in *.
-                  elimtype False; apply n1; eauto.
+                  exfalso; apply n1; eauto.
               + intros; apply functional_extensionality; intros.
                 repeat (f_equal; apply functional_extensionality; intros).
                 destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x1); simpl.
@@ -1771,7 +1771,7 @@ Section DomainName.
               pose proof ((proj1 Valid_data) ""%string label1 _ (eq_refl _) label1_OK) as w';
                 unfold id in *; rewrite H8 in w'.
               destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                try (elimtype False;
+                try (exfalso;
                      apply WordFacts.wordToNat_lt in w; simpl in w; omega).
               destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
               * destruct (weq x (wzero 8)).
@@ -2044,7 +2044,7 @@ Section DomainName.
               pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
                 unfold id in *; rewrite H8 in w'.
               destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                try (elimtype False; apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                try (exfalso; apply WordFacts.wordToNat_lt in w; simpl in w; omega).
               destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
               destruct (weq x (wzero 8)).
               subst; simpl in H8.
@@ -2115,7 +2115,7 @@ Section DomainName.
                   eapply Decode_w_Measure_lt_eq' in H2; eauto.
                   (*eapply decode_string_add_ptr_OK in H4; eauto. *)
                   destruct (string_dec d ""); simpl in H3; injections.
-                  elimtype False.
+                  exfalso.
                   { apply n0.
                     assert (wordToNat x0 = 0).
                     { generalize H2; clear.
@@ -2133,7 +2133,7 @@ Section DomainName.
                       rewrite H4.
                     reflexivity.
                   }
-                  elimtype False.
+                  exfalso.
                   generalize H6; clear; induction x3;
                     simpl; try congruence.
                 }
@@ -2321,7 +2321,7 @@ Section DomainName.
             eapply WordFacts.wordToNat_lt in w0; simpl in w0; omega.
             rewrite H17 in x3_OK.
             apply (index_correct3 _ (String.length pre)) in x3_OK.
-            elimtype False;
+            exfalso;
               generalize x3_OK; clear.
             { induction pre; simpl.
               - unfold substring; destruct post; simpl; congruence.
@@ -2331,10 +2331,10 @@ Section DomainName.
             }
             congruence.
             destruct x3; simpl.
-            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            exfalso; eapply NonEmpty_String_wordToNat; eauto.
             omega.
             destruct x3; simpl.
-            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            exfalso; eapply NonEmpty_String_wordToNat; eauto.
             omega.
             destruct (getD x8 p) eqn: ?; eauto.
             rewrite get_correct in Heqo; eauto.
@@ -2342,7 +2342,7 @@ Section DomainName.
             destruct H4.
             destruct (fun H => in_dec H p (getE xenv'' s)).
             apply pointerT_eq_dec.
-            elimtype False.
+            exfalso.
             eapply format_string_add_ptr_OK; eauto.
             unfold format_word in enc_x0; computes_to_inv;
               injection enc_x0; intros H' H''; rewrite <- H', H'' in *.
@@ -2410,7 +2410,7 @@ Section DomainName.
             eapply ValidDomainName_app'; eauto.
             unfold ValidLabel; split; eauto.
             destruct x3; simpl; try omega.
-            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            exfalso; eapply NonEmpty_String_wordToNat; eauto.
             eapply WordFacts.wordToNat_lt in w; simpl in w; omega.
             destruct x3; simpl; omega.
             destruct (getD x8 p) eqn: ?; eauto.
@@ -2419,7 +2419,7 @@ Section DomainName.
             destruct H4.
             destruct (fun H => in_dec H p (getE xenv'' s)).
             apply pointerT_eq_dec .
-            elimtype False.
+            exfalso.
             eapply format_string_add_ptr_OK; eauto.
             unfold format_word in enc_x0; computes_to_inv;
               injection enc_x0; intros H' H''; rewrite <- H', H'' in *.
@@ -2491,7 +2491,7 @@ Section DomainName.
           simpl.
           destruct (string_dec (x3 ++ x6) ""); simpl.
           destruct x3; simpl in e; try discriminate.
-          elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+          exfalso; eapply NonEmpty_String_wordToNat; eauto.
           destruct (string_dec x6 ""); simpl in *;
             injections.
           { injection H5; intros; try subst data.
@@ -2508,7 +2508,7 @@ Section DomainName.
             split.
             eauto.
             destruct x3; simpl.
-            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            exfalso; eapply NonEmpty_String_wordToNat; eauto.
             omega.
             rewrite H16, length_append; omega.
             computes_to_econstructor; simpl.
@@ -2519,7 +2519,7 @@ Section DomainName.
           }
           { injection H5; intros; try subst data.
             destruct x3; simpl.
-            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            exfalso; eapply NonEmpty_String_wordToNat; eauto.
             computes_to_econstructor.
             apply (@PickComputes _ _ None); intros; try discriminate.
             simpl.
@@ -2552,7 +2552,7 @@ Section DomainName.
           eapply WordFacts.wordToNat_lt in w0; simpl in w0; omega.
           rewrite H16 in x3_OK.
           apply (index_correct3 _ (String.length pre)) in x3_OK.
-          elimtype False;
+          exfalso;
             generalize x3_OK; clear.
           { induction pre; simpl.
             - unfold substring; destruct post; simpl; congruence.
@@ -2562,12 +2562,12 @@ Section DomainName.
           }
           congruence.
           destruct x3; simpl.
-          elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+          exfalso; eapply NonEmpty_String_wordToNat; eauto.
           omega.
           eapply ValidDomainName_app'; eauto.
           unfold ValidLabel; split; eauto.
           destruct x3; simpl; try omega.
-          elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+          exfalso; eapply NonEmpty_String_wordToNat; eauto.
           eapply WordFacts.wordToNat_lt in w; simpl in w; omega.
           destruct (string_dec x6 ""); simpl in *; injection H5; intros;
             subst xenv'; subst data.
