@@ -205,10 +205,10 @@ Module PreO.
   Qed.
 
   (** The preorder on booleans given by False < True *)
-  Definition two : t Bool.leb.
+  Definition two : t (fun b1 b2 : bool => if b1 then b2 = true else True).
   Proof. constructor.
-         - intros; auto. destruct x; simpl; trivial.
-         - destruct x, y, z; auto. simpl in *. congruence.
+         - intros []; auto.
+         - intros [] [] []; auto.
   Qed.
 
   Definition Nat : t le.
@@ -395,7 +395,7 @@ Module PO.
     - unfold Proper, respectful. intuition.
   Qed.
 
-  Definition two : t Bool.leb Logic.eq.
+  Definition two : t (fun b1 b2 : bool => if b1 then b2 = true else True) Logic.eq.
   Proof.
     constructor; intros.
     - apply PreO.two.
@@ -560,7 +560,7 @@ Module JoinLat.
 
   (** Max for booleans is the boolean OR. *)
   Definition two_ops : Ops bool :=
-    {| le := Bool.leb
+    {| le := (fun b1 b2 : bool => if b1 then b2 = true else True)
        ; eq := Logic.eq
        ; max := orb
     |}.
@@ -770,7 +770,7 @@ Module MeetLat.
   Qed.
 
   Definition two_ops : Ops bool :=
-    {| le := Bool.leb
+    {| le := (fun b1 b2 : bool => if b1 then b2 = true else True)
        ; eq := Logic.eq
        ; min := andb
     |}.
@@ -974,7 +974,7 @@ Module Lattice.
   Qed.
 
   Definition two_ops : Ops bool :=
-    {| le := Bool.leb
+    {| le := (fun b1 b2 : bool => if b1 then b2 = true else True)
        ; eq := Logic.eq
        ; max := orb
        ; min := andb
