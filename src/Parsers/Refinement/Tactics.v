@@ -215,7 +215,7 @@ Ltac splitter_start :=
     do_disjoint_precomputations ();
     apply_splitter_tower_lemma
   | ];
-  instantiate; cbv beta.
+  cbv beta.
 (*start sharpening ADT;
   start honing parser using indexed representation;
   hone method "splits";

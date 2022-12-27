@@ -206,7 +206,6 @@ Section recursive_descent_parser.
     [ | ];
     first [ erewrite @parse_nonterminal_complete in HR; [ congruence | .. ]
           | erewrite @parse_nonterminal_complete in HL; [ congruence | .. ] ];
-    instantiate;
     try first [ eassumption
               | apply grammar_rvalid_correct; eassumption
               | exact _ ].

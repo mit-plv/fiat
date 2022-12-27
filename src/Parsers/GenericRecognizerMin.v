@@ -1967,7 +1967,6 @@ Section recursive_descent_parser.
     Local Ltac str_to_substring :=
       rewrite <- drop_0 at 1;
       erewrite <- take_long at 1 by reflexivity;
-      instantiate;
       rewrite drop_length(*, <- minus_n_O at 1*).
     Local Ltac substring_to_str :=
       repeat rewrite <- minus_n_O at 1; rewrite drop_0, take_long at 1 by reflexivity.

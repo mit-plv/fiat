@@ -262,7 +262,7 @@ Section specific.
       Proof.
         dependent destruction p.
         eapply paren_balanced_productions_correct;
-          try eassumption; instantiate;
+          try eassumption;
             rewrite <- Carriers.list_to_productions_to_nonterminal;
             change Carriers.default_to_nonterminal with to_nonterminal;
             rewrite ?to_of_nonterminal; eassumption.
