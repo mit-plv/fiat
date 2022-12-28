@@ -77,7 +77,7 @@ Proof.
       | [ |- Permutation (?a::?ls) ?ls' ]
         => assert (H : List.In a ls') by t;
           assert (H' : ~List.In a ls)
-             by (intro; t; instantiate;
+             by (intro; t;
                  match goal with
                    | [ H'' : NoDup (_::_) |- _ ]
                      => solve [ inversion H''; subst; intuition ]

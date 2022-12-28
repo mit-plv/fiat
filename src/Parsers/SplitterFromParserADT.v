@@ -201,7 +201,7 @@ Section parser.
       apply EqNat.beq_nat_true in H'0.
       destruct (get 0 str) as [ch|] eqn:H'1; simpl; [ | exfalso ].
       { destruct (ascii_beq arg ch) eqn:H''; [ | reflexivity ].
-        apply ascii_bl in H''; instantiate; subst.
+        apply ascii_bl in H''; subst.
         apply Bool.not_true_iff_false in H'; hnf in H'.
         exfalso; apply H', is_char_parts.
         split; assumption. }

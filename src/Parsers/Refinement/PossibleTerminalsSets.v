@@ -56,7 +56,7 @@ Lemma ascii_mem v
 Proof.
   apply MSetPositive.PositiveSet.choose_spec1 in H'.
   destruct (Equality.ascii_beq ch'' ch) eqn:Hch; subst ch''.
-  { apply Equality.ascii_bl in Hch; instantiate; subst ch.
+  { apply Equality.ascii_bl in Hch; subst ch.
     AsciiLattice.PositiveSetExtensions.BasicDec.fsetdec. }
   { AsciiLattice.PositiveSetExtensions.to_caps.
     intro; apply Hch; clear Hch.

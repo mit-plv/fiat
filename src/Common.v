@@ -1344,7 +1344,6 @@ Proof.
 Qed.
 
 Ltac instantiate_evar :=
-  instantiate;
   match goal with
   | [ H : context[?E] |- _ ]
     => is_evar E;
@@ -1356,8 +1355,7 @@ Ltac instantiate_evar :=
       match goal with
       | [ H' : _ |- _ ] => unify E H'
       end
-  end;
-  instantiate.
+  end.
 
 Ltac instantiate_evars :=
   repeat instantiate_evar.

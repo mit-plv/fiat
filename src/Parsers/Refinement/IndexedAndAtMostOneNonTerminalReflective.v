@@ -672,9 +672,9 @@ Section IndexedImpl.
     assert (H' : forall A B (x : A * B), (fst x, snd x) = x) by (intros; destruct x; reflexivity).
     setoid_rewrite H'.
     simplify with monad laws.
-    (*eapply refine_under_bind_helper_2; [ | reflexivity ]; instantiate; simpl.
+    (*eapply refine_under_bind_helper_2; [ | reflexivity ]; simpl.
     intros.
-    etransitivity; [ | eassumption ]; instantiate; clear -H.*)
+    etransitivity; [ | eassumption ]; clear -H.*)
     apply H.
   Defined.
 
