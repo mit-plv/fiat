@@ -177,6 +177,7 @@ Section convenience.
   Proof.
     pose proof (parse_nonterminal_correct (gcdata := simple_gencdata1) str nt).
     pose proof (parse_nonterminal_correct (gcdata := simple_gencdata2) str nt).
+    Opaque simple_parse_of_item_correct.
     t_parse_correct.
     match goal with H : _ |- _ => rewrite to_of_nonterminal in H end.
     { assumption. }
