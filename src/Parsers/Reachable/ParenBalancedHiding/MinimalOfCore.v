@@ -342,7 +342,7 @@ Section cfg.
           { left.
             eexists (PBHNil _ _ _ _).
             unfold pbh'_productions__of__minimal_pbh'_productions; simpl.
-            rewrite expand_size_of_pbh'_productions.
+            try rewrite expand_size_of_pbh'_productions. (* compensate Coq bug #12521 before its fix in #17993 *)
             simpl_size_of.
             omega. }
           { assert (size_of_pbh'_production p0' < h') by exact (lt_helper_1 H_h).
