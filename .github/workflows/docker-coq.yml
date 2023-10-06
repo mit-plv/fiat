@@ -12,8 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         coq-version: [ "dev" , "8.18" , "8.17" , "8.16" ]
+        targets: [ "fiat-core parsers" ]
 
-    name: ${{ matrix.coq-version }}
+    name: ${{ matrix.coq-version }} (${{ matrix.targets }})
 
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.coq-version }}-${{ github.head_ref || github.run_id }}
@@ -36,7 +37,7 @@ jobs:
           sudo apt-get install -y python python3
           eval $(opam env)
           endGroup
-          export TARGETS="fiat-core parsers"
+          export TARGETS="${{ matrix.targets }}"
           export FLAGS="PROFILE=1"
           export NJOBS="2"
           git config --global --add safe.directory "*"
