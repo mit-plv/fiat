@@ -2,6 +2,7 @@ name: CI (Coq, docker)
 
 on:
   push:
+    branches: [ master ]
   pull_request:
   workflow_dispatch:
 
@@ -11,6 +12,12 @@ jobs:
       fail-fast: false
       matrix:
         coq-version: [ "dev" , "8.18" , "8.17" , "8.16" ]
+
+    name: ${{ matrix.coq-version }}
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.coq-version }}-${{ github.head_ref || github.run_id }}
+      cancel-in-progress: true
 
     runs-on: ubuntu-latest
     steps:
