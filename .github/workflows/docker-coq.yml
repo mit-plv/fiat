@@ -1,4 +1,4 @@
-name: CI (Coq, docker, dev)
+name: CI (Coq, docker)
 
 on:
   push:
@@ -7,6 +7,11 @@ on:
 
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        coq-version: [ "dev" , "8.18" , "8.17" , "8.16" ]
+
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -15,17 +20,29 @@ jobs:
     - name: all
       uses: coq-community/docker-coq-action@v1
       with:
-        coq_version: dev
-        ocaml_version: 4.13-flambda
+        coq_version: ${{ matrix.coq-version }}
+        ocaml_version: default
         custom_script: |
           sudo chmod -R a+rw .
-          echo '::group::install general dependencies'
+          startGroup 'install general dependencies'
           sudo apt-get update -y
           sudo apt-get install -y python python3
           eval $(opam env)
-          echo '::endgroup::'
+          endGroup
           export TARGETS="fiat-core parsers"
           export FLAGS="PROFILE=1"
           export NJOBS="2"
           git config --global --add safe.directory "*"
+          startGroup make
           etc/coq-scripts/timing/make-pretty-timed.sh -j$NJOBS $TARGETS $FLAGS && make TIMED=1 -j$NJOBS $TARGETS
+          endGroup
+
+  check-all-docker:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always()
+    steps:
+    - run: echo 'build passed'
+      if: ${{ needs.build.result == 'success' }}
+    - run: echo 'build failed' && false
+      if: ${{ needs.build.result != 'success' }}

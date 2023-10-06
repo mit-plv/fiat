@@ -67,3 +67,14 @@ jobs:
         submodules: recursive
     - name: SCRIPT
       run: ./etc/coq-scripts/timing/make-pretty-timed.sh -j$NJOBS $TARGETS $FLAGS && make TIMED=1 -j$NJOBS $TARGETS
+
+
+  check-all:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always()
+    steps:
+    - run: echo 'build passed'
+      if: ${{ needs.build.result == 'success' }}
+    - run: echo 'build failed' && false
+      if: ${{ needs.build.result != 'success' }}
