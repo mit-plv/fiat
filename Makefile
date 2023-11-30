@@ -1,7 +1,8 @@
 COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
-.PHONY: fiat fiat-core querystructures parsers parsers-examples parsers-examples-verbose parsers-all finitesets dns compiler facade-test ics fiat4monitors examples narcissus \
+.PHONY: coq-ci \
+	fiat fiat-core querystructures parsers parsers-examples parsers-examples-verbose parsers-all finitesets dns compiler facade-test ics fiat4monitors examples narcissus \
 	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-examples-quick parsers-examples-verbose-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick narcissus-quick \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-examples-verbose install-parsers-all install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples install-narcissus \
 	pdf doc clean-doc \
@@ -215,7 +216,8 @@ else
 include etc/coq-scripts/Makefile.vo_closure
 endif
 
-.DEFAULT_GOAL := fiat
+.DEFAULT_GOAL := coq-ci
+#.DEFAULT_GOAL := fiat
 
 clean::
 	rm -f src/Examples/Ics/WaterTank.ml
@@ -356,6 +358,7 @@ BEDROCK_VO := Bedrock/Nomega.vo Bedrock/Memory.vo Bedrock/Word.vo
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
 TACTICS_TARGETS := $(filter src/Common/Tactics/%,$(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)))
 
+coq-ci: fiat-core parsers parsers-examples
 fiat: $(FIAT_VO) $(TACTICS_TARGETS)
 fiat-core: $(FIAT_CORE_VO) $(TACTICS_TARGETS)
 querystructures: $(QUERYSTRUCTURES_VO)
