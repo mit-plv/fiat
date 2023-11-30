@@ -1,12 +1,11 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Classes.Morphisms.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.ZArith.ZArith.
 
 Lemma min_def {x y} : min x y = x - (x - y).
-Proof. apply Min.min_case_strong; omega. Qed.
+Proof. apply Nat.min_case_strong; omega. Qed.
 Lemma max_def {x y} : max x y = x + (y - x).
-Proof. apply Max.max_case_strong; omega. Qed.
+Proof. apply Nat.max_case_strong; omega. Qed.
 Ltac coq_omega := omega.
 Ltac handle_min_max_for_omega :=
   repeat match goal with
@@ -19,8 +18,8 @@ Ltac handle_min_max_for_omega_case :=
   repeat match goal with
          | [ H : context[min _ _] |- _ ] => revert H
          | [ H : context[max _ _] |- _ ] => revert H
-         | [ |- context[min _ _] ] => apply Min.min_case_strong
-         | [ |- context[max _ _] ] => apply Max.max_case_strong
+         | [ |- context[min _ _] ] => apply Nat.min_case_strong
+         | [ |- context[max _ _] ] => apply Nat.max_case_strong
          end;
   intros.
 Ltac omega_with_min_max :=
@@ -59,9 +58,9 @@ Section NatFacts.
 
   Lemma beq_nat_eq_nat_dec :
     forall x y,
-      beq_nat x y = if eq_nat_dec x y then true else false.
+      Nat.eqb x y = if eq_nat_dec x y then true else false.
   Proof.
-    intros; destruct (eq_nat_dec _ _); [ apply beq_nat_true_iff | apply beq_nat_false_iff ]; assumption.
+    intros; destruct (eq_nat_dec _ _); [ apply Nat.eqb_eq | apply Nat.eqb_neq ]; assumption.
   Qed.
 
   Lemma min_minus_l x y
@@ -110,7 +109,7 @@ Section dec_prod.
   Proof.
     destruct max as [|max];
     [ clear dec_stabalize' | specialize (dec_stabalize' max) ].
-    { destruct (Hdec 0 (le_refl _)) as [Hd|Hd]; [ left | right ].
+    { destruct (Hdec 0 (Nat.le_refl _)) as [Hd|Hd]; [ left | right ].
       { intro n.
         induction n as [|n IHn].
         { assumption. }
@@ -140,7 +139,7 @@ Section dec_prod.
   Proof.
     destruct max as [|max];
     [ clear dec_stabalize | specialize (dec_stabalize max) ].
-    { destruct (Hdec 0 (le_refl _)) as [Hd|Hd]; [ left | right ].
+    { destruct (Hdec 0 (Nat.le_refl _)) as [Hd|Hd]; [ left | right ].
       { exists 0; split; [ reflexivity | assumption ]. }
       { intros n Pn. apply Hd.
         clear -Pn Hstable.
@@ -196,8 +195,8 @@ Lemma min_case_strong_r n m (P : nat -> Type)
 : (n <= m -> P n) -> (m < n -> P m) -> P (min n m).
 Proof.
   destruct (Compare_dec.le_lt_dec n m);
-  first [ rewrite Min.min_r by omega
-        | rewrite Min.min_l by omega ];
+  first [ rewrite Nat.min_r by omega
+        | rewrite Nat.min_l by omega ];
   auto.
 Qed.
 
@@ -205,19 +204,19 @@ Lemma min_case_strong_l n m (P : nat -> Type)
 : (n < m -> P n) -> (m <= n -> P m) -> P (min n m).
 Proof.
   destruct (Compare_dec.le_lt_dec m n);
-  first [ rewrite Min.min_r by omega
-        | rewrite Min.min_l by omega ];
+  first [ rewrite Nat.min_r by omega
+        | rewrite Nat.min_l by omega ];
   auto.
 Qed.
 
 Lemma beq_0_1_leb x
-: (EqNat.beq_nat x 1 || EqNat.beq_nat x 0)%bool = Compare_dec.leb x 1.
+: (Nat.eqb x 1 || Nat.eqb x 0)%bool = Compare_dec.leb x 1.
 Proof.
   destruct x as [|[|]]; simpl; reflexivity.
 Qed.
 
 Lemma beq_S_leb x n
-: (EqNat.beq_nat x (S n) || Compare_dec.leb x n)%bool = Compare_dec.leb x (S n).
+: (Nat.eqb x (S n) || Compare_dec.leb x n)%bool = Compare_dec.leb x (S n).
 Proof.
   revert x; induction n as [|n IHn]; simpl.
   { intros [|[|]]; reflexivity. }
@@ -246,7 +245,7 @@ Lemma min_subr_same {x y} : (min x y - x)%natr = 0.
 Proof. clear; rewrite minusr_minus; omega *. Qed.
 
 Lemma beq_nat_min_0 {x y}
-  : EqNat.beq_nat (min x y) 0 = orb (EqNat.beq_nat x 0) (EqNat.beq_nat y 0).
+  : Nat.eqb (min x y) 0 = orb (Nat.eqb x 0) (Nat.eqb y 0).
 Proof. destruct x, y; simpl; reflexivity. Qed.
 
 Lemma max_min_n {x y} : max (min x y) y = y.

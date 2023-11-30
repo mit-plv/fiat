@@ -50,12 +50,12 @@ Qed.
 
 Lemma decides_nat_eq :
   forall (n n' : nat),
-    decides (EqNat.beq_nat n n') (n = n').
+    decides (Nat.eqb n n') (n = n').
 Proof.
   unfold decides, If_Then_Else; intros.
-  destruct (EqNat.beq_nat n n') eqn: ? ;
-    try eapply EqNat.beq_nat_true_iff;
-    try eapply EqNat.beq_nat_false_iff; eauto.
+  destruct (Nat.eqb n n') eqn: ? ;
+    try eapply Nat.eqb_true_iff;
+    try eapply Nat.eqb_false_iff; eauto.
 Qed.
 
 Lemma decides_word_eq {sz}:

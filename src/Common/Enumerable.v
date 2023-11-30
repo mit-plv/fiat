@@ -20,7 +20,7 @@ Section enum.
 
   Definition enumerate_fun_beq (enumerate : list A) (f g : A -> B)
   : bool
-    := EqNat.beq_nat (List.length (List.filter (fun x => negb (beq (f x) (g x))) enumerate)) 0.
+    := Nat.eqb (List.length (List.filter (fun x => negb (beq (f x) (g x))) enumerate)) 0.
 
   Definition enumerate_fun_bl_in
              (bl : forall x y, beq x y = true -> x = y)
@@ -29,7 +29,7 @@ Section enum.
   Proof.
     unfold enumerate_fun_beq.
     intros H x H'.
-    apply EqNat.beq_nat_true in H.
+    apply Nat.eqb_eq in H.
     apply bl.
     destruct (beq (f x) (g x)) eqn:Heq; [ reflexivity | exfalso ].
     apply Bool.negb_true_iff in Heq.

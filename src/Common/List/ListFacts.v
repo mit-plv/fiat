@@ -351,8 +351,8 @@ Section ListFacts.
     clear IHseq; revert a default; induction seq;
       simpl; intros; auto with arith.
     rewrite <- IHseq.
-    rewrite Plus.plus_comm, <- Plus.plus_assoc; f_equal.
-    rewrite Plus.plus_comm; reflexivity.
+    rewrite Nat.add_comm, <- Nat.add_assoc; f_equal.
+    rewrite Nat.add_comm; reflexivity.
   Qed.
 
   Lemma map_snd {A B C} :
@@ -433,7 +433,7 @@ Section ListFacts.
   Proof.
     induction seq; simpl; intros; eauto with arith.
     rewrite IHseq; f_equal; eauto with arith.
-    repeat rewrite <- Plus.plus_assoc; f_equal; auto with arith.
+    repeat rewrite <- Nat.add_assoc; f_equal; auto with arith.
   Qed.
 
   Lemma length_flat_map :
@@ -603,7 +603,7 @@ Section ListFacts.
     { destruct y; simpl.
       { destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. }
       { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity.
-        rewrite NPeano.Nat.add_succ_r; reflexivity. } }
+        rewrite Nat.add_succ_r; reflexivity. } }
   Qed.
 
   Lemma in_map_iffT' {A B}
@@ -639,7 +639,7 @@ Section ListFacts.
         (f : A -> nat) (ls : list A) (y : nat)
     : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
   Proof.
-    apply in_map_iffT, NPeano.Nat.eq_dec.
+    apply in_map_iffT, Nat.eq_dec.
   Defined.
 
   Lemma nth_take_1_drop {A} (ls : list A) n a
@@ -670,7 +670,7 @@ Section ListFacts.
     : drop 1 (drop y ls) = drop (S y) ls.
   Proof.
     rewrite drop_drop.
-    rewrite NPeano.Nat.add_1_r.
+    rewrite Nat.add_1_r.
     reflexivity.
   Qed.
 
@@ -967,7 +967,7 @@ Section ListFacts.
        | [ H : context[option_map _ ?x] |- _ ] => destruct x eqn:?; unfold option_map in H
        | _ => solve [ repeat (esplit || eassumption) ]
        | [ H : context[nth_error (_::_) ?x] |- _ ] => is_var x; destruct x; simpl nth_error in H
-       | [ H : S _ < S _ |- _ ] => apply lt_S_n in H
+       | [ H : S _ < S _ |- _ ] => apply (proj2 (Nat.succ_lt_mono _ _)) in H
        | _ => solve [ eauto with nocore ]
        | [ |- context[if ?b then _ else _] ] => destruct b eqn:?
        | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by (assumption || omega); specialize (H H'); clear H'
@@ -975,7 +975,7 @@ Section ListFacts.
        | _ => progress simpl in *
        | [ H : forall x, ?f x = ?f ?y -> _ |- _ ] => specialize (H _ eq_refl)
        | [ H : forall x, ?f ?y = ?f x -> _ |- _ ] => specialize (H _ eq_refl)
-       | [ H : forall n, S n < S _ -> _ |- _ ] => specialize (fun n pf => H n (lt_n_S _ _ pf))
+       | [ H : forall n, S n < S _ -> _ |- _ ] => specialize (fun n pf => H n (proj1 (Nat.succ_lt_mono _ _) pf))
        | [ H : nth_error nil ?x = Some _ |- _ ] => is_var x; destruct x
        | [ H : forall m x, nth_error (_::_) m = Some _ -> _ |- _ ] => pose proof (H 0); specialize (fun m => H (S m))
        | [ H : or _ _ |- _ ] => destruct H
@@ -1106,11 +1106,11 @@ Section ListFacts.
     induction ls as [|x xs IHxs].
     { simpl; intros; destruct (n - offset); reflexivity. }
     { simpl; intros.
-      destruct (beq_nat n offset) eqn:H';
-        [ apply beq_nat_true in H'
-        | apply beq_nat_false in H' ];
+      destruct (Nat.eqb n offset) eqn:H';
+        [ apply Nat.eqb_eq in H'
+        | apply Nat.eqb_neq in H' ];
         subst;
-        rewrite ?minus_diag; trivial.
+        rewrite ?Nat.sub_diag; trivial.
       destruct (n - offset) eqn:H''.
       { omega. }
       { rewrite IHxs by omega.
@@ -1997,7 +1997,7 @@ Section ListFacts.
       List.In n ns -> f n <= fold_right (fun n acc => max (f n) acc) 0 ns.
   Proof.
     induction ns; intros; inversion H; subst; simpl;
-      apply NPeano.Nat.max_le_iff; [ left | right ]; auto.
+      apply Nat.max_le_iff; [ left | right ]; auto.
   Qed.
 
   Lemma fold_right_higher_is_higher {A}
@@ -2006,7 +2006,7 @@ Section ListFacts.
       fold_right (fun n acc => max (f n) acc) 0 ns <= x.
   Proof.
     induction ns; simpl; intros; [ apply le_0_n | ].
-    apply NPeano.Nat.max_lub.
+    apply Nat.max_lub.
     apply H; left; auto.
     apply IHns; intros; apply H; right; auto.
   Qed.
@@ -2023,8 +2023,8 @@ Section ListFacts.
   (* if a list is empty, the result of filtering the list with anything will still be empty *)
   Lemma filter_nil_is_nil {A}
     : forall (l : list A) (pred : A -> bool),
-      beq_nat (Datatypes.length l) 0 = true
-      ->  beq_nat (Datatypes.length (filter pred l)) 0 = true.
+      Nat.eqb (Datatypes.length l) 0 = true
+      ->  Nat.eqb (Datatypes.length (filter pred l)) 0 = true.
   Proof.
     induction l; intros; simpl; try inversion H.
     reflexivity.
@@ -2374,7 +2374,7 @@ Section ListFacts.
       = option_map (fun v => (start + idx, v)) (nth_error ls idx).
   Proof.
     revert start idx; induction ls as [|l ls IHls], idx as [|idx]; try reflexivity.
-    { simpl; rewrite NPeano.Nat.add_0_r; reflexivity. }
+    { simpl; rewrite Nat.add_0_r; reflexivity. }
     { simpl; rewrite <- plus_n_Sm, IHls; reflexivity. }
   Qed.
 

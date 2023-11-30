@@ -92,7 +92,7 @@ Section FlattenList.
     - auto with arith.
     - unfold compose;
       rewrite app_length, <- IHseq.
-      rewrite plus_comm, <- plus_assoc; auto with arith.
+      rewrite Nat.add_comm, <- Nat.add_assoc; auto with arith.
   Qed.
 
   Lemma length_flatten :

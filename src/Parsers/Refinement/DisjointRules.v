@@ -26,8 +26,8 @@ Proof.
   revert str; induction len; simpl; intros; [ reflexivity | ].
   destruct (get (length str - S len) str) eqn:H.
   { edestruct P; try omega.
-    apply Le.le_n_S, IHlen. }
-  { apply Le.le_n_S, IHlen. }
+    apply (fun n m => proj1 (Nat.succ_le_mono n m)), IHlen. }
+  { apply (fun n m => proj1 (Nat.succ_le_mono n m)), IHlen. }
 Qed.
 
 Lemma find_first_char_such_that_short {Char HSLM HSL}
@@ -46,30 +46,30 @@ Proof.
   destruct H as [n H].
   set (len := length str).
   setoid_replace str with (drop (length str - len) str) at 1
-    by (subst; rewrite Minus.minus_diag, drop_0; reflexivity).
+    by (subst; rewrite Nat.sub_diag, drop_0; reflexivity).
   setoid_replace str with (drop (length str - len) str) in H
-    by (subst; rewrite Minus.minus_diag, drop_0; reflexivity).
+    by (subst; rewrite Nat.sub_diag, drop_0; reflexivity).
   assert (len <= length str) by reflexivity.
   clearbody len.
   generalize dependent str; revert n.
   induction len; simpl; intros n str IH Hlen.
   { apply first_char_such_that_0.
     rewrite drop_length.
-    rewrite NPeano.Nat.sub_0_r in IH |- *.
-    rewrite Minus.minus_diag.
+    rewrite Nat.sub_0_r in IH |- *.
+    rewrite Nat.sub_diag.
     split.
     { apply for_first_char_nil.
       rewrite drop_length; omega. }
     { generalize dependent str.
       induction n; intros str H Hlen.
       { apply first_char_such_that_0 in H.
-        rewrite drop_length, Minus.minus_diag in H.
+        rewrite drop_length, Nat.sub_diag in H.
         destruct_head and; trivial. }
       { apply first_char_such_that_past_end in H; [ | rewrite drop_length; omega ].
         left; assumption. } } }
   { pose proof (singleton_exists (take 1 (drop (length str - S len) str))) as H'.
     rewrite take_length, drop_length in H'.
-    destruct H' as [ch H']; [ apply Min.min_case_strong; intros; omega | ].
+    destruct H' as [ch H']; [ apply Nat.min_case_strong; intros; omega | ].
     rewrite get_drop.
     rewrite (proj1 (get_0 _ _) H').
     destruct (P ch) eqn:H''.
@@ -171,7 +171,7 @@ Section with_grammar.
     specialize (H1 (ex_intro _ n H')).
     pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
     destruct_head or; destruct_head and; subst;
-      rewrite ?Min.min_r, ?Min.min_l by assumption;
+      rewrite ?Nat.min_r, ?Nat.min_l by assumption;
       omega.
   Qed.
 
@@ -210,7 +210,7 @@ Section with_grammar.
     specialize (H1 (ex_intro _ n H')).
     pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
     destruct_head or; destruct_head and; subst;
-      rewrite ?Min.min_r by assumption;
+      rewrite ?Nat.min_r by assumption;
       omega.
   Qed.
 

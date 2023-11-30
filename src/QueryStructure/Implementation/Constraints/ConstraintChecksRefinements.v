@@ -819,7 +819,7 @@ Lemma refine_constraint_check_into_QueryResultComp :
                               (R tup2 /\ P' tup2))))
          (Bind
             (Count (For (QueryResultComp R (fun tup => Where (P tup) Return tup))))
-            (fun count => ret (negb (beq_nat count 0)))).
+            (fun count => ret (negb (Nat.eqb count 0)))).
 Proof.
   Local Transparent Count.
   unfold refine, Count, UnConstrQuery_In;
@@ -853,7 +853,7 @@ Lemma refine_constraint_check_into_query' :
                               (GetUnConstrRelation c tbl tup2 /\ P' tup2))))
          (Bind
             (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
-            (fun count => ret (negb (beq_nat count 0)))).
+            (fun count => ret (negb (Nat.eqb count 0)))).
 Proof.
   intros; rewrite refine_constraint_check_into_QueryResultComp; eauto.
   reflexivity.
@@ -869,7 +869,7 @@ Corollary refine_constraint_check_into_query :
                            (GetUnConstrRelation c tbl tup2 /\ P (indexedRawTuple tup2)))))
       (Bind
          (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
-         (fun count => ret (negb (beq_nat count 0)))).
+         (fun count => ret (negb (Nat.eqb count 0)))).
 Proof.
   intros.
   setoid_rewrite refine_constraint_check_into_query'; eauto.
@@ -888,7 +888,7 @@ Lemma refine_constraint_check_into_query'' :
                               (R tup2 /\ P' tup2))))
          (Bind
             (Count (For (QueryResultComp R (fun tup => Where (P tup) Return tup))))
-            (fun count => ret (negb (beq_nat count 0)))).
+            (fun count => ret (negb (Nat.eqb count 0)))).
 Proof.
   Local Transparent Count.
   unfold refine, Count, UnConstrQuery_In;
@@ -942,7 +942,7 @@ Lemma refine_functional_dependency_check_into_query :
                                         Where (tupleAgree_computational ref tup args1 /\
                                                ~ tupleAgree_computational ref tup args2)
                                               Return tup)))
-            (fun count => ret (beq_nat count 0))).
+            (fun count => ret (Nat.eqb count 0))).
 Proof.
   intros * is_dec ** .
 
@@ -994,7 +994,7 @@ Lemma refine_functional_dependency_check_into_query' :
                                         Where (tupleAgree_computational tup ref args1 /\
                                                ~ tupleAgree_computational tup ref args2)
                                               Return tup)))
-            (fun count => ret (beq_nat count 0))).
+            (fun count => ret (Nat.eqb count 0))).
 Proof.
   intros * is_dec ** .
 
@@ -1122,7 +1122,7 @@ Lemma refine_uniqueness_check_into_query' :
                                         Where (GetAttributeRaw tup attr
                                                = GetAttributeRaw tup' attr)
                                               Return tup')));
-            (ret (beq_nat c 0))).
+            (ret (Nat.eqb c 0))).
 Proof.
   intros.
   setoid_replace (forall tup', GetUnConstrRelation c idx tup' ->

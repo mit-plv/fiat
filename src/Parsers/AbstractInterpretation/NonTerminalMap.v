@@ -16,7 +16,7 @@ Definition positive_to_nonterminal (nt : positive) : default_nonterminal_carrier
 Lemma positive_to_nonterminal_to_positive nt : nonterminal_to_positive (positive_to_nonterminal nt) = nt.
 Proof.
   unfold nonterminal_to_positive, positive_to_nonterminal.
-  erewrite <- S_pred by apply Pos2Nat.is_pos.
+  erewrite Nat.lt_succ_pred by apply Pos2Nat.is_pos.
   rewrite Pos2Nat.id.
   reflexivity.
 Qed.

@@ -4,6 +4,7 @@ Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterf
         Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
 Require Import
         Coq.FSets.FMapInterface Coq.FSets.FMapFacts
+        Coq.Arith.PeanoNat
         Fiat.Common
         Fiat.Common.List.ListFacts
         Fiat.Common.List.FlattenList
@@ -203,13 +204,13 @@ Module TreeBag (Import M: WS).
         eapply binsert_RepInv; eapply containerCorrect; eauto.
         eapply binsert_RepInv; eapply bempty_RepInv.
       - rewrite <- is_eq.
-        rewrite binsert_enumerate_weak with (RepInv0 := RepInv) (ValidUpdate0 := ValidUpdate) in H; intuition; subst.
+        rewrite binsert_enumerate_weak with (RepInv := RepInv) (ValidUpdate := ValidUpdate) in H; intuition; subst.
 
         destruct (FindWithDefault_dec (projection item') bempty container)
           as [ [bag' (mapsto & equality)] | (not_found & equality) ];
         rewrite equality in *; clear equality.
         eapply containerCorrect; eauto.
-        rewrite benumerate_empty_eq_nil with (RepInv0 := RepInv) (ValidUpdate0 := ValidUpdate) in H0;
+        rewrite benumerate_empty_eq_nil with (RepInv := RepInv) (ValidUpdate := ValidUpdate) in H0;
           simpl in H0; intuition.
         reflexivity.
         destruct (FindWithDefault_dec (projection item') bempty container)
@@ -368,7 +369,7 @@ Module TreeBag (Import M: WS).
       simpl.
 
       rewrite binsert_enumerate.
-      rewrite benumerate_empty_eq_nil with (RepInv0 := RepInv) (ValidUpdate0 := ValidUpdate); eauto.
+      rewrite benumerate_empty_eq_nil with (RepInv := RepInv) (ValidUpdate := ValidUpdate); eauto.
       apply bempty_RepInv.
     Qed.
 
@@ -396,7 +397,7 @@ Module TreeBag (Import M: WS).
       + rewrite length_flatten.
         rewrite (fold_over_Values _ _ (fun acc bag => acc + bcount bag search_term)) by eauto.
         rewrite <- fold_left_rev_right.
-        setoid_rewrite Plus.plus_comm at 1.
+        setoid_rewrite Nat.add_comm at 1.
         replace (fun (y : BagType) (x : nat) => bcount y search_term + x)
         with (compose plus (fun bag => bcount bag search_term)) by reflexivity.
         rewrite !foldright_compose.

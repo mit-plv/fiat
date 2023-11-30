@@ -74,7 +74,7 @@ Section cfg.
         rewrite take_length.
         unfold paren_balanced'_step, pb_check_level, pb_new_level in *.
         split_iff.
-        apply Min.min_case_strong;
+        apply Nat.min_case_strong;
           repeat match goal with
                    | _ => progress subst
                    | _ => progress intros

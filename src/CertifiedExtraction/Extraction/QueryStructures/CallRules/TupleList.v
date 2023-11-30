@@ -123,7 +123,7 @@ Module ADTListCompilation
       GLabelMap.MapsTo fpointer (Axiomatic Empty) env ->
       {{ tenv }}
         Call vtest fpointer (vlst :: nil)
-      {{ [[`vtest ->> (bool2w (EqNat.beq_nat (Datatypes.length lst) 0)) as _]] :: (DropName vtest tenv) }} ∪ {{ ext }} // env.
+      {{ [[`vtest ->> (bool2w (Nat.eqb (Datatypes.length lst) 0)) as _]] :: (DropName vtest tenv) }} ∪ {{ ext }} // env.
   Proof.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t || injections).
 
@@ -144,7 +144,7 @@ Module ADTListCompilation
       GLabelMap.MapsTo fpointer (Axiomatic Empty) env ->
       {{ tenv }}
         Call vtest fpointer (vlst :: nil)
-      {{ [[`vtest ->> (bool2w (EqNat.beq_nat (Datatypes.length (rev lst)) 0)) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[`vtest ->> (bool2w (Nat.eqb (Datatypes.length (rev lst)) 0)) as _]] :: tenv }} ∪ {{ ext }} // env.
   Proof.
     intros.
     setoid_rewrite rev_length.

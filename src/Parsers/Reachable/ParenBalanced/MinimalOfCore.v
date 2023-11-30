@@ -142,8 +142,8 @@ Section cfg.
                  | _ => eapply H'; eassumption
                  | _ => assumption
                  | _ => eassumption
-                 | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
-                 | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+                 | [ |- _ < _ ] => eapply Nat.lt_trans; eassumption
+                 | [ |- _ < _ ] => eapply Nat.lt_le_trans; eassumption
                end.
         Unshelve.
         intros ??????; subst; assumption.
@@ -155,7 +155,7 @@ Section cfg.
       : alt_option h valid -> alt_option h' valid'.
       Proof.
         apply expand_alt_option'; try assumption.
-        apply Lt.lt_le_weak; assumption.
+        apply Nat.lt_le_incl; assumption.
       Defined.
     End alt_option.
 
@@ -222,7 +222,7 @@ Section cfg.
           intros valid' n pat p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_pb'_production__of__pb'_production' h' (fun h'' pf => minimal_pb'_item__of__pb'_item' _ (le_S _ _ pf))).
-          specialize (minimal_pb'_item__of__pb'_item' h' (Lt.lt_n_Sn _)).
+          specialize (minimal_pb'_item__of__pb'_item' h' (Nat.lt_succ_diag_r _)).
           subst_body.
           destruct p as [ | ?? nt' ?? p0' p1' | valid ?????? p' ]; simpl_size_of.
           { left; eexists (PBProductionNil _ _ _); reflexivity. }
@@ -244,15 +244,15 @@ Section cfg.
               { eexists (PBProductionConsNonTerminal _ Hnt' p0'' p1'').
                 rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
                 simpl_size_of.
-                apply Le.le_n_S, Plus.plus_le_compat; assumption. }
+                apply (fun n m => proj1 (Nat.succ_le_mono n m)), Nat.add_le_mono; assumption. }
               { eapply expand_alt_option'; [ .. | eassumption ];
-                try solve [ apply Lt.lt_n_Sn
+                try solve [ apply Nat.lt_succ_diag_r
                           | apply lt_helper_1'
                           | apply lt_helper_2'
                           | reflexivity
                           | omega ]. }
               { eapply expand_alt_option'; [ .. | eassumption ];
-                try solve [ apply Lt.lt_n_Sn
+                try solve [ apply Nat.lt_succ_diag_r
                           | apply lt_helper_1'
                           | apply lt_helper_2'
                           | reflexivity
@@ -274,10 +274,10 @@ Section cfg.
             { eexists (PBProductionConsTerminal _ _ _ _ p0'').
               rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
               simpl_size_of.
-              apply Le.le_n_S; assumption. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); assumption. }
             { unfold pb_new_level in *.
               eapply expand_alt_option'; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | apply lt_helper_1'
                         | apply lt_helper_2'
                         | reflexivity
@@ -300,7 +300,7 @@ Section cfg.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_pb'_productions__of__pb'_productions' h' (fun h'' pf => minimal_pb'_item__of__pb'_item _ (le_S _ _ pf))).
           pose proof (minimal_pb'_production__of__pb'_production' (fun h'' pf => minimal_pb'_item__of__pb'_item _ (le_S _ _ pf))) as minimal_pb'_production__of__pb'_production''.
-          specialize (minimal_pb'_item__of__pb'_item h' (Lt.lt_n_Sn _)).
+          specialize (minimal_pb'_item__of__pb'_item h' (Nat.lt_succ_diag_r _)).
           destruct p as [ | ??? p0' p1' ].
           { left.
             eexists (PBNil _ _ _).
@@ -327,11 +327,11 @@ Section cfg.
               simpl_size_of.
               omega. }
             { eapply expand_alt_option'; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | simpl_size_of; omega
                         | reflexivity ]. }
             { eapply expand_alt_option'; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | simpl_size_of; omega
                         | reflexivity ]. } }
         Defined.

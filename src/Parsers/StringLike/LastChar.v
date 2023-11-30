@@ -1,7 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Mapping predicates over [StringLike] things *)
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
@@ -133,7 +132,7 @@ Section for_last_char.
                | [ H : _ |- _ ] => rewrite drop_length in H
                | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => erewrite singleton_unique; eassumption
-               | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
+               | [ H : context[min] |- _ ] => revert H; apply Nat.min_case_strong
              end. }
     { match goal with
         | [ H : _ |- _ ] => apply H
@@ -390,7 +389,7 @@ Section for_last_char.
     destruct (for_last_char_combine HR H0 H1) as [H2|]; [ | assumption ].
     contradict H2.
     rewrite drop_length, take_length.
-    apply Min.min_case_strong; omega.
+    apply Nat.min_case_strong; omega.
   Qed.
 
   Lemma for_last_char_exists_get (str : String) P (H : length str >= 1)

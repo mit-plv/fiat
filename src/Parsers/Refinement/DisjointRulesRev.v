@@ -104,7 +104,7 @@ Section with_grammar.
     unfold rev_search_for_condition in H1.
     pose proof (is_after_last_char_such_that_eq_nat_iff H1 H') as H''.
     destruct_head or; destruct_head and; subst;
-      rewrite ?Min.min_r, ?Min.min_l by assumption;
+      rewrite ?Nat.min_r, ?Nat.min_l by assumption;
       omega.
   Qed.
 
@@ -142,7 +142,7 @@ Section with_grammar.
     specialize (H1 (ex_intro _ n H')).
     pose proof (is_after_last_char_such_that_eq_nat_iff H1 H') as H''.
     destruct_head or; destruct_head and; subst;
-      rewrite ?Min.min_r by assumption;
+      rewrite ?Nat.min_r by assumption;
       omega.
   Qed.
 

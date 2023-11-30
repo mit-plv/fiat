@@ -84,7 +84,7 @@ pb = pb' '+' 0
 
   Definition pb_new_level_fun (P : Char -> bool) (start_level : nat) : list nat
     := List.uniquize
-         EqNat.beq_nat
+         Nat.eqb
          (List.map
             (fun ch => pb_new_level ch start_level)
             (List.filter
@@ -96,7 +96,7 @@ pb = pb' '+' 0
     <-> ((exists ch, P ch) /\ forall ch, P ch -> new_level = pb_new_level ch start_level).
   Proof.
     unfold pb_new_level_fun.
-    rewrite (uniquize_singleton (beq := EqNat.beq_nat) bl lb).
+    rewrite (uniquize_singleton (beq := Nat.eqb) bl lb).
     setoid_rewrite in_map_iff.
     setoid_rewrite filter_In.
     setoid_rewrite (fun x => @and_TrueP_L (In x (enumerate Char)) (P x = true) (enumerate_correct _)).

@@ -1,7 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Mapping predicates over [StringLike] things *)
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
@@ -44,7 +43,7 @@ Section is_after_last_char_such_that.
     unfold is_after_last_char_such_that.
     split; [ apply forall_chars_nil | apply for_last_char_nil ];
     rewrite ?take_length, ?drop_length;
-    try apply Min.min_case_strong; omega.
+    try apply Nat.min_case_strong; omega.
   Qed.
 
   Lemma after_last_char_such_that_0
@@ -79,11 +78,11 @@ Section is_after_last_char_such_that.
     destruct_head_hnf and;
     destruct_head_hnf or;
     destruct_head_hnf and; repeat split; trivial;
-      try rewrite Min.min_idempotent in *;
+      try rewrite Nat.min_idempotent in *;
       try solve [ left; assumption
                 | right; omega
                 | apply for_last_char_nil; omega
-                | apply forall_chars_nil; rewrite ?drop_length, ?take_length; try apply Min.min_case_strong; intros; omega
+                | apply forall_chars_nil; rewrite ?drop_length, ?take_length; try apply Nat.min_case_strong; intros; omega
                 | destruct (length str);
                   try solve [ left; repeat split; eauto; omega
                             | right; repeat split; eauto; omega ] ].
@@ -126,8 +125,8 @@ Section is_after_last_char_such_that.
              | _ => omega
              | [ H : ?A /\ ?B -> ?C |- _ ] => specialize (fun x y => H (conj x y))
              | [ H : _ -> ?A /\ ?B -> ?C |- _ ] => specialize (fun a x y => H a (conj x y))
-             | [ H : _ |- _ ] => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?take_drop, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Plus.plus_comm 2), <- ?Nat.lt_add_lt_sub_r in H
-             | _ => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?take_drop, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Plus.plus_comm 2), <- ?Nat.lt_add_lt_sub_r
+             | [ H : _ |- _ ] => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?take_drop, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Nat.add_comm 2), <- ?Nat.lt_add_lt_sub_r in H
+             | _ => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?take_drop, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Nat.add_comm 2), <- ?Nat.lt_add_lt_sub_r
              | _ => progress destruct_head or
              | [ |- _ /\ _ ] => split
              | [ |- _ <-> _ ] => split
@@ -138,9 +137,9 @@ Section is_after_last_char_such_that.
                => eapply for_last_char__add_drop; eexact H
 
              | [ H : for_last_char (drop _ _) _ |- _ ]
-               => rewrite <- for_last_char__drop in H by (rewrite ?take_length; apply Min.min_case_strong; omega)
+               => rewrite <- for_last_char__drop in H by (rewrite ?take_length; apply Nat.min_case_strong; omega)
              | [ |- forall_chars (drop _ (take _ _)) _ ]
-               => rewrite drop_take, <- minus_Sn_m, minus_diag by omega; simpl;
+               => rewrite drop_take, Nat.sub_succ_l, Nat.sub_diag by omega; simpl;
                     apply (proj1 (forall_chars_take _ _))
              | [ H : forall_chars (drop ?n ?str) ?P |- forall_chars (drop (S ?n) ?str) ?P ]
                => rewrite <- (drop_drop str 1 n); apply (proj1 (forall_chars_drop _ _)); assumption
@@ -222,7 +221,7 @@ Section is_after_last_char_such_that.
                  => destruct (fun pf => for_last_char_combine (T := T') pf H H'); [ cbv beta; tauto | | ];
                     clear H H'
                | [ H : length (take _ _) = 0 |- _ ] => rewrite take_length in H
-               | [ H : min ?x ?y = 0 |- _ ] => revert H; apply (Min.min_case_strong x y)
+               | [ H : min ?x ?y = 0 |- _ ] => revert H; apply (Nat.min_case_strong x y)
                | _ => intro
                end..
       | let H := fresh in

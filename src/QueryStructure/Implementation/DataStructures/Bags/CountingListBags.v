@@ -213,7 +213,7 @@ Section CountingListBags.
     + trivial.
     + simpl; destruct (search_term a);
       simpl; rewrite <- IHcontainer; simpl; eauto.
-      rewrite (plus_comm 1); eauto using plus_assoc.
+      rewrite (Nat.add_comm 1); eauto using Nat.add_assoc.
   Qed.
 
   Lemma CountingList_BagCountCorrect :
@@ -222,7 +222,7 @@ Section CountingListBags.
     unfold BagCountCorrect, CountingListAsBag_bcount, CountingListAsBag_bfind,
     CountingList_RepInv; intros;
     pose proof (CountingList_BagCountCorrect_aux (ccontents container) search_term 0) as temp;
-    rewrite plus_0_r in temp; simpl in temp.
+    rewrite Nat.add_0_r in temp; simpl in temp.
     simpl; [ apply temp ].
   Qed.
 

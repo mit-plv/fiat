@@ -70,7 +70,7 @@ Section helper_lemmas.
                => apply FirstChar.for_first_char_exists in H;
                  [
                      | rewrite !drop_length; clear -H' H''; omega ]
-             | [ H : _ < min _ _ |- _ ] => apply NPeano.Nat.min_glb_lt_iff in H
+             | [ H : _ < min _ _ |- _ ] => apply Nat.min_glb_lt_iff in H
            end.
     eapply (paren_balanced_hiding'_prefix);
       [ exact H_hiding
@@ -122,7 +122,7 @@ Section refine_rules.
     destruct (List.nth n' table None); try reflexivity.
     rewrite substring_length.
     destruct Hlen; subst; simpl;
-    apply Min.min_case_strong; omega.
+    apply Nat.min_case_strong; omega.
   Qed.
 
   Section general_table.
@@ -157,7 +157,7 @@ Section refine_rules.
         destruct (nth n table None) eqn:nth_equals.
         {
           destruct (Compare_dec.le_lt_dec (StringLike.length s_str) n0) as [|g].
-          { rewrite Min.min_l by assumption.
+          { rewrite Nat.min_l by assumption.
             left.
             reflexivity. }
           { exfalso.
@@ -168,21 +168,21 @@ Section refine_rules.
             subst s_str.
             rewrite take_take in H_nt_hiding.
             refine (paren_balanced_hiding'_prefix__index_points_to_binop _ H_nt_hiding Hn0_binop Hn0_balanced _).
-            rewrite <- Min.min_assoc.
+            rewrite <- Nat.min_assoc.
             rewrite <- take_length.
-            rewrite Min.min_idempotent.
+            rewrite Nat.min_idempotent.
             assumption.
           }
         }
         {
-          rewrite Min.min_idempotent.
+          rewrite Nat.min_idempotent.
           tauto.
         }
       }
 
       destruct Hlen as [Hlen|Hlen].
       { subst s_str m; exfalso; revert isnonzero.
-        rewrite drop_length, substring_length; apply Min.min_case_strong; simpl; intros; omega. }
+        rewrite drop_length, substring_length; apply Nat.min_case_strong; simpl; intros; omega. }
 
       subst s_str.
       rewrite take_take in H_nt_hiding.
@@ -238,7 +238,7 @@ Section refine_rules.
                | [ H : _ <= StringLike.length _ |- _ ] => rewrite take_length in H
                | [ H : context[min ?x ?y], H' : ?x <= min ?y _ |- _ ]
                  => replace (min x y) with x in H
-                                             by (revert H'; clear; abstract (repeat apply Min.min_case_strong; intros; omega))
+                                             by (revert H'; clear; abstract (repeat apply Nat.min_case_strong; intros; omega))
                | _ => progress subst
              end. *)
       destruct (List.nth n table None) as [idx|].
@@ -246,7 +246,7 @@ Section refine_rules.
         left.
         destruct (Compare_dec.lt_eq_lt_dec idx idx') as [ [?|?]|?];
           [
-          | subst; apply Min.min_r; omega
+          | subst; apply Nat.min_r; omega
           | ];
           exfalso.
         { (** idx < idx'; this contradicts the paren-balanced-hiding
@@ -257,7 +257,7 @@ Section refine_rules.
           apply paren_balanced_hiding_impl_paren_balanced' in Htable1; [ | exact _ .. ].
           eapply paren_balanced_hiding'_prefix__index_points_to_binop; try eassumption.
           rewrite <- take_length, <- take_take, take_length.
-          apply Min.min_case_strong; intros; try assumption; omega.
+          apply Nat.min_case_strong; intros; try assumption; omega.
 
  }
         { (** idx' < idx; this contradicts the paren-balanced-hiding
@@ -272,9 +272,9 @@ Section refine_rules.
             |
             |
             | eassumption ].
-          { apply Min.min_case_strong; omega. }
-          { rewrite Min.min_l
-              by (rewrite substring_length, Min.min_r in Hsmall by omega;
+          { apply Nat.min_case_strong; omega. }
+          { rewrite Nat.min_l
+              by (rewrite substring_length, Nat.min_r in Hsmall by omega;
                   omega).
             rewrite drop_take, take_take in H.
             apply take_n_1_singleton in H.
@@ -289,23 +289,23 @@ Section refine_rules.
           [
           | solve [ repeat
                       match goal with
-                        | _ => rewrite Min.min_l in Hsmall by omega
-                        | _ => rewrite Min.min_l in isnonzero by omega
-                        | _ => rewrite Min.min_l by assumption
+                        | _ => rewrite Nat.min_l in Hsmall by omega
+                        | _ => rewrite Nat.min_l in isnonzero by omega
+                        | _ => rewrite Nat.min_l by assumption
                         | [ H : is_true (_ ~= [ _ ]) |- _ ] => apply length_singleton in H
                         | [ H : _ |- _ ] => progress rewrite ?drop_length, ?take_length in H
                         | _ => progress rewrite ?drop_length, ?take_length
-                        | [ H : min _ _ = _ |- _ ] => revert H; apply Min.min_case_strong; clear; intros; omega
+                        | [ H : min _ _ = _ |- _ ] => revert H; apply Nat.min_case_strong; clear; intros; omega
                         | _ => omega
                       end ] ].
         destruct Htable' as [ch' [Ht0 Ht1] ].
-        rewrite substring_length, Min.min_r, NPeano.Nat.add_sub in Hsmall by omega.
+        rewrite substring_length, Nat.min_r, Nat.add_sub in Hsmall by omega.
         repeat match goal with
-                 | _ => rewrite Min.min_idempotent
+                 | _ => rewrite Nat.min_idempotent
                  | [ |- _ \/ False ] => left
                  | [ H : 0 < ?x - ?y |- ?x = ?y ] => exfalso
-                 | [ H : context[min] |- _ ] => rewrite Min.min_r in H by omega
-                 | [ H : context[min] |- _ ] => rewrite Min.min_l in H by omega
+                 | [ H : context[min] |- _ ] => rewrite Nat.min_r in H by omega
+                 | [ H : context[min] |- _ ] => rewrite Nat.min_l in H by omega
                  | [ H : is_true (is_char (substring _ _ (substring _ _ _)) _) |- _ ]
                    => rewrite substring_substring in H;
                      apply take_n_1_singleton in H

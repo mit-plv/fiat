@@ -184,7 +184,7 @@ Section parser.
     prove_string_eq.
   Qed.
   Definition mis_char (ch : Ascii.ascii) (str : cRep (projT1 splitter_impl)) : bool
-    := (EqNat.beq_nat (mlength str) 1 && mchar_at_matches 0 (ascii_beq ch) str)%bool.
+    := (Nat.eqb (mlength str) 1 && mchar_at_matches 0 (ascii_beq ch) str)%bool.
   Global Arguments mis_char : simpl never.
   Definition mis_char_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
   : mis_char arg st = is_char str arg.
@@ -197,8 +197,8 @@ Section parser.
       destruct H' as [H'0 H'1].
       rewrite H'0, H'1; simpl.
       rewrite ascii_lb; reflexivity. }
-    { destruct (EqNat.beq_nat (length str) 1) eqn:H'0; simpl; [ | reflexivity ].
-      apply EqNat.beq_nat_true in H'0.
+    { destruct (Nat.eqb (length str) 1) eqn:H'0; simpl; [ | reflexivity ].
+      apply (fun n m => proj1 (Nat.eqb_eq n m)) in H'0.
       destruct (get 0 str) as [ch|] eqn:H'1; simpl; [ | exfalso ].
       { destruct (ascii_beq arg ch) eqn:H''; [ | reflexivity ].
         apply ascii_bl in H''; subst.

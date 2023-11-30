@@ -106,7 +106,7 @@ Section grammar.
           { simpl.
             rewrite (string_lb eq_refl); trivial. }
           { simpl; intros H'.
-            specialize (IHxs idx (Le.le_S_n _ _ H')).
+            specialize (IHxs idx (proj2 (Nat.succ_le_mono _ _) H')).
             rewrite first_index_helper_first_index_error, IHxs by omega.
             apply first_index_error_Some_correct in IHxs.
             repeat match goal with

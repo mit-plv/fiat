@@ -519,7 +519,7 @@ Section IndexedImpl_opt.
                | [ |- opt.minus _ _ = _ ] => apply f_equal2
                | [ |- opt.combine _ _ = _ ] => apply f_equal2
                | [ |- opt2.ret_cases_BoolDecR _ _ = _ ] => apply f_equal2
-               | [ |- EqNat.beq_nat _ _ = _ ] => apply f_equal2
+               | [ |- Nat.eqb _ _ = _ ] => apply f_equal2
                | [ |- opt.nth _ _ _ = _ ] => apply f_equal3
                | [ |- 0 = _ ] => reflexivity
                | [ |- opt.length (pregrammar_productions G) = _ ] => reflexivity
@@ -572,7 +572,7 @@ Section IndexedImpl_opt.
       change (snd d) with (Common.opt2.snd d);
       change (fst (Common.opt2.snd d)) with (Common.opt2.fst (Common.opt2.snd d));
       change (snd (Common.opt2.snd d)) with (Common.opt2.snd (Common.opt2.snd d)).
-      change EqNat.beq_nat with Common.opt2.beq_nat.
+      change Nat.eqb with Common.opt2.beq_nat.
       change andb with Common.opt2.andb.
       reflexivity.
     }

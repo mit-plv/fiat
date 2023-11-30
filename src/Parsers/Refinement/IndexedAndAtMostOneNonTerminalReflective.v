@@ -1,7 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** First step of a splitter refinement; indexed representation, and handle all rules with at most one nonterminal; leave a reflective goal *)
-Require Import Coq.Strings.String Coq.Arith.Lt Coq.Lists.List.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.Strings.String Coq.Arith.PeanoNat Coq.Lists.List.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ParserInterface.
@@ -214,14 +213,14 @@ Section helpers.
                  | [ H : context[length (drop _ _)] |- _ ] => rewrite drop_length in H
                  | [ H : min ?x ?y = 1 |- _ ] => is_var x; destruct x
                  | [ H : min (S ?x) ?y = 1 |- _ ] => is_var x; destruct x
-                 | [ H : min (S (S ?x)) ?y = 1 |- _ ] => revert H; apply (Min.min_case_strong (S (S x)) y)
-                 | [ H : context[min _ 0] |- _ ] => rewrite Min.min_0_r in H
-                 | [ H : context[min 0 _] |- _ ] => rewrite Min.min_0_l in H
+                 | [ H : min (S (S ?x)) ?y = 1 |- _ ] => revert H; apply (Nat.min_case_strong (S (S x)) y)
+                 | [ H : context[min _ 0] |- _ ] => rewrite Nat.min_0_r in H
+                 | [ H : context[min 0 _] |- _ ] => rewrite Nat.min_0_l in H
                  | [ H : 0 = 1 |- _ ] => exfalso; clear -H; discriminate
                  | [ H : S (S _) = 1 |- _ ] => exfalso; clear -H; discriminate
                  | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                  | [ H : ?x = 1 |- context[?x] ] => rewrite H
-                 | [ H : min ?x ?y = 1 |- _ ] => revert H; apply (Min.min_case_strong x y)
+                 | [ H : min ?x ?y = 1 |- _ ] => revert H; apply (Nat.min_case_strong x y)
                  | _ => omega
                end. }
       { exfalso.
@@ -237,10 +236,10 @@ Module Export PrettyNotations.
   Infix "=p" := default_production_carrierT_beq (at level 70, no associativity).
   Infix "=ℕ" := opt.beq_nat (at level 70, no associativity).
   Infix "=ℕ" := opt2.beq_nat (at level 70, no associativity).
-  Infix "=ℕ" := EqNat.beq_nat (at level 70, no associativity).
+  Infix "=ℕ" := Nat.eqb (at level 70, no associativity).
 End PrettyNotations.
 
-Definition beq_nat_opt := Eval compute in EqNat.beq_nat.
+Definition beq_nat_opt := Eval compute in Nat.eqb.
 Definition andb_opt := Eval compute in andb.
 
 Inductive ret_cases : Set :=
@@ -257,12 +256,12 @@ Local Ltac t_ret_cases :=
          | _ => intro
          | _ => progress subst
          | _ => congruence
-         | [ H : ?f ?x ?y = ?b |- _ ] => progress change (EqNat.beq_nat x y = b) in H
-         | [ |- ?f ?x ?y = ?b ] => progress change (EqNat.beq_nat x y = b)
+         | [ H : ?f ?x ?y = ?b |- _ ] => progress change (Nat.eqb x y = b) in H
+         | [ |- ?f ?x ?y = ?b ] => progress change (Nat.eqb x y = b)
          | [ H : ?f ?x ?y = ?b |- _ ] => progress change (andb x y = b) in H
          | [ |- ?f ?x ?y = ?b ] => progress change (andb x y = b)
-         | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
-         | [ |- EqNat.beq_nat _ _ = true ] => apply EqNat.beq_nat_true_iff
+         | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
+         | [ |- Nat.eqb _ _ = true ] => apply Nat.eqb_eq
          | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
          | [ |- andb _ _ = true ] => apply Bool.andb_true_iff
          | [ H : and _ _ |- _ ] => destruct H
@@ -557,9 +556,9 @@ Section IndexedImpl.
              | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
              | [ |- context[substring _ (min _ (length ?str)) ?str] ]
                => rewrite substring_min_length
-             | [ |- context[_ + 0] ] => rewrite Plus.plus_0_r
+             | [ |- context[_ + 0] ] => rewrite Nat.add_0_r
              | [ |- context[min ?x ?x] ]
-               => rewrite (Min.min_idempotent x)
+               => rewrite (Nat.min_idempotent x)
              | _ => reflexivity
              | _ => assumption
            end;
@@ -567,7 +566,7 @@ Section IndexedImpl.
               | repeat match goal with
                          | _ => intro
                          | [ |- context[min ?x ?x] ]
-                           => rewrite (Min.min_idempotent x)
+                           => rewrite (Nat.min_idempotent x)
                          | _ => reflexivity
                          | _ => rewrite substring_substring
                          | _ => rewrite Nat.sub_0_r
@@ -578,15 +577,15 @@ Section IndexedImpl.
                          | [ |- context[min ?x ?y] ]
                            => match goal with
                                 | [ |- context[min y x] ]
-                                  => rewrite (Min.min_comm x y)
+                                  => rewrite (Nat.min_comm x y)
                               end
                          | [ |- context[min (min _ ?x) (?x - ?y)] ]
-                           => rewrite <- (Min.min_assoc _ x (x - y)), (Min.min_r x (x - y)) by omega
+                           => rewrite <- (Nat.min_assoc _ x (x - y)), (Nat.min_r x (x - y)) by omega
                          | [ |- substring (?x + ?y) _ _ = substring (?y + ?x) _ _ ]
-                           => rewrite (Plus.plus_comm x y)
+                           => rewrite (Nat.add_comm x y)
                          | [ |- substring ?x ?y ?z = substring ?x (min ?w ?y) ?z ]
-                           => apply (@Min.min_case_strong w y)
-                         | [ H : _ |- _ ] => rewrite Min.min_assoc in H
+                           => apply (@Nat.min_case_strong w y)
+                         | [ H : _ |- _ ] => rewrite Nat.min_assoc in H
                          | _ => apply substring_correct4; omega
                        end
               | repeat match goal with
@@ -595,7 +594,7 @@ Section IndexedImpl.
                          | [ |- List.In ?x [?y] ] => left
                          | [ |- context[List.map ?f [?x] ] ] => change (List.map f [x]) with [f x]
                          | [ |- context[min ?x ?x] ]
-                           => rewrite (Min.min_idempotent x)
+                           => rewrite (Nat.min_idempotent x)
                          | _ => reflexivity
                          | [ H : parse_of_production _ _ nil |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
                          | [ H : parse_of_production _ _ (_::_) |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
@@ -604,8 +603,8 @@ Section IndexedImpl.
                          | [ H : length (substring ?n ?m ?s) = _, H' : context[length (substring ?n ?m ?s)] |- _ ] => rewrite H in H'
                          | [ H : context[length (take _ _)] |- _ ] => rewrite take_length in H
                          | _ => erewrite <- has_only_terminals_length by eassumption
-                         | [ H : _ |- _ ] => progress rewrite ?(@drop_length _ HSL HSLP), ?(@take_length _ HSL HSLP), ?substring_length, ?Nat.add_sub, <- ?plus_n_O, ?Minus.minus_diag, ?Nat.sub_0_r, ?sub_plus in H by omega
-                         | _ => progress rewrite ?drop_length, ?take_length, ?substring_length, ?Nat.add_sub, ?Minus.minus_diag, ?Nat.sub_0_r, <- ?plus_n_O, ?sub_plus by omega
+                         | [ H : _ |- _ ] => progress rewrite ?(@drop_length _ HSL HSLP), ?(@take_length _ HSL HSLP), ?substring_length, ?Nat.add_sub, <- ?plus_n_O, ?Nat.sub_diag, ?Nat.sub_0_r, ?sub_plus in H by omega
+                         | _ => progress rewrite ?drop_length, ?take_length, ?substring_length, ?Nat.add_sub, ?Nat.sub_diag, ?Nat.sub_0_r, <- ?plus_n_O, ?sub_plus by omega
                          | [ H : is_true (string_beq _ _) |- _ ] => apply string_bl in H
                          | [ |- _ \/ False ] => left
                          | [ H : String.substring _ _ _ = String.String _ _ |- _ = _ :> nat ] => apply (f_equal String.length) in H; simpl in H
@@ -615,37 +614,37 @@ Section IndexedImpl.
                            => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
                          | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
                            => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
-                         | [ |- context[min ?x (?x - 1)] ] => rewrite (Min.min_r x (x - 1)) by (clear; omega)
-                         | [ H : min ?x ?y = 1 |- _ ] => is_var x; revert H; apply (Min.min_case_strong x y)
-                         | [ H : min ?x ?y = 1 |- _ ] => is_var y; revert H; apply (Min.min_case_strong x y)
-                         | [ H : min ?x ?y = 0 |- _ ] => is_var x; revert H; apply (Min.min_case_strong x y)
-                         | [ H : min ?x ?y = 0 |- _ ] => is_var y; revert H; apply (Min.min_case_strong x y)
-                         | [ H : min ?x 1 = 0 |- _ ] => revert H; apply (Min.min_case_strong x 1)
+                         | [ |- context[min ?x (?x - 1)] ] => rewrite (Nat.min_r x (x - 1)) by (clear; omega)
+                         | [ H : min ?x ?y = 1 |- _ ] => is_var x; revert H; apply (Nat.min_case_strong x y)
+                         | [ H : min ?x ?y = 1 |- _ ] => is_var y; revert H; apply (Nat.min_case_strong x y)
+                         | [ H : min ?x ?y = 0 |- _ ] => is_var x; revert H; apply (Nat.min_case_strong x y)
+                         | [ H : min ?x ?y = 0 |- _ ] => is_var y; revert H; apply (Nat.min_case_strong x y)
+                         | [ H : min ?x 1 = 0 |- _ ] => revert H; apply (Nat.min_case_strong x 1)
                          | [ |- context[0 + ?x] ] => change (0 + x) with x
                          | [ |- context[?x - S ?y] ]
-                           => not constr_eq y 0; rewrite !(Nat.sub_succ_r x y), !Minus.pred_of_minus
+                           => not constr_eq y 0; rewrite !(Nat.sub_succ_r x y), !(fun n => eq_sym (Nat.sub_1_r n))
                          | [ H : ?x = 1 |- context[?x] ] => rewrite H
                          | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                          | [ H : ?x <= ?y |- context[min ?x ?y] ]
-                           => rewrite (Min.min_l x y H)
+                           => rewrite (Nat.min_l x y H)
                          | [ H : ?y <= ?x |- context[min ?x ?y] ]
-                           => rewrite (Min.min_r x y H)
+                           => rewrite (Nat.min_r x y H)
                          | [ H : ?x <= ?y |- context[?x - ?y] ] => replace (x - y) with 0 by (clear -H; omega)
                          | [ H : context[?x - ?y], H' : ?x <= ?y |- _ ]
                            => rewrite (proj2 (@Nat.sub_0_le x y)) in H by exact H'
                          | [ H : context[min 0 ?x] |- _ ] => change (min 0 x) with 0 in H
                          | [ |- context[min (min _ ?x) (?x - ?y)] ]
-                           => rewrite <- (Min.min_assoc _ x (x - y)), (Min.min_r x (x - y)) by omega
+                           => rewrite <- (Nat.min_assoc _ x (x - y)), (Nat.min_r x (x - y)) by omega
                          | [ |- 1 = ?x ] => is_var x; destruct x
                          | [ |- 1 = S ?x ] => is_var x; destruct x
-                         | [ H : _ <= 0 |- _ ] => apply Le.le_n_0_eq in H; symmetry in H
+                         | [ H : _ <= 0 |- _ ] => apply (fun n Hle => eq_sym (proj1 (Nat.le_0_r n) Hle)) in H; symmetry in H
                          | [ H : context[min 1 ?x] |- _ ] => is_var x; destruct x
                          | [ H : context[min 1 (S ?x)] |- _ ] => is_var x; destruct x
                          | [ H : context[min 1 (S ?x)] |- _ ] => change (min 1 (S x)) with 1 in H
-                         | [ H : context[min ?x ?y], H' : ?x <= ?y |- _ ] => rewrite Min.min_l in H by assumption
-                         | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ] => rewrite Min.min_r in H by assumption
-                         | [ H : context[min (?x - ?y) ?x] |- _ ] => rewrite Min.min_l in H by omega
-                         | [ H : context[min ?x (?x - ?y)] |- _ ] => rewrite Min.min_r in H by omega
+                         | [ H : context[min ?x ?y], H' : ?x <= ?y |- _ ] => rewrite Nat.min_l in H by assumption
+                         | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ] => rewrite Nat.min_r in H by assumption
+                         | [ H : context[min (?x - ?y) ?x] |- _ ] => rewrite Nat.min_l in H by omega
+                         | [ H : context[min ?x (?x - ?y)] |- _ ] => rewrite Nat.min_r in H by omega
                          | _ => omega
                        end ].
 
@@ -741,7 +740,7 @@ Section IndexedImpl.
     end.
   Local Ltac pre_fin := repeat pre_fin'.
 
-  Local Arguments EqNat.beq_nat : simpl never.
+  Local Arguments Nat.eqb : simpl never.
 
   Local Ltac do_Iterate_Ensemble_BoundedIndex_equiv :=
     eapply Iterate_Ensemble_BoundedIndex_equiv;
@@ -764,7 +763,7 @@ Section IndexedImpl.
       | _ => progress subst
       | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
       | [ |- context[min ?x ?x] ]
-        => rewrite (Min.min_idempotent x)
+        => rewrite (Nat.min_idempotent x)
       | [ |- List.In ?x [?y] ] => left
       | [ |- context[List.map ?f [?x] ] ] => change (List.map f [x]) with [f x]
       | [ |- _ \/ False ] => left
@@ -776,19 +775,19 @@ Section IndexedImpl.
       | [ H : context[unsafe_get] |- _ ] => erewrite unsafe_get_correct in H by eassumption
       | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
       | [ H : andb _ _ = false |- _ ] => apply Bool.andb_false_iff in H
-      | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
-      | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
+      | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
+      | [ H : Nat.eqb _ _ = false |- _ ] => apply (fun n m => proj1 (Nat.eqb_neq n m)) in H
       | [ H : Compare_dec.leb _ _ = true |- _ ] => apply Compare_dec.leb_complete in H
       | [ H : Compare_dec.leb _ _ = false |- _ ] => apply Compare_dec.leb_complete_conv in H
-      | [ H : context[?x - ?x] |- _ ] => rewrite Minus.minus_diag in H
-      | [ H : context[min _ 0] |- _ ] => rewrite Min.min_0_r in H
-      | [ H : context[min 0 _] |- _ ] => rewrite Min.min_0_l in H
+      | [ H : context[?x - ?x] |- _ ] => rewrite Nat.sub_diag in H
+      | [ H : context[min _ 0] |- _ ] => rewrite Nat.min_0_r in H
+      | [ H : context[min 0 _] |- _ ] => rewrite Nat.min_0_l in H
       | [ H : option_beq ascii_beq _ _ = true |- _ ]
         => apply (option_bl (@ascii_bl)) in H
       | [ H : context[min ?x ?y], H' : ?x <= ?y |- _ ]
-        => rewrite (Min.min_l x y) in H by assumption
+        => rewrite (Nat.min_l x y) in H by assumption
       | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ]
-        => rewrite (Min.min_r x y) in H by assumption
+        => rewrite (Nat.min_r x y) in H by assumption
       | [ H : context[?x + ?y - ?y] |- _ ] => rewrite Nat.add_sub in H
       | [ H : context[(0 + ?x)%nat] |- _ ] => change (0 + x) with x in H
       | [ |- context[min ?x (?y + ?z) - ?z] ]
@@ -814,19 +813,19 @@ Section IndexedImpl.
       | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
       | [ H : 1 = snd (snd ?x), H' : context[snd (snd ?x)] |- _ ]
         => is_var x; rewrite <- H in H'
-      | [ |- context[min 0 _] ] => rewrite Min.min_0_l
-      | [ |- context[min _ 0] ] => rewrite Min.min_0_r
+      | [ |- context[min 0 _] ] => rewrite Nat.min_0_l
+      | [ |- context[min _ 0] ] => rewrite Nat.min_0_r
       | [ |- context[(_ - _)%natr] ] => rewrite minusr_minus
       | [ |- context[?x - ?y + min ?y ?x] ] => rewrite minus_plus_min
-      | [ |- context[?x - ?y + (min ?y ?x + _)] ] => rewrite !Plus.plus_assoc, minus_plus_min
+      | [ |- context[?x - ?y + (min ?y ?x + _)] ] => rewrite !Nat.add_assoc, minus_plus_min
       | [ H : ?x < S ?y |- context[?x - ?y] ]
         => rewrite (proj2 (Nat.sub_0_le x y)) by omega
       | [ H : ?x + ?y <= ?z, H' : context[min ?x (?z - ?y)] |- _ ]
-        => rewrite (Min.min_l x (z - y)) in H' by (clear -H; omega)
+        => rewrite (Nat.min_l x (z - y)) in H' by (clear -H; omega)
       | [ H : ?x <= ?y |- context[min ?x ?y] ]
-        => rewrite (Min.min_l x y H)
+        => rewrite (Nat.min_l x y H)
       | [ H : ?y <= ?x |- context[min ?x ?y] ]
-        => rewrite (Min.min_r x y H)
+        => rewrite (Nat.min_r x y H)
       | [ |- context[min ?x (?x - _)] ] => rewrite min_minus_r
       | _ => progress destruct_head' and
       | _ => progress destruct_head' or
@@ -838,9 +837,9 @@ Section IndexedImpl.
       | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
       | [ H : forall n, n <= 0 -> _ |- _ ] => specialize (H 0 (reflexivity _))
       | [ H : min _ ?x = ?v |- min ?v ?x = ?v ]
-        => revert H; clear; repeat apply Min.min_case_strong; intros; omega
+        => revert H; clear; repeat apply Nat.min_case_strong; intros; omega
       | [ |- context[min (min ?x ?y) ?y] ]
-        => rewrite <- (Min.min_assoc x y y), Min.min_idempotent
+        => rewrite <- (Nat.min_assoc x y y), Nat.min_idempotent
       | [ H : ret_length_less _ = ret_length_less _ |- _ ] => inversion H; clear H
       | [ H : ret_nat _ = ret_nat _ |- _ ] => inversion H; clear H
       | [ H : ret_pick _ = ret_pick _ |- _ ] => inversion H; clear H
@@ -874,26 +873,26 @@ Section IndexedImpl.
         => rewrite substring_length, H in H'
       | [ H : length ?x = _ |- context[length (drop _ (drop _ ?x))] ]
         => (do 2 rewrite drop_length; rewrite H)
-      | _ => rewrite Minus.pred_of_minus
+      | _ => rewrite (fun n => eq_sym (Nat.sub_1_r n))
       | [ H : ?x = 1 |- context[?x] ] => rewrite H
       | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
       | [ H : min ?x ?y = 1 |- context[?x] ]
-        => (revert H; apply (Min.min_case_strong x y))
+        => (revert H; apply (Nat.min_case_strong x y))
       | _ => intro
       | [ |- context[?x - ?y] ]
         => rewrite (proj2 (Nat.sub_0_le x y)) by assumption
       | [ |- context[min ?x (pred ?x)] ]
-        => rewrite (Min.min_r x (pred x)) by omega
+        => rewrite (Nat.min_r x (pred x)) by omega
       | [ |- context[?x - ?y - (?x - ?z - ?y)] ]
-        => rewrite <- (Nat.sub_add_distr x z y), (Plus.plus_comm z y), (Nat.sub_add_distr x y z)
+        => rewrite <- (Nat.sub_add_distr x z y), (Nat.add_comm z y), (Nat.sub_add_distr x y z)
       | [ |- context[?x - (?x - _)] ]
         => rewrite sub_twice
       | [ |- context[min ?x (min (?x - ?z) ?y)] ]
-        => rewrite (Min.min_assoc x (x - z)), (Min.min_r x (x - z)) by omega
-      | [ |- min ?x ?y = ?y ] => rewrite Min.min_r by omega
+        => rewrite (Nat.min_assoc x (x - z)), (Nat.min_r x (x - z)) by omega
+      | [ |- min ?x ?y = ?y ] => rewrite Nat.min_r by omega
       | [ H : ?x - ?y = 0 |- _ ] => apply Nat.sub_0_le in H
       | [ H : ?x <= ?y, H' : ?y <= ?x |- _ ]
-        => assert (y = x) by (apply Le.le_antisym; assumption);
+        => assert (y = x) by (apply Nat.le_antisymm; assumption);
           clear H H'
       | [ H : length (substring _ ?x _) = ?v |- min ?v ?x = ?v ]
         => rewrite substring_length in H; clear -H
@@ -903,7 +902,7 @@ Section IndexedImpl.
       | [ H : context[length (substring _ _ _)] |- _ ]
         => rewrite substring_length_no_min in H by first [ assumption | left; reflexivity | right; omega ]
       | [ H : context[min (?x - ?y) ?z], H' : ?y + ?z <= ?x |- _ ]
-        => rewrite (Min.min_r (x - y) z) in H by (clear -H'; omega)
+        => rewrite (Nat.min_r (x - y) z) in H by (clear -H'; omega)
     end.
   Local Ltac fin2 := repeat first [ progress fin_common
                                   | progress string_from_parse
@@ -1017,7 +1016,7 @@ Section IndexedImpl.
       | [ H : context[length (substring ?n ?m ?s)] |- _ ]
         => let H' := fresh in
            assert (H' : length (substring n m s) = m)
-             by (rewrite substring_length; fin_common; rewrite Min.min_r by omega; omega);
+             by (rewrite substring_length; fin_common; rewrite Nat.min_r by omega; omega);
              rewrite !H' in H |- *
     end.
 
@@ -1054,7 +1053,7 @@ Section IndexedImpl.
              | _ => progress destruct_head or; try solve [ fin2 ]; []
              | [ H : ?x = ?y |- _ ] => is_var y; subst y
              | [ H : ?x = ?y |- _ ] => is_var x; subst x
-             | _ => rewrite Min.min_r by omega
+             | _ => rewrite Nat.min_r by omega
              | _ => progress fin2
              | [ H : ?x = ?x |- _ ] => clear H
              end;
@@ -1063,9 +1062,9 @@ Section IndexedImpl.
                | [ H : _ <= _ |- _ ] => revert H
                end;
         clear -HSLP; intros;
-          rewrite !drop_length, !substring_length, Min.min_r, Nat.add_sub by omega;
+          rewrite !drop_length, !substring_length, Nat.min_r, Nat.add_sub by omega;
           repeat match goal with
-                 | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
+                 | [ H : context[min] |- _ ] => revert H; apply Nat.min_case_strong
                  | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                  | [ H : ?x = 1 |- context[?x] ] => rewrite H
                  | [ H : ?x <= ?y |- context[?x - ?y] ] => replace (x - y) with 0 by omega
@@ -1078,8 +1077,8 @@ Section IndexedImpl.
                    => rewrite (Nat.sub_succ_r x y)
                  | _ => progress rewrite ?sub_twice, ?Nat.sub_0_r
                  | _ => erewrite <- S_pred by eassumption
-                 | _ => rewrite Min.min_r by omega
-                 | _ => rewrite Min.min_l by omega
+                 | _ => rewrite Nat.min_r by omega
+                 | _ => rewrite Nat.min_l by omega
                  | _ => reflexivity
                  end. }
     { repeat match goal with

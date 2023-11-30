@@ -259,7 +259,7 @@ Section cfg.
     Proof.
       setoid_subst str'.
       rewrite take_length.
-      apply Min.min_case_strong; omega.
+      apply Nat.min_case_strong; omega.
     Qed.
 
     Lemma Hlen0_drop {len0 len0' str str' n}
@@ -526,8 +526,8 @@ Section cfg.
                    intro; apply H
                | _ => eapply H'; eassumption
                | _ => assumption
-               | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
-               | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+               | [ |- _ < _ ] => eapply Nat.lt_trans; eassumption
+               | [ |- _ < _ ] => eapply Nat.lt_le_trans; eassumption
              end.
     Defined.
 
@@ -536,7 +536,7 @@ Section cfg.
     : alt_option h valid str -> alt_option h' valid' str'.
     Proof.
       apply expand_alt_option'; try assumption.
-      apply Lt.lt_le_weak; assumption.
+      apply Nat.lt_le_incl; assumption.
     Defined.
 
     Section wf_parts.
@@ -606,7 +606,7 @@ Section cfg.
             eexists (MinimalParse.MinParseTerminal _ _ _ _ _ pf0 pf0');
               simpl; constructor. }
           { edestruct (fun pf => @minimal_parse_of_nonterminal__of__parse_of_nonterminal (S h') pf len0 _ valid' _ p') as [ [p'' H''] | p'' ];
-            try solve [ repeat (apply Lt.lt_n_Sn || apply Lt.lt_S)
+            try solve [ repeat (apply Nat.lt_succ_diag_r || apply Nat.lt_lt_succ_r)
                       | exact Hinit'
                       | exact H_h
                       | exact H_forall
@@ -693,8 +693,8 @@ Section cfg.
             | [ |- (_ * _)%type ]
               => split
             | [ H : _ <= _ |- _ <= _ ] => apply H
-            | _ => apply Le.le_n_S
-            | _ => apply Plus.plus_le_compat
+            | _ => apply le_n_S
+            | _ => apply Nat.add_le_mono
             | [ H0 : Forall_parse_of_item _ _,
                      H1 : Forall_parse_of_production _ _
                 |- Forall_parse_of_production _ _ ]
@@ -721,7 +721,7 @@ Section cfg.
             | [ H : context[min _ _] |- _ ] => rewrite min_r in H by omega
             | _ => rewrite drop_length
             | _
-              => solve [ eauto using le_S, Le.le_trans, Plus.le_plus_l, Plus.le_plus_r, drop_0, take_long, NPeano.Nat.eq_le_incl, bool_eq_empty, drop_length, (fun x y => proj2 (NPeano.Nat.sub_0_le x y)) with nocore ]
+              => solve [ eauto using le_S, Nat.le_trans, Nat.le_add_l, Nat.le_add_r, drop_0, take_long, Nat.eq_le_incl, bool_eq_empty, drop_length, (fun x y => proj2 (Nat.sub_0_le x y)) with nocore ]
           end.
         Local Ltac min_parse_prod_t := repeat min_parse_prod_t'.
 
@@ -765,24 +765,24 @@ Section cfg.
               repeat (reflexivity || esplit). }
           { specialize (fun h' pf
                         => @minimal_parse_of_nonterminal__of__parse_of_nonterminal
-                             h' (transitivity pf (Lt.lt_n_Sn _))).
+                             h' (transitivity pf (Nat.lt_succ_diag_r _))).
             change (S ((size_of_parse_item p0')
                        + (size_of_parse_production p1'))
                     < S h') in H_h.
-            apply Lt.lt_S_n in H_h.
-            pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_l _ _) H_h) as H_h0.
-            pose proof (Lt.le_lt_trans _ _ _ (Plus.le_plus_r _ _) H_h) as H_h1.
+            apply Nat.succ_lt_mono in H_h.
+            pose proof (Nat.le_lt_trans _ _ _ (Nat.le_add_l _ _) H_h) as H_h0.
+            pose proof (Nat.le_lt_trans _ _ _ (Nat.le_add_r _ _) H_h) as H_h1.
             clear H_h.
             assert (pf0' : length (take n str') <= length str')
-              by (rewrite take_length; apply Min.min_case_strong; omega).
+              by (rewrite take_length; apply Nat.min_case_strong; omega).
             assert (pf1' : length (drop n str') <= length str')
               by (rewrite drop_length; omega).
-            pose proof (fun valid Hinit => @minimal_parse_of_item__of__parse_of_item' _ h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf0' pf) valid _ p0' H_h0 Hinit) as p_it.
-            pose proof (fun valid Hinit => @minimal_parse_of_production__of__parse_of_production' h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf1' pf) valid _ p1' H_h1 Hinit) as p_prod.
+            pose proof (fun valid Hinit => @minimal_parse_of_item__of__parse_of_item' _ h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf0' pf) valid _ p0' H_h1 Hinit) as p_it.
+            pose proof (fun valid Hinit => @minimal_parse_of_production__of__parse_of_production' h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf1' pf) valid _ p1' H_h0 Hinit) as p_prod.
             clear pf0' pf1'.
             destruct (le_lt_dec (length str') n) as [ Hle | Hle ], (zerop (min n (length str'))) as [Hstr' | Hstr' ].
             { (* empty, empty *)
-              rewrite Min.min_r in Hstr' by assumption.
+              rewrite Nat.min_r in Hstr' by assumption.
               specialize (p_it valid' Hinit'); specialize (p_prod valid' Hinit').
               destruct p_it as [ [ p0'' H0''] |], p_prod as [ [ p1'' H1'' ] |];
                 [ | | | ];
@@ -822,40 +822,40 @@ Section cfg.
           destruct p as [pat pats p' | pat pats p'].
           { clear minimal_parse_of_productions__of__parse_of_productions'.
             edestruct (@minimal_parse_of_production__of__parse_of_production' _ h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
-            try solve [ exact (Lt.lt_S_n _ _ H_h)
+            try solve [ exact (proj2 (Nat.succ_lt_mono _ _) H_h)
                       | exact H_forall
                       | exact Hinit' ];
             [|].
             { left.
               exists (MinParseHead pats p'').
               simpl.
-              exact (Le.le_n_S _ _ p''H). }
+              exact (le_n_S _ _ p''H). }
             { right.
               exists nonterminal'.
               split;
                 try solve [ exact (fst H') ];
                 [].
               exists (proj1_sig (snd H')).
-              exact (Lt.lt_S _ _ (proj2_sig (snd H'))). } }
+              exact (Nat.lt_lt_succ_r _ _ (proj2_sig (snd H'))). } }
           { specialize (fun h' pf
                         => @minimal_parse_of_nonterminal__of__parse_of_nonterminal
-                             h' (transitivity pf (Lt.lt_n_Sn _))).
+                             h' (transitivity pf (Nat.lt_succ_diag_r _))).
             edestruct (minimal_parse_of_productions__of__parse_of_productions' h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
-            try solve [ exact (Lt.lt_S_n _ _ H_h)
+            try solve [ exact (proj2 (Nat.succ_lt_mono _ _) H_h)
                       | exact Hinit'
                       | exact H_forall ];
             [|].
             { left.
               exists (MinParseTail pat p'').
               simpl.
-              exact (Le.le_n_S _ _ p''H). }
+              exact (le_n_S _ _ p''H). }
             { right.
               exists nonterminal'.
               split;
                 try solve [ exact (fst H') ];
                 [].
               exists (proj1_sig (snd H')).
-              exact (Lt.lt_S _ _ (proj2_sig (snd H'))). } }
+              exact (Nat.lt_lt_succ_r _ _ (proj2_sig (snd H'))). } }
         Defined.
       End productions.
 
@@ -877,29 +877,29 @@ Section cfg.
 
             destruct (le_lt_eq_dec _ _ H) as [pf_lt|pf_eq].
             { (** [str] got smaller, so we reset the valid nonterminals list *)
-              destruct (@minimal_parse_of_productions__of__parse_of_productions' (length str) h minimal_parse_of_nonterminal__of__parse_of_nonterminal str (reflexivity _) initial_nonterminals_data (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (reflexivity _)) as [p'|p'].
+              destruct (@minimal_parse_of_productions__of__parse_of_productions' (length str) h minimal_parse_of_nonterminal__of__parse_of_nonterminal str (reflexivity _) initial_nonterminals_data (Lookup G nonterminal) p (proj2 (Nat.succ_lt_mono _ _) pf) (reflexivity _)) as [p'|p'].
               { left.
                 exists (MinParseNonTerminalStrLt valid _ pf_lt (proj2 (initial_nonterminals_correct _) Hvalid') (proj1_sig p'));
                   simpl.
                 simpl in *.
-                exact (Le.le_n_S _ _ (proj2_sig p')). }
+                exact (le_n_S _ _ (proj2_sig p')). }
               { simpl.
                 right; eapply expand_alt_option; [..| exact p' ];
-                solve [ apply Lt.lt_n_Sn
+                solve [ apply Nat.lt_succ_diag_r
                       | assumption
                       | reflexivity ]. } }
             { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
               destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid (of_nonterminal nonterminal))) as [ Hvalid | Hinvalid ].
-              { destruct (@minimal_parse_of_productions__of__parse_of_productions' len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid (of_nonterminal nonterminal)) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _ _ _) Hinit')) as [p'|p'].
+              { destruct (@minimal_parse_of_productions__of__parse_of_productions' len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid (of_nonterminal nonterminal)) (Lookup G nonterminal) p (proj2 (Nat.succ_lt_mono _ _) pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _ _ _) Hinit')) as [p'|p'].
                 { left.
                   exists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ _ pf_eq (proj2 (initial_nonterminals_correct _) Hvalid') Hvalid (proj1_sig p')).
                   simpl in *.
-                  exact (Le.le_n_S _ _ (proj2_sig p')). }
+                  exact (le_n_S _ _ (proj2_sig p')). }
                 { destruct p' as [nonterminal' p'].
                   destruct (string_dec nonterminal nonterminal') as [|n].
                   { subst nonterminal; simpl in *.
                     edestruct (@minimal_parse_of_nonterminal__of__parse_of_nonterminal (S (size_of_parse p)) pf len0 _ valid nonterminal' (proj1_sig (snd p'))) as [p''|p''];
-                    try solve [ apply Lt.lt_n_S, (proj2_sig (snd p'))
+                    try solve [ apply (proj1 (Nat.succ_lt_mono _ _)), (proj2_sig (snd p'))
                               | subst; reflexivity
                               | assumption
                               | split; [ exact (proj2 (fst p'))
@@ -909,7 +909,7 @@ Section cfg.
                       exists (proj1_sig p'').
                       etransitivity;
                         [ exact (proj2_sig p'')
-                        | exact (Lt.lt_le_weak _ _ (Lt.lt_n_S _ _ (proj2_sig (snd p')))) ]. }
+                        | exact (Nat.lt_le_incl _ _ ((proj1 (Nat.succ_lt_mono _ _)) (proj2_sig (snd p')))) ]. }
                     { right.
                       exists (projT1 p'').
                       split;
@@ -918,7 +918,7 @@ Section cfg.
                       exists (proj1_sig (snd (projT2 p''))).
                       etransitivity;
                         [ exact (proj2_sig (snd (projT2 p'')))
-                        | exact (Lt.lt_n_S _ _ (proj2_sig (snd p'))) ]. } }
+                        | exact ((proj1 (Nat.succ_lt_mono _ _)) (proj2_sig (snd p'))) ]. } }
                   { right.
                     exists nonterminal'.
                     destruct p' as [p'H p'p].
@@ -945,7 +945,7 @@ Section cfg.
                                   end.
                       exact p'H. }
                     { exists (proj1_sig p'p).
-                      exact (Lt.lt_S _ _ (proj2_sig p'p)). } } } }
+                      exact (Nat.lt_lt_succ_r _ _ (proj2_sig p'p)). } } } }
               { (** oops, we already saw this nonterminal in the past.  ABORT! *)
                 right.
                 exists nonterminal.
@@ -953,7 +953,7 @@ Section cfg.
                 split; [ split; assumption
                        | ].
                 exists p.
-                apply Lt.lt_n_Sn. } }
+                apply Nat.lt_succ_diag_r. } }
           Defined.
         End step.
 

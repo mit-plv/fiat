@@ -25,7 +25,7 @@ Section helpers.
              | [ H : is_true false |- _ ] => solve [ inversion H ]
              | [ H : false = true |- _ ] => solve [ inversion H ]
              | _ => progress rewrite ?take_length, ?drop_length
-             | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?drop_take, ?drop_0, ?NPeano.Nat.sub_0_r, ?NPeano.Nat.sub_1_r in H
+             | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?drop_take, ?drop_0, ?Nat.sub_0_r, ?Nat.sub_1_r in H
              | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
              | [ H : length ?str = 0, H' : is_true (take _ (drop _ ?str) ~= [ _ ])%string_like |- _ ]
                => apply length_singleton in H'
@@ -42,7 +42,7 @@ Section helpers.
              | _ => solve [ eauto with nocore ]
              | [ H : context[drop _ (drop _ _)] |- _ ] => setoid_rewrite drop_drop in H
              | [ |- context[match get 0 (take _ _) with _ => _ end] ] => rewrite !get_take_lt by omega
-             | [ H : context[(_ + 1)%nat] |- _ ] => setoid_rewrite NPeano.Nat.add_1_r in H
+             | [ H : context[(_ + 1)%nat] |- _ ] => setoid_rewrite Nat.add_1_r in H
              | [ |- context[get 0 ?str] ] => erewrite (proj1 (get_0 str _)) by eassumption
              | [ |- context[get 0 (take 0 ?str)] ] => rewrite (has_first_char_nonempty (take 0 str))
                                                      by (rewrite take_length; reflexivity)

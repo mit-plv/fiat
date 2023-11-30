@@ -160,8 +160,8 @@ Section cfg.
                    intro; apply H
                | _ => eapply H'; eassumption
                | _ => assumption
-               | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
-               | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+               | [ |- _ < _ ] => eapply Nat.lt_trans; eassumption
+               | [ |- _ < _ ] => eapply Nat.lt_le_trans; eassumption
              end.
     Defined.
 
@@ -170,7 +170,7 @@ Section cfg.
     : alt_option h valid -> alt_option h' valid'.
     Proof.
       apply expand_alt_option'; try assumption.
-      apply Lt.lt_le_weak; assumption.
+      apply Nat.lt_le_incl; assumption.
     Defined.
 
     Section wf_parts.
@@ -221,7 +221,7 @@ Section cfg.
           intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_reachable_from_production__of__reachable_from_production' h' (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (le_S _ _ pf))).
-          specialize (minimal_reachable_from_item__of__reachable_from_item h' (Le.le_n_Sn _)).
+          specialize (minimal_reachable_from_item__of__reachable_from_item h' (Nat.le_succ_diag_r _)).
           destruct p as [ ? ? p' | ? ? p' ].
           { destruct (fun k => minimal_reachable_from_item__of__reachable_from_item valid' _ p' k Hinit')
               as [ [p'' H''] | p'' ];
@@ -229,18 +229,18 @@ Section cfg.
             | left | right ].
             { eexists (MinReachableProductionHead _ p'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); exact H''. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | reflexivity ]. } }
-          { destruct (minimal_reachable_from_production__of__reachable_from_production' valid' _ p' (Lt.lt_S_n _ _ H_h) Hinit')
+          { destruct (minimal_reachable_from_production__of__reachable_from_production' valid' _ p' ((fun n m => proj2 (Nat.succ_lt_mono n m)) _ _ H_h) Hinit')
               as [ [p'' H''] | p'' ];
             [ left | right ].
             { eexists (MinReachableProductionTail _ p'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); exact H''. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | reflexivity ]. } }
         Defined.
       End production.
@@ -257,7 +257,7 @@ Section cfg.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_reachable_from_productions__of__reachable_from_productions' h' (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (le_S _ _ pf))).
           pose proof (minimal_reachable_from_production__of__reachable_from_production' (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (le_S _ _ pf))) as minimal_reachable_from_production__of__reachable_from_production''.
-          specialize (minimal_reachable_from_item__of__reachable_from_item h' (Le.le_n_Sn _)).
+          specialize (minimal_reachable_from_item__of__reachable_from_item h' (Nat.le_succ_diag_r _)).
           destruct p as [ ? ? p' | ? ? p' ].
           { destruct (fun k => minimal_reachable_from_production__of__reachable_from_production'' valid' _ p' k Hinit')
               as [ [p'' H''] | p'' ];
@@ -265,18 +265,18 @@ Section cfg.
             | left | right ].
             { eexists (MinReachableHead _ p'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); exact H''. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | reflexivity ]. } }
-          { destruct (minimal_reachable_from_productions__of__reachable_from_productions' valid' _ p' (Lt.lt_S_n _ _ H_h) Hinit')
+          { destruct (minimal_reachable_from_productions__of__reachable_from_productions' valid' _ p' ((fun n m => proj2 (Nat.succ_lt_mono n m)) _ _ H_h) Hinit')
               as [ [p'' H''] | p'' ];
             [ left | right ].
             { eexists (MinReachableTail _ p'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); exact H''. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | reflexivity ]. } }
         Defined.
       End productions.
@@ -294,12 +294,12 @@ Section cfg.
           { left.
             eexists (MinReachableTerminal _ _ _ Pch); simpl; constructor. }
           { case_eq (is_valid_nonterminal valid' (of_nonterminal nonterminal')); intro H'''.
-            { edestruct (fun k => @minimal_reachable_from_productions__of__reachable_from_productions' _ (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' (of_nonterminal nonterminal')) _ p' k)
+            { edestruct (fun k => @minimal_reachable_from_productions__of__reachable_from_productions' _ (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ ((fun n m => proj1 (Nat.succ_le_mono n m)) _ _ pf)) (remove_nonterminal valid' (of_nonterminal nonterminal')) _ p' k)
               as [ [ p'' H'' ] | [ nt'' H'' ] ];
             [ solve [ auto with arith ]
             | left | ].
             { eexists (MinReachableNonTerminal _ _ H''' p'').
-              apply Le.le_n_S; eassumption. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); eassumption. }
             { destruct (string_dec nonterminal' nt''); subst.
               { destruct H'' as [ H'' [ p'' H'''' ] ].
                 simpl in *.
@@ -341,7 +341,7 @@ Section cfg.
                   eassumption. }
                 { destruct_head sigT.
                   eexists.
-                  apply Lt.lt_S; eassumption. } } } }
+                  apply Nat.lt_lt_succ_r; eassumption. } } } }
             { right.
               exists nonterminal'; repeat split; trivial; [].
               exists p'.

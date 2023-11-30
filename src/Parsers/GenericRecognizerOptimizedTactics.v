@@ -1,6 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.Compare_dec.
+Require Import Coq.Arith.PeanoNat.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.GenericBaseTypes.
@@ -14,7 +15,6 @@ Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common Fiat.Common.Wf Fiat.Common.Wf2 Fiat.Common.Equality.
-Import NPeano.
 
 Ltac t_reduce_fix :=
   repeat match goal with
@@ -66,9 +66,9 @@ Ltac t_reduce_fix :=
          | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
          | [ H : _ = in_left |- _ ] => clear H
          | [ H : _ /\ _ |- _ ] => destruct H
-         | [ H : context[negb (EqNat.beq_nat ?x ?y)] |- _ ] => destruct (EqNat.beq_nat x y) eqn:?
-         | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
-         | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
+         | [ H : context[negb (Nat.eqb ?x ?y)] |- _ ] => destruct (Nat.eqb x y) eqn:?
+         | [ H : Nat.eqb _ _ = false |- _ ] => apply (fun n m => proj1 (Nat.eqb_neq n m)) in H
+         | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
          | [ H : snd ?x = _ |- _ ] => is_var x; destruct x
          | _ => progress simpl negb in *
          | [ H : false = true |- _ ] => inversion H
@@ -200,7 +200,7 @@ Ltac fin_step_opt :=
          | [ |- _ = 0 ] => reflexivity
          | [ |- _ = 1 ] => reflexivity
          | [ |- _ = None ] => reflexivity
-         | [ |- _ = EqNat.beq_nat _ _ ] => apply f_equal2
+         | [ |- _ = Nat.eqb _ _ ] => apply f_equal2
          | [ |- _ = Compare_dec.leb _ _ ] => apply f_equal2
          | [ |- _ = S _ ] => apply f_equal
          | [ |- _ = string_beq _ _ ] => apply f_equal2
@@ -226,9 +226,9 @@ Ltac fin_step_opt :=
 Ltac misc_opt' :=
   idtac;
   match goal with
-  | _ => progress rewrite ?max_min_n, ?Minus.minus_diag, ?Nat.sub_0_r, ?uneta_bool, ?beq_nat_min_0(*, ?bool_rect_flatten*)
-  | _ => rewrite Min.min_l by assumption
-  | _ => rewrite Min.min_r by assumption
+  | _ => progress rewrite ?max_min_n, ?Nat.sub_diag, ?Nat.sub_0_r, ?uneta_bool, ?beq_nat_min_0(*, ?bool_rect_flatten*)
+  | _ => rewrite Nat.min_l by assumption
+  | _ => rewrite Nat.min_r by assumption
   | [ |- context[if ?ltb ?x ?y then _ else _] ] => rewrite if_to_min
   | [ |- context[min ?x ?y - ?x] ] => rewrite min_sub_same
   | [ |- context[(min ?x ?y - ?x)%natr] ] => rewrite min_subr_same

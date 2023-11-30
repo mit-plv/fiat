@@ -2,7 +2,6 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Mapping predicates over [StringLike] things *)
 
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
@@ -111,7 +110,7 @@ Section for_first_char.
                | [ H : _ |- _ ] => rewrite drop_length in H
                | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => erewrite singleton_unique; eassumption
-               | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
+               | [ H : context[min] |- _ ] => revert H; apply Nat.min_case_strong
              end. }
     { match goal with
         | [ H : _ |- _ ] => apply H
@@ -138,7 +137,7 @@ Section for_first_char.
   Proof.
     rewrite (for_first_char__take 0).
     assert (H' : length (take 1 str) = 1)
-      by (rewrite take_length; apply Min.min_case_strong; omega).
+      by (rewrite take_length; apply Nat.min_case_strong; omega).
     destruct (singleton_exists _ H') as [ch H''].
     rewrite for_first_char_singleton_length by exact H'.
     split; intros.
@@ -361,7 +360,7 @@ Section for_first_char.
       destruct (get 0 (take 1 str)) as [ch|] eqn:Heq.
       { exists ch; split; auto.
         rewrite is_char_parts.
-        rewrite take_length; split; [ apply Min.min_case_strong; omega | assumption ]. }
+        rewrite take_length; split; [ apply Nat.min_case_strong; omega | assumption ]. }
       { apply no_first_char_empty in Heq.
         rewrite take_length, H in Heq.
         simpl in *; omega. } }

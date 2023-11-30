@@ -19,12 +19,12 @@ Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
 
 Definition length_result_lub (l1 l2 : nat) : lattice_for nat
-  := if beq_nat l1 l2 then constant l1 else ⊤.
+  := if Nat.eqb l1 l2 then constant l1 else ⊤.
 
 Global Instance length_result_lattice : grammar_fixedpoint_lattice_data nat.
 Proof.
   refine {| prestate_lt x y := false;
-            prestate_beq := beq_nat;
+            prestate_beq := Nat.eqb;
             preleast_upper_bound := length_result_lub |};
     try abstract (repeat match goal with
                          | [ |- is_true true ] => reflexivity
@@ -36,8 +36,8 @@ Proof.
                          | _ => progress unfold length_result_lub, is_true in *
                          | _ => progress subst
                          | [ H : constant _ = constant _ |- _ ] => inversion H; clear H
-                         | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
-                         | _ => rewrite <- beq_nat_refl
+                         | [ H : Nat.eqb _ _ = true |- _ ] => apply Nat.eqb_eq in H
+                         | _ => rewrite Nat.eqb_refl
                          | [ H : context[match ?e with _ => _ end] |- _ ] => destruct e eqn:?
                          | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
                          end).
@@ -57,8 +57,8 @@ Proof.
                | _ => progress simpl in *
                | _ => progress unfold is_true in *
                | _ => progress subst
-               | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
-               | [ |- beq_nat _ _ = true ] => apply beq_nat_true_iff
+               | [ H : Nat.eqb _ _ = true |- _ ] => apply Nat.eqb_eq in H
+               | [ |- Nat.eqb _ _ = true ] => apply Nat.eqb_eq
                | _ => reflexivity
                end
       ). }
@@ -82,7 +82,7 @@ Section correctness.
     | _ => progress unfold respectful, pointwise_relation, length_result_accurate, length_result_accurate, ensemble_bottom, ensemble_top, ensemble_least_upper_bound, ensemble_on_terminal, ensemble_combine_production, lattice_for_related, not, length_result_lub, prestate_le in *
     | _ => intro
     | _ => progress subst
-    | [ H : is_true (beq_nat _ _) |- _ ] => apply beq_nat_true_iff in H
+    | [ H : is_true (Nat.eqb _ _) |- _ ] => apply Nat.eqb_eq in H
     | _ => progress destruct_head lattice_for
     | [ |- iff _ _ ] => split
     | [ H : forall x y, _ -> (_ <-> _) |- _ ] => specialize (fun x => H x x (reflexivity _))
@@ -106,8 +106,8 @@ Section correctness.
       => specialize (fun str => H (fun _ => True) str I)
     | [ H : _ |- _ ] => rewrite Bool.orb_false_r in H
     | _ => rewrite Bool.orb_false_r
-    | [ |- is_true (beq_nat _ _) ] => apply beq_nat_true_iff
-    | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
+    | [ |- is_true (Nat.eqb _ _) ] => apply Nat.eqb_eq
+    | [ H : Nat.eqb _ _ = true |- _ ] => apply Nat.eqb_eq in H
     | [ H : forall P, (forall str, P str -> @?P' str) -> forall str', P str' -> @?Q' str' |- _ ]
       => specialize (H P' (fun str pf => pf))
     | [ H : forall str, length str = ?n -> length str = ?n' |- _ ]

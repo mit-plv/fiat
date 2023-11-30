@@ -50,7 +50,7 @@ Section BuildQueryStructureConstraints.
     (* No need to check if the indices are in the list of Relations, because
      they are Bounded Strings. *)
     unfold crossRelationR, GetNRelSchemaHeading, GetNRelSchema; simpl.
-    rewrite H, H0;  exact (Some c).
+    rewrite e, e0;  exact (Some c).
   Defined.
 
   Fixpoint BuildQueryStructureConstraints'

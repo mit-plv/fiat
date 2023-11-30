@@ -1,5 +1,6 @@
 Require Import Coq.Lists.List Coq.Lists.SetoidList.
 Require Import Coq.Bool.Bool.
+Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Coq.Logic.Eqdep_dec.
@@ -379,10 +380,10 @@ Definition internal_prod_dec_lb {A B} eq_A eq_B A_lb B_lb x y
              H
              (surjective_pairing _))).
 
-Global Instance nat_BoolDecR : BoolDecR nat := EqNat.beq_nat.
-Global Instance nat_BoolDec_bl : BoolDec_bl (@eq nat) := @EqNat.beq_nat_true.
+Global Instance nat_BoolDecR : BoolDecR nat := Nat.eqb.
+Global Instance nat_BoolDec_bl : BoolDec_bl (@eq nat) := fun n m => (proj1 (Nat.eqb_eq n m)).
 Global Instance nat_BoolDec_lb : BoolDec_lb (@eq nat) :=
-  fun x y => proj2 (@EqNat.beq_nat_true_iff x y).
+  fun x y => proj2 (@Nat.eqb_eq x y).
 
 Lemma unit_bl {x y} : unit_beq x y = true -> x = y.
 Proof. apply internal_unit_dec_bl. Qed.

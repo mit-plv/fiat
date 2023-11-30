@@ -307,7 +307,7 @@ Proof.
     apply list_rect_nodep_meaning_correct; simpl; eauto with nocore.
     simpler_meaning; meaning_tac. }
   { simpler_meaning; meaning_tac.
-    rewrite Plus.plus_comm; meaning_tac. }
+    rewrite Nat.add_comm; meaning_tac. }
 Qed.
 
 Local Hint Resolve push_var.

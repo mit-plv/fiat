@@ -150,9 +150,9 @@ Obligation 1. t; destruct (Ascii.ascii_dec n m); auto; discriminate. Qed.
 Require Import Coq.Arith.Arith.
 
 Global Program Instance nat_eq_Decidable {n m : nat} : Decidable (n = m) := {
-  Decidable_witness := beq_nat n m
+  Decidable_witness := Nat.eqb n m
 }.
-Obligation 1. t' beq_nat_true_iff. Qed.
+Obligation 1. t' Nat.eqb_eq. Qed.
 
 Global Program Instance le_Decidable {n m} : Decidable (Nat.le n m) := {
   Decidable_witness := Compare_dec.leb n m

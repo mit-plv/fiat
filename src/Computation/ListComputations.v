@@ -107,14 +107,14 @@ Section UpperBound.
   Definition find_UpperBound (f : A -> nat) (ns : list A) : list A :=
     let max := fold_right
                  (fun n acc => max (f n) acc) O ns in
-    filter (fun n => NPeano.Nat.leb max (f n)) ns.
+    filter (fun n => Nat.leb max (f n)) ns.
 
   Lemma find_UpperBound_highest_length
     : forall (f : A -> nat) ns n,
       List.In n (find_UpperBound f ns) -> forall n', List.In n' ns -> (f n) >= (f n').
   Proof.
     unfold ge, find_UpperBound; intros.
-    apply filter_In in H; destruct H. apply NPeano.Nat.leb_le in H1.
+    apply filter_In in H; destruct H. apply Nat.leb_le in H1.
     rewrite <- H1; clear H1 H n.
     apply fold_right_max_is_max; auto.
   Qed.
@@ -127,9 +127,9 @@ Instance DecideableEnsembleUpperBound {A}
          (ns : list A)
   : DecideableEnsemble (UpperBound (fun a a' => f a <= f a') ns).
 Proof.
-refine {| dec n := NPeano.Nat.leb (fold_right (fun n acc => max (f n) acc) O ns) (f n) |}.
-  unfold UpperBound, ge; intros; rewrite NPeano.Nat.leb_le; intuition.
-  - remember (f a); clear Heqn; subst; eapply le_trans;
+refine {| dec n := Nat.leb (fold_right (fun n acc => max (f n) acc) O ns) (f n) |}.
+  unfold UpperBound, ge; intros; rewrite Nat.leb_le; intuition.
+  - remember (f a); clear Heqn; subst; eapply Nat.le_trans;
       [ apply fold_right_max_is_max; apply H0 | assumption ].
   - eapply fold_right_higher_is_higher; eauto.
 Defined.

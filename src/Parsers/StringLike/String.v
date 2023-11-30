@@ -3,7 +3,7 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.Arith.PeanoNat.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -61,19 +61,19 @@ Local Ltac t :=
            | _ => exfalso; congruence
            | _ => rewrite substring_length
            | _ => rewrite <- plus_n_O
-           | _ => rewrite <- Minus.minus_n_O
-           | _ => rewrite Min.min_l by omega
-           | _ => rewrite Min.min_r by omega
+           | _ => rewrite Nat.sub_0_r
+           | _ => rewrite Nat.min_l by omega
+           | _ => rewrite Nat.min_r by omega
            | _ => rewrite substring_correct3 by assumption
            | _ => rewrite substring_substring
            | _ => rewrite substring_correct3'
            | _ => rewrite substring_correct0
            | _ => rewrite Nat.sub_min_distr_l
            | _ => rewrite Nat.add_sub
-           | _ => rewrite Min.min_0_r
-           | _ => rewrite Min.min_0_l
+           | _ => rewrite Nat.min_0_r
+           | _ => rewrite Nat.min_0_l
            | _ => rewrite Nat.add_1_r
-           | _ => rewrite <- Min.min_assoc
+           | _ => rewrite <- Nat.min_assoc
            | [ H : ?x = Some _ |- context[match ?x with _ => _ end] ] => rewrite H
            | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct, ?string_copy_length
            | [ H : _ |- _ ] => progress rewrite ?string_beq_correct, ?ascii_beq_correct in H
@@ -82,11 +82,11 @@ Local Ltac t :=
                by (rewrite <- Nat.sub_min_distr_l; apply f_equal2; omega)
            | [ |- context[min (?m + ?n) ?m] ]
              => replace (min (m + n) m) with (m + min n 0)
-               by (rewrite <- Min.plus_min_distr_l; apply f_equal2; omega)
-           | _ => rewrite Min.min_comm; reflexivity
+               by (rewrite <- Nat.add_min_distr_l; apply f_equal2; omega)
+           | _ => rewrite Nat.min_comm; reflexivity
            | [ |- context[string_eq_dec ?x ?y] ] => destruct (string_eq_dec x y)
            | [ H : _ <> _ |- False ] => apply H; clear H
-           | _ => apply Max.max_case_strong; intro; apply substring_correct4; omega
+           | _ => apply Nat.max_case_strong; intro; apply substring_correct4; omega
            | [ H : String.length ?s = 1 |- _ ] => is_var s; destruct s
            | [ H : S (String.length ?s) = 1 |- _ ] => is_var s; destruct s
            | _ => eexists; rewrite (ascii_lb eq_refl); reflexivity
@@ -124,7 +124,7 @@ Lemma substring_take_drop (str : String) n m
 Proof.
   simpl.
   rewrite substring_substring; simpl.
-  apply Min.min_case_strong; simpl; trivial; [].
+  apply Nat.min_case_strong; simpl; trivial; [].
   intro H.
   apply substring_correct4; omega.
 Qed.

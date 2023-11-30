@@ -1,6 +1,5 @@
 (** * Common facts about [≤] *)
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Arith.Le.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Classes.Morphisms.
 Require Import Coq.Program.Basics.
@@ -46,7 +45,7 @@ Proof.
   induction n; simpl; try reflexivity.
   rewrite IHn; clear IHn.
   edestruct le_canonical; [ exfalso | reflexivity ].
-  { eapply le_Sn_n; eassumption. }
+  { eapply Nat.nle_succ_diag_l; eassumption. }
 Qed.
 
 Lemma le_canonical_nS {n m pf} (H : le_canonical n m = left pf)
@@ -103,13 +102,13 @@ Proof. omega. Qed.
 Global Instance le_lt_Proper : Proper (Basics.flip le ==> le ==> impl) lt.
 Proof.
   repeat intro.
-  eapply lt_le_trans; [ | eassumption ].
-  eapply le_lt_trans; eassumption.
+  eapply Nat.lt_le_trans; [ | eassumption ].
+  eapply Nat.le_lt_trans; eassumption.
 Qed.
 
 Global Instance le_lt_Proper' : Proper (le ==> Basics.flip le ==> Basics.flip impl) lt.
 Proof.
   repeat intro.
-  eapply lt_le_trans; [ | eassumption ].
-  eapply le_lt_trans; eassumption.
+  eapply Nat.lt_le_trans; [ | eassumption ].
+  eapply Nat.le_lt_trans; eassumption.
 Qed.

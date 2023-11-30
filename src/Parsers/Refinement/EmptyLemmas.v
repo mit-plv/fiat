@@ -118,8 +118,8 @@ Section correctness.
     | [ x : nonemptyT |- _ ] => destruct x
     | [ x : bool |- _ ] => destruct x
     | [ |- and _ _ ] => split
-    | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l
-    | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l in H
+    | _ => progress rewrite ?take_length, ?drop_length, ?Nat.min_0_r, ?Nat.min_0_l
+    | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Nat.min_0_r, ?Nat.min_0_l in H
     | _ => omega
     | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
     | [ H : ?P ?v, H' : forall str, ?P str -> length str <> 0 |- _ ]
@@ -127,7 +127,7 @@ Section correctness.
     | [ H : ?P ?v, H' : forall str, ?P str -> length str = 0 |- _ ]
       => apply H' in H
     | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
-    | [ H : min _ _ = 0 |- _ ] => revert H; apply Min.min_case_strong
+    | [ H : min _ _ = 0 |- _ ] => revert H; apply Nat.min_case_strong
     end.
 
   Local Ltac t_Proper := repeat t_Proper_step.

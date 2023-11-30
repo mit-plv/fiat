@@ -1,7 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Theorems about string-like types *)
 
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.ZArith.ZArith.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
@@ -147,10 +146,10 @@ Section String.
   Proof.
     destruct (le_ge_dec (length str) n).
     { rewrite take_long by assumption.
-      rewrite Min.min_r by assumption.
+      rewrite Nat.min_r by assumption.
       reflexivity. }
     { rewrite take_short_length by assumption.
-      rewrite Min.min_l by assumption.
+      rewrite Nat.min_l by assumption.
       reflexivity. }
   Qed.
 
@@ -188,14 +187,14 @@ Section String.
       destruct H0' as [H''|H'']; try clear H0'; [ apply f_equal | exfalso ].
       { apply le_proof_irrelevance. }
       { setoid_subst s1.
-        eapply lt_irrefl; eassumption. }
+        eapply Nat.lt_irrefl; eassumption. }
     Qed.
 
     Definition strle_right (H' : s1 =s s2)
     : H0' = or_intror H'.
     Proof.
       destruct H0' as [H''|H'']; try clear H0'; [ exfalso | apply f_equal ].
-      { setoid_subst s1; eapply lt_irrefl; eassumption. }
+      { setoid_subst s1; eapply Nat.lt_irrefl; eassumption. }
       { apply dec_eq_uip.
         decide equality. }
     Qed.
@@ -208,7 +207,7 @@ Section String.
   : False.
   Proof.
     rewrite H' in H0'.
-    eapply lt_irrefl; eassumption.
+    eapply Nat.lt_irrefl; eassumption.
   Qed.
 
   Lemma singleton_exists_unique : forall s, length s = 1 -> exists !ch, s ~= [ ch ].
@@ -236,7 +235,7 @@ Section String.
   Lemma take_empty {str n} (H' : length str = 0) : take n str =s str.
   Proof.
     apply bool_eq_empty; rewrite ?drop_length, ?take_length; trivial.
-    apply Min.min_case_strong; omega.
+    apply Nat.min_case_strong; omega.
   Qed.
 
   Definition get_first_char_nonempty' str (H' : length str <> 0) : Char.
@@ -380,7 +379,7 @@ Section String.
     { intros.
       rewrite !(@get_drop (length _ - _)).
       rewrite drop_length, drop_drop.
-      rewrite <- Nat.sub_add_distr, (plus_comm m), Nat.sub_add_distr, Nat.sub_add by omega.
+      rewrite <- Nat.sub_add_distr, (Nat.add_comm m), Nat.sub_add_distr, Nat.sub_add by omega.
       match goal with
         | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
       end.
@@ -413,9 +412,9 @@ Section String.
         congruence. }
       { intros ? H''.
         rewrite fold'_cons.
-        rewrite !H'', minus_diag, H'.
+        rewrite !H'', Nat.sub_diag, H'.
         rewrite drop_length, H''; simpl.
-        rewrite <- minus_n_O.
+        rewrite Nat.sub_0_r.
         apply f_equal.
         rewrite <- fold'_drop by omega; reflexivity. } }
     { intro H'.
@@ -475,12 +474,12 @@ Section String.
     { intros.
       rewrite !(@get_drop (length _ - _)).
       rewrite drop_length, drop_drop.
-      rewrite <- Nat.sub_add_distr, (plus_comm m), Nat.sub_add_distr, Nat.sub_add by omega.
+      rewrite <- Nat.sub_add_distr, (Nat.add_comm m), Nat.sub_add_distr, Nat.sub_add by omega.
       match goal with
         | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
       end.
       { rewrite drop_drop;
-        rewrite <- Nat.sub_add_distr, (plus_comm m), Nat.sub_add_distr, Nat.sub_add by omega;
+        rewrite <- Nat.sub_add_distr, (Nat.add_comm m), Nat.sub_add_distr, Nat.sub_add by omega;
         rewrite <- IHlen by omega; reflexivity. }
       { reflexivity. } }
   Qed.
@@ -510,10 +509,10 @@ Section String.
         congruence. }
       { intros n H''.
         rewrite fold_lookahead'_cons.
-        rewrite !H'', minus_diag, H'.
+        rewrite !H'', Nat.sub_diag, H'.
         replace (S n - n) with 1 by omega.
         rewrite drop_length, H''; simpl.
-        rewrite <- minus_n_O.
+        rewrite Nat.sub_0_r.
         apply f_equal.
         rewrite <- fold_lookahead'_drop by omega; reflexivity. } }
     { intro H'.
@@ -565,14 +564,14 @@ Section String.
              | [ H : length ?str = 0, H' : is_true (take _ ?str ~= [ _ ]) |- _ ]
                => apply length_singleton in H'
              | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
-             | [ H : context[min _ _] |- _ ] => revert H; apply Min.min_case_strong; intros
+             | [ H : context[min _ _] |- _ ] => revert H; apply Nat.min_case_strong; intros
            end.
   Qed.
 
   Lemma take_min_length (str : String) n
   : take n str =s take (min (length str) n) str.
   Proof.
-    apply Min.min_case_strong; [ | reflexivity ].
+    apply Nat.min_case_strong; [ | reflexivity ].
     intro H.
     rewrite !take_long by (assumption || reflexivity).
     reflexivity.
@@ -581,7 +580,7 @@ Section String.
   Lemma drop_min_length (str : String) n
   : drop n str =s drop (min (length str) n) str.
   Proof.
-    apply Min.min_case_strong; [ | reflexivity ].
+    apply Nat.min_case_strong; [ | reflexivity ].
     intro H.
     apply bool_eq_empty; rewrite drop_length; omega.
   Qed.
@@ -626,7 +625,7 @@ Section String.
       | specialize (IHlen (drop 1 str));
         rewrite drop_length in IHlen;
         specialize_by omega;
-        try rewrite <- !H, !minus_diag;
+        try rewrite <- !H, !Nat.sub_diag;
         try rewrite <- fold'_drop in IHlen by omega ].
 
   Lemma to_string_length str
@@ -658,7 +657,7 @@ Section String.
              | [ |- context[length (take _ _)] ] => rewrite take_length
              | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
              | [ H : context[_ - 0] |- _ ] => rewrite Nat.sub_0_r in H
-             | [ |- context[fold' _ _ (drop _ _) _] ] => rewrite <- fold'_drop by (rewrite ?take_length; try apply Min.min_case_strong; omega)
+             | [ |- context[fold' _ _ (drop _ _) _] ] => rewrite <- fold'_drop by (rewrite ?take_length; try apply Nat.min_case_strong; omega)
              | [ H : context[fold' _ _ (drop _ _) _] |- _ ] => rewrite <- fold'_drop in H by omega
              | [ H : ?x = ?y |- context[?x - ?y] ] => replace (x - y) with 0 by omega
              | [ H : ?y = ?x |- context[?x - ?y] ] => replace (x - y) with 0 by omega
@@ -672,12 +671,12 @@ Section String.
              | [ |- context[?x + 1] ] => rewrite Nat.add_1_r
              | [ H : S _ = ?x |- context[match ?x with _ => _ end] ] => rewrite <- H
              | [ H : S _ = ?x, H' : context[match ?x with _ => _ end] |- _ ] => rewrite <- H in H'
-             | [ H : context[?x - ?x] |- _ ] => rewrite minus_diag in H
-             | [ |- context[?x - ?x] ] => rewrite minus_diag
+             | [ H : context[?x - ?x] |- _ ] => rewrite Nat.sub_diag in H
+             | [ |- context[?x - ?x] ] => rewrite Nat.sub_diag
              | [ H : context[get _ (take _ _)] |- _ ] => rewrite get_take_lt in H by omega
-             | [ H : context[min (pred ?x) ?x] |- _ ] => rewrite (Min.min_l (pred x) x) in H by omega
+             | [ H : context[min (pred ?x) ?x] |- _ ] => rewrite (Nat.min_l (pred x) x) in H by omega
              | [ |- context[take _ (drop _ _)] ] => rewrite take_drop
-             | [ |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by omega
+             | [ |- context[min ?x ?y] ] => rewrite (Nat.min_l x y) by omega
              | [ |- context[get _ (drop 0 ?s)] ] => rewrite (drop_0 s)
              | [ |- context[get _ (drop _ (drop _ _))] ] => rewrite drop_drop
              | [ H : S ?x = ?y, H' : S ?z = ?y |- _ ]
@@ -773,9 +772,9 @@ Section String.
         | [ |- context[min ?x ?y] ]
           => match goal with
                | [ |- context[min y x] ]
-                 => rewrite (Min.min_comm x y)
+                 => rewrite (Nat.min_comm x y)
              end
-        | _ => repeat apply Min.min_case_strong; omega
+        | _ => repeat apply Nat.min_case_strong; omega
       end.
 
     Local Ltac substring_t := repeat substring_t'.
@@ -824,14 +823,14 @@ Section String.
     Proof.
       pose proof (fun y x => @substring_substring str 0 z x y) as H'; simpl in *.
       setoid_rewrite Nat.sub_0_r in H'.
-      setoid_rewrite Min.min_comm in H'.
+      setoid_rewrite Nat.min_comm in H'.
       rewrite <- !H', H; reflexivity.
     Qed.
 
     Lemma substring_min_length str x y
     : substring x (min y (length str)) str =s substring x y str.
     Proof.
-      apply Min.min_case_strong; try reflexivity.
+      apply Nat.min_case_strong; try reflexivity.
       intro H.
       apply substring_correct4; omega.
     Qed.
@@ -840,16 +839,16 @@ Section String.
     : length (substring offset len s) = len.
     Proof.
       rewrite substring_length; destruct Hshort as [Hshort|Hshort];
-      try rewrite Min.min_r by (clear -Hshort; omega);
+      try rewrite Nat.min_r by (clear -Hshort; omega);
       subst; simpl;
-      rewrite <- ?NPeano.Nat.sub_min_distr_r, ?NPeano.Nat.add_sub, ?minus_diag, ?Min.min_0_r;
+      rewrite <- ?Nat.sub_min_distr_r, ?Nat.add_sub, ?Nat.sub_diag, ?Nat.min_0_r;
       reflexivity.
     Qed.
   End substring.
 
   Lemma char_at_matches_is_char_no_ex offset len str P
         (Hlen : offset + len <= length str)
-  : (EqNat.beq_nat len 1 && char_at_matches offset str P)%bool = true
+  : (Nat.eqb len 1 && char_at_matches offset str P)%bool = true
     <-> match get offset str with
           | Some ch => (P ch /\ substring offset len str ~= [ch])%string_like
           | None => False
@@ -859,7 +858,7 @@ Section String.
     { split; intro H.
       { apply Bool.andb_true_iff in H.
         destruct H as [H0 H1].
-        apply EqNat.beq_nat_true in H0; subst.
+        apply Nat.eqb_eq in H0; subst.
         erewrite char_at_matches_correct in H1 by eassumption.
         split; try assumption.
         rewrite get_drop in Heq.
@@ -871,22 +870,22 @@ Section String.
         apply Bool.andb_true_iff; split; [ | eassumption ].
         apply length_singleton in H1.
         rewrite substring_length, <- Nat.sub_min_distr_r, Nat.add_sub in H1.
-        apply EqNat.beq_nat_true_iff.
+        apply Nat.eqb_eq.
         revert H1.
-        apply Min.min_case_strong; intros; omega. } }
+        apply Nat.min_case_strong; intros; omega. } }
     { split; [ intro H | intros [] ].
       rewrite get_drop in Heq.
       apply no_first_char_empty in Heq.
       rewrite drop_length in Heq.
       apply Bool.andb_true_iff in H.
       destruct H as [H0 H1].
-      apply EqNat.beq_nat_true in H0; subst.
+      apply Nat.eqb_eq in H0; subst.
       omega. }
   Qed.
 
   Lemma char_at_matches_is_char offset len str P
         (Hlen : offset + len <= length str)
-  : (EqNat.beq_nat len 1 && char_at_matches offset str P)%bool = true
+  : (Nat.eqb len 1 && char_at_matches offset str P)%bool = true
     <-> (exists ch, P ch /\ substring offset len str ~= [ch])%string_like.
   Proof.
     rewrite char_at_matches_is_char_no_ex by assumption.
@@ -907,7 +906,7 @@ Section String.
       rewrite drop_length in Heq.
       apply length_singleton in H1.
       assert (len = 0) by omega; subst.
-      rewrite substring_length, <- Nat.sub_min_distr_r, Nat.add_sub, Min.min_0_r in H1.
+      rewrite substring_length, <- Nat.sub_min_distr_r, Nat.add_sub, Nat.min_0_r in H1.
       omega. }
   Qed.
 
@@ -970,7 +969,7 @@ Section Iso.
                end. }
       { intro n'; rewrite !get_S.
         rewrite drop_take, !drop_of_string; simpl.
-        rewrite NPeano.Nat.sub_0_r.
+        rewrite Nat.sub_0_r.
         destruct str; simpl;
         rewrite !IHn; simpl; trivial.
         destruct n; reflexivity. } }
@@ -1098,8 +1097,8 @@ Ltac simpl_string_like_no_setoid_step :=
   | [ H : @length ?Char ?HSLM ?str = @length ?Char ?HSLM ?str' |- _ ]
     => first [ generalize dependent (@length Char HSLM str'); intros; subst; clear str'
              | generalize dependent (@length Char HSLM str); intros; subst; clear str ]
-  | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l in H
-  | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
+  | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Nat.min_0_r, ?Nat.min_0_l, ?Nat.sub_0_l in H
+  | _ => progress rewrite ?take_length, ?drop_length, ?Nat.min_0_r, ?Nat.min_0_l, ?Nat.sub_0_l
   end.
 Ltac simpl_string_like_step :=
   first [ progress simpl_string_like_no_setoid_step

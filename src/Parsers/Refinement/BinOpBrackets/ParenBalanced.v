@@ -173,7 +173,7 @@ Section specific.
         { simpl in *.
           setoid_rewrite drop_drop in IHlen.
           setoid_rewrite take_drop in IHlen.
-          rewrite !NPeano.Nat.add_1_r in IHlen.
+          rewrite !Nat.add_1_r in IHlen.
           specialize (fun H' level1 H => IHlen level1 level2 H H').
           intros H1 H2.
           specialize_by assumption.
@@ -362,7 +362,7 @@ Section specific.
           destruct level1, level2; simpl; intros; first [ assumption | congruence ]. }
         { simpl in *.
           setoid_rewrite drop_drop in IHlen.
-          rewrite !NPeano.Nat.add_1_r in IHlen.
+          rewrite !Nat.add_1_r in IHlen.
           specialize (fun H' level1 H => IHlen level1 level2 H H').
           intros H1 H2.
           specialize_by assumption.
@@ -385,7 +385,7 @@ Section specific.
                      | _ => congruence
                      | _ => omega
                      | [ H : context[take _ (drop _ _)] |- _ ] => setoid_rewrite take_drop in H
-                     | [ H : context[(_ + 1)%nat] |- _ ] => rewrite !NPeano.Nat.add_1_r in H
+                     | [ H : context[(_ + 1)%nat] |- _ ] => rewrite !Nat.add_1_r in H
                      | [ H : context[bool_of_sumbool ?e] |- _ ] => destruct e; simpl in H
                      | [ H : context[match ?e with left _ => _ | right _ => _ end] |- _ ] => destruct e; simpl in H
                      | [ |- context[bool_of_sumbool ?e] ] => destruct e; simpl
@@ -417,7 +417,7 @@ Section specific.
       induction_str_len str.
       { rewrite paren_balanced_hiding'_nil, paren_balanced'_nil by assumption; trivial. }
       { specialize (IHlen (drop 1 str)).
-        rewrite drop_length, <- Minus.pred_of_minus in IHlen.
+        rewrite drop_length, Nat.sub_1_r in IHlen.
         specialize (IHlen (f_equal pred H)).
         rewrite paren_balanced_hiding'_recr, paren_balanced'_recr.
         edestruct get as [ch|]; trivial; [].
@@ -442,7 +442,7 @@ Section specific.
       induction_str_len str.
       { rewrite paren_balanced_hiding'_nil, paren_balanced'_nil by assumption; trivial. }
       { specialize (IHlen (drop 1 str)).
-        rewrite drop_length, <- Minus.pred_of_minus in IHlen.
+        rewrite drop_length, Nat.sub_1_r in IHlen.
         specialize (IHlen (f_equal pred H)).
         rewrite paren_balanced_hiding'_recr, paren_balanced'_recr.
         edestruct get as [ch|]; trivial; [].
@@ -468,7 +468,7 @@ Section specific.
       { simpl in *.
         intros n H'.
         apply paren_balanced_hiding'_S.
-        rewrite NPeano.Nat.add_succ_r; eauto with nocore. }
+        rewrite Nat.add_succ_r; eauto with nocore. }
     Qed.*)
   End paren_balanced_to_hiding.
 End specific.

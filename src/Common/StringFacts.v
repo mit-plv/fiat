@@ -1,8 +1,8 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.ZArith.ZArith.
+Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.StringOperations.
 
@@ -23,10 +23,10 @@ Proof.
   induction s; simpl.
   { intros; destruct m; trivial. }
   { intros; destruct m.
-    { apply Lt.lt_n_0 in H.
+{ apply Nat.nlt_0_r in H.
       destruct H. }
     { rewrite IHs; trivial.
-      apply Le.le_S_n; trivial. } }
+      apply Nat.succ_le_mono; trivial. } }
 Qed.
 
 Lemma substring_correct3' {s : string}
@@ -47,7 +47,7 @@ Proof.
   revert n m H; induction s; simpl; intros n m H.
   { destruct n, m; trivial. }
   { destruct n, m; trivial.
-    { apply le_Sn_0 in H; destruct H. }
+    { apply Nat.nlt_0_r in H; destruct H. }
     { rewrite IHs; eauto with arith. }
     { rewrite IHs; eauto with arith. } }
 Qed.
@@ -60,14 +60,15 @@ Proof.
   induction s; simpl in *.
   { intros; destruct m, m', n; trivial. }
   { intros; destruct m, m', n; trivial; simpl in *;
-    try (apply Lt.lt_n_0 in H; destruct H);
-    try (apply Lt.lt_n_0 in H'; destruct H');
-    try apply Le.le_S_n in H;
-    try apply Le.le_S_n in H';
-    try solve [ try rewrite plus_comm in H;
-                try rewrite plus_comm in H';
+    try (apply Nat.nlt_0_r in H; destruct H);
+    try (apply Nat.nlt_0_r in H'; destruct H');
+    try apply le_S_n in H;
+    try apply le_S_n in H';
+    try solve [ try rewrite Nat.add_comm in H;
+                try rewrite Nat.add_comm in H';
                 simpl in *;
                 rewrite !substring_correct0' by auto with arith; trivial ].
+                
     { apply f_equal.
       apply IHs; trivial. }
     { apply IHs; trivial. } }
@@ -90,7 +91,7 @@ Proof.
   induction s; simpl; intros.
   { destruct (y + z), x, y, z; reflexivity. }
   { destruct x, y, z; try reflexivity; simpl;
-    rewrite ?plus_0_r, ?substring_correct0, ?string_concat_empty_r;
+    rewrite ?Nat.add_0_r, ?substring_correct0, ?string_concat_empty_r;
     try reflexivity.
     { apply f_equal.
       apply IHs. }
@@ -151,14 +152,14 @@ Proof.
   induction s; intros.
   { destruct n, m, n', m'; reflexivity. }
   { destruct n', m';
-    rewrite <- ?plus_n_O, <- ?minus_n_O, ?Min.min_0_r, ?Min.min_0_l;
+    rewrite <- ?Nat.add_0_r, <- ?Nat.sub_0_r, ?Nat.min_0_r, ?Nat.min_0_l;
     destruct n, m;
     trivial; simpl;
-    rewrite ?IHs, ?substring_correct0, <- ?plus_n_O, <- ?minus_n_O;
+    rewrite ?IHs, ?substring_correct0, <- ?plus_n_O, ?Nat.sub_0_r;
     simpl;
     try reflexivity.
-    rewrite (plus_comm _ (S _)); simpl.
-    rewrite (plus_comm n n').
+    rewrite (Nat.add_comm _ (S _)); simpl.
+    rewrite (Nat.add_comm n n').
     reflexivity. }
 Qed.
 
@@ -178,7 +179,7 @@ Lemma substring_min {x x' y y' z str} (H : substring x y str = substring x' y' s
 Proof.
   pose proof (fun y x => @substring_substring str 0 z x y) as H'; simpl in *.
   setoid_rewrite Nat.sub_0_r in H'.
-  setoid_rewrite Min.min_comm in H'.
+  setoid_rewrite Nat.min_comm in H'.
   rewrite <- !H', H; reflexivity.
 Qed.
 
@@ -232,7 +233,7 @@ Qed.
 Lemma substring_min_length str x y
 : substring x (min y (length str)) str = substring x y str.
 Proof.
-  apply Min.min_case_strong; try reflexivity.
+  apply Nat.min_case_strong; try reflexivity.
   intro H.
   apply substring_correct4; omega.
 Qed.

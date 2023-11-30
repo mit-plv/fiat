@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
+Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat Coq.Arith.PeanoNat.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
@@ -33,7 +33,6 @@ Require Export Fiat.Common.NatFacts.
 Require Export Fiat.Common.Sigma.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
-Import NPeano.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -58,7 +57,7 @@ Module Export opt.
     Definition hd {A} := Eval compute in @hd A.
     Definition tl {A} := Eval compute in @tl A.
     Definition nth {A} := Eval compute in @nth A.
-    Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
+    Definition nth' {A} := Eval cbv beta iota zeta delta -[Nat.eqb] in @nth' A.
     Definition fst {A B} := Eval compute in @fst A B.
     Definition snd {A B} := Eval compute in @snd A B.
     Definition list_caset {A} := Eval compute in @list_caset A.
@@ -68,7 +67,7 @@ Module Export opt.
     Definition pred := Eval compute in pred.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
-    Definition beq_nat := Eval compute in EqNat.beq_nat.
+    Definition beq_nat := Eval compute in Nat.eqb.
     Definition leb := Eval compute in Compare_dec.leb.
     Definition interp_RCharExpr {Char idata} := Eval cbv -[andb orb negb Compare_dec.leb] in @interp_RCharExpr Char idata.
   End opt.
@@ -94,7 +93,7 @@ Module Export opt2.
     Definition hd {A} := Eval compute in @hd A.
     Definition tl {A} := Eval compute in @tl A.
     Definition nth {A} := Eval compute in @nth A.
-    Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
+    Definition nth' {A} := Eval cbv beta iota zeta delta -[Nat.eqb] in @nth' A.
     Definition fst {A B} := Eval compute in @fst A B.
     Definition snd {A B} := Eval compute in @snd A B.
     Definition list_caset {A} := Eval compute in @list_caset A.
@@ -104,7 +103,7 @@ Module Export opt2.
     Definition pred := Eval compute in pred.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
-    Definition beq_nat := Eval compute in EqNat.beq_nat.
+    Definition beq_nat := Eval compute in Nat.eqb.
     Definition leb := Eval compute in Compare_dec.leb.
     Definition interp_RCharExpr {Char idata} := Eval cbv -[andb orb negb Compare_dec.leb] in @interp_RCharExpr Char idata.
   End opt2.
@@ -130,7 +129,7 @@ Module Export opt3.
     Definition hd {A} := Eval compute in @hd A.
     Definition tl {A} := Eval compute in @tl A.
     Definition nth {A} := Eval compute in @nth A.
-    Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
+    Definition nth' {A} := Eval cbv beta iota zeta delta -[Nat.eqb] in @nth' A.
     Definition fst {A B} := Eval compute in @fst A B.
     Definition snd {A B} := Eval compute in @snd A B.
     Definition list_caset {A} := Eval compute in @list_caset A.
@@ -140,7 +139,7 @@ Module Export opt3.
     Definition pred := Eval compute in pred.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
-    Definition beq_nat := Eval compute in EqNat.beq_nat.
+    Definition beq_nat := Eval compute in Nat.eqb.
     Definition leb := Eval compute in Compare_dec.leb.
     Definition interp_RCharExpr {Char idata} := Eval cbv -[andb orb negb Compare_dec.leb] in @interp_RCharExpr Char idata.
   End opt3.
@@ -271,9 +270,9 @@ Section recursive_descent_parser.
              | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
              | [ H : _ = in_left |- _ ] => clear H
              | [ H : _ /\ _ |- _ ] => destruct H
-             | [ H : context[negb (EqNat.beq_nat ?x ?y)] |- _ ] => destruct (EqNat.beq_nat x y) eqn:?
-             | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
-             | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
+             | [ H : context[negb (Nat.eqb ?x ?y)] |- _ ] => destruct (Nat.eqb x y) eqn:?
+             | [ H : Nat.eqb _ _ = false |- _ ] => apply (fun n m => proj1 (Nat.eqb_neq n m)) in H
+             | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
              | [ H : snd ?x = _ |- _ ] => is_var x; destruct x
              | _ => progress simpl negb in *
              | [ H : false = true |- _ ] => inversion H
@@ -425,7 +424,7 @@ Section recursive_descent_parser.
              | [ |- _ = 0 ] => reflexivity
              | [ |- _ = 1 ] => reflexivity
              | [ |- _ = None ] => reflexivity
-             | [ |- _ = EqNat.beq_nat _ _ ] => apply f_equal2
+             | [ |- _ = Nat.eqb _ _ ] => apply f_equal2
              | [ |- _ = Compare_dec.leb _ _ ] => apply f_equal2
              | [ |- _ = S _ ] => apply f_equal
              | [ |- _ = string_beq _ _ ] => apply f_equal2
@@ -447,9 +446,9 @@ Section recursive_descent_parser.
   Local Ltac misc_opt' :=
     idtac;
     match goal with
-    | _ => progress rewrite ?max_min_n, ?Minus.minus_diag, ?Nat.sub_0_r, ?uneta_bool, ?beq_nat_min_0(*, ?bool_rect_flatten*)
-    | _ => rewrite Min.min_l by assumption
-    | _ => rewrite Min.min_r by assumption
+    | _ => progress rewrite ?max_min_n, ?Nat.sub_diag, ?Nat.sub_0_r, ?uneta_bool, ?beq_nat_min_0(*, ?bool_rect_flatten*)
+    | _ => rewrite Nat.min_l by assumption
+    | _ => rewrite Nat.min_r by assumption
     | [ |- context[if ?ltb ?x ?y then _ else _] ] => rewrite if_to_min
     | [ |- context[min ?x ?y - ?x] ] => rewrite min_sub_same
     | [ |- context[(min ?x ?y - ?x)%natr] ] => rewrite min_subr_same
@@ -1159,7 +1158,7 @@ Section recursive_descent_parser.
                                               (fun _ => _)
                                               (N0 a' b' c')
                                               (list_rect P0 (fun _ _ _ => true) C0 ls' a' b' c')
-                                              (EqNat.beq_nat (List.length ls') 0))
+                                              (Nat.eqb (List.length ls') 0))
                                            = list_rect P0 N0 C0 ls' a' b' c')
                              _
                              _
@@ -1192,12 +1191,12 @@ Section recursive_descent_parser.
                        => is_var e; destruct e
                      | _ => progress simpl
                      | [ |- ?x = ?x ] => reflexivity
-                     | _ => progress rewrite ?Bool.andb_true_r, ?Min.min_idempotent, ?Minus.minus_diag
-                     | [ H : EqNat.beq_nat _ _ = true |- _ ]
-                       => apply EqNat.beq_nat_true in H
+                     | _ => progress rewrite ?Bool.andb_true_r, ?Nat.min_idempotent, ?Nat.sub_diag
+                     | [ H : Nat.eqb _ _ = true |- _ ]
+                       => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
                      | _ => progress subst
-                     | [ |- context[EqNat.beq_nat ?x ?y] ]
-                       => is_var x; destruct (EqNat.beq_nat x y) eqn:?
+                     | [ |- context[Nat.eqb ?x ?y] ]
+                       => is_var x; destruct (Nat.eqb x y) eqn:?
                      | [ H := _ |- _ ] => subst H
                      | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
                      | _ => rewrite minusr_minus
@@ -1246,13 +1245,13 @@ Section recursive_descent_parser.
               { misc_opt.
                 rewrite <- andbr_andb.
                 apply (f_equal2 andbr); [ | reflexivity ].
-                rewrite Min.min_idempotent.
+                rewrite Nat.min_idempotent.
                 reflexivity. }
               { apply (f_equal2 andb); [ | reflexivity ].
                 step_opt'; [].
                 apply (f_equal2 andb); [ | reflexivity ].
                 match goal with
-                | [ |- _ = EqNat.beq_nat (min ?v ?x) ?v ]
+                | [ |- _ = Nat.eqb (min ?v ?x) ?v ]
                   => refine (_ : Compare_dec.leb v x = _)
                 end.
                 match goal with
@@ -1418,13 +1417,13 @@ Section recursive_descent_parser.
             rewrite bool_rect_andb; simpl.
             rewrite Bool.andb_true_r.
             match goal with
-            | [ |- _ = (orb (negb (EqNat.beq_nat ?x 0)) (andb (EqNat.beq_nat ?x 0) ?y)) ]
+            | [ |- _ = (orb (negb (Nat.eqb ?x 0)) (andb (Nat.eqb ?x 0) ?y)) ]
               => let z := fresh in
                  let y' := fresh in
                  set (z := x);
                    set (y' := y);
                    refine (_ : orb (Compare_dec.leb 1 x) y = _);
-                   change (orb (Compare_dec.leb 1 z) y' = orb (negb (EqNat.beq_nat z 0)) (andb (EqNat.beq_nat z 0) y'));
+                   change (orb (Compare_dec.leb 1 z) y' = orb (negb (Nat.eqb z 0)) (andb (Nat.eqb z 0) y'));
                    destruct z, y'; reflexivity
             end. }
           etransitivity_rev _.
@@ -1627,13 +1626,13 @@ Section recursive_descent_parser.
           { rewrite bool_rect_andb.
             rewrite Bool.andb_true_r.
             match goal with
-            | [ |- _ = (orb (negb (EqNat.beq_nat ?x 0)) (andb (EqNat.beq_nat ?x 0) ?y)) ]
+            | [ |- _ = (orb (negb (Nat.eqb ?x 0)) (andb (Nat.eqb ?x 0) ?y)) ]
               => let z := fresh in
                  let y' := fresh in
                  set (z := x);
                    set (y' := y);
                    refine (_ : orb (Compare_dec.leb 1 x) y = _);
-                   change (orb (Compare_dec.leb 1 z) y' = orb (negb (EqNat.beq_nat z 0)) (andb (EqNat.beq_nat z 0) y'));
+                   change (orb (Compare_dec.leb 1 z) y' = orb (negb (Nat.eqb z 0)) (andb (Nat.eqb z 0) y'));
                    destruct z, y'; reflexivity
             end. }
           apply (f_equal2 orb); fin_step_opt; [].
@@ -1749,7 +1748,7 @@ Section recursive_descent_parser.
     | [ |- context G[snd (of_string ?str')] ]
       => let G' := context G[opt.id (opt.snd (of_string str'))] in
          change G'
-    | [ |- context G[EqNat.beq_nat (opt2.id ?x) 0] ]
+    | [ |- context G[Nat.eqb (opt2.id ?x) 0] ]
       => let G' := context G[opt2.id (opt2.beq_nat x 0)] in
          change G'
     | [ |- context G[(opt2.id ?x, 0)] ]
@@ -1758,7 +1757,7 @@ Section recursive_descent_parser.
     | [ |- context G[(opt2.id ?x, opt2.id ?y)] ]
       => let G' := context G[opt2.id (x, y)] in
          change G'
-    | [ |- context G[EqNat.beq_nat (opt.id ?x) 0] ]
+    | [ |- context G[Nat.eqb (opt.id ?x) 0] ]
       => let G' := context G[opt.id (opt.beq_nat x 0)] in
          change G'
     | [ |- context G[S (opt2.id ?x)] ]

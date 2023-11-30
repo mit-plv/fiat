@@ -74,7 +74,7 @@ Module Export List.
   Fixpoint nth'_helper {A} (n : nat) (ls : list A) (default : A) (offset : nat) :=
     match ls with
       | nil => default
-      | x::xs => if EqNat.beq_nat n offset
+      | x::xs => if Nat.eqb n offset
                  then x
                  else nth'_helper n xs default (S offset)
     end.

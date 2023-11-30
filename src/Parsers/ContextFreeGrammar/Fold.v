@@ -283,7 +283,7 @@ Section fold_correctness.
         { apply sub_nonterminals_listT_remove_2; assumption. }
         { apply IH.
           { apply sub_nonterminals_listT_remove_2; assumption. }
-          { apply Le.le_S_n.
+          { apply (fun n m => proj2 (Nat.succ_le_mono n m)).
             etransitivity; [ | exact Hlen ].
             apply (remove_nonterminal_dec valid0 (of_nonterminal nt) Hvalid). } } }
       { apply Pnt_redundant; subst; assumption. } }
