@@ -93,7 +93,7 @@ Definition sample_variance (ls : list Ocaml.float) : Ocaml.float
 Definition median (ls : list Ocaml.float) : Ocaml.float
   := let ls' := Ocaml.List.sort Pervasives.compare ls in
      let len := List.length ls in
-     ((List.nth (Div2.div2 (len - 1)) ls' 0 + List.nth (Div2.div2 len) ls' 0)
+     ((List.nth (Nat.div2 (len - 1)) ls' 0 + List.nth (Nat.div2 len) ls' 0)
         / 2)%ocaml_float.
 
 Parameter display_info : forall (sum median mean sample_variance : Ocaml.float)

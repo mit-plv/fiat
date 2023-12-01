@@ -87,11 +87,11 @@ Section implementation.
                            (parse_of_item__of__minimal_parse_of_item pit)
                            (parse_of_production__of__minimal_parse_of_production pits)).
           specialize_by assumption.
-          rewrite Min.min_r by assumption.
+          rewrite Nat.min_r by assumption.
           apply H'; eauto. }
         { exists (length (substring offset len str)).
           specialize (H' _ (reflexivity _)).
-          rewrite Min.min_idempotent.
+          rewrite Nat.min_idempotent.
           rewrite !substring_length_no_min in * by assumption.
           repeat match goal with
                    | [ H : context[length (substring _ _ _)] |- _ ] => rewrite !substring_length_no_min in H by assumption

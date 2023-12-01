@@ -3,7 +3,6 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
@@ -290,7 +289,7 @@ Section search_backward.
         try solve [ left; eauto
                   | right; eauto
                   | assumption
-                  | apply for_last_char_nil; rewrite ?take_length; apply Min.min_case_strong; omega ] ].
+                  | apply for_last_char_nil; rewrite ?take_length; apply Nat.min_case_strong; omega ] ].
     revert H0.
     apply forall_chars__char_in__impl__forall_chars.
     intros ch H' H''.
@@ -357,7 +356,7 @@ Section search_backward.
         try solve [ right; eauto
                   | left; split; eauto
                   | assumption
-                  | apply for_last_char_nil; rewrite ?take_length; apply Min.min_case_strong; omega ] ].
+                  | apply for_last_char_nil; rewrite ?take_length; apply Nat.min_case_strong; omega ] ].
     { revert H0.
       apply forall_chars_Proper; [ reflexivity | ].
       intros ch H' H''.

@@ -63,7 +63,7 @@ Section cfg.
       { constructor. }
       { constructor.
         { apply (fun k => @parse_empty_maybe_empty_parse_of_item' parse_empty_maybe_empty_parse_of_productions valid0 _ Hsub _ k _ (fst Hforall)).
-          rewrite take_length, Hlen, Min.min_0_r; reflexivity. }
+          rewrite take_length, Hlen, Nat.min_0_r; reflexivity. }
         { apply (fun k => @parse_empty_maybe_empty_parse_of_production valid0 _ Hsub _ k _ (snd Hforall)).
           rewrite drop_length, Hlen; reflexivity. } } }
   Defined.
@@ -163,7 +163,7 @@ Section cfg.
         { eexists (ParseProductionCons _ 0 (projT1 p0) (projT1 p1)).
           exact (projT2 p0, projT2 p1). }
         { rewrite ?take_length, ?drop_length, Hlen; reflexivity. }
-        { rewrite ?take_length, ?drop_length, Hlen, Min.min_0_r; reflexivity. } } }
+        { rewrite ?take_length, ?drop_length, Hlen, Nat.min_0_r; reflexivity. } } }
   Defined.
 
   Definition parse_empty_from_maybe_empty_parse_of_item

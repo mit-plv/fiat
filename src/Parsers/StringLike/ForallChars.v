@@ -1,7 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Mapping predicates over [StringLike] things *)
 
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.ZArith.ZArith.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
@@ -153,7 +152,7 @@ Section forall_chars.
                | [ H : _ |- _ ] => rewrite drop_length in H
                | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => erewrite singleton_unique; eassumption
-               | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
+               | [ H : context[min] |- _ ] => revert H; apply Nat.min_case_strong
              end. }
     { match goal with
         | [ H : _ |- _ ] => apply (H 0)
@@ -185,7 +184,7 @@ Section forall_chars.
     intros n H'''.
     rewrite H''' in *.
     rewrite sub_plus in H'' by omega.
-    rewrite Minus.minus_diag in *.
+    rewrite Nat.sub_diag in *.
     specialize (H'' eq_refl).
     destruct H'' as [ch H''].
     exfalso; eapply H', H.

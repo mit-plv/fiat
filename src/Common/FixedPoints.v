@@ -62,7 +62,7 @@ Section fixedpoints.
              | _ => omega
              | [ H : forall a, _ -> _ = _ |- _ ] => rewrite H by omega
              | [ H : _ < _ |- _ ] => hnf in H
-             | [ H : S _ <= S _ |- _ ] => apply Le.le_S_n in H
+             | [ H : S _ <= S _ |- _ ] => apply Nat.succ_le_mono in H
              | [ H : sizeof ?x <= ?y, H' : ?y <= sizeof (step ?x) |- _ ]
                => let H'' := fresh in
                   assert (H'' : sizeof (step x) <= sizeof x) by apply step_monotonic;
@@ -95,7 +95,7 @@ Section listpair.
   Lemma step_monotonic lss : sizeof_pair (step lss) <= sizeof_pair lss.
   Proof.
     unfold step, sizeof_pair; simpl;
-      apply Plus.plus_le_compat;
+      apply Nat.add_le_mono;
       apply length_filter.
   Qed.
 

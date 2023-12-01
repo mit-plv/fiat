@@ -171,7 +171,7 @@ pb = pb' '+' 0
     { specialize (IHlen (drop 1 str)).
       rewrite drop_length, H' in IHlen.
       simpl in IHlen.
-      specialize (IHlen (NPeano.Nat.sub_0_r _)).
+      specialize (IHlen (Nat.sub_0_r _)).
       rewrite list_of_next_bin_ops'_recr.
       destruct (singleton_exists (take 1 str)) as [ch H''].
       { rewrite take_length, H'; reflexivity. }
@@ -203,7 +203,7 @@ pb = pb' '+' 0
       { specialize (IHlen (drop 1 str)).
         rewrite drop_length, H' in IHlen.
         simpl in IHlen.
-        rewrite NPeano.Nat.sub_0_r in IHlen.
+        rewrite Nat.sub_0_r in IHlen.
         specialize (IHlen (pred n) eq_refl).
         rewrite list_of_next_bin_ops'_recr.
         destruct (singleton_exists (take 1 str)) as [ch H''].
@@ -228,7 +228,7 @@ pb = pb' '+' 0
   : index_points_to_binop (S offset) index str <-> index_points_to_binop offset index (drop 1 str).
   Proof.
     unfold index_points_to_binop.
-    rewrite ?drop_drop, !NPeano.Nat.add_1_r; simpl.
+    rewrite ?drop_drop, !Nat.add_1_r; simpl.
     reflexivity.
   Qed.
 
@@ -266,7 +266,7 @@ pb = pb' '+' 0
   : index_not_points_to_binop (S offset) index str <-> index_not_points_to_binop offset index (drop 1 str).
   Proof.
     unfold index_not_points_to_binop.
-    rewrite ?drop_drop, !NPeano.Nat.add_1_r; simpl.
+    rewrite ?drop_drop, !Nat.add_1_r; simpl.
     reflexivity.
   Qed.
 
@@ -339,7 +339,7 @@ pb = pb' '+' 0
     unfold cell_of_next_bin_ops_spec'' in *; simpl in *.
     rewrite !index_points_to_binop_S1.
     rewrite !index_not_points_to_binop_S1.
-    rewrite drop_drop, NPeano.Nat.add_1_r in H.
+    rewrite drop_drop, Nat.add_1_r in H.
     assumption.
   Qed.
 
@@ -386,9 +386,9 @@ pb = pb' '+' 0
              | [ H : option_map _ ?x = None |- _ ] => destruct x eqn:?; simpl in H
              | [ H : forall x, _ = _ -> @?T x |- _ ] => specialize (H _ eq_refl)
              | [ H : _ = _ -> ?T |- _ ] => specialize (H eq_refl)
-             | [ H : context[_ - 0] |- _ ] => rewrite NPeano.Nat.sub_0_r in H
-             | [ |- context[_ - 0] ] => rewrite NPeano.Nat.sub_0_r
-             | [ H : context[(_ + 1)%nat] |- _ ] => rewrite NPeano.Nat.add_1_r in H || setoid_rewrite NPeano.Nat.add_1_r in H
+             | [ H : context[_ - 0] |- _ ] => rewrite Nat.sub_0_r in H
+             | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
+             | [ H : context[(_ + 1)%nat] |- _ ] => rewrite Nat.add_1_r in H || setoid_rewrite Nat.add_1_r in H
              | [ H : ?x > 0 |- _ ] => is_var x; destruct x; [ exfalso; clear -H; omega | clear dependent H ]
              | [ H : ~ ?x > 0 |- _ ] => is_var x; destruct x; [ clear dependent H | exfalso; clear -H; omega ]
              | [ H : 0 > 0 |- _ ] => exfalso; clear -H; omega

@@ -84,7 +84,7 @@ Section ListBags.
   Proof.
     unfold BagCountCorrect, ListAsBag_bcount, ListAsBag_bfind; intros;
     pose proof (List_BagCountCorrect_aux container search_term 0) as temp;
-    rewrite plus_0_r in temp; simpl in temp; exact temp.
+    rewrite Nat.add_0_r in temp; simpl in temp; exact temp.
   Qed.
 
   Lemma List_BagDeleteCorrect :

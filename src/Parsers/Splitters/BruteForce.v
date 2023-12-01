@@ -44,15 +44,15 @@ Section brute_force_splitter.
         try solve [ reflexivity
                   | left; reflexivity
                   | rewrite !take_long; trivial; reflexivity
-                  | rewrite take_long at 1 by (rewrite Properties.substring_length; apply Min.min_case_strong; omega);
+                  | rewrite take_long at 1 by (rewrite Properties.substring_length; apply Nat.min_case_strong; omega);
                     symmetry;
-                    rewrite take_long at 1 by (rewrite Properties.substring_length; apply Min.min_case_strong; omega);
+                    rewrite take_long at 1 by (rewrite Properties.substring_length; apply Nat.min_case_strong; omega);
                     reflexivity ]. }
       { eapply expand_minimal_parse_of_production; [ .. | eassumption ];
         try solve [ reflexivity
                   | left; reflexivity
                   | apply bool_eq_empty; rewrite drop_length; omega
-                  | apply bool_eq_empty; rewrite drop_length, Properties.substring_length; apply Min.min_case_strong; omega ]. } }
+                  | apply bool_eq_empty; rewrite drop_length, Properties.substring_length; apply Nat.min_case_strong; omega ]. } }
     { exists n; simpl; repeat split; try assumption.
       right; apply List.in_map, in_up_to; assumption. }
   Qed.

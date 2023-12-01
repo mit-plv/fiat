@@ -103,7 +103,7 @@ Section Term_equiv.
     : option pointed_Prop
     := match e1, e2 return option _ with
        | RVar t0 x, RVar t1 y
-         => match beq_nat (fst x) (fst y), List.nth_error G (List.length G - S (fst x)) with
+         => match Nat.eqb (fst x) (fst y), List.nth_error G (List.length G - S (fst x)) with
             | true, Some v => eq_type_and_var v (existT _ (t0, t1) (snd x, snd y))
             | _, _ => None
             end

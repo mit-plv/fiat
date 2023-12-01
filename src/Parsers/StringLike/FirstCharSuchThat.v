@@ -1,7 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Mapping predicates over [StringLike] things *)
-
-Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.Arith.PeanoNat.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
@@ -55,7 +54,7 @@ Section is_first_char_such_that.
     try solve [ left; assumption
               | right; omega
               | apply for_first_char_nil; omega
-              | apply forall_chars_nil; rewrite ?take_length; try apply Min.min_case_strong; intros; omega
+              | apply forall_chars_nil; rewrite ?take_length; try apply Nat.min_case_strong; intros; omega
               | destruct (length str);
                 try solve [ left; repeat split; eauto; omega
                           | right; repeat split; eauto; omega ] ].
@@ -90,8 +89,8 @@ Section is_first_char_such_that.
              | _ => omega
              | [ H : ?A /\ ?B -> ?C |- _ ] => specialize (fun x y => H (conj x y))
              | [ H : _ -> ?A /\ ?B -> ?C |- _ ] => specialize (fun a x y => H a (conj x y))
-             | [ H : _ |- _ ] => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?drop_take, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Plus.plus_comm 2), <- ?Nat.lt_add_lt_sub_r in H
-             | _ => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?drop_take, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Plus.plus_comm 2), <- ?Nat.lt_add_lt_sub_r
+             | [ H : _ |- _ ] => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?drop_take, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Nat.add_comm 2), <- ?Nat.lt_add_lt_sub_r in H
+             | _ => progress rewrite ?drop_0, ?drop_drop, ?take_take, ?drop_length, ?take_length, ?drop_take, ?Nat.add_1_r, ?Nat.le_sub_le_add_r, <- ?(Nat.add_comm 2), <- ?Nat.lt_add_lt_sub_r
              | _ => progress destruct_head or
              | [ |- _ /\ _ ] => split
              | [ |- _ <-> _ ] => split

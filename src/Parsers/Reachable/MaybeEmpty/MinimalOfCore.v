@@ -154,8 +154,8 @@ Section cfg.
                    intro; apply H
                | _ => eapply H'; eassumption
                | _ => assumption
-               | [ |- _ < _ ] => eapply Lt.lt_trans; eassumption
-               | [ |- _ < _ ] => eapply Lt.lt_le_trans; eassumption
+               | [ |- _ < _ ] => eapply Nat.lt_trans; eassumption
+               | [ |- _ < _ ] => eapply Nat.lt_le_trans; eassumption
              end.
     Defined.
 
@@ -164,7 +164,7 @@ Section cfg.
     : alt_option h valid -> alt_option h' valid'.
     Proof.
       apply expand_alt_option'; try assumption.
-      apply Lt.lt_le_weak; assumption.
+      apply Nat.lt_le_incl; assumption.
     Defined.
 
     Section wf_parts.
@@ -227,7 +227,7 @@ Section cfg.
           intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_maybe_empty_production__of__maybe_empty_production' h' (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (le_S _ _ pf))).
-          specialize (minimal_maybe_empty_item__of__maybe_empty_item h' (Le.le_n_Sn _)).
+          specialize (minimal_maybe_empty_item__of__maybe_empty_item h' (Nat.le_succ_diag_r _)).
           destruct p as [ | ?? p0' p1' ].
           { left; eexists (MinMaybeEmptyProductionNil _); simpl; reflexivity. }
           { assert (size_of_maybe_empty_item p0' < h') by exact (lt_helper_1 H_h).
@@ -242,14 +242,14 @@ Section cfg.
               | right ].
             { eexists (MinMaybeEmptyProductionCons p0'' p1'').
               simpl in *.
-              apply Le.le_n_S, Plus.plus_le_compat; assumption. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)), Nat.add_le_mono; assumption. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | apply lt_helper_1'
                         | apply lt_helper_2'
                         | reflexivity ]. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | apply lt_helper_1'
                         | apply lt_helper_2'
                         | reflexivity ]. } }
@@ -268,7 +268,7 @@ Section cfg.
           destruct h as [|h']; [ exfalso; omega | ].
           specialize (minimal_maybe_empty_productions__of__maybe_empty_productions' h' (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (le_S _ _ pf))).
           pose proof (minimal_maybe_empty_production__of__maybe_empty_production' (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (le_S _ _ pf))) as minimal_maybe_empty_production__of__maybe_empty_production''.
-          specialize (minimal_maybe_empty_item__of__maybe_empty_item h' (Le.le_n_Sn _)).
+          specialize (minimal_maybe_empty_item__of__maybe_empty_item h' (Nat.le_succ_diag_r _)).
           destruct p as [ ? ? p' | ? ? p' ].
           { destruct (fun k => minimal_maybe_empty_production__of__maybe_empty_production'' valid' _ p' k Hinit')
               as [ [p'' H''] | p'' ];
@@ -276,18 +276,18 @@ Section cfg.
             | left | right ].
             { eexists (MinMaybeEmptyHead _ p'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); exact H''. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | reflexivity ]. } }
-          { destruct (minimal_maybe_empty_productions__of__maybe_empty_productions' valid' _ p' (Lt.lt_S_n _ _ H_h) Hinit')
+          { destruct (minimal_maybe_empty_productions__of__maybe_empty_productions' valid' _ p' ((fun n m => proj2 (Nat.succ_lt_mono n m)) _ _ H_h) Hinit')
               as [ [p'' H''] | p'' ];
             [ left | right ].
             { eexists (MinMaybeEmptyTail _ p'').
               simpl in *.
-              apply Le.le_n_S; exact H''. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); exact H''. }
             { eapply expand_alt_option; [ .. | eassumption ];
-              try solve [ apply Lt.lt_n_Sn
+              try solve [ apply Nat.lt_succ_diag_r
                         | reflexivity ]. } }
         Defined.
       End productions.
@@ -303,12 +303,12 @@ Section cfg.
           destruct h as [|h']; [ exfalso; omega | ].
           destruct p as [nonterminal' H' p'].
           { case_eq (is_valid_nonterminal valid' (of_nonterminal nonterminal')); intro H'''.
-            { edestruct (fun k => @minimal_maybe_empty_productions__of__maybe_empty_productions' _ (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' (of_nonterminal nonterminal')) _ p' k)
+            { edestruct (fun k => @minimal_maybe_empty_productions__of__maybe_empty_productions' _ (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ ((fun n m => proj1 (Nat.succ_le_mono n m)) _ _ pf)) (remove_nonterminal valid' (of_nonterminal nonterminal')) _ p' k)
               as [ [ p'' H'' ] | [ nt'' H'' ] ];
             [ solve [ auto with arith ]
             | left | ].
             { eexists (MinMaybeEmptyNonTerminal _ _ H''' p'').
-              apply Le.le_n_S; eassumption. }
+              apply (fun n m => proj1 (Nat.succ_le_mono n m)); eassumption. }
             { destruct (string_dec nonterminal' nt''); subst.
               { destruct H'' as [ H'' [ p'' H'''' ] ].
                 simpl in *.
@@ -350,7 +350,7 @@ Section cfg.
                   eassumption. }
                 { destruct_head sigT.
                   eexists.
-                  apply Lt.lt_S; eassumption. } } } }
+                  apply Nat.lt_lt_succ_r; eassumption. } } } }
             { right.
               exists nonterminal'; repeat split; trivial; [].
               exists p'.

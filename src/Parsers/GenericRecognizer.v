@@ -6,7 +6,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.GenericBaseTypes.
 Require Import Fiat.Common.Wf.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -25,7 +24,7 @@ Section recursive_descent_parser.
                  (it : item Char)
       : parse_item_T
         := match it with
-             | Terminal P => if EqNat.beq_nat len 1 && char_at_matches offset str P
+             | Terminal P => if Nat.eqb len 1 && char_at_matches offset str P
                              then ret_Terminal_true (unsafe_get offset str)
                              else ret_Terminal_false (unsafe_get offset str)
              | NonTerminal nt => if is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
@@ -59,7 +58,7 @@ Section recursive_descent_parser.
                     parse_production_T)
                ((** 0-length production, only accept empty *)
                  fun _ offset len0_minus_len
-                 => if beq_nat (len0 - len0_minus_len) 0
+                 => if Nat.eqb (len0 - len0_minus_len) 0
                     then ret_production_nil_true
                     else ret_production_nil_false)
                (fun it its parse_production' idx offset len0_minus_len
@@ -117,12 +116,12 @@ Section recursive_descent_parser.
                                  (offset : nat) (len : nat),
                             len <= fst p -> nonterminal_carrierT -> parse_nt_T).
 
-          Lemma pred_lt_beq {x} : negb (beq_nat x 0) = true -> pred x < x.
+          Lemma pred_lt_beq {x} : negb (Nat.eqb x 0) = true -> pred x < x.
           Proof.
             destruct x; simpl; try congruence; try omega.
           Qed.
           Lemma pred_lt_beq_helper {valid nt x}
-            : (negb (beq_nat x 0) && is_valid_nonterminal valid nt)%bool = true -> pred x < x.
+            : (negb (Nat.eqb x 0) && is_valid_nonterminal valid nt)%bool = true -> pred x < x.
           Proof.
             intro is_valid.
             generalize (proj1 (proj1 (Bool.andb_true_iff _ _) is_valid)).
@@ -162,7 +161,7 @@ Section recursive_descent_parser.
                                   initial_nonterminals_data
                                   offset'
                                   (len - len0_minus_len')
-                                  (le_minus _ _)))
+                                  (Nat.le_sub_l _ _)))
                     (fun _ => (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
                        sumbool_rect
                          (fun _ => option (forall (offset' : nat) (len0_minus_len' : nat), nonterminal_carrierT -> parse_nt_T))
@@ -174,11 +173,11 @@ Section recursive_descent_parser.
                                        (remove_nonterminal valid nt)
                                        offset'
                                        (len0 - len0_minus_len')
-                                       (le_minus _ _)))
+                                       (Nat.le_sub_l _ _)))
 
                          (fun _ => (** oops, we already saw this nonterminal in the past.  ABORT! *)
                             None)
-                         (Sumbool.sumbool_of_bool (negb (EqNat.beq_nat valid_len 0) && is_valid_nonterminal valid nt)))
+                         (Sumbool.sumbool_of_bool (negb (Nat.eqb valid_len 0) && is_valid_nonterminal valid nt)))
                     (lt_dec len len0)));
               first [ assumption
                     | apply le_minus
@@ -211,7 +210,7 @@ Section recursive_descent_parser.
           Proof.
             refine (@parse_nonterminal_or_abort
                       p valid offset (fst p - len0_minus_len) _).
-            clear; try apply le_minus; abstract omega.
+            clear; try apply Nat.le_sub_l; abstract omega.
           Defined.
 
           Definition parse_nonterminal'

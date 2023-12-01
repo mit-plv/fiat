@@ -186,7 +186,7 @@ Section specific.
                        | [ H : forall x, _ = x -> _ |- _ ] => specialize (H _ eq_refl)
                        | [ H : forall x, x = _ -> _ |- _ ] => specialize (H _ eq_refl)
                        | [ H : context[In _ (uniquize _ _)] |- _ ]
-                         => setoid_rewrite <- (ListFacts.uniquize_In_refl_iff _ EqNat.beq_nat _ (lb eq_refl) bl) in H
+                         => setoid_rewrite <- (ListFacts.uniquize_In_refl_iff _ Nat.eqb _ (lb eq_refl) bl) in H
                        | [ H : context[In _ (map _ _)] |- _ ]
                          => setoid_rewrite in_map_iff in H
                        | _ => progress destruct_head ex
@@ -284,7 +284,7 @@ Section specific.
                  | _ => progress subst
                  | _ => congruence
                  | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
-                 | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
+                 | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
                  | [ H : is_true (_ || _) |- _ ] => apply Bool.orb_true_iff in H
                  | [ H : is_true (_ && _) |- _ ] => apply Bool.andb_true_iff in H
                  | [ H : _ /\ _ |- _ ] => let H1 := fresh in

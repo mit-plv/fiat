@@ -1,5 +1,4 @@
 Require Import Coq.Lists.List.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.ZArith.ZArith Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
@@ -1330,7 +1329,7 @@ Definition path_prod' {A B} {x x' : A} {y y' : B}
 
 Lemma lt_irrefl' {n m} (H : n = m) : ~n < m.
 Proof.
-  subst; apply Lt.lt_irrefl.
+  subst; apply Nat.lt_irrefl.
 Qed.
 
 Lemma or_not_l {A B} (H : A \/ B) (H' : ~A) : B.
@@ -1627,7 +1626,7 @@ Module opt.
   Definition snd {A B} := Eval compute in @snd A B.
   Definition andb := Eval compute in andb.
   Definition orb := Eval compute in orb.
-  Definition beq_nat := Eval compute in EqNat.beq_nat.
+  Definition beq_nat := Eval compute in Nat.eqb.
 
   Module Export Notations.
     Delimit Scope opt_bool_scope with opt_bool.
@@ -1641,7 +1640,7 @@ Module opt2.
   Definition snd {A B} := Eval compute in @snd A B.
   Definition andb := Eval compute in andb.
   Definition orb := Eval compute in orb.
-  Definition beq_nat := Eval compute in EqNat.beq_nat.
+  Definition beq_nat := Eval compute in Nat.eqb.
   Definition leb := Eval compute in Compare_dec.leb.
 
   Module Export Notations.

@@ -2,6 +2,7 @@ Require Export Fiat.Parsers.ContextFreeGrammar.Core.
 Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.String.
+Require Export Coq.Arith.PeanoNat.
 Require Export Fiat.Computation.Core.
 Require Export Coq.Program.Program.
 Require Export Fiat.Computation.ApplyMonad.
@@ -123,14 +124,14 @@ Ltac solve_prod_beq :=
   repeat match goal with
            | [ |- context[true = false] ] => congruence
            | [ |- context[false = true] ] => congruence
-           | [ |- context[EqNat.beq_nat ?x ?y] ]
+           | [ |- context[Nat.eqb ?x ?y] ]
              => is_var x;
                let H := fresh in
-               destruct (EqNat.beq_nat x y) eqn:H;
-                 [ apply EqNat.beq_nat_true in H; subst x
+               destruct (Nat.eqb x y) eqn:H;
+                 [ apply (fun n m => proj1 (Nat.eqb_eq n m)) in H; subst x
                  | ];
                  simpl
-           | [ |- context[EqNat.beq_nat ?x ?y] ]
+           | [ |- context[Nat.eqb ?x ?y] ]
              => first [ is_var x; fail 1
                       | generalize x; intro ]
          end.

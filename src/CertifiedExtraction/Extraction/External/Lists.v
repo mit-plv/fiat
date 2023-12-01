@@ -5,7 +5,7 @@ Require Export Bedrock.Platform.Facade.examples.QsADTs.
 Lemma CompileEmpty_helper {A}:
   forall (lst : list A) (w : W),
     Programming.propToWord (lst = @nil A) w ->
-    ret (bool2w (EqNat.beq_nat (Datatypes.length lst) 0)) ↝ w.
+    ret (bool2w (Nat.eqb (Datatypes.length lst) 0)) ↝ w.
 Proof.
   unfold Programming.propToWord, IF_then_else in *.
   destruct lst; simpl in *; destruct 1; repeat cleanup; try discriminate; fiat_t.
@@ -15,7 +15,7 @@ Hint Resolve CompileEmpty_helper : call_helpers_db.
 
 Lemma ListEmpty_helper :
   forall {A} (seq: list A),
-    (EqNat.beq_nat (Datatypes.length seq) 0) = match seq with
+    (Nat.eqb (Datatypes.length seq) 0) = match seq with
                                                | nil => true
                                                | _ :: _ => false
                                                end.

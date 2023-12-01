@@ -1,6 +1,8 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Fiat.ADT Fiat.ADTNotation.
 Require Export Fiat.Computation.FixComp.
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.Arith.PeanoNat.
 
 Import LeastFixedPointFun.
 
@@ -113,9 +115,8 @@ Lemma length_wf' : forall A len l,
 Proof.
   induction len; simpl; intros;
     constructor; intros.
-  contradiction (NPeano.Nat.nlt_0_r _ H).
+  contradiction (Nat.nlt_0_r _ H).
   apply IHlen.
-  Require Import Coq.ZArith.ZArith.
   omega.
 Qed.
 

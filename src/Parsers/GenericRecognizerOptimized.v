@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Definition of an optimized CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
+Require Import Coq.Arith.PeanoNat Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
@@ -36,7 +36,6 @@ Require Export Fiat.Common.Sigma.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.GenericRecognizerOptimizedTactics.
-Import NPeano.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -333,7 +332,7 @@ Section recursive_descent_parser.
                                               (fun _ => _)
                                               (N0 a' b' c')
                                               (list_rect P0 (fun _ _ _ => ret_production_nil_true) C0 ls' a' b' c')
-                                              (EqNat.beq_nat (List.length ls') 0))
+                                              (Nat.eqb (List.length ls') 0))
                                            = list_rect P0 N0 C0 ls' a' b' c')
                              _
                              _
@@ -360,7 +359,7 @@ Section recursive_descent_parser.
             end. }
           { simpl.
             match goal with
-            | [ |- context[EqNat.beq_nat (List.length ?ls) 0] ]
+            | [ |- context[Nat.eqb (List.length ?ls) 0] ]
               => is_var ls; destruct ls; simpl; try reflexivity
             end; [].
             repeat match goal with
@@ -416,13 +415,13 @@ Section recursive_descent_parser.
             repeat optsplit_t'.
             { apply (f_equal2 ret_production_cons); [ | reflexivity ].
               repeat misc_opt'.
-              rewrite Min.min_idempotent.
+              rewrite Nat.min_idempotent.
               reflexivity. }
             { apply (f_equal2 ret_production_cons).
               { apply (f_equal3 (fun (b : bool) x y => if b then x else y)); [ | reflexivity | reflexivity ].
                 apply (f_equal2 andb); [ | reflexivity ].
                 match goal with
-                | [ |- _ = EqNat.beq_nat (min ?v ?x) ?v ]
+                | [ |- _ = Nat.eqb (min ?v ?x) ?v ]
                   => refine (_ : Compare_dec.leb v x = _)
                 end.
                 match goal with
@@ -592,8 +591,8 @@ Section recursive_descent_parser.
               => transitivity (if (orb (negb b') b) then t else f); [ | destruct b, b'; reflexivity ]
             end; fin_step_opt.
             match goal with
-            | [ |- context[negb (EqNat.beq_nat ?x 0)] ]
-              => replace (negb (EqNat.beq_nat x 0)) with (Compare_dec.leb 1 x)
+            | [ |- context[negb (Nat.eqb ?x 0)] ]
+              => replace (negb (Nat.eqb x 0)) with (Compare_dec.leb 1 x)
                 by (destruct x as [|[]]; reflexivity)
             end.
             reflexivity. }
@@ -615,8 +614,8 @@ Section recursive_descent_parser.
               => transitivity (if (orb (negb b') b) then t else f); [ | destruct b, b'; reflexivity ]
             end; fin_step_opt.
             match goal with
-            | [ |- context[negb (EqNat.beq_nat ?x 0)] ]
-              => replace (negb (EqNat.beq_nat x 0)) with (Compare_dec.leb 1 x)
+            | [ |- context[negb (Nat.eqb ?x 0)] ]
+              => replace (negb (Nat.eqb x 0)) with (Compare_dec.leb 1 x)
                 by (destruct x as [|[]]; reflexivity)
             end.
             reflexivity. }

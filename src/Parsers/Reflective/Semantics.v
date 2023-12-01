@@ -90,7 +90,7 @@ Definition interp_RLiteralTerm {T} (t : RLiteralTerm T) : interp_TypeCode T
           | Rpred => pred
           | Rplus => plus
           | Rleb => Compare_dec.leb
-          | Rbeq_nat => EqNat.beq_nat
+          | Rbeq_nat => Nat.eqb
           | Rstring_beq => Equality.string_beq
           | Rlength _ => @List.length _
           | Rbool_rect_nodep _ => @bool_rect_nodep _

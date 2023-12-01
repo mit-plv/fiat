@@ -135,7 +135,7 @@ Section normalization_by_evaluation.
        | Rbeq_nat
          => specific_meaning_apply2
               cnat cnat cbool (syntactify_bool _)
-              EqNat.beq_nat
+              Nat.eqb
        | Rmap A B
          => fun af
             => option_map (@syntactify_list _ _)

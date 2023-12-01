@@ -1,7 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BaseTypes.
@@ -49,6 +48,8 @@ Section recursive_descent_parser.
   Local Arguments minus !_ !_.
   Local Arguments min !_ !_.
 
+  Local Notation minus_plus := (fun n m : nat => eq_ind_r (fun n0 : nat => n0 - n = m) (Nat.add_sub m n) (Nat.add_comm n m)).
+
   Local Program Instance optsplitdata_correct : @boolean_parser_completeness_dataT' _ _ _ G optdata
     := { split_string_for_production_complete := _ }.
   Next Obligation.
@@ -77,7 +78,7 @@ Section recursive_descent_parser.
            | [ |- context[match ?e with nil => _ | _ => _ end] ]
              => destruct e eqn:?
            | _ => progress simpl
-           | _ => rewrite Min.min_0_r
+           | _ => rewrite Nat.min_0_r
            | _ => intro
            | [ |- context[0 = min _ _] ] => exists 0
            | [ |- ?x = ?x ] => reflexivity
@@ -89,7 +90,7 @@ Section recursive_descent_parser.
            | [ H : is_true (take _ (substring _ 0 _) ~= [_]) |- _ ]
              => apply length_singleton in H
            | [ H : length (take _ (substring _ 0 _)) = S _ |- _ ]
-             => rewrite take_length, substring_length, <- Nat.sub_min_distr_r, Nat.add_sub, !Min.min_0_r in H
+             => rewrite take_length, substring_length, <- Nat.sub_min_distr_r, Nat.add_sub, !Nat.min_0_r in H
            | [ H : MinimalParse.minimal_parse_of_production _ _ _ nil |- _ ] => inversion H; clear H
            | [ |- MinimalParse.minimal_parse_of_production _ _ _ nil ] => constructor
            | [ H : MinimalParse.minimal_parse_of_item _ _ _ (Terminal _) |- _ ]
@@ -106,22 +107,22 @@ Section recursive_descent_parser.
            | [ |- (_ * _)%type ] => split
            | [ |- { _ : nat & _ } ] => eexists; repeat split; [ left; reflexivity | .. ]
            | [ H : ?x + ?y <= _ |- context[(?y + ?x)%nat] ]
-             => not constr_eq x y; rewrite (Plus.plus_comm y x)
+             => not constr_eq x y; rewrite (Nat.add_comm y x)
            | [ H : ?x + ?y <= _, H' : context[(?y + ?x)%nat] |- _ ]
-             => not constr_eq x y; rewrite (Plus.plus_comm y x) in H'
-           | [ H : context[(?x + 1)%nat] |- _ ] => rewrite (Plus.plus_comm x 1) in H; simpl plus in H
-           | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ] => rewrite (Min.min_r x y) in H by assumption
-           | [ H' : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
+             => not constr_eq x y; rewrite (Nat.add_comm y x) in H'
+           | [ H : context[(?x + 1)%nat] |- _ ] => rewrite (Nat.add_comm x 1) in H; simpl plus in H
+           | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ] => rewrite (Nat.min_r x y) in H by assumption
+           | [ H' : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Nat.min_r x y) by assumption
            | [ H : _ - _ = 0 |- _ ] => apply Nat.sub_0_le in H
            | [ |- _ - _ = 0 ] => apply Nat.sub_0_le
-           | [ H : _ |- _ ] => progress rewrite ?Nat.add_sub, ?Minus.minus_plus in H
-           | _ => progress rewrite ?Nat.add_sub, ?Minus.minus_plus, ?Minus.minus_diag, ?Min.min_idempotent
+           | [ H : _ |- _ ] => progress rewrite ?Nat.add_sub, ?minus_plus in H
+           | _ => progress rewrite ?Nat.add_sub, ?minus_plus, ?Nat.sub_diag, ?Nat.min_idempotent
            | [ |- is_true (is_char (take ?x (take ?x _)) _) ]
              => rewrite take_take
            | [ H : is_true (is_char (take ?n ?str) ?ch) |- is_true (is_char ?str ?ch) ]
              => rewrite (take_long str)
                in H
-               by (rewrite substring_length, Plus.plus_comm, Min.min_r by assumption; omega)
+               by (rewrite substring_length, Nat.add_comm, Nat.min_r by assumption; omega)
            | [ H : is_true (is_char (take ?n ?str) ?ch) |- is_true (is_char (take 1 ?str) ?ch) ]
              => apply take_n_1_singleton in H
            | [ |- MinimalParse.minimal_parse_of_production _ _ _ (_::_) ]
@@ -137,21 +138,21 @@ Section recursive_descent_parser.
              => apply length_singleton in H; rewrite take_length, substring_length in H
            | [ H : min ?x ?y = 1
                |- ?R (drop ?x (substring _ ?y _)) (drop 1 (substring _ ?y _)) ]
-             => revert H; apply Min.min_case_strong; intros; subst;
+             => revert H; apply Nat.min_case_strong; intros; subst;
                 try reflexivity;
                 apply bool_eq_empty
            | [ |- context[S ?x - ?x] ]
-             => rewrite <- Nat.add_1_r, Minus.minus_plus
+             => rewrite <- Nat.add_1_r, minus_plus
            | [ |- context[take ?x (take 0 _)] ]
              => rewrite take_take
            | [ |- context[min _ ?x - ?x] ]
              => rewrite <- Nat.sub_min_distr_r
            | [ H : ?y <= ?x |- context[take ?x (substring ?z ?y ?str)] ]
              => rewrite (take_long (substring z y str))
-               by (rewrite substring_length, Plus.plus_comm, Min.min_r by assumption; omega)
+               by (rewrite substring_length, Nat.add_comm, Nat.min_r by assumption; omega)
            | [ |- context[take ?x (substring ?z ?x ?str)] ]
              => rewrite (take_long (substring z x str))
-               by (rewrite substring_length, Plus.plus_comm, Min.min_r by assumption; omega)
+               by (rewrite substring_length, Nat.add_comm, Nat.min_r by assumption; omega)
            end.
   Qed.
 End recursive_descent_parser.

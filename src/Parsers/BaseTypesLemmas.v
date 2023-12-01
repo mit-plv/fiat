@@ -112,13 +112,13 @@ Section recursive_descent_parser.
   Lemma nonempty_nonterminals {ls nt} (H : is_valid_nonterminal ls nt)
   : 0 < nonterminals_length ls.
   Proof.
-    eapply Lt.le_lt_trans;
-    [ apply Le.le_0_n
+    eapply Nat.le_lt_trans;
+    [ apply Nat.le_0_l
     | exact (remove_nonterminal_dec ls nt H) ].
   Qed.
 
   Lemma nonempty_nonterminals' {ls nt} (H : is_valid_nonterminal ls nt)
-  : negb (EqNat.beq_nat (nonterminals_length ls) 0).
+  : negb (Nat.eqb (nonterminals_length ls) 0).
   Proof.
     pose proof (nonempty_nonterminals H).
     destruct (nonterminals_length ls); simpl; try reflexivity; try omega.

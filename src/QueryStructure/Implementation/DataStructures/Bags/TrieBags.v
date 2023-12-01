@@ -1078,7 +1078,7 @@ Module TrieBag (X:OrderedType).
         replaceXMapfold.
         unfold XMap.fold at 2.
 
-        rewrite Permutation_KeyBasedPartition with (key0 := key0)
+        rewrite Permutation_KeyBasedPartition with (key := key0)
                                                      (bst_m := SubTrieMapBST H1).
 
         pose proof (@partition_after_KeyBasedPartition_and_add
@@ -1980,9 +1980,9 @@ Module TrieBag (X:OrderedType).
             rewrite filter_Prefix; eauto.
           + rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
             match goal with
-            | [ H0 : TrieOK _ _ |- _ ] =>
-                rewrite Permutation_KeyBasedPartition with (key0 := key0)
-                                                           (bst_m := SubTrieMapBST H0)
+            | [ H : TrieOK _ _ |- _ ] =>
+                rewrite Permutation_KeyBasedPartition with (key := key0)
+                                                           (bst_m := SubTrieMapBST H)
             end.
             simpl.
             apply find_2 in e0.
@@ -2012,9 +2012,9 @@ Module TrieBag (X:OrderedType).
           + rewrite filter_Prefix; eauto.
           + rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
             match goal with
-            | [ H : TrieOK _ _ |- _ ] =>
-                rewrite Permutation_KeyBasedPartition with (key0 := key0)
-                                                           (bst_m := SubTrieMapBST' H)
+            | [ H0 : TrieOK _ _ |- _ ] =>
+                rewrite Permutation_KeyBasedPartition with (key := key0)
+                                                           (bst_m := SubTrieMapBST' H0)
             end.
             simpl in *.
             match goal with
@@ -2209,7 +2209,7 @@ Module TrieBag (X:OrderedType).
               eapply filter_negb_Prefix; eauto; reflexivity.
             + simpl.
               rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-              rewrite Permutation_KeyBasedPartition with (key0 := key0)
+              rewrite Permutation_KeyBasedPartition with (key := key0)
                                                            (bst_m := SubTrieMapBST containerCorrect).
               simpl in *.
               apply find_2 in e1.
@@ -2264,7 +2264,7 @@ Module TrieBag (X:OrderedType).
               eapply filter_negb_Prefix; eauto; reflexivity.
             + simpl.
               rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-              rewrite Permutation_KeyBasedPartition with (key0 := key0)
+              rewrite Permutation_KeyBasedPartition with (key := key0)
                                                            (bst_m := SubTrieMapBST containerCorrect).
               simpl.
               rewrite <- (@not_find_in_iff _ (XMap.Bst (SubTrieMapBST' containerCorrect)) key0) in e1.
@@ -2338,7 +2338,7 @@ Module TrieBag (X:OrderedType).
             + rewrite (H (l ++ [key0])); simpl; eauto.
               rewrite partition_filter_eq.
               rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-              rewrite Permutation_KeyBasedPartition with (key0 := key0)
+              rewrite Permutation_KeyBasedPartition with (key := key0)
                                                            (bst_m := SubTrieMapBST containerCorrect).
               simpl.
               apply find_2 in e1.
@@ -2373,7 +2373,7 @@ Module TrieBag (X:OrderedType).
               eapply filter_Prefix; eauto.
             + simpl.
               rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-              rewrite Permutation_KeyBasedPartition with (key0 := key0)
+              rewrite Permutation_KeyBasedPartition with (key := key0)
                                                            (bst_m := SubTrieMapBST containerCorrect).
               rewrite <- (@not_find_in_iff _ (XMap.Bst (SubTrieMapBST' containerCorrect)) key0) in e1.
               pose proof (KeyBasedPartition_fst_singleton_None key0 (XMap.Bst (SubTrieMapBST containerCorrect)) e1) as singleton.
@@ -2559,7 +2559,7 @@ Module TrieBag (X:OrderedType).
               f_equiv.
               * symmetry; f_equiv; eapply filter_Prefix; eauto.
               * rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-                rewrite Permutation_KeyBasedPartition with (key0 := key0)
+                rewrite Permutation_KeyBasedPartition with (key := key0)
                                                              (bst_m := SubTrieMapBST containerCorrect).
                 rewrite (Permutation_benumerate_add key0 bag'' (XMap.Bst (SubTrieMapBST containerCorrect))).
                 rewrite map_app, flatten_app.
@@ -2636,7 +2636,7 @@ Module TrieBag (X:OrderedType).
               * rewrite filter_Prefix; eauto; reflexivity.
               * simpl.
                 rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-                rewrite Permutation_KeyBasedPartition with (key0 := key0)
+                rewrite Permutation_KeyBasedPartition with (key := key0)
                                                              (bst_m := SubTrieMapBST containerCorrect).
                 simpl.
                 rewrite <- (@not_find_in_iff _ (XMap.Bst (SubTrieMapBST' containerCorrect)) key0) in e1.
@@ -2700,7 +2700,7 @@ Module TrieBag (X:OrderedType).
             + rewrite (H (l ++ [key0])); simpl; eauto.
               rewrite partition_filter_eq.
               rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-              rewrite Permutation_KeyBasedPartition with (key0 := key0)
+              rewrite Permutation_KeyBasedPartition with (key := key0)
                                                            (bst_m := SubTrieMapBST containerCorrect).
               simpl.
               apply find_2 in e1.
@@ -2735,7 +2735,7 @@ Module TrieBag (X:OrderedType).
             + rewrite filter_Prefix; eauto.
             + simpl.
               rewrite <- (fun H => @fold_1 _ m H (list BagType) [ ] (fun k trie a => Trie_enumerate trie ++ a)) by eauto.
-              rewrite Permutation_KeyBasedPartition with (key0 := key0)
+              rewrite Permutation_KeyBasedPartition with (key := key0)
                                                            (bst_m := SubTrieMapBST containerCorrect).
               rewrite <- (@not_find_in_iff _ (XMap.Bst (SubTrieMapBST' containerCorrect)) key0) in e1.
               pose proof (KeyBasedPartition_fst_singleton_None key0 (XMap.Bst (SubTrieMapBST containerCorrect)) e1) as singleton.

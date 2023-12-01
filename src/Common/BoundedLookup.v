@@ -141,7 +141,7 @@ Section BoundedIndex.
 
     Fixpoint fin_beq {m n} (p : Fin.t m) (q : Fin.t n) :=
       match p, q with
-      | @Fin.F1 m', @Fin.F1 n' => EqNat.beq_nat m' n'
+      | @Fin.F1 m', @Fin.F1 n' => Nat.eqb m' n'
       | Fin.FS _ _, Fin.F1 _ => false
       | Fin.F1 _, Fin.FS _ _ => false
       | Fin.FS _ p', Fin.FS _ q' => fin_beq p' q'
@@ -153,7 +153,7 @@ Section BoundedIndex.
     Proof.
       intros; pattern n, p, q; eapply Fin.rect2; simpl;
         intuition; try (congruence || discriminate).
-      - symmetry; eapply beq_nat_refl.
+      - eapply Nat.eqb_refl.
       - eauto using Fin.FS_inj.
     Qed.
 

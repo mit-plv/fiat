@@ -185,7 +185,7 @@ Ltac reify_Term var term
                        | andbr => constr:(@Randbr)
                        | minusr => constr:(@Rminusr)
                        | Compare_dec.leb => constr:(@Rleb)
-                       | EqNat.beq_nat => constr:(@Rbeq_nat)
+                       | Nat.eqb => constr:(@Rbeq_nat)
                        | Equality.string_beq => constr:(@Rstring_beq)
                        | @Reflective.interp_RCharExpr _ _ => constr:(@Rinterp_RCharExpr_ascii)
                        end in

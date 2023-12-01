@@ -1,5 +1,6 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List.
+Require Import Coq.Arith.PeanoNat.
 Require Export Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
@@ -59,7 +60,7 @@ Section cfg.
       | [ H : List.Forall _ (_::_) |- _ ] => inversion H; clear H
       | _ => progress subst
       | _ => congruence
-      | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
+      | [ H : Nat.eqb _ _ = true |- _ ] => apply (proj1 (Nat.eqb_eq _ _)) in H
       | [ H : Equality.string_beq _ _ = true |- _ ] => apply Equality.string_bl in H
       | [ H : or _ _ |- _ ] => destruct H
       | [ H : forall x, @?A x \/ @?B x -> _ |- _ ]

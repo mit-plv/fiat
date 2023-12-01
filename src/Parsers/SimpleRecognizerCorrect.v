@@ -1,5 +1,5 @@
 (** * Proof that SimpleRecognizer outputs correct parse trees *)
-Require Import Coq.Classes.Morphisms.
+Require Import Coq.Classes.Morphisms Coq.Arith.PeanoNat.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
@@ -56,7 +56,7 @@ Section convenience.
     | _ => progress simpl in *
     | _ => progress simpl_simple_parse_of_correct
     | [ |- exists p, Some ?x = Some p /\ _ ] => exists x
-    | [ H : ?x = 0 \/ _, H' : andb (EqNat.beq_nat ?x (S _)) _ = true |- _ ]
+    | [ H : ?x = 0 \/ _, H' : andb (Nat.eqb ?x (S _)) _ = true |- _ ]
       => destruct H
     | [ H : andb _ (char_at_matches _ _ _) = true |- _ ]
       => apply char_at_matches_is_char_no_ex in H; [ | assumption ]
@@ -104,7 +104,7 @@ Section convenience.
     | [ |- context[take _ (take _ _)] ]
       => setoid_rewrite take_take
     | [ H : context[substring (?offset + ?loc) _ _] |- context[substring (_ + ?offset) _ _] ]
-      => rewrite (Plus.plus_comm offset loc) in H
+      => rewrite (Nat.add_comm offset loc) in H
     | [ H : context[to_production (production_tl _)] |- _ ]
       => rewrite production_tl_correct in H
     | [ H : ?x = _, H' : context[List.tl ?x] |- _ ]

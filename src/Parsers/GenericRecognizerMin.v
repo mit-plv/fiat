@@ -23,7 +23,6 @@ Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.UIP.
 Require Import Fiat.Common.
 Import ListNotations.
-Import NPeano.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -182,14 +181,14 @@ Section recursive_descent_parser.
                try unfold x'; try unfold y'
         end.
 
-      Local Hint Resolve beq_nat_true : generic_parser_correctness.
+      Local Hint Resolve (fun n m => proj1 (Nat.eqb_eq n m)) : generic_parser_correctness.
 
       Local Ltac eq_t' :=
         first [ progress subst_le_proof
               | progress subst_nat_eq_proof
               | progress subst_bool_eq_proof
               | solve [ eauto with generic_parser_correctness nocore ]
-              | rewrite sub_twice, Min.min_r by assumption
+              | rewrite sub_twice, Nat.min_r by assumption
               | rewrite !@min_max_sub
               | rewrite Nat.sub_max_distr_l
               | rewrite <- Nat.sub_add_distr
@@ -313,9 +312,9 @@ Section recursive_descent_parser.
                            transitivity G'; [ | symmetry; exact H ]
                          | let G' := context G[false] in
                            transitivity G'; [ | symmetry; exact H ] ]
-                  | context G[beq_nat ?x ?y]
+                  | context G[Nat.eqb ?x ?y]
                     => let H := fresh in
-                       destruct (Utils.dec (beq_nat x y)) as [H|H];
+                       destruct (Utils.dec (Nat.eqb x y)) as [H|H];
                          [ let G' := context G[true] in
                            transitivity G'; [ | symmetry; exact H ]
                          | let G' := context G[false] in
@@ -773,7 +772,7 @@ Section recursive_descent_parser.
                                          let H1 := fresh in
                                          destruct H as [H0 H1]; try clear H
                | [ H : or _ _ |- _ ] => let H0 := fresh in destruct H as [H0|H0]; try clear H
-               | [ H : beq_nat _ _ = true |- _ ] => apply Nat.eqb_eq in H
+               | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
                | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => progress subst
                | _ => progress simpl in *
@@ -792,17 +791,17 @@ Section recursive_descent_parser.
                  apply length_singleton in H
                | [ H : context[length (substring _ 0 _)] |- _ ]
                  => rewrite take_length in H
-               | [ H : beq_nat ?len 1 = false,
+               | [ H : Nat.eqb ?len 1 = false,
                        H' : ?offset + ?len <= length ?str,
                             H'' : is_true (is_char (substring ?offset ?len ?str) _)
                    |- _ ]
                  => apply length_singleton in H''; rewrite substring_length in H''
-               | [ H : context[min] |- _ ] => rewrite Min.min_l in H by omega
-               | [ H : context[min] |- _ ] => rewrite Min.min_r in H by omega
+               | [ H : context[min] |- _ ] => rewrite Nat.min_l in H by omega
+               | [ H : context[min] |- _ ] => rewrite Nat.min_r in H by omega
                | [ H : _ |- _ ] => rewrite Nat.add_sub in H
-               | [ H : andb (beq_nat _ 1) (char_at_matches _ _ _) = false |- False ] => contradict H
+               | [ H : andb (Nat.eqb _ 1) (char_at_matches _ _ _) = false |- False ] => contradict H
                | [ |- _ <> false ] => apply Bool.not_false_iff_true
-               | [ |- andb (beq_nat _ 1) (char_at_matches _ _ _) = true ] => apply char_at_matches_is_char
+               | [ |- andb (Nat.eqb _ 1) (char_at_matches _ _ _) = true ] => apply char_at_matches_is_char
                | [ |- ex _ ] => eexists; split; eassumption
                | [ H : context[to_nonterminal (of_nonterminal _)] |- _ ]
                  => rewrite to_of_nonterminal in H by assumption
@@ -840,7 +839,7 @@ Section recursive_descent_parser.
           : dec (minimal_parse_of_item (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) it).
           Proof.
             refine (match it return dec (minimal_parse_of_item len0 valid (substring offset _ str) it) with
-                      | Terminal P => if Sumbool.sumbool_of_bool (EqNat.beq_nat (len0 - len0_minus_len) 1 && char_at_matches offset str P)%bool
+                      | Terminal P => if Sumbool.sumbool_of_bool (Nat.eqb (len0 - len0_minus_len) 1 && char_at_matches offset str P)%bool
                                       then inl (match get offset str as g return get offset str = g -> _ with
                                                 | Some ch => fun H => MinParseTerminal _ _ _ ch _ _ _
                                                 | None => fun _ => !
@@ -904,7 +903,7 @@ Section recursive_descent_parser.
           : length (substring offset len str) = len.
         Proof.
           destruct Hlen; subst; rewrite substring_length; simpl;
-          apply Min.min_case_strong; omega.
+          apply Nat.min_case_strong; omega.
         Qed.
 
         Lemma dec_in_helper {ls it its offset len0_minus_len}
@@ -922,7 +921,7 @@ Section recursive_descent_parser.
           split; first [ intros [n [[H0 H1] H2]]
                        | intros [n [H0 [H1 H2]]] ].
           { destruct (le_lt_dec (len0 - len0_minus_len) n) as [pf|pf].
-            { rewrite Min.min_l in H0 by assumption.
+            { rewrite Nat.min_l in H0 by assumption.
               clear -H0 H1 H2 rdata cdata pf HSLP.
               induction ls as [|x xs IHxs]; destruct_head_hnf False.
               destruct (le_lt_dec (len0 - len0_minus_len) x).
@@ -931,14 +930,14 @@ Section recursive_descent_parser.
                 { left; reflexivity. }
                 { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
                   rewrite take_take, <- Nat.sub_min_distr_l.
-                  rewrite !Min.min_r by omega.
+                  rewrite !Nat.min_r by omega.
                   reflexivity. }
                 { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
                   rewrite drop_take, StringLike.drop_drop.
                   rewrite Nat.sub_add_distr.
-                  apply bool_eq_empty; rewrite substring_length; apply Min.min_case_strong; generalize dependent (len0 - len0_minus_len); intros; omega. } }
+                  apply bool_eq_empty; rewrite substring_length; apply Nat.min_case_strong; generalize dependent (len0 - len0_minus_len); intros; omega. } }
               { simpl in *.
-                rewrite Min.min_r in H0 by omega.
+                rewrite Nat.min_r in H0 by omega.
                 destruct IHxs as [n' [IH0 [IH1 IH2]]].
                 { destruct H0; try omega; assumption. }
                 { exists n'; repeat split; try assumption.
@@ -949,9 +948,9 @@ Section recursive_descent_parser.
                        | _ => progress destruct_head ex
                        | _ => progress destruct_head and
                        | [ H : context[min ?x ?y] |- _ ]
-                         => rewrite (Min.min_r x y) in H by omega
+                         => rewrite (Nat.min_r x y) in H by omega
                        | _ => progress subst
-                       | [ H : min ?x ?y < ?x |- _ ] => revert H; apply (Min.min_case_strong x y)
+                       | [ H : min ?x ?y < ?x |- _ ] => revert H; apply (Nat.min_case_strong x y)
                        | _ => intro
                        | _ => omega
                        | _ => assumption
@@ -959,21 +958,21 @@ Section recursive_descent_parser.
               { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
                 rewrite take_take.
                 rewrite <- Nat.sub_min_distr_l, sub_twice.
-                rewrite (Min.min_r len0) by omega.
+                rewrite (Nat.min_r len0) by omega.
                 reflexivity. }
               { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
                 rewrite drop_take, StringLike.drop_drop.
-                rewrite (plus_comm offset), Nat.sub_add_distr; reflexivity. } } }
+                rewrite (Nat.add_comm offset), Nat.sub_add_distr; reflexivity. } } }
           { exists n; repeat split; try assumption.
             { apply in_map; assumption. }
             { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
               rewrite take_take.
               rewrite <- Nat.sub_min_distr_l, sub_twice.
-              rewrite (Min.min_comm len0), <- !Min.min_assoc, (Min.min_r len0) by omega.
+              rewrite (Nat.min_comm len0), <- !Nat.min_assoc, (Nat.min_r len0) by omega.
               reflexivity. }
             { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
               rewrite drop_take, StringLike.drop_drop.
-              rewrite (plus_comm offset), Nat.sub_add_distr.
+              rewrite (Nat.add_comm offset), Nat.sub_add_distr.
               reflexivity. } }
         Defined.
 
@@ -997,7 +996,7 @@ Section recursive_descent_parser.
         Proof. subst; assumption. Defined.
 
         Lemma min_le_r {x y z} (H : y <= z) : min x y <= z.
-        Proof. apply Min.min_case_strong; omega. Qed.
+        Proof. apply Nat.min_case_strong; omega. Qed.
 
         Lemma lift_le {offset len n length_str} (H : len = 0 \/ offset + len <= length_str)
           : len - n = 0 \/ offset + n + (len - n) <= length_str.
@@ -1011,7 +1010,7 @@ Section recursive_descent_parser.
         Lemma lift_le_min {offset n len length_str} (H : len = 0 \/ offset + len <= length_str)
           : min n len = 0 \/ offset + min n len <= length_str.
         Proof.
-          apply Min.min_case_strong; [ | intro; assumption ].
+          apply Nat.min_case_strong; [ | intro; assumption ].
           destruct H; subst; [ left | right ]; omega.
         Qed.
 
@@ -1036,21 +1035,21 @@ Section recursive_descent_parser.
           destruct H as [pi pp]; split.
           { eapply expand_minimal_parse_of_item_beq; [ | eassumption ].
             rewrite take_take, <- Nat.sub_min_distr_l, sub_twice.
-            rewrite (Min.min_comm len0), <- !Min.min_assoc, min_minus_r.
+            rewrite (Nat.min_comm len0), <- !Nat.min_assoc, min_minus_r.
             reflexivity. }
           { eapply expand_minimal_parse_of_production_beq; [ | eassumption ].
-            rewrite drop_take, StringLike.drop_drop, (plus_comm a offset), Nat.sub_add_distr.
+            rewrite drop_take, StringLike.drop_drop, (Nat.add_comm a offset), Nat.sub_add_distr.
             reflexivity. }
         Defined.
 
         Local Ltac parse_production'_for_t' :=
           idtac;
           match goal with
-            | [ H : (beq_nat _ _) = true |- _ ] => apply EqNat.beq_nat_true in H
+            | [ H : (Nat.eqb _ _) = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
             | _ => progress subst
             | _ => solve [ constructor; assumption
                          | constructor;
-                           rewrite substring_length; apply Min.min_case_strong; omega ]
+                           rewrite substring_length; apply Nat.min_case_strong; omega ]
             | [ H : minimal_parse_of_production _ _ _ nil |- _ ] => (inversion H; clear H)
             | [ H : minimal_parse_of_production _ _ _ (_::_) |- _ ] => (inversion H; clear H)
             | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
@@ -1058,12 +1057,12 @@ Section recursive_descent_parser.
             | _ => discriminate
             | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x y z => H x (y, z))
             | _ => solve [ eauto with nocore ]
-            | _ => solve [ apply Min.min_case_strong; omega ]
+            | _ => solve [ apply Nat.min_case_strong; omega ]
             | _ => omega
             | [ H : or _ _ |- _ ] => let H0 := fresh in destruct H as [H0|H0]; try clear H
             | [ H : length (substring _ _ _) = 0 |- _ ] => rewrite substring_length in H
-            | [ H : context[min] |- _ ] => rewrite Min.min_l in H by omega
-            | [ H : context[min] |- _ ] => rewrite Min.min_r in H by omega
+            | [ H : context[min] |- _ ] => rewrite Nat.min_l in H by omega
+            | [ H : context[min] |- _ ] => rewrite Nat.min_r in H by omega
             | [ H : _ |- _ ] => rewrite Nat.add_sub in H
           end.
         Local Ltac parse_production'_for_t := repeat parse_production'_for_t'.
@@ -1124,7 +1123,7 @@ Section recursive_descent_parser.
         Lemma substring_length_le_helper {offset len0_minus_len}
           : length (substring offset (len0 - len0_minus_len) str) <= len0.
         Proof.
-          rewrite substring_length; apply Min.min_case_strong; omega.
+          rewrite substring_length; apply Nat.min_case_strong; omega.
         Qed.
 
         Lemma Hlen_sub_more {offset n len0_minus_len}
@@ -1132,14 +1131,14 @@ Section recursive_descent_parser.
             -> len0 - max (len0 - n) len0_minus_len = 0 \/
                offset + (len0 - max (len0 - n) len0_minus_len) <= length str.
         Proof.
-          clear; intros [Hlen|Hlen]; [ left | right ]; apply Max.max_case_strong; omega.
+          clear; intros [Hlen|Hlen]; [ left | right ]; apply Nat.max_case_strong; omega.
         Qed.
 
         Lemma Hlen_sub_some {n len0_minus_len offset}
           : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str
             -> len0 - max (len0 - n) len0_minus_len <= len0.
         Proof.
-          apply Max.max_case_strong; omega.
+          apply Nat.max_case_strong; omega.
         Qed.
 
         Lemma Hlen_sub_helper {offset n len0_minus_len}
@@ -1183,7 +1182,7 @@ Section recursive_descent_parser.
                     dec (minimal_parse_of_production (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) ps))
                ((** 0-length production, only accept empty *)
                  fun idx Hidx Hreachable Hvalid offset len0_minus_len Hlen
-                 => match Utils.dec (beq_nat (len0 - len0_minus_len) 0) with
+                 => match Utils.dec (Nat.eqb (len0 - len0_minus_len) 0) with
                       | left H => inl _
                       | right H => inr (fun p => _)
                     end)
@@ -1529,9 +1528,9 @@ Section recursive_descent_parser.
               | [ H : is_true ?e, H' : context[?e] |- _ ] => rewrite H in H'
               | [ H : context[andb _ true] |- _ ] => rewrite Bool.andb_true_r in H
               | [ H : negb _ = false |- _ ] => apply Bool.negb_false_iff in H
-              | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true in H
-              | [ H : context[beq_nat ?x 0] |- context[pred ?x] ] => is_var x; destruct x
-              | [ H : _ <= 0 |- _ ] => apply le_n_0_eq in H
+              | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => proj1 (Nat.eqb_eq n m)) in H
+              | [ H : context[Nat.eqb ?x 0] |- context[pred ?x] ] => is_var x; destruct x
+              | [ H : _ <= 0 |- _ ] => apply (fun n Hle => eq_sym (proj1 (Nat.le_0_r n) Hle)) in H
               | [ H : 0 = _ |- _ ] => symmetry in H
               | [ H : nonterminals_length ?v = 0, H' : context[is_valid_nonterminal ?v ?nt] |- _ ]
                 => rewrite nonterminals_length_zero in H' by assumption
@@ -1555,24 +1554,24 @@ Section recursive_descent_parser.
               | [ H : or _ _ |- _ ] => let H0 := fresh in destruct H as [H0|H0]; try clear H
               | [ |- context[length (substring _ _ _)] ]
                 => rewrite substring_length
-              | _ => apply Min.min_case_strong; omega
+              | _ => apply Nat.min_case_strong; omega
               | [ H : ?x = 0 \/ ?T |- _ ]
                 => destruct (Compare_dec.zerop x);
                   [ clear H | assert T by (destruct H; try assumption; omega); clear H ]
               | [ |- context[min ?x ?y - ?y] ]
-                => rewrite <- Nat.sub_min_distr_r, minus_diag, Min.min_0_r
+                => rewrite <- Nat.sub_min_distr_r, Nat.sub_diag, Nat.min_0_r
               | _ => rewrite Nat.add_sub
-              | _ => rewrite Min.min_r by omega
-              | _ => rewrite Min.min_l by omega
+              | _ => rewrite Nat.min_r by omega
+              | _ => rewrite Nat.min_l by omega
               | [ H : context[length (substring _ 0 _)] |- _ ]
                 => rewrite take_length in H
               | [ H : context[length (substring _ _ _)] |- _ ]
-                => rewrite substring_length, Min.min_r, Nat.add_sub in H by omega
+                => rewrite substring_length, Nat.min_r, Nat.add_sub in H by omega
               | [ H : context[?x - (?x - _)] |- _ ] => rewrite sub_twice in H
-              | [ H : context[min ?x ?y] |- _ ] => rewrite (Min.min_r x y) in H by assumption
-              | [ H : context[min ?x ?y] |- _ ] => rewrite (Min.min_l x y) in H by assumption
-              | [ H : context[min ?x ?x] |- _ ] => rewrite Min.min_idempotent in H
-              | [ H : context[?x - ?x] |- _ ] => rewrite minus_diag in H
+              | [ H : context[min ?x ?y] |- _ ] => rewrite (Nat.min_r x y) in H by assumption
+              | [ H : context[min ?x ?y] |- _ ] => rewrite (Nat.min_l x y) in H by assumption
+              | [ H : context[min ?x ?x] |- _ ] => rewrite Nat.min_idempotent in H
+              | [ H : context[?x - ?x] |- _ ] => rewrite Nat.sub_diag in H
               | [ H : context[?x - 0] |- _ ] => rewrite Nat.sub_0_r in H
             end.
           Local Ltac p_step := repeat p_step_t'.
@@ -1612,7 +1611,7 @@ Section recursive_descent_parser.
                                 (or_introl pf')
                                 initial_nonterminals_data
                                 (reflexivity _)
-                                offset (len - len0_minus_len) Hlen (le_minus _ _) nt)
+                                offset (len - len0_minus_len) Hlen (Nat.le_sub_l _ _) nt)
                           offset (len - len)
                           (Hlen_helper_sub_sub Hlen)
                           (nonterminal_to_production nt))
@@ -1628,7 +1627,7 @@ Section recursive_descent_parser.
                         (fun _ => _)
                         (fun is_valid => _)
                         (fun is_valid => _)
-                        (Sumbool.sumbool_of_bool (negb (EqNat.beq_nat valid_len 0) && is_valid_nonterminal valid nt)));
+                        (Sumbool.sumbool_of_bool (negb (Nat.eqb valid_len 0) && is_valid_nonterminal valid nt)));
               [ ((** It was valid, so we can remove it *)
                   edestruct (fun pf'' pf'''
                             => @parse_productions'
@@ -1640,7 +1639,7 @@ Section recursive_descent_parser.
                                        (or_intror (conj eq_refl pf''))
                                        (remove_nonterminal valid nt)
                                        pf''' offset (len0 - len0_minus_len)
-                                       Hlen (le_minus _ _))
+                                       Hlen (Nat.le_sub_l _ _))
                                  offset (len0 - len)
                                  (Hlen_helper_sub_sub Hlen)
                                  (nonterminal_to_production nt))
@@ -1794,7 +1793,7 @@ Section recursive_descent_parser.
           : dec (minimal_parse_of_nonterminal (G := G) (length str) initial_nonterminals_data (substring 0 (length str - 0) str) (to_nonterminal nt)).
           Proof.
             destruct (parse_nonterminal'_substring nt) as [p|p]; [ left | right ];
-              rewrite <- minus_n_O;
+              rewrite Nat.sub_0_r;
               exact p.
           Defined.
 
@@ -1819,7 +1818,7 @@ Section recursive_descent_parser.
           Proof.
             rewrite <- drop_0 at 1.
             erewrite <- take_long at 1 by reflexivity.
-            rewrite drop_length, <- minus_n_O.
+            rewrite drop_length, Nat.sub_0_r.
             expand_once.
             destruct (Utils.dec (is_valid_nonterminal initial_nonterminals_data nt)) as [H|H];
               repeat eq_t'.
@@ -1842,8 +1841,7 @@ Section recursive_descent_parser.
           Proof.
             R_etransitivity_eq; [ eapply parse_nonterminal'_substring_correct | ].
             unfold parse_nonterminal'_substring_minus.
-            edestruct parse_nonterminal'_substring;
-              destruct (minus_n_O (length str)); reflexivity.
+            edestruct parse_nonterminal'_substring; reflexivity.
           Qed.
 
           Lemma parse_nonterminal'_correct
@@ -1969,7 +1967,7 @@ Section recursive_descent_parser.
       erewrite <- take_long at 1 by reflexivity;
       rewrite drop_length(*, <- minus_n_O at 1*).
     Local Ltac substring_to_str :=
-      repeat rewrite <- minus_n_O at 1; rewrite drop_0, take_long at 1 by reflexivity.
+      repeat rewrite Nat.sub_0_r at 1; rewrite drop_0, take_long at 1 by reflexivity.
 
     Lemma Hlen0 {lenstr} : lenstr - 0 = 0 \/ 0 + (lenstr - 0) <= lenstr.
     Proof. omega. Qed.
@@ -1987,7 +1985,7 @@ Section recursive_descent_parser.
         destruct parse_item_substring as [p|np];
         [ left | right; intro p; apply np; clear np ];
         (eapply expand_minimal_parse_of_item_beq; [ | eassumption ]);
-        clear -HSLP; abstract (rewrite <- minus_n_O, substring_correct3'; reflexivity).
+        clear -HSLP; abstract (rewrite Nat.sub_0_r, substring_correct3'; reflexivity).
       Defined.
 
       Lemma parse_item_substring_correct
@@ -1998,7 +1996,7 @@ Section recursive_descent_parser.
       Proof.
         str_to_substring.
         unfold GenericRecognizer.parse_item.
-        rewrite (minus_n_O (length str)) at 6;
+        rewrite <-(Nat.sub_0_r (length str)) at 6;
           apply parse_item'_all_correct; intro; substring_to_str.
         apply parse_nonterminal'_substring_minus_correct.
       Qed.
@@ -2024,17 +2022,17 @@ Section recursive_descent_parser.
       Definition parse_production_substring_minus
         : dec (minimal_parse_of_production (G := G) (length str) initial_nonterminals_data (substring 0 (length str - 0) str) (to_production p)).
       Proof.
-        eapply parse_production'; [ | right; clear; apply le_minus | reflexivity.. | assumption | assumption ].
+        eapply parse_production'; [ | right; clear; apply Nat.le_sub_l | reflexivity.. | assumption | assumption ].
         intros.
         eapply (@parse_nonterminal_or_abort (length str, _));
-          simpl; try reflexivity; subst; try assumption; apply le_minus.
+          simpl; try reflexivity; subst; try assumption; apply Nat.le_sub_l.
       Defined.
 
       Definition parse_production_substring
         : dec (minimal_parse_of_production (G := G) (length str) initial_nonterminals_data (substring 0 (length str) str) (to_production p)).
       Proof.
         destruct parse_production_substring_minus as [p'|p']; [ left | right ];
-          rewrite <- minus_n_O in p';
+          rewrite Nat.sub_0_r in p';
           exact p'.
       Defined.
 
@@ -2070,7 +2068,7 @@ Section recursive_descent_parser.
         R_etransitivity_eq; [ eapply parse_production_substring_minus_correct | ].
         unfold parse_production_substring.
         destruct parse_production_substring_minus;
-          destruct (minus_n_O (length str)); reflexivity.
+          destruct (Nat.sub_0_r (length str)); reflexivity.
       Qed.
 
       Lemma parse_production_correct
@@ -2094,17 +2092,17 @@ Section recursive_descent_parser.
       Definition parse_productions_substring_minus
         : dec (minimal_parse_of (G := G) (length str) initial_nonterminals_data (substring 0 (length str - 0) str) (List.map to_production ps)).
       Proof.
-        eapply parse_productions'; [ | right; apply le_minus | reflexivity.. | assumption | assumption ].
+        eapply parse_productions'; [ | right; apply Nat.le_sub_l | reflexivity.. | assumption | assumption ].
         intros.
         eapply (@parse_nonterminal_or_abort (length str, _));
-          simpl; try reflexivity; subst; try apply le_minus; assumption.
+          simpl; try reflexivity; subst; try apply Nat.le_sub_l; assumption.
       Defined.
 
       Definition parse_productions_substring
         : dec (minimal_parse_of (G := G) (length str) initial_nonterminals_data (substring 0 (length str) str) (List.map to_production ps)).
       Proof.
         destruct parse_productions_substring_minus as [p'|p']; [ left | right ];
-          rewrite <- minus_n_O in p';
+          rewrite Nat.sub_0_r in p';
           exact p'.
       Defined.
 
@@ -2137,7 +2135,7 @@ Section recursive_descent_parser.
         R_etransitivity_eq; [ eapply parse_productions_substring_minus_correct | ].
         unfold parse_productions_substring.
         destruct parse_productions_substring_minus;
-          destruct (minus_n_O (length str)); reflexivity.
+          destruct (Nat.sub_0_r (length str)); reflexivity.
       Qed.
 
       Lemma parse_productions_correct

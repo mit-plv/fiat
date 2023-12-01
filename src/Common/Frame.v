@@ -1,7 +1,7 @@
 Require Import
         SetoidClass
-        Coq.Arith.Max
-        Coq.Classes.Morphisms.
+        Coq.Classes.Morphisms
+        Coq.Arith.PeanoNat.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Generalizable All Variables.
@@ -212,7 +212,7 @@ Module PreO.
   Qed.
 
   Definition Nat : t le.
-  Proof. constructor; [ apply Le.le_refl | apply Le.le_trans ].
+  Proof. constructor; [ apply Nat.le_refl | apply Nat.le_trans ].
   Qed.
 
   Definition discrete (A : Type) : t (@Logic.eq A).
@@ -408,7 +408,7 @@ Module PO.
     constructor; intros.
     - apply PreO.Nat.
     - solve_proper.
-    - apply Le.le_antisym; assumption.
+    - apply Nat.le_antisymm; assumption.
   Qed.
 
   Definition discrete (A : Type) : t (@Logic.eq A) Logic.eq.
@@ -585,8 +585,8 @@ Module JoinLat.
   Proof. constructor; intros.
          - apply PO.Nat.
          - solve_proper.
-         - constructor. simpl. apply Max.le_max_l. apply Max.le_max_r.
-           apply Max.max_lub.
+         - constructor. simpl. apply Nat.le_max_l. apply Nat.le_max_r.
+           apply Nat.max_lub.
   Qed.
 
   (** Max for propositions is the propositional OR, i.e., disjunction *)

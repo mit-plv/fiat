@@ -3,6 +3,7 @@ Require Import Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.GenericRecognizer.
 Require Import Fiat.Common.Wf Fiat.Common.Wf2.
+Require Import Coq.Arith.PeanoNat.
 Set Implicit Arguments.
 
 Definition step_option_rec
@@ -26,7 +27,7 @@ Proof.
                                          (or_introl pf)
                                          up_to_G_length
                                          offset'
-                                         (len - len0_minus_len') (Minus.le_minus len len0_minus_len')))
+                                         (len - len0_minus_len') (Nat.le_sub_l len len0_minus_len')))
                        (fun _
                         => _)
                        (Compare_dec.lt_dec len len0)).
@@ -35,13 +36,13 @@ Proof.
             (fun is_valid
              => _)
             (fun _ => None)
-            (Sumbool.sumbool_of_bool (negb (EqNat.beq_nat valid_len0 0) && is_valid_nonterminal valids nt))%bool).
+            (Sumbool.sumbool_of_bool (negb (Nat.eqb valid_len0 0) && is_valid_nonterminal valids nt))%bool).
   refine (Some
             (fun offset' len0_minus_len' =>
                parse_nt len0 (pred valid_len0)
                         (or_intror (conj eq_refl (GenericRecognizer.pred_lt_beq _)))
                         (RDPList.filter_out_eq nt valids) offset'
-                        (len0 - len0_minus_len') (Minus.le_minus len0 len0_minus_len'))).
+                        (len0 - len0_minus_len') (Nat.le_sub_l len0 len0_minus_len'))).
   apply (proj1 (proj1 (Bool.andb_true_iff _ _) is_valid)).
 Defined.
 

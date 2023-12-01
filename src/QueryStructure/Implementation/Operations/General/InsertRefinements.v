@@ -660,7 +660,6 @@ Section InsertRefinements.
           as rewriteSat
             by (apply functional_extensionality; intros; rewrite GetRelDropConstraints;
                 reflexivity).
-      rewrite GetRelDropConstraints in H', H'',  H''''.
       setoid_rewrite rewriteSat in H''''; clear rewriteSat.
       (* Resume not-terribleness *)
       generalize (Iterate_Decide_Comp_BoundedIndex _ _ H''') as H3';

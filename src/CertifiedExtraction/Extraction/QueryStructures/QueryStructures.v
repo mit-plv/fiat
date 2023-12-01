@@ -154,7 +154,7 @@ Ltac _compile_length :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:((pre, post)) with
-            | (?pre, Cons ?k (ret (bool2w (EqNat.beq_nat (Datatypes.length (rev ?seq)) 0))) (fun _ => ?pre')) =>
+            | (?pre, Cons ?k (ret (bool2w (Nat.eqb (Datatypes.length (rev ?seq)) 0))) (fun _ => ?pre')) =>
               let vlst := find_fast (wrap (FacadeWrapper := WrapInstance (H := QS_WrapFiatWTupleList)) seq) ext in
               match vlst with
               | Some ?vlst => eapply (WTupleListCompilation.CompileEmpty_spec (idx := 3) (vlst := vlst))

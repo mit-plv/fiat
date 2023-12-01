@@ -26,14 +26,14 @@ Section recursive_descent_parser_list.
   Notation rdp_list_production_carrierT := default_production_carrierT.
 
   Definition list_bin_eq
-    := Eval unfold list_bin in list_bin EqNat.beq_nat.
+    := Eval unfold list_bin in list_bin Nat.eqb.
 
   Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> rdp_list_nonterminal_carrierT -> bool
     := fun ls nt => list_bin_eq nt ls.
 
   Local Ltac fix_list_bin_eq :=
     unfold rdp_list_is_valid_nonterminal;
-    change list_bin_eq with (list_bin EqNat.beq_nat) in *.
+    change list_bin_eq with (list_bin Nat.eqb) in *.
 
   Local Notation valid_nonterminals := (map fst (pregrammar_productions G)).
 
@@ -77,8 +77,8 @@ Section recursive_descent_parser_list.
       | _ => progress subst
       | [ |- nth _ _ _ = _ ] => apply nth_error_Some_nth
       | [ H : ?T |- _ <-> ?T ] => split; [ intro; assumption | intro ]
-      | [ H : is_true (list_bin _ _ _) |- _ ] => apply (list_in_bl (@beq_nat_true)) in H
-      | [ |- is_true (list_bin _ _ _) ] => apply list_in_lb; [ intros ???; subst; symmetry; apply beq_nat_refl | ]
+      | [ H : is_true (list_bin _ _ _) |- _ ] => apply (list_in_bl (fun n m => proj1 (Nat.eqb_eq n m))) in H
+      | [ |- is_true (list_bin _ _ _) ] => apply list_in_lb; [ intros ???; subst; symmetry; apply eq_sym, Nat.eqb_refl | ]
       | [ H : In _ (up_to _) |- _ ] => apply in_up_to_iff in H
       | [ |- In _ (up_to _) ] => apply in_up_to_iff
       | [ H : In ?nt _ |- _ ] => let H' := fresh in assert (H' : string_beq nt nt = false) by eauto; exfalso; clear -H'
@@ -165,7 +165,7 @@ Section recursive_descent_parser_list.
     simpl in *.
     unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal, rdp_list_is_valid_nonterminal, rdp_list_initial_nonterminals_data, default_to_nonterminal, default_of_nonterminal.
     intros nt H.
-    apply (list_in_bl (@beq_nat_true)), in_up_to_iff in H.
+    apply (list_in_bl (fun n m => proj1 (Nat.eqb_eq n m))), in_up_to_iff in H.
     revert nt H.
     replace valid_nonterminals with (uniquize string_beq valid_nonterminals) by (rewrite HNoDup; reflexivity).
     induction valid_nonterminals as [|x xs IHxs].
@@ -186,7 +186,7 @@ Section recursive_descent_parser_list.
         rewrite (string_lb eq_refl); trivial. }
       { simpl Datatypes.length.
         intro H.
-        apply lt_S_n in H.
+        apply Nat.succ_lt_mono in H.
         etransitivity; [ | eapply (f_equal S), (IHxs _ H); clear IHxs ].
         rewrite first_index_default_S_cons; simpl.
         match goal with
@@ -252,12 +252,12 @@ Section recursive_descent_parser_list.
     induction (Lookup_string G nt) as [|p ps IHps]; simpl.
     { reflexivity. }
     { simpl.
-      rewrite minus_diag; simpl.
+      rewrite Nat.sub_diag; simpl.
       apply f_equal.
       etransitivity; [ | apply IHps ]; clear IHps.
       apply map_ext_in.
       intros a H; apply in_up_to_iff in H.
-      rewrite NPeano.Nat.sub_succ_r.
+      rewrite Nat.sub_succ_r.
       destruct (Datatypes.length ps - a) eqn:H'; try omega; [].
       reflexivity. }
   Qed.
@@ -292,7 +292,7 @@ Section recursive_descent_parser_list.
     intros nt Hnt.
     apply Forall_map, Forall_forall; unfold compose; simpl; intros ? H.
     fix_list_bin_eq.
-    apply list_in_bl in Hnt; [ | exact (EqNat.beq_nat_true) ].
+    apply list_in_bl in Hnt; [ | exact (fun n m => proj1 (Nat.eqb_eq n m)) ].
     apply in_up_to_iff in Hnt.
     unfold default_production_carrier_valid; simpl.
     repeat (apply Bool.andb_true_iff; split); apply leb_iff.
@@ -324,7 +324,7 @@ Section recursive_descent_parser_list.
     { apply rdp_list_initial_nonterminals_correct'.
       unfold rdp_list_is_valid_nonterminal, rdp_list_initial_nonterminals_data.
       fix_list_bin_eq.
-      apply list_in_lb; [ apply beq_nat_true_iff | ].
+      apply list_in_lb; [ apply Nat.eqb_eq | ].
       rewrite map_length.
       apply in_up_to; assumption. }
     { unfold rdp_list_to_nonterminal.
@@ -337,7 +337,7 @@ Section recursive_descent_parser_list.
   Qed.
 
   Definition filter_out_eq nt ls
-    := Eval unfold filter_out in filter_out (EqNat.beq_nat nt) ls.
+    := Eval unfold filter_out in filter_out (Nat.eqb nt) ls.
 
   Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> rdp_list_nonterminal_carrierT -> rdp_list_nonterminals_listT
     := fun ls nt =>
@@ -345,7 +345,7 @@ Section recursive_descent_parser_list.
 
   Local Ltac fix_filter_out_eq :=
     unfold rdp_list_remove_nonterminal;
-    change filter_out_eq with (fun nt ls => filter_out (EqNat.beq_nat nt) ls); cbv beta;
+    change filter_out_eq with (fun nt ls => filter_out (Nat.eqb nt) ls); cbv beta;
     setoid_rewrite filter_out_filter.
 
   Local Ltac fix_eqs := try fix_filter_out_eq; try fix_list_bin_eq.
@@ -357,7 +357,7 @@ Section recursive_descent_parser_list.
     induction ls; trivial; simpl in *.
     repeat match goal with
              | [ |- context[if ?a then _ else _] ] => destruct a; simpl in *
-             | [ |- S _ <= S _ ] => solve [ apply Le.le_n_S; auto ]
+             | [ |- S _ <= S _ ] => solve [ apply (fun n m => proj1 (Nat.succ_le_mono n m)); auto ]
              | [ |- _ <= S _ ] => solve [ apply le_S; auto ]
            end.
   Qed.
@@ -368,7 +368,7 @@ Section recursive_descent_parser_list.
     intros ls prods H.
     unfold rdp_list_is_valid_nonterminal, rdp_list_nonterminals_listT_R, rdp_list_remove_nonterminal, ltof in *.
     fix_eqs.
-    apply list_in_bl in H; [ | solve [ intros; apply beq_nat_true; trivial ] ].
+    apply list_in_bl in H; [ | solve [ intros; apply Nat.eqb_eq; trivial ] ].
     match goal with
       | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
         => assert (~In prods (filter f ls))
@@ -376,7 +376,7 @@ Section recursive_descent_parser_list.
     { intro H'.
       apply filter_In in H'.
       destruct H' as [? H'].
-      rewrite <- beq_nat_refl in H'.
+      rewrite Nat.eqb_refl in H'.
       simpl in *; congruence. }
     { match goal with
         | [ |- context[filter ?f ?ls] ] => generalize dependent f; intros
@@ -389,8 +389,8 @@ Section recursive_descent_parser_list.
                | [ H : ~(_ \/ _) |- _ ] => apply Decidable.not_or in H
                | [ H : _ /\ _ |- _ ] => destruct H
                | [ H : ?x <> ?x |- _ ] => exfalso; apply (H eq_refl)
-               | _ => apply Lt.lt_n_S
-               | _ => apply Le.le_n_S
+               | _ => apply (fun n m => (proj1 (Nat.succ_lt_mono n m)))
+               | _ => apply (fun n m => (proj1 (Nat.succ_le_mono n m)))
                | _ => apply filter_list_dec
                | [ H : _ -> _ -> ?G |- ?G ] => apply H; auto
              end. }
@@ -418,10 +418,10 @@ Section recursive_descent_parser_list.
              | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
              | [ H : _ /\ _ |- _ ] => destruct H
              | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
-             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply beq_nat_true; trivial ] ]
+             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply (fun n m => (proj1 (Nat.eqb_eq n m))); trivial ] ]
              | [ |- list_bin _ _ _ = true ] => apply list_in_lb
              | _ => progress subst
-             | [ |- context[beq_nat ?x ?x] ] => rewrite <- beq_nat_refl
+             | [ |- context[Nat.eqb ?x ?x] ] => rewrite Nat.eqb_refl
            end.
   Qed.
 
@@ -454,17 +454,17 @@ Section recursive_descent_parser_list.
              | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
              | [ H : context[string_beq ?x ?x] |- _ ] => rewrite (string_lb (eq_refl x)) in H
              | _ => progress simpl in *
-             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply beq_nat_true; trivial ] ]
+             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply (fun n m => (proj1 (Nat.eqb_eq n m))); trivial ] ]
              | [ |- list_bin _ _ _ = true ] => apply list_in_lb
              | [ |- context[list_bin ?x ?y ?z = false] ] => case_eq (list_bin x y z)
              | [ H : list_bin _ _ _ = false |- _ ] => apply Bool.not_true_iff_false in H
              | [ H : list_bin _ _ _ <> true |- _ ] => specialize (fun pf H' => H (list_in_lb pf H'))
              | [ H : ?A -> ?B |- _ ]
                => let H' := fresh in
-                  assert (H' : A) by (intros; subst; rewrite <- ?beq_nat_refl; reflexivity);
+                  assert (H' : A) by (intros; subst; rewrite ?Nat.eqb_refl; reflexivity);
                     specialize (H H'); clear H'
-             | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true in H
-             | [ H : context[beq_nat ?x ?x] |- _ ] => rewrite <- beq_nat_refl in H
+             | [ H : Nat.eqb _ _ = true |- _ ] => apply (fun n m => (proj1 (Nat.eqb_eq n m))) in H
+             | [ H : context[Nat.eqb ?x ?x] |- _ ] => rewrite Nat.eqb_refl in H
            end.
   Qed.
 
@@ -475,7 +475,7 @@ Section recursive_descent_parser_list.
     fix_eqs.
     intro H.
     cut (Datatypes.length ls < Datatypes.length ls); try omega.
-    eapply Lt.lt_le_trans; [ eassumption | ].
+    eapply Nat.lt_le_trans; [ eassumption | ].
     apply filter_list_dec.
   Qed.
 

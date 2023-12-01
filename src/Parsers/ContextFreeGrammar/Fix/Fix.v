@@ -80,8 +80,8 @@ Section grammar_fixedpoint.
   Qed.
 
   Create HintDb aggregate_step_db discriminated.
-  Hint Rewrite PositiveMap.fold_1 PositiveMap.gmapi nonterminal_to_positive_to_nonterminal positive_to_nonterminal_to_positive PositiveMap.gempty PositiveMapAdditionalFacts.gsspec (@state_beq_refl _ gdata) orb_true_iff orb_true_r orb_false_iff (@state_le_bottom_eq_bottom _ gdata) (@no_state_lt_bottom _ gdata) (@state_le_bottom_eq_bottom _ gdata) (@state_ge_top_eq_top _ gdata) (@bottom_lub_r _ gdata) (@bottom_lub_l _ gdata) (@top_lub_r _ gdata) (@top_lub_l _ gdata) (fun a b => @least_upper_bound_correct_l _ gdata a b : _ = true) (fun a b => @least_upper_bound_correct_r _ gdata a b : _ = true) (fun s => @bottom_bottom _ gdata s : _ = true) (fun s => @top_top _ gdata s : _ = true) beq_nat_true_iff @PositiveMapExtensions.lift_brelation_iff : aggregate_step_db.
-  Hint Rewrite <- beq_nat_refl : aggregate_step_db.
+  Hint Rewrite PositiveMap.fold_1 PositiveMap.gmapi nonterminal_to_positive_to_nonterminal positive_to_nonterminal_to_positive PositiveMap.gempty PositiveMapAdditionalFacts.gsspec (@state_beq_refl _ gdata) orb_true_iff orb_true_r orb_false_iff (@state_le_bottom_eq_bottom _ gdata) (@no_state_lt_bottom _ gdata) (@state_le_bottom_eq_bottom _ gdata) (@state_ge_top_eq_top _ gdata) (@bottom_lub_r _ gdata) (@bottom_lub_l _ gdata) (@top_lub_r _ gdata) (@top_lub_l _ gdata) (fun a b => @least_upper_bound_correct_l _ gdata a b : _ = true) (fun a b => @least_upper_bound_correct_r _ gdata a b : _ = true) (fun s => @bottom_bottom _ gdata s : _ = true) (fun s => @top_top _ gdata s : _ = true) Nat.eqb_eq @PositiveMapExtensions.lift_brelation_iff : aggregate_step_db.
+  Hint Rewrite Nat.eqb_refl : aggregate_step_db.
   Hint Rewrite PositiveMapExtensions.map2_1bis_for_rewrite using reflexivity : aggregate_step_db.
   Hint Rewrite PositiveMapExtensions.fold_andb_true : aggregate_step_db.
 
@@ -486,7 +486,7 @@ Section grammar_fixedpoint.
           { apply orb_true_iff; intuition. }
           { do 2 match goal with
                  | [ H : is_true (orb _ _) |- _ ] => apply orb_true_iff in H
-                 | [ H : _ |- _ ] => setoid_rewrite beq_nat_true_iff in H
+                 | [ H : _ |- _ ] => setoid_rewrite Nat.eqb_eq in H
                  end.
             repeat intuition (congruence || subst || (autorewrite with aggregate_step_db in * ) || eauto). } } }
     Qed.

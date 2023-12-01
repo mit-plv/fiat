@@ -1,5 +1,4 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
@@ -38,19 +37,19 @@ Local Ltac t' :=
     | _ => exfalso; congruence
     | _ => rewrite substring_length
     | _ => rewrite <- plus_n_O
-    | _ => rewrite <- Minus.minus_n_O
-    | _ => rewrite Min.min_l by omega
-    | _ => rewrite Min.min_r by omega
+    | _ => rewrite Nat.sub_0_r
+    | _ => rewrite Nat.min_l by omega
+    | _ => rewrite Nat.min_r by omega
     | _ => rewrite substring_correct3 by assumption
     | _ => rewrite substring_substring
     | _ => rewrite substring_correct3'
     | _ => rewrite substring_correct0
     | _ => rewrite Nat.sub_min_distr_l
     | _ => rewrite Nat.add_sub
-    | _ => rewrite Min.min_0_r
-    | _ => rewrite Min.min_0_l
+    | _ => rewrite Nat.min_0_r
+    | _ => rewrite Nat.min_0_l
     | _ => rewrite Nat.add_1_r
-    | _ => rewrite <- Min.min_assoc
+    | _ => rewrite <- Nat.min_assoc
     | [ |- String.get _ _ = _ ] => apply StringProperties.get_correct
     | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct, ?string_copy_length
     | [ H : _ |- _ ] => progress rewrite ?string_beq_correct, ?ascii_beq_correct in H
@@ -59,11 +58,11 @@ Local Ltac t' :=
         by (rewrite <- Nat.sub_min_distr_l; apply f_equal2; omega)
     | [ |- context[min (?m + ?n) ?m] ]
       => replace (min (m + n) m) with (m + min n 0)
-        by (rewrite <- Min.plus_min_distr_l; apply f_equal2; omega)
-    | _ => rewrite Min.min_comm; reflexivity
+        by (rewrite <- Nat.add_min_distr_l; apply f_equal2; omega)
+    | _ => rewrite Nat.min_comm; reflexivity
     | [ |- context[string_eq_dec ?x ?y] ] => destruct (string_eq_dec x y)
     | [ H : _ <> _ |- False ] => apply H; clear H
-    | _ => apply Max.max_case_strong; intro; apply substring_correct4; omega
+    | _ => apply Nat.max_case_strong; intro; apply substring_correct4; omega
     | [ H : Coq.Strings.String.length ?s = 1 |- _ ] => is_var s; destruct s
     | [ H : S (Coq.Strings.String.length ?s) = 1 |- _ ] => is_var s; destruct s
     | _ => eexists; rewrite (ascii_lb eq_refl); reflexivity
@@ -77,9 +76,9 @@ Local Ltac t' :=
         | rewrite substring_correct2 by omega ]
     | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
     | [ H : forall n, Coq.Strings.String.get n _ = Coq.Strings.String.get n _ |- _ ] => apply get_correct in H
-    | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
-    | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
-    | [ H : context[EqNat.beq_nat ?x ?y] |- _ ] => destruct (EqNat.beq_nat x y) eqn:?
+    | [ H : Nat.eqb _ _ = true |- _ ] => apply (proj1 (Nat.eqb_eq _ _)) in H
+    | [ H : Nat.eqb _ _ = false |- _ ] => apply (proj1 (Nat.eqb_neq _ _)) in H
+    | [ H : context[Nat.eqb ?x ?y] |- _ ] => destruct (Nat.eqb x y) eqn:?
     | [ H : context[option_beq ascii_beq _ _] |- _ ] => rewrite (option_beq_correct (@ascii_bl) (@ascii_lb)) in H
     | [ H : context[option_eq_dec ?beq ?bl ?lb ?x ?y] |- _ ] => destruct (option_eq_dec beq bl lb x y)
     | _ => progress change (andb true) with (fun x : bool => x) in *
@@ -107,7 +106,7 @@ Local Ltac t' :=
     | [ |- String.substring ?n ?m ?s = String.substring ?n ?m' ?s ]
       => not constr_eq m m'; replace m with m' by omega
     | [ |- String.substring ?n ?m ?s = String.substring ?n ?m' ?s ]
-      => not constr_eq m m'; replace m with m' by (repeat apply Min.min_case_strong; intros; omega)
+      => not constr_eq m m'; replace m with m' by (repeat apply Nat.min_case_strong; intros; omega)
   end.
 
 Local Ltac t := repeat t'.
@@ -123,7 +122,7 @@ Module Export Ocaml.
     := { get n s := String.safe_get s n;
          take n s := String.sub s 0 n;
          drop n s := String.sub s n (String.length s - n);
-         is_char s ch := ((EqNat.beq_nat (String.length s) 1)
+         is_char s ch := ((Nat.eqb (String.length s) 1)
                             && (option_beq ascii_beq (String.safe_get s 0) (Some ch)))%bool;
          bool_eq s1 s2 := Zbool.Zeq_bool (z_of_int (Ocaml.String.compare s1 s2)) 0%Z }.
 

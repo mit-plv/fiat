@@ -65,7 +65,7 @@ Section BagsProperties.
   Proof.
     unfold _BagInsertCount, _bcount; intros;
     rewrite binsert_enumerate; simpl; destruct (bfind_matcher search_term item); simpl; eauto.
-    rewrite plus_comm; reflexivity.
+    rewrite Nat.add_comm; reflexivity.
   Qed.
 
 End BagsProperties.
