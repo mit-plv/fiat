@@ -1,4 +1,4 @@
-name: CI (Coq)
+name: CI (Coq, docker)
 
 on:
   push:
@@ -8,74 +8,44 @@ on:
 
 jobs:
   build:
-
     strategy:
       fail-fast: false
       matrix:
-        env:
-          - { COQ_VERSION: "v8.15" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.15-daily" }
-          - { COQ_VERSION: "v8.14" , TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.14-daily" }
-          - { COQ_VERSION: "v8.13" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.13-daily" }
-          - { COQ_VERSION: "v8.12" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.12-daily" }
-          - { COQ_VERSION: "v8.11" , TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq libcoq-ocaml-dev"                           , PPA: "ppa:jgross-h/coq-8.11-daily" }
-          - { COQ_VERSION: "8.15.0", TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.15.0 libcoq-8.15.0-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08" }
-          - { COQ_VERSION: "8.14.1", TARGETS: "fiat-core parsers querystructures", FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.14.1 libcoq-8.14.1-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-08" }
-          - { COQ_VERSION: "8.13.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.13.2 libcoq-8.13.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
-          - { COQ_VERSION: "8.12.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.12.2 libcoq-8.12.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
-          - { COQ_VERSION: "8.11.2", TARGETS: "fiat-core parsers"                , FLAGS: "PROFILE=1", NJOBS: "2", COQ_PACKAGE: "coq-8.11.2 libcoq-8.11.2-ocaml-dev"   , PPA: "ppa:jgross-h/many-coq-versions-ocaml-4-05" }
+        coq-version: [ "dev" , "8.18" , "8.17" , "8.16" ]
+        targets: [ "fiat-core parsers parsers-examples coq-ci" ]
 
-    env: ${{ matrix.env }}
-    name: ${{ matrix.env.COQ_VERSION }} (${{ matrix.env.TARGETS }})
+    name: ${{ matrix.coq-version }} (${{ matrix.targets }})
 
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.env.COQ_VERSION }}-${{ github.head_ref || github.run_id }}
+      group: ${{ github.workflow }}-${{ matrix.coq-version }}-${{ github.head_ref || github.run_id }}
       cancel-in-progress: true
 
-    runs-on: ubuntu-20.04
-
+    runs-on: ubuntu-latest
     steps:
-    - name: install Coq
-      run: |
-        if [ ! -z "$PPA" ]; then sudo add-apt-repository "$PPA" -y; fi
-        sudo apt-get -o Acquire::Retries=30 update -q
-        sudo apt-get -o Acquire::Retries=30 install ocaml-findlib $COQ_PACKAGE -y --allow-unauthenticated
-    - name: echo build params
-      run: |
-        echo "::group::lscpu"
-        lscpu
-        echo "::endgroup::"
-        echo "::group::uname -a"
-        uname -a
-        echo "::endgroup::"
-        echo "::group::lsb_release -a"
-        lsb_release -a
-        echo "::endgroup::"
-        echo "::group::ghc --version"
-        ghc --version
-        echo "::endgroup::"
-        echo "::group::gcc -v"
-        gcc -v
-        echo "::endgroup::"
-        echo "::group::ocamlc -config"
-        ocamlc -config
-        echo "::endgroup::"
-        echo "::group::coqc --config"
-        coqc --config
-        echo "::endgroup::"
-        echo "::group::coqc --version"
-        coqc --version
-        echo "::endgroup::"
-        echo "::group::echo | coqtop"
-        echo | coqtop
-        echo "::endgroup::"
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    - name: SCRIPT
-      run: ./etc/coq-scripts/timing/make-pretty-timed.sh -j$NJOBS $TARGETS $FLAGS && make TIMED=1 -j$NJOBS $TARGETS
+    - name: all
+      uses: coq-community/docker-coq-action@v1
+      with:
+        coq_version: ${{ matrix.coq-version }}
+        ocaml_version: default
+        custom_script: |
+          sudo chmod -R a+rw .
+          startGroup 'install general dependencies'
+          sudo apt-get update -y
+          sudo apt-get install -y python python3
+          eval $(opam env)
+          endGroup
+          export TARGETS="${{ matrix.targets }}"
+          export FLAGS="PROFILE=1"
+          export NJOBS="2"
+          git config --global --add safe.directory "*"
+          startGroup make
+          etc/coq-scripts/timing/make-pretty-timed.sh -j$NJOBS $TARGETS $FLAGS && make TIMED=1 -j$NJOBS $TARGETS
+          endGroup
 
-
-  check-all:
+  check-all-docker:
     runs-on: ubuntu-latest
     needs: [build]
     if: always()
