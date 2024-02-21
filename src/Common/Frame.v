@@ -283,10 +283,11 @@ Arguments PreO.max {A} {le} _ _ _.
     such that [eq x y] exactly when both [le x y] and [le y x]. *)
 Module PO.
   Class t {A : Type} {le : A -> A -> Prop} {eq : A -> A -> Prop} : Prop :=
-    { PreO :> PreO.t le
+    { PreO : PreO.t le
       ; le_proper : Proper (eq ==> eq ==> iff) le
       ; le_antisym : forall x y, le x y -> le y x -> eq x y
     }.
+  #[global] Existing Instance PreO.
 
   Arguments t {A} le eq.
 
@@ -494,10 +495,11 @@ Module JoinLat.
       a join semi-lattice? We need [le] and [eq] to be a partial order,
       and we need our [max] operation to actually implement a maximum. *)
   Class t {A : Type} {O : Ops A} : Prop :=
-    { PO :> PO.t le eq
+    { PO : PO.t le eq
       ; max_proper : Proper (eq ==> eq ==> eq) max
       ; max_ok : forall l r, PreO.max (le := le) l r (max l r)
     }.
+  #[global] Existing Instance PO.
 
   Arguments t : clear implicits.
 
@@ -670,10 +672,11 @@ Module MeetLat.
   Arguments Ops : clear implicits.
 
   Class t {A : Type} {O : Ops A} : Prop :=
-    { PO :> PO.t le eq
+    { PO : PO.t le eq
       ; min_proper : Proper (eq ==> eq ==> eq) min
       ; min_ok : forall l r, PreO.min (le := le) l r (min l r)
     }.
+  #[global] Existing Instance PO.
 
   Arguments t : clear implicits.
 
@@ -866,12 +869,13 @@ Module Lattice.
   Arguments Ops : clear implicits.
 
   Class t {A : Type} {O : Ops A} : Prop :=
-    { PO :> PO.t le eq
+    { PO : PO.t le eq
       ; max_proper : Proper (eq ==> eq ==> eq) max
       ; max_ok : forall l r, PreO.max (le := le) l r (max l r)
       ; min_proper : Proper (eq ==> eq ==> eq) min
       ; min_ok : forall l r, PreO.min (le := le) l r (min l r)
     }.
+  #[global] Existing Instance PO.
 
   Arguments t : clear implicits.
 
@@ -1257,20 +1261,22 @@ End CompleteLattice.
  *)
 Module Frame.
   Class Ops {A} :=
-    { LOps :> L.Ops A
+    { LOps : L.Ops A
       ; sup : forall {Ix : Type}, (Ix -> A) -> A
     }.
+  #[global] Existing Instance LOps.
 
   Arguments Ops : clear implicits.
 
   Class t {A} {OA : Ops A}: Type :=
-    { L :> L.t A LOps
+    { L : L.t A LOps
       ; sup_proper : forall {Ix : Type},
           Proper (pointwise_relation _ L.eq ==> L.eq) (@sup _ _ Ix)
       ; sup_ok :  forall {Ix : Type} (f : Ix -> A), PreO.sup (le := L.le) f (sup f)
       ; sup_distr : forall x {Ix : Type} (f : Ix -> A)
         , L.eq (L.min x (sup f)) (sup (fun i => L.min x (f i)))
     }.
+  #[global] Existing Instance L.
 
   Arguments t : clear implicits.
   Section Facts.
@@ -1489,12 +1495,14 @@ Module CommIdemSG.
   (** [dot] is a binary operation which is commutative, idempotent, and
     associative. It is effectively a max or min. *)
   Class t {A} {eq : A -> A -> Prop} {dot : A -> A -> A} :=
-    { eq_equiv :> Equivalence eq
-      ; dot_proper :> Proper (eq ==> eq ==> eq) dot
+    { eq_equiv : Equivalence eq
+      ; dot_proper : Proper (eq ==> eq ==> eq) dot
       ; dot_idempotent : forall a, eq (dot a a) a
       ; dot_comm : forall a b, eq (dot a b) (dot b a)
       ; dot_assoc : forall a b c, eq (dot a (dot b c)) (dot (dot a b) c)
     }.
+  #[global] Existing Instance eq_equiv.
+  #[global] Existing Instance dot_proper.
 
   Arguments t : clear implicits.
 

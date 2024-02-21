@@ -20,7 +20,7 @@ Reserved Notation "[ x ]".
 Module Export StringLike.
   Class StringLikeMin {Char : Type} :=
     {
-      String :> Type;
+      String : Type;
       char_at_matches : nat -> String -> (Char -> bool) -> bool;
       unsafe_get : nat -> String -> Char;
       length : String -> nat
@@ -114,11 +114,11 @@ Module Export StringLike.
       unsafe_get_correct : forall n s ch, get n s = Some ch -> unsafe_get n s = ch;
       length_singleton : forall s ch, s ~= [ ch ] -> length s = 1;
       bool_eq_char : forall s s' ch, s ~= [ ch ] -> s' ~= [ ch ] -> s =s s';
-      is_char_Proper :> Proper (beq ==> eq ==> eq) is_char;
-      length_Proper :> Proper (beq ==> eq) length;
-      take_Proper :> Proper (eq ==> beq ==> beq) take;
-      drop_Proper :> Proper (eq ==> beq ==> beq) drop;
-      bool_eq_Equivalence :> Equivalence beq;
+      is_char_Proper : Proper (beq ==> eq ==> eq) is_char;
+      length_Proper : Proper (beq ==> eq) length;
+      take_Proper : Proper (eq ==> beq ==> beq) take;
+      drop_Proper : Proper (eq ==> beq ==> beq) drop;
+      bool_eq_Equivalence : Equivalence beq;
       bool_eq_empty : forall str str', length str = 0 -> length str' = 0 -> str =s str';
       take_short_length : forall str n, n <= length str -> length (take n str) = n;
       take_long : forall str n, length str <= n -> take n str =s str;
@@ -131,6 +131,11 @@ Module Export StringLike.
       bool_eq_from_get : forall str str', (forall n, get n str = get n str') -> str =s str';
       strings_nontrivial : forall n, exists str, length str = n
     }.
+  #[global] Existing Instance is_char_Proper.
+  #[global] Existing Instance length_Proper.
+  #[global] Existing Instance take_Proper.
+  #[global] Existing Instance drop_Proper.
+  #[global] Existing Instance bool_eq_Equivalence.
 
   Class StringIsoProperties {Char} {HSLM} {HSL : @StringLike Char HSLM} {HSI : @StringIso Char HSLM} :=
     {
