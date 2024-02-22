@@ -156,7 +156,7 @@ Proof.
 Qed.
 
 Class grammar_fixedpoint_lattice_data prestate :=
-  { state :> _ := lattice_for prestate;
+  { state : _ := lattice_for prestate;
     prestate_lt : prestate -> prestate -> bool;
     state_lt : state -> state -> bool
     := lattice_for_lt prestate_lt;

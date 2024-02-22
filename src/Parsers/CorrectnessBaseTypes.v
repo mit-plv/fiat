@@ -46,7 +46,10 @@ Section general.
       : split_list_completeT split_string_for_production }.
 
   Class boolean_parser_correctness_dataT :=
-    { data :> boolean_parser_dataT;
-      rdata' :> @parser_removal_dataT' _ G _;
-      cdata' :> boolean_parser_completeness_dataT' }.
+    { data : boolean_parser_dataT;
+      rdata' : @parser_removal_dataT' _ G _;
+      cdata' : boolean_parser_completeness_dataT' }.
+  #[global] Existing Instance data.
+  #[global] Existing Instance rdata'.
+  #[global] Existing Instance cdata'.
 End general.

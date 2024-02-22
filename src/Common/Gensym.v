@@ -11,10 +11,12 @@ Class PreGensym A :=
   { s_gt : A -> A -> Prop;
     sym_init : A;
     combine_symbols : A -> A -> A;
-    s_gt_Asymmetric :> Asymmetric s_gt;
-    s_gt_Transitive :> Transitive s_gt;
+    s_gt_Asymmetric : Asymmetric s_gt;
+    s_gt_Transitive : Transitive s_gt;
     combine_respectful_l : forall x y, s_gt (combine_symbols x y) x;
     combine_respectful_r : forall x y, s_gt (combine_symbols x y) y }.
+  #[global] Existing Instance s_gt_Asymmetric.
+  #[global] Existing Instance s_gt_Transitive.
 
 Delimit Scope gensym_scope with gensym.
 Infix ">" := s_gt : gensym_scope.

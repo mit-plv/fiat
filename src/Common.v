@@ -479,8 +479,10 @@ Class ReflexiveT A (R : A -> A -> Type) :=
 Class TransitiveT A (R : A -> A -> Type) :=
   transitivityT : forall x y z, R x y -> R y z -> R x z.
 Class PreOrderT A (R : A -> A -> Type) :=
-  { PreOrderT_ReflexiveT :> ReflexiveT R;
-    PreOrderT_TransitiveT :> TransitiveT R }.
+  { PreOrderT_ReflexiveT : ReflexiveT R;
+    PreOrderT_TransitiveT : TransitiveT R }.
+#[global] Existing Instance PreOrderT_ReflexiveT.
+#[global] Existing Instance PreOrderT_TransitiveT.
 Definition respectful_heteroT A B C D
            (R : A -> B -> Type)
            (R' : forall (x : A) (y : B), C x -> D y -> Type)

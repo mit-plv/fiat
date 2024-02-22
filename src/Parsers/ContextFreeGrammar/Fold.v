@@ -168,7 +168,7 @@ Section fold_correctness.
       Ppat : nonterminals_listT -> production Char -> T -> Type;
       Ppats : nonterminals_listT -> productions Char -> T -> Type }.
   Class fold_grammar_correctness_data :=
-    { fgccd :> fold_grammar_correctness_computational_data;
+    { fgccd : fold_grammar_correctness_computational_data;
       Pnt_lift : forall valid0 nt value,
                    sub_nonterminals_listT valid0 initial_nonterminals_data
                    -> is_valid_nonterminal valid0 (of_nonterminal nt)
@@ -198,6 +198,7 @@ Section fold_correctness.
                      -> Ppat valid0 x p
                      -> Ppats valid0 xs ps
                      -> Ppats valid0 (x::xs) (combine_productions p ps) }.
+  #[global] Existing Instance fgccd.
   Context {FGCD : fold_grammar_correctness_data}.
 
   Lemma fold_production'_correct

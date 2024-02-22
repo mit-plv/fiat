@@ -26,14 +26,16 @@ Class MonadLaws M `{MonadOps M}
 Arguments MonadLaws M {_}.
 
 Class MonadTransformerOps (T : (Type -> Type) -> (Type -> Type))
-  := { Tops :> forall M `{MonadOps M}, MonadOps (T M);
+  := { Tops : forall M `{MonadOps M}, MonadOps (T M);
        lift : forall {M} `{MonadOps M} {A}, M A -> T M A }.
+#[global] Existing Instance Tops.
 
 Class MonadTransformerLaws T `{MonadTransformerOps T}
-  := { Tlaws :> forall {M} `{MonadLaws M}, MonadLaws (T M);
+  := { Tlaws : forall {M} `{MonadLaws M}, MonadLaws (T M);
        lift_ret : forall {M} `{MonadLaws M} {A} (x : A), lift (ret x) = ret x;
        lift_bind : forall {M} `{MonadLaws M} {A B} (f : A -> M B) x,
                      lift (bind x f) = bind (lift x) (fun u => lift (f u)) }.
+#[global] Existing Instance Tlaws.
 Arguments MonadTransformerLaws T {_}.
 
 Create HintDb monad discriminated.
