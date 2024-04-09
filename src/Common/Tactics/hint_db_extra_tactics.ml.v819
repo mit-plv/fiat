@@ -41,10 +41,16 @@ module WITH_DB =
       end
 
   let add_resolve_to_db lem db =
-    Proofview.Goal.enter begin
-	fun gl ->
-	let _ = Hints.add_hints ~locality:Hints.Local db (Hints.HintsResolveEntry [({ Typeclasses.hint_priority = Some 1 ; Typeclasses.hint_pattern = None }, true, lem)]) in
-	tclIDTAC
-      end
+    Proofview.Goal.enter begin fun gl ->
+      let sigma = Proofview.Goal.sigma gl in
+      (* Tolerate applications to please tclABSTRACT in a section *)
+      let lem, _ = EConstr.decompose_app sigma lem in
+      match EConstr.destRef sigma lem with
+      | gr, _ ->
+        let lem = Hints.hint_globref gr in
+        let () = Hints.add_hints ~locality:Hints.Local db (Hints.HintsResolveEntry [({ Typeclasses.hint_priority = Some 1 ; Typeclasses.hint_pattern = None }, true, lem)]) in
+        tclIDTAC
+      | exception Constr.DestKO -> tclFAIL (Pp.str "Cannot add non-global to hint database")
+    end
 
 end
