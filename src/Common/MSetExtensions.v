@@ -107,7 +107,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Create HintDb sets discriminated.
   Create HintDb setsb discriminated.
   Global Hint Immediate union_subset_1 union_subset_2 inter_subset_1 inter_subset_2 equal_refl : sets.
-  Global Hint Resolve (BasicFacts.inter_s_m : forall x y _ x' y' _, _) : sets.
+  Global Hint Extern 2 => simple apply (BasicFacts.inter_s_m : forall x y _ x' y' _, _) : sets.
 
   Ltac simplify_sets_step :=
     idtac;

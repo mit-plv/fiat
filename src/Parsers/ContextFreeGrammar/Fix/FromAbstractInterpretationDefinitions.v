@@ -446,7 +446,7 @@ Section fold_correctness.
     }.
 
   Context {aicdata : AbstractInterpretationCorrectness}.
-  Local Hint Immediate (compile_item_data_of_abstract_interpretation G) : typeclass_instances.
+  Local Hint Extern 1 (opt.compile_item_data _ _) => simple apply (compile_item_data_of_abstract_interpretation G) : typeclass_instances.
   Context (compiled_productions : list (opt.productions state))
           (Hcompiled_productions : List.map opt.compile_productions (List.map snd (pregrammar_productions G)) = compiled_productions).
 

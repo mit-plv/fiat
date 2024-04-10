@@ -167,7 +167,9 @@ Hint Rewrite <- @interp_Term_syntactify_list @interp_Term_syntactify_nat @List.m
 #[global]
 Hint Rewrite @nth'_nth List.map_nth List.map_map List.map_length List.map_id @combine_map_r @combine_map_l @first_index_default_map Bool.orb_true_r Bool.orb_true_l Bool.andb_true_l Bool.andb_true_r Bool.orb_false_r Bool.orb_false_l Bool.andb_false_l Bool.andb_false_r BoolFacts.andbr_andb BoolFacts.orbr_orb @bool_rect_nodep_const @BoolFacts.uneta_bool_rect_nodep : partial_unfold_hints.
 #[global]
-Hint Resolve map_ext_in fold_left_app (@constantOf_correct cbool) @first_index_default_first_index_partial : partial_unfold_hints.
+Hint Resolve map_ext_in fold_left_app @first_index_default_first_index_partial : partial_unfold_hints.
+#[global]
+Hint Extern 1 (eq (interp_Term _) _) => eapply (@constantOf_correct cbool) : partial_unfold_hints.
 
 Local Ltac meaning_tac_helper' :=
   idtac;
