@@ -181,7 +181,7 @@ Section recursive_descent_parser.
                try unfold x'; try unfold y'
         end.
 
-      Local Hint Resolve (fun n m => proj1 (Nat.eqb_eq n m)) : generic_parser_correctness.
+      Local Hint Extern 1 (eq _ _) => simple apply (fun n m => proj1 (Nat.eqb_eq n m)) : generic_parser_correctness.
 
       Local Ltac eq_t' :=
         first [ progress subst_le_proof

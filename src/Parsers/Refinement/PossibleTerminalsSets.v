@@ -433,7 +433,7 @@ Local Declare Reduction opt_possible :=
 Section defs.
   Context (G : pregrammar' Ascii.ascii)
           {pdata : possible_data G}.
-  Local Hint Immediate (compile_item_data_of_abstract_interpretation G) : typeclass_instances.
+  Local Hint Extern 1 (opt.compile_item_data _ _) => simple apply (compile_item_data_of_abstract_interpretation G) : typeclass_instances.
 
   Definition characters_set_to_ascii_list (s : PositiveSet.t)
     : list Ascii.ascii
