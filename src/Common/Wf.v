@@ -1,6 +1,9 @@
 (** * Miscellaneous Well-Foundedness Facts *)
-Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
-Require Import Coq.Lists.SetoidList.
+From Coq Require Import Setoid.
+From Coq.Program Require Import Program Wf.
+From Coq Require Import Wf_nat Morphisms.
+From Coq.Init Require Import Wf.
+From Coq Require Import SetoidList.
 Require Import Coq.Arith.PeanoNat.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 

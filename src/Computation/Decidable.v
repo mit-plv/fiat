@@ -139,7 +139,7 @@ Global Program Instance bool_eq_Decidable {n m : bool} : Decidable (n = m) := {
 Obligation 1. t' eqb_true_iff. Qed.
 
 Require Import Coq.Strings.Ascii.
-Require Import Coq.Bool.Sumbool.
+From Coq Require Import Sumbool.
 
 Global Program Instance ascii_eq_Decidable {n m : Ascii.ascii} :
   Decidable (n = m) := {
