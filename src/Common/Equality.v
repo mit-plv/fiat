@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Lists.SetoidList.
+From Coq Require Import List SetoidList.
 Require Import Coq.Bool.Bool.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Strings.Ascii.

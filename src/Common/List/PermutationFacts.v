@@ -220,7 +220,7 @@ Proof.
   apply Permutation_length_1 in H; congruence.
 Qed.
 
-Require Import Coq.Lists.SetoidList.
+From Coq Require Import SetoidList.
 
 Lemma InA_app_swap {A} eqA :
   Equivalence eqA

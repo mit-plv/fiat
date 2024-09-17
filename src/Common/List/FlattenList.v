@@ -1,4 +1,5 @@
-Require Import Coq.Lists.List Coq.Lists.SetoidList Fiat.Common.
+From Coq Require Import List SetoidList.
+Require Import Fiat.Common.
 Require Import Coq.Arith.Arith.
 
 Unset Implicit Arguments.
