@@ -84,7 +84,7 @@ Module FMapExtensionsLiftRelationInstances_fun (E: DecidableType) (Import M: WSf
           pose proof (R2_Reflexive default).
           t; compute in * |- ; split_and; break_match; try split;
             try solve [ eauto 3
-                      | eapply iffR_Proper; [ | | eauto ]; [ | eauto ]; eauto ].
+                      | eapply iffR_Proper; [ | | eapply R_Proper; eauto ]; eauto ].
         Qed.
 
         Global Instance lift_relation_gen_hetero_homo_Proper_Proper_subrelation
