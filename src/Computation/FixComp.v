@@ -773,9 +773,9 @@ Module LeastFixedPointFun.
       let wf_sub' := fresh in
       let wf_subP' := (eval pattern r in (P r)) in
       let wf_subP := match wf_subP' with ?P' _ => constr:(P') end in
-      assert (forall r'', wf_subP r'') as wf_sub';
-      [clear; abstract solveTac using idm'
-      | clear wf_sub' ]
+      unshelve refine (let idm' : forall r'', wf_subP r'' := _ in _);
+      [clear; abstract solveTac
+      | ]
     end.
 
   Definition FibonacciImpl'
@@ -805,10 +805,10 @@ Module LeastFixedPointFun.
           (* Having to provide new, unique identifiers is not ideal. *)
           (* Have to go to ML for a better solution. *)
           solve_rec_obligation x ltac:(intros; omega) foo;
-            rewrite (H _ (foo _)); simplify with monad laws.
+            rewrite (H _ (foo _)); unfold foo; clear foo; simplify with monad laws.
 
           solve_rec_obligation x ltac:(intros; omega) foo2;
-            rewrite (H _ (foo2 _)); simplify with monad laws.
+            rewrite (H _ (foo2 _)); unfold foo2; clear foo2; simplify with monad laws.
           subst H0; higher_order_reflexivity.
     - simpl; intros; higher_order_reflexivity.
   Defined.
