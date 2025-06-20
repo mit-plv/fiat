@@ -219,6 +219,7 @@ endif
 endif
 endif
 endif
+endif
 
 ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml src/Common/Tactics/TransparentAbstract.v src/Common/Tactics/HintDbExtra.v
 
