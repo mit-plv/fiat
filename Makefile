@@ -183,6 +183,13 @@ OTHERFLAGS += -w "-notation-overridden"
 ML4_OR_MLG := mlg
 EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
 else
+ifneq (,$(filter 9.2%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v92
+ML_DESCRIPTION := "Coq v9.2"
+OTHERFLAGS += -w "-notation-overridden"
+ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
+else
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
 
@@ -193,12 +200,13 @@ ML4_OR_MLG := ml4
 else
 ifdef COQ_VERSION # if not, we're just going to remake the relevant Makefile to include anyway, so we shouldn't error
 $(warning Unrecognized Coq version $(COQ_VERSION))
-EXPECTED_EXT:=.v91
-ML_DESCRIPTION := "Coq v9.1"
+EXPECTED_EXT:=.v92
+ML_DESCRIPTION := "Coq v9.2"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
 EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
 
+endif
 endif
 endif
 endif
