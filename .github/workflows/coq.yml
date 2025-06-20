@@ -41,6 +41,7 @@ jobs:
           export FLAGS="PROFILE=1"
           export NJOBS="2"
           git config --global --add safe.directory "*"
+          opam install -y coq
           startGroup make
           etc/coq-scripts/timing/make-pretty-timed.sh -j$NJOBS $TARGETS $FLAGS && make TIMED=1 -j$NJOBS $TARGETS
           endGroup
