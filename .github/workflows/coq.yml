@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        coq-version: [ "dev" , "8.20" , "8.19" , "8.18" , "8.17" , "8.16" ]
+        coq-version: [ "dev" , "9.0" , "8.20" , "8.19" , "8.18" , "8.17" , "8.16" ]
         targets: [ "fiat-core parsers parsers-examples coq-ci" ]
 
     name: ${{ matrix.coq-version }} (${{ matrix.targets }})
@@ -41,6 +41,7 @@ jobs:
           export FLAGS="PROFILE=1"
           export NJOBS="2"
           git config --global --add safe.directory "*"
+          opam install -y coq
           startGroup make
           etc/coq-scripts/timing/make-pretty-timed.sh -j$NJOBS $TARGETS $FLAGS && make TIMED=1 -j$NJOBS $TARGETS
           endGroup
