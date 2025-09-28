@@ -97,7 +97,7 @@ Section ListFacts.
   Proof.
     intros A seq pred all_false; induction seq as [ | head tail IH ]; simpl; trivial.
     rewrite (all_false head) by (simpl; eauto).
-    intuition.
+    intuition; auto with *.
   Qed.
 
   Lemma map_filter_all_false :
@@ -918,7 +918,7 @@ Section ListFacts.
     { simpl.
       specialize (IHm n).
       destruct IHm.
-      destruct (lt_eq_lt_dec n m) as [[?|?]|?]; split; intros; try omega; eauto; intuition. }
+      destruct (lt_eq_lt_dec n m) as [[?|?]|?]; split; intros; try omega; eauto; intuition; auto with *. }
   Qed.
 
   Lemma first_index_helper_first_index_error
@@ -1052,7 +1052,7 @@ Section ListFacts.
         simpl in *; split; intros;
           unfold value in *;
           try (reflexivity || omega || congruence);
-          intuition.
+          intuition; auto with *.
   Qed.
 
   Lemma nth_error_Some_short {A} (n : nat) (x : A) (ls : list A)
@@ -2286,7 +2286,7 @@ Section ListFacts.
     { apply removeA_NoDupA; assumption. }
     { intro y; specialize (H2 y); rewrite <- H2; clear H2.
       rewrite removeA_InA by assumption.
-      intuition. }
+      intuition; auto with *. }
   Qed.
   Lemma remove_length_lt {A R} {_ : @Equivalence A R}
         (dec : forall x y, {R x y} + {~R x y})

@@ -333,7 +333,7 @@ Proof.
     specialize (H0 len).
     edestruct get; [ | reflexivity ].
     specialize (H0 _ eq_refl).
-    edestruct P; simpl in *; intuition. }
+    edestruct P; simpl in *; intuition; auto with *. }
   { specialize (IHn (drop 1 str)).
     rewrite !drop_drop, !take_drop, !Nat.add_1_r in IHn.
     specialize_by assumption.

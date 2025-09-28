@@ -20,7 +20,7 @@ Program Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
   : DecideableEnsemble (fun a => f a > f' a) :=
   {| dec a := if le_lt_dec (f a) (f' a) then false else true |}.
 Next Obligation.
-  intros; find_if_inside; intuition.
+  intros; find_if_inside; intuition; auto with *.
 Defined.
 
 #[global]
@@ -65,7 +65,7 @@ Program Instance DecideableEnsemble_NEqDec
 : DecideableEnsemble (fun a : A => f a <> f' a) :=
   {| dec a := if A_eq_dec (f a) (f' a) then false else true |}.
 Next Obligation.
-  intros; find_if_inside; intuition.
+  intros; find_if_inside; intuition; auto with *.
 Defined.
 
 #[global]

@@ -116,7 +116,7 @@ Section IndexedEnsembles.
     econstructor; split; eauto.
     constructor.
     - intros; rewrite eqv_nr.
-      split; apply Permutation_in; intuition.
+      split; apply Permutation_in; intuition; auto with *.
     - apply NoDup_modulo_permutation.
       exists (map elementIndex lensemble).
       intuition. apply Permutation_map. auto.
@@ -338,7 +338,7 @@ Section IndexedEnsembles.
         destruct H2.
         eapply nth_error_map' in H2; destruct_ex; intuition.
         injections.
-        eexists 0, (S x0), (elementIndex x), (elementIndex x1); intuition; simpl; eauto.
+        eexists 0, (S x0), (elementIndex x), (elementIndex x1); intuition; auto with *; simpl; eauto.
         destruct x; eauto.
         rewrite H3; destruct x1; eauto.
       + assert (exists m, nth_error (map indexedElement l') m = Some t) by
@@ -346,7 +346,7 @@ Section IndexedEnsembles.
         destruct H2.
         eapply nth_error_map' in H2; destruct_ex; intuition.
         injections.
-        eexists (S x0), 0, (elementIndex x1), (elementIndex x); intuition; simpl; eauto.
+        eexists (S x0), 0, (elementIndex x1), (elementIndex x); intuition; auto with *; simpl; eauto.
         rewrite H3; destruct x1; eauto.
         destruct x; eauto.
       + destruct (IHPermutation t t' n n') as [m [m' [idx [idx' ?] ] ] ]; eauto.

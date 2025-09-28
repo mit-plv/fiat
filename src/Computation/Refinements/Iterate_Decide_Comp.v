@@ -100,7 +100,7 @@ Section Iterate_Decide_Comp.
                (if fin_eq_dec Ridx a then false else true) = true
                <-> a <> Ridx)
       as filter_dec'
-        by (intros; find_if_inside; try rewrite e; intuition).
+        by (intros; find_if_inside; try rewrite e; intuition; auto with *).
     split; intros.
     - eapply Iterate_Ensemble_equiv_filter'' with
       (filter := fun idx => idx <> Ridx)
