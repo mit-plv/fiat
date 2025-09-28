@@ -348,7 +348,7 @@ Section for_first_char.
          \/ (n <> 0 /\ for_first_char (take n str) P)).
   Proof.
     destruct n; [ rewrite drop_0 | rewrite <- for_first_char__take ];
-      intuition.
+      intuition; auto with *.
   Qed.
 
   Lemma for_first_char_True (str : String) (P : _ -> Prop) (p : forall ch, P ch)

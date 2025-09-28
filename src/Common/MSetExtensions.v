@@ -211,7 +211,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     : (Equal x y \/ (Subset x y /\ ~Equal x y)) <-> Subset x y.
   Proof.
     destruct (equal x y) eqn:?; simpl; bool_congr; to_caps; simplify_sets;
-      intuition.
+      intuition; auto with *.
   Qed.
 
 #[global]

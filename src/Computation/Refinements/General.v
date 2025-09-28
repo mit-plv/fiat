@@ -506,7 +506,7 @@ and gives you the computational hypothesis for the second *)
   Lemma refineEquiv_decides_eqb (b b1 b2 : bool)
     : decides b (b1 = b2) <-> b = If b2 Then b1 Else negb b1.
   Proof.
-    destruct_head bool; simpl; intuition.
+    destruct_head bool; simpl; intuition; auto with *.
   Qed.
 
   Lemma refine_If_Then_Else_Bind {A B}
@@ -857,7 +857,7 @@ Proof.
 Qed.
 
 
-Local Ltac t2 p := intros; destruct p; intuition.
+Local Ltac t2 p := intros; destruct p; intuition; auto with *.
 
 Lemma refine_sumbool_match :
   forall `(P : {A} + {~A}) B

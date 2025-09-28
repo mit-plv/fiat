@@ -542,7 +542,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     apply IHl;
       [unfold not; intros; apply H; constructor 2; eauto
       | eauto].
-    apply add_mapsto_iff in H1; intuition; subst.
+    apply add_mapsto_iff in H1; intuition; auto with *; subst.
     intros; eapply IHl; eauto using add_2.
   Qed.
 
@@ -1165,7 +1165,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     forall x y,
       (if E.eq_dec x y then true else false) = (if E.eq_dec y x then true else false).
   Proof.
-    intros; destruct (E.eq_dec x y), (E.eq_dec y x); intuition.
+    intros; destruct (E.eq_dec x y), (E.eq_dec y x); intuition; auto with *.
   Qed.
 
   Lemma KeyBasedPartitioningFunction_eq_true :
@@ -1173,7 +1173,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       E.eq k k' <->
       KeyBasedPartitioningFunction TValue k k' v = true.
   Proof.
-    intros; unfold KeyBasedPartitioningFunction; destruct (E.eq_dec _ _); intuition.
+    intros; unfold KeyBasedPartitioningFunction; destruct (E.eq_dec _ _); intuition; auto with *.
   Qed.
 
   Lemma KeyBasedPartitioningFunction_eq_false :
@@ -1181,7 +1181,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       ~ E.eq k k' <->
       KeyBasedPartitioningFunction TValue k k' v = false.
   Proof.
-    intros; unfold KeyBasedPartitioningFunction; destruct (E.eq_dec _ _); intuition.
+    intros; unfold KeyBasedPartitioningFunction; destruct (E.eq_dec _ _); intuition; auto with *.
   Qed.
 
   Lemma KeyBasedPartitioningFunction_refl :
@@ -1404,13 +1404,13 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     unfold transpose_neqkey; intros.
     eapply Equal_mapsto_iff; split; intros.
     - rewrite add_mapsto_iff in *; intuition; subst.
-      destruct (E.eq_dec k0 k'); intuition; eauto.
+      destruct (E.eq_dec k0 k'); intuition; auto with *; eauto.
       rewrite e in H0; intuition.
-      rewrite add_mapsto_iff in H2; intuition.
+      rewrite add_mapsto_iff in H2; intuition; auto with *.
     - rewrite add_mapsto_iff in *; intuition; subst.
-      destruct (E.eq_dec k0 k); intuition; eauto.
-      rewrite e1 in H0; intuition.
-      rewrite add_mapsto_iff in H2; intuition.
+      destruct (E.eq_dec k0 k); intuition; auto with *; eauto.
+      rewrite e1 in H0; intuition; auto with *.
+      rewrite add_mapsto_iff in H2; intuition; auto with *.
   Qed.
 
   Lemma map_empty

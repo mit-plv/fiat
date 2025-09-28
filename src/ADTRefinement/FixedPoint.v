@@ -553,7 +553,7 @@ Proof.
                                  exists f',
                                    P f'
                            /\ refineFun f (@domcod_old_to_new _ _ fDom fCod AbsR f'))).
-  eexists (refineFun_sup P); intuition.
+  eexists (refineFun_sup P); intuition; auto with *.
 Qed.
 
 Lemma refineFun_AbsR_unCurry

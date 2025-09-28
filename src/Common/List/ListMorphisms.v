@@ -105,7 +105,7 @@ Add Parametric Morphism {A: Type} :
       as in_permutation_morphism.
 Proof.
   intros * is_perm.
-  split; apply Permutation_in; intuition.
+  split; apply Permutation_in; intuition; auto with *.
 Qed.
 
 Add Parametric Morphism {A: Type} :

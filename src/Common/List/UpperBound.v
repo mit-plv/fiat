@@ -60,7 +60,7 @@ Section Upperbound.
   Proof.
     unfold upperbound; induction xs; simpl in *; intuition;
     apply andb_true_iff in H; intuition; subst;
-    find_if_inside; intuition.
+    find_if_inside; intuition; auto with *.
   Qed.
 
   Lemma choose_upperbound_ineff'_is_upperbound :

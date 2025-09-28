@@ -42,7 +42,7 @@ Section ListComprehension.
              (build_FilteredList xs P).
   Proof.
     unfold FilteredList, ListComprehension; induction xs; simpl; intros.
-    - refine pick val _; try reflexivity; intuition.
+    - refine pick val _; try reflexivity; intuition; auto with *.
     - rewrite <- IHxs.
       unfold refine; intros; computes_to_inv.
       destruct v1; simpl in *; computes_to_inv;

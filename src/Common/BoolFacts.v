@@ -143,7 +143,7 @@ Section BoolFacts.
 
   Lemma not_andb_negb_iff {a b : bool} : (is_true a -> is_true b) <-> ~is_true (a && negb b).
   Proof.
-    destruct a, b; simpl; intuition.
+    destruct a, b; simpl; intuition; auto with *.
   Qed.
 
   Global Instance is_true_implb_impl_Proper_flip
@@ -153,7 +153,7 @@ Section BoolFacts.
   Qed.
 
   Lemma not_negb x : ~negb x <-> x.
-  Proof. destruct x; simpl; lazy; intuition. Qed.
+  Proof. destruct x; simpl; lazy; intuition; auto with *. Qed.
 End BoolFacts.
 
 Create HintDb bool_congr discriminated.

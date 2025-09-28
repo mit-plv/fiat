@@ -72,7 +72,7 @@ Proof.
   intros * no_dup * [ in_a | in_c ];
   [ | rewrite app_assoc in no_dup; apply NoDup_app_swap in no_dup ];
   eapply NoDup_app_inv in no_dup; eauto;
-  intuition.
+  intuition; auto with *.
 Qed.
 
 Lemma permutation_cons_in :
@@ -82,7 +82,7 @@ Lemma permutation_cons_in :
 Proof.
   intros.
   eapply Permutation_in;
-    try symmetry; eauto; intuition.
+    try symmetry; eauto; intuition; auto with *.
 Qed.
 
 Lemma permutation_map :

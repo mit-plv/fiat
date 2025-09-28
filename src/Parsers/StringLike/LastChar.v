@@ -410,7 +410,7 @@ Section for_last_char.
     destruct (le_lt_dec (length str) n);
       [ rewrite take_long by assumption
       | rewrite <- for_last_char__drop by assumption ];
-      intuition.
+      intuition; auto with *.
   Qed.
 
   Lemma for_last_char_True (str : String) (P : _ -> Prop) (p : forall ch, P ch)

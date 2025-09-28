@@ -128,7 +128,7 @@ Module MSetBoundedLatticeOn (E: OrderedType) (Import M: SetsOn E).
       destruct (not_equal_ex H2) as [a [H3 H4]].
       pose proof (subset_cardinal_lt (x := a) H0).
       destruct H3 as [H3|H3].
-      { intuition. }
+      { intuition; auto with *. }
       { intuition omega. }
     Qed.
 

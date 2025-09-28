@@ -81,7 +81,7 @@ Proof.
   setoid_rewrite PositiveSet.filter_spec; [ | congruence.. ].
   setoid_rewrite (LogicFacts.True_iff (In_all ch)).
   rewrite ascii_of_pos_of_ascii.
-  destruct (P ch); intuition.
+  destruct (P ch); intuition; auto with *.
 Qed.
 
 Section with_empty.
