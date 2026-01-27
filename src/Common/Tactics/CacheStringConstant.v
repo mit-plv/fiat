@@ -7,7 +7,7 @@ Require Import
 Create HintDb stringCache.
 
 Ltac fold_string_hyps :=
-  (repeat foreach [ stringCache ] run (fun id => progress fold id in *)).
+  (repeat foreach [ stringCache ] run (fun id => progress fold id in * )).
 
 Ltac fold_string_hyps_in H :=
   repeat foreach [ stringCache ] run (fun id => progress fold id in H).

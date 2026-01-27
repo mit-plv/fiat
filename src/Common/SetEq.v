@@ -85,7 +85,7 @@ Lemma union_right :
     SetEq (SetUnion seq1 (x::seq2)) (x :: (SetUnion seq1 seq2)).
 Proof.
   intros; unfold SetEq, SetUnion; intuition;
-  repeat (rewrite in_app_iff in *; simpl in *);
+  repeat (rewrite in_app_iff in *; simpl in * );
   intuition.
 Qed.
 

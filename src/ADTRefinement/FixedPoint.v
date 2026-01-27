@@ -234,9 +234,9 @@ Definition cod_old_to_new {newRep oldRep fDom fCod}
 Proof.
   simpl; intros f.
   induction fDom; simpl in *.
-  exact { o : newRep * fCod |
+  exact ({ o : newRep * fCod |
           exists p,
-          computes_to f (p, snd o) /\ AbsR p (fst o)}.
+          computes_to f (p, snd o) /\ AbsR p (fst o)}).
   intro x.
   exact (IHfDom (f x)).
 Defined.
@@ -259,9 +259,9 @@ Definition cod_new_to_old {newRep oldRep fDom fCod}
 Proof.
   simpl; intros f.
   induction fDom; simpl in *.
-  exact { o : oldRep * fCod |
+  exact ({ o : oldRep * fCod |
           forall r_n',
-            computes_to f (r_n', snd o) -> AbsR (fst o) r_n'}.
+            computes_to f (r_n', snd o) -> AbsR (fst o) r_n'}).
   intro x.
   exact (IHfDom (f x)).
 Defined.
