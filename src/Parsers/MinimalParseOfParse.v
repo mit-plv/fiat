@@ -623,6 +623,8 @@ Section cfg.
       Section production.
         Context {len0 : nat} {str : String} {valid : nonterminals_listT}.
 
+        Let sub_0_le_impl (x y : nat) := proj2 (Nat.sub_0_le x y).
+
         Local Ltac min_parse_prod_t' :=
           idtac;
           match goal with
@@ -721,7 +723,7 @@ Section cfg.
             | [ H : context[min _ _] |- _ ] => rewrite min_r in H by omega
             | _ => rewrite drop_length
             | _
-              => solve [ eauto using le_S, Nat.le_trans, Nat.le_add_l, Nat.le_add_r, drop_0, take_long, Nat.eq_le_incl, bool_eq_empty, drop_length, (fun x y => proj2 (Nat.sub_0_le x y)) with nocore ]
+              => solve [ eauto using le_S, Nat.le_trans, Nat.le_add_l, Nat.le_add_r, drop_0, take_long, Nat.eq_le_incl, bool_eq_empty, drop_length, sub_0_le_impl with nocore ]
           end.
         Local Ltac min_parse_prod_t := repeat min_parse_prod_t'.
 
