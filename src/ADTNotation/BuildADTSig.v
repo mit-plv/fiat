@@ -7,7 +7,7 @@ Record consSig :=
   { consID : string;
     consDom : list Type }.
 
-Arguments Build_consSig consID%string consDom%type_scope.
+Arguments Build_consSig consID%_string consDom%_type_scope.
 Bind Scope consSig_scope with consSig.
 Delimit Scope consSig_scope with consSig.
 
@@ -17,7 +17,7 @@ Record methSig :=
     methCod : option Type
   }.
 
-Arguments Build_methSig methID%string methDom%type_scope methCod%type_scope.
+Arguments Build_methSig methID%_string methDom%_type_scope methCod%_type_scope.
 Bind Scope methSig_scope with methSig.
 Delimit Scope methSig_scope with methSig.
 

@@ -26,8 +26,8 @@ Definition Bind2 (A B C: Type)
 
 
 Bind Scope comp_scope with Comp.
-Arguments Bind [A%type B%type] ca%comp k%comp _.
-Arguments Bind2 [A%type B%type C%type] c%comp k%comp _.
+Arguments Bind [A%_type B%_type] ca%_comp k%_comp _.
+Arguments Bind2 [A%_type B%_type C%_type] c%_comp k%_comp _.
 Arguments Return [_] _ _.
 Arguments Pick [_] _ _.
 

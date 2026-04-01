@@ -18,7 +18,7 @@ Definition Tuple {heading : Heading}
   := @RawTuple heading.
 
 (* Always parse the heading argument in Heading scope. *)
-Arguments Tuple {_%Heading}.
+Arguments Tuple {_%_Heading}.
 
 (* Notations for tuple field. *)
 

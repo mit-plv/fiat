@@ -29,9 +29,9 @@ Local Unset Decidable Equality Schemes.
 
 Bind Scope typecode_scope with TypeCode.
 Bind Scope typecode_scope with SimpleTypeCode.
-Arguments clist _%typecode.
-Arguments carrow (_ _)%typecode.
-Arguments cprod (_ _)%typecode.
+Arguments clist _%_typecode.
+Arguments carrow (_ _)%_typecode.
+Arguments cprod (_ _)%_typecode.
 
 Infix "-->" := carrow : typecode_scope.
 Infix "*" := cprod : typecode_scope.
@@ -408,10 +408,10 @@ End term.
 
 Bind Scope term_scope with Term.
 Bind Scope termargs_scope with args_for.
-Arguments RVar {var T%typecode} v.
-Arguments RLambda {var} {A B}%typecode f%term.
-Arguments RApp {var} {A B}%typecode (f x)%term.
-Arguments RLiteralApp {var} {c}%typecode t%term args%termargs.
+Arguments RVar {var T%_typecode} v.
+Arguments RLambda {var} {A B}%_typecode f%_term.
+Arguments RApp {var} {A B}%_typecode (f x)%_term.
+Arguments RLiteralApp {var} {c}%_typecode t%_term args%_termargs.
 
 Notation "# v" := (RVar v) : term_scope.
 Infix "@" := RApp : term_scope.

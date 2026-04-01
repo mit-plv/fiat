@@ -106,11 +106,11 @@ Bind Scope simple_parse_of_scope with simple_parse_of.
 Bind Scope simple_parse_of_production_scope with simple_parse_of_production.
 Bind Scope simple_parse_of_item_scope with simple_parse_of_item.
 
-Arguments SimpleParseHead _%type _%simple_parse_of_production.
-Arguments SimpleParseTail _%type _%simple_parse_of.
-Arguments SimpleParseProductionNil _%type.
-Arguments SimpleParseProductionCons _%type _%simple_parse_of_item _%simple_parse_of_production.
-Arguments SimpleParseNonTerminal _%type _%string _%simple_parse_of.
+Arguments SimpleParseHead _%_type _%_simple_parse_of_production.
+Arguments SimpleParseTail _%_type _%_simple_parse_of.
+Arguments SimpleParseProductionNil _%_type.
+Arguments SimpleParseProductionCons _%_type _%_simple_parse_of_item _%_simple_parse_of_production.
+Arguments SimpleParseNonTerminal _%_type _%_string _%_simple_parse_of.
 
 Arguments simple_parse_of {_}, _.
 Arguments simple_parse_of_production {_}, _.

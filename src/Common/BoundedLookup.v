@@ -48,7 +48,7 @@ Section BoundedIndex.
 
   Global Arguments indexb {n Bound} b.
   Global Arguments bindex {n Bound} b.
-  Global Arguments BoundedIndex {n} Bound%vector_scope.
+  Global Arguments BoundedIndex {n} Bound%_vector_scope.
 
   Lemma indexb_ibound_eq :
     forall n Bound (bidx bidx' : BoundedIndex (n := n) Bound),
@@ -346,7 +346,7 @@ Notation "x ++ y" := (Vector.append x y) : vector_scope.
 Notation "`` A" :=
   ({| bindex := A%string |}) (at level 0, format "`` A").
 
-Arguments BoundedString {n} _%vector_scope.
+Arguments BoundedString {n} _%_vector_scope.
 
 
 

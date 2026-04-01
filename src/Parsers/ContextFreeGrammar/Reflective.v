@@ -66,12 +66,12 @@ Global Arguments RCharExpr : clear implicits.
 Global Arguments ritem : clear implicits.
 Global Arguments rproduction : clear implicits.
 Global Arguments rproductions : clear implicits.
-Global Arguments rbeq {Char%type_scope} _.
-Global Arguments ror {Char%type_scope} (_ _)%rchar_scope.
-Global Arguments rand {Char%type_scope} (_ _)%rchar_scope.
-Global Arguments rneg {Char%type_scope} (_)%rchar_scope.
-Global Arguments rcode_le_than {Char%type_scope} (_)%N_scope.
-Global Arguments rcode_ge_than {Char%type_scope} (_)%N_scope.
+Global Arguments rbeq {Char%_type_scope} _.
+Global Arguments ror {Char%_type_scope} (_ _)%_rchar_scope.
+Global Arguments rand {Char%_type_scope} (_ _)%_rchar_scope.
+Global Arguments rneg {Char%_type_scope} (_)%_rchar_scope.
+Global Arguments rcode_le_than {Char%_type_scope} (_)%_N_scope.
+Global Arguments rcode_ge_than {Char%_type_scope} (_)%_N_scope.
 
 Infix "||" := ror : rchar_scope.
 Infix "&&" := rand : rchar_scope.

@@ -343,7 +343,7 @@ Delimit Scope SubMessage_scope with SubMessage.
 Notation "[ msg1 ; .. ; msgn ]" :=
   (cons (``(``(msg1%string))) .. (cons (``(``(msgn%string))) nil) ..) : SubMessage_scope.
 
-(*Global Arguments SubMessage {Topics topics} subtopics%SubMessage msg.*)
+(*Global Arguments SubMessage {Topics topics} subtopics%_SubMessage msg.*)
 
 (*Hint Extern 0 (IndexBound _ (map _ _)) =>
 progress simpl; eauto with typeclass_instances : typeclass_instances. *)
