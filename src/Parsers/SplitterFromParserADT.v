@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (*Reference implementation of a splitter and parser based on that splitter *)
-Require Import Coq.Strings.String.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import String.
+From Stdlib Require Import ZArith.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.

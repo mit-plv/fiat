@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Bool.Bool Coq.Structures.OrderedType Coq.Classes.Morphisms Coq.Setoids.Setoid.
+From Stdlib Require Import List Bool OrderedType Morphisms Setoid.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Definition SetEq {A: Type} (seq1: list A) (seq2: list A) :=

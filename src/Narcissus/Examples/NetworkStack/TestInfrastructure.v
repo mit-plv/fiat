@@ -7,8 +7,8 @@ Require Import
         Fiat.Narcissus.Examples.NetworkStack.TCP_Packet
         Fiat.Narcissus.Examples.NetworkStack.UDP_Packet.
 
-Require Coq.Vectors.Vector.
-Export Coq.Vectors.Vector.VectorNotations.
+From Stdlib Require Vector.
+Export Stdlib.Vectors.Vector.VectorNotations.
 
 (* Require Export *)
 (*         Fiat.Common.SumType *)

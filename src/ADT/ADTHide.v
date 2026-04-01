@@ -1,4 +1,5 @@
-Require Import Fiat.Common Fiat.Computation.Core Fiat.ADT.Core Coq.Sets.Ensembles.
+Require Import Fiat.Common Fiat.Computation.Core Fiat.ADT.Core.
+From Stdlib Require Import Ensembles.
 
 Section HideADT.
 

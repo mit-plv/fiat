@@ -1,5 +1,5 @@
-Require Import Coq.Strings.String Coq.Arith.Arith
-        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
+From Stdlib Require Import String Arith.
+Require Import Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Implementation.ListImplementation

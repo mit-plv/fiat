@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii.
+From Stdlib Require Import String Ascii.
 Require Import Fiat.Parsers.Reflective.Syntax.
 Set Implicit Arguments.
 

@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.Lists.List.
+From Stdlib Require Import String List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Parsers.StringLike.String.
 

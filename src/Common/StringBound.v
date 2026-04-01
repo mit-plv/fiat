@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Arith Fiat.Common.ilist.
+Require Import Stdlib.Lists.List Stdlib.Strings.String Stdlib.Arith.Arith Fiat.Common.ilist.
 Require Export Fiat.Common.BoundedLookup.
 (* Typeclasses for ensuring that a string is included
    in a list (i.e. a set of method names). This allows
@@ -81,7 +81,7 @@ Require Export Fiat.Common.BoundedLookup.
     Variable A_eq_dec :
       forall a a' : A, {a = a'} + {a <> a'}.
 
-    Require Import Coq.Logic.Eqdep_dec.
+    Require Import Stdlib.Logic.Eqdep_dec.
 
     Program Definition Opt_A_eq_dec (a a' : option A):
       {a = a'} + {a <> a'} :=

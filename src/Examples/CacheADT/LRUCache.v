@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+From Stdlib Require Import String ZArith List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements
         KVEnsembles CacheSpec CacheRefinements FMapCacheImplementation.
 

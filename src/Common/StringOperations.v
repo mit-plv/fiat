@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.Lists.List.
+From Stdlib Require Import String List.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.

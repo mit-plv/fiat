@@ -1,13 +1,13 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** Sharpened ADT for an expression grammar with parentheses *)
-Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
-Require Import Coq.ZArith.ZArith.
-Require Import Coq.Lists.List Coq.Strings.String.
+Require Import Stdlib.Init.Wf Stdlib.Arith.Wf_nat.
+From Stdlib Require Import ZArith.
+Require Import Stdlib.Lists.List Stdlib.Strings.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
-Require Import Coq.Program.Equality.
-Require Import Coq.MSets.MSetPositive.
+Require Import Stdlib.Program.Equality.
+Require Import Stdlib.MSets.MSetPositive.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.Wf.

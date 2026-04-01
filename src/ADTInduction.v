@@ -1,7 +1,7 @@
 Require Import Fiat.ADT Fiat.ADTNotation.
 
-Require Import Coq.Sets.Ensembles.
-Require Import Coq.Lists.List.
+From Stdlib Require Import Ensembles.
+From Stdlib Require Import List.
 
 Import ListNotations.
 

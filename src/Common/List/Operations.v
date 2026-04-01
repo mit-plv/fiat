@@ -1,5 +1,5 @@
 (** Useful list operations *)
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.Equality.
 

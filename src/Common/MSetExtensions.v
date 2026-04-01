@@ -1,7 +1,4 @@
-Require Export Coq.MSets.MSetInterface.
-Require Import Coq.MSets.MSetProperties
-        Coq.MSets.MSetFacts
-        Coq.MSets.MSetDecide.
+From Stdlib Require Export MSetInterface MSetProperties MSetFacts MSetDecide.
 Require Import Fiat.Common.Instances.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.

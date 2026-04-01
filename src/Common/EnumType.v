@@ -1,6 +1,4 @@
-Require Import
-        Coq.Vectors.Vector
-        Coq.Vectors.Vector.
+From Stdlib Require Import Vector.
 
 Require Import
         Fiat.Common.BoundedLookup.

@@ -1,4 +1,5 @@
-Require Import Fiat.Common Coq.Arith.Arith Coq.Bool.Bool Coq.Sets.Ensembles.
+Require Import Fiat.Common.
+From Stdlib Require Import Arith Bool Ensembles.
 
 Class DecideableEnsemble {A} (P : Ensemble A) :=
   { dec : A -> bool;

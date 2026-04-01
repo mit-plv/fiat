@@ -17,12 +17,12 @@ if x <= y then 0 else (x - y)".
 (** A few additional tweaks *)
 
 Require Import Fiat.Common.String_as_OT.
-Require Import Coq.Structures.OrderedTypeEx.
+Require Import Stdlib.Structures.OrderedTypeEx.
 
 Extraction Inline negb.
 Extract Inductive Bool.reflect => bool [ true false ].
 
-Extract Constant Coq.Strings.String.string_dec  => "(=)".
+Extract Constant Stdlib.Strings.String.string_dec  => "(=)".
 Extract Constant String_as_OT.eq_dec  => "(=)".
 Extract Constant Nat_as_OT.eq_dec => "(=)".
 

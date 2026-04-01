@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
-Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Coq.ZArith.ZArith.
+Require Import Stdlib.Init.Wf Stdlib.Arith.Wf_nat.
+Require Import Stdlib.Lists.List Stdlib.Strings.String.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.

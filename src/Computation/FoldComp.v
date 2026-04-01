@@ -109,7 +109,7 @@ Proof.
   apply IHxs.
 Qed.
 
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 
 Lemma refine_foldComp_fold_left_helper :
   forall A (xs : list A) S (f : S -> A -> Comp S) (z : Comp S),

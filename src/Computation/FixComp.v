@@ -1,12 +1,8 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import
-        Coq.Sets.Ensembles
-        Coq.ZArith.ZArith
-        Coq.Classes.Morphisms
-        Coq.Classes.SetoidTactics
-        Fiat.Computation
-        Fiat.Computation.SetoidMorphisms
-        Coq.Logic.FunctionalExtensionality.
+From Stdlib Require Import Ensembles ZArith Morphisms SetoidTactics.
+Require Import Fiat.Computation
+        Fiat.Computation.SetoidMorphisms.
+From Stdlib Require Import FunctionalExtensionality.
 
 Require Fiat.Common.Frame.
 Require Fiat.Common.

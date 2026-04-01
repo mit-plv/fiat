@@ -2,7 +2,7 @@ Require Import
         CertifiedExtraction.Extraction.External.Core
         CertifiedExtraction.Extraction.External.GenericMethods.
 
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 
 Lemma CompileCallFacadeImplementationWW:
   forall {av} {env} fWW,

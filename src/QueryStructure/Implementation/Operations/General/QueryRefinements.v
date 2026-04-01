@@ -3,7 +3,7 @@ Require Import
         Coq.ZArith.ZArith
         Coq.NArith.NArith
         Coq.ZArith.ZArith
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Lists.List
         Coq.Sorting.Permutation
         Coq.Bool.Bool

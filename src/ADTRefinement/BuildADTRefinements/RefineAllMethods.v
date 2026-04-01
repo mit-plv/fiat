@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Fiat.Common
+Require Import Stdlib.Lists.List Fiat.Common
         Fiat.Common.ilist
         Fiat.Common.BoundedLookup
         Fiat.Common.IterateBoundedIndex

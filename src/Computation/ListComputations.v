@@ -1,7 +1,4 @@
-Require Import
-        Coq.Arith.Arith
-        Coq.Sets.Ensembles
-        Coq.Lists.List.
+From Stdlib Require Import Arith Ensembles List.
 
 Require Import
         Fiat.Common.List.ListFacts

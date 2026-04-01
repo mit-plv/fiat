@@ -38,7 +38,7 @@ Require Export Fiat.Parsers.ExtrOcamlParsers.
 Export Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 Require Export Fiat.Parsers.StringLike.OcamlString.
 
-Definition ab_star_parser (str : Coq.Strings.String.string) : bool.
+Definition ab_star_parser (str : Stdlib.Strings.String.string) : bool.
 Proof.
   Time make_parser (@ComputationalSplitter _ String.string_stringlike _ _). (* 0.82 s *)
 Defined.
@@ -55,7 +55,7 @@ Recursive Extraction ab_star_parser_ocaml.
 Definition main_ab_star := premain ab_star_parser.
 Definition main_ab_star_ocaml := premain_ocaml ab_star_parser_ocaml.
 
-Parameter reference_ab_star_parser : Coq.Strings.String.string -> bool.
+Parameter reference_ab_star_parser : Stdlib.Strings.String.string -> bool.
 Parameter reference_ab_star_parser_ocaml : Ocaml.Ocaml.string -> bool.
 Extract Constant reference_ab_star_parser
 => "fun str ->

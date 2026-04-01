@@ -1388,7 +1388,7 @@ Proof.
 Qed.
 
 Require Import
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Vectors.Vector.
 
 

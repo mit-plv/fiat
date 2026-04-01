@@ -18,7 +18,7 @@ Ltac TelEq_rel_t :=
          | _ => solve [intuition]
          end.
 
-Require Import Coq.Setoids.Setoid.
+From Stdlib Require Import Setoid.
 
 Lemma TelEq_refl {A ext}:
   Reflexive (@TelEq A ext).

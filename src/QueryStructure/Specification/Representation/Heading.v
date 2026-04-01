@@ -2,7 +2,7 @@ Require Import
         Coq.Vectors.Vector
         Coq.Vectors.Vector
         Coq.Lists.List
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Logic.FunctionalExtensionality
         Coq.Sets.Ensembles
         Fiat.Common.ilist

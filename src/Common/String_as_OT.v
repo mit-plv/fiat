@@ -1,5 +1,4 @@
-Require Import Coq.ZArith.ZArith Coq.Strings.String Coq.Strings.Ascii.
-Require Import Coq.Structures.OrderedType.
+From Stdlib Require Import ZArith String Ascii OrderedType.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Lemma nat_compare_eq_refl : forall x, Nat.compare x x = Eq.
@@ -194,7 +193,7 @@ End String_as_OT.
 
 (* Usage example:
 Require Import FMapAVL.
-Require Import Coq.Structures.OrderedTypeEx.
+Require Import Stdlib.Structures.OrderedTypeEx.
 
 Module StringIndexedMap := FMapAVL.Make(String_as_OT).
 Definition String2Nat := StringIndexedMap.t nat.

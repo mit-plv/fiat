@@ -12,7 +12,7 @@ Require Import
         CertifiedExtraction.StringMapUtils
         CertifiedExtraction.PureFacadeLemmas.
 Require Import
-        Coq.Strings.String.
+        Stdlib.Strings.String.
 
 Require Export CertifiedExtraction.FacadeWrappers.
 

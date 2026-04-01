@@ -1,5 +1,5 @@
 (** * Equivalence on syntax *)
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 Require Import Fiat.Parsers.Reflective.Syntax.
 
 Local Open Scope list_scope.

@@ -1,6 +1,6 @@
 (** * Refinement of computations involving ensembles, to ones using finite sets *)
 
-Require Import Coq.Strings.String
+From Stdlib Require Import String
    Coq.Sets.Ensembles
    Coq.Sets.Finite_sets
    Coq.Lists.List

@@ -1,8 +1,8 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Fiat.ADT Fiat.ADTNotation.
 Require Export Fiat.Computation.FixComp.
-Require Import Coq.ZArith.ZArith.
-Require Import Coq.Arith.PeanoNat.
+From Stdlib Require Import ZArith.
+Require Import Stdlib.Arith.PeanoNat.
 
 Import LeastFixedPointFun.
 

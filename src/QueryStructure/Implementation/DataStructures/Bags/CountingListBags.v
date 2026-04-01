@@ -1,7 +1,7 @@
 Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface.
 Unset Implicit Arguments.
 
-Require Import Coq.Arith.Arith
+Require Import Stdlib.Arith.Arith
         Fiat.Common.List.ListFacts.
 
 Open Scope list_scope.

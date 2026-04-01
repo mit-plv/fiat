@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 

@@ -1,5 +1,5 @@
 Require Import
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Arith.Mult
         Coq.Vectors.Vector.
 

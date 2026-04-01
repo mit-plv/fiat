@@ -1,4 +1,4 @@
-Require Import Coq.Strings.Ascii.
+Require Import Stdlib.Strings.Ascii.
 Require Import Fiat.Parsers.Reflective.Syntax.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Import Fiat.Common.Equality.

@@ -1,5 +1,5 @@
 (** First step of a splitter refinement; indexed representation, and handle all rules with at most one nonterminal; leave a reflective goal *)
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.

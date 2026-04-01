@@ -1,6 +1,4 @@
-Require Import Coq.Strings.String
-        Coq.Sets.Ensembles
-        Coq.Bool.Bool.
+From Stdlib Require Import String Ensembles Bool.
 Require Import Fiat.Common
         Fiat.Common.BoolFacts
         Fiat.Common.LogicFacts

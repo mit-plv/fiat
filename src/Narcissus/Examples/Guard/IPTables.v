@@ -1,6 +1,6 @@
 (** This file implements a limited form of iptables syntax. **)
 
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 Import ListNotations.
 
 Require Import Fiat.Narcissus.Examples.Guard.Core.
@@ -209,7 +209,7 @@ Definition cond_dstaddr (spec: address_spec)
   fun pkt => match_address spec pkt.(ipv4_dest).
 Arguments cond_dstaddr spec%_addr.
 
-Require Import Coq.Vectors.Vector.
+Require Import Stdlib.Vectors.Vector.
 Import VectorNotations.
 
 (* Check if the packet encapsulates a given protocol *)

@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Classes.RelationClasses Coq.Relations.Relation_Definitions Coq.Classes.Morphisms.
+From Stdlib Require Import RelationClasses Relation_Definitions Morphisms.
 Require Import Fiat.Common.Telescope.Core.
 
 Module Export Telescope.

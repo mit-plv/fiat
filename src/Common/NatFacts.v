@@ -1,6 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Classes.Morphisms.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import Morphisms ZArith.
 
 Lemma min_def {x y} : min x y = x - (x - y).
 Proof. apply Nat.min_case_strong; omega. Qed.

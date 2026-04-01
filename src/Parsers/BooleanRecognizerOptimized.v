@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Definition of a boolean-returning CFG parser-recognizer *)
-Require Import Coq.Lists.List Coq.Strings.String.
-Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat Coq.Arith.PeanoNat.
+Require Import Stdlib.Lists.List Stdlib.Strings.String.
+Require Import Stdlib.Arith.Compare_dec Stdlib.Arith.Wf_nat Stdlib.Arith.PeanoNat.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.

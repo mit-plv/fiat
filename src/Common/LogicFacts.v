@@ -1,5 +1,5 @@
-Require Coq.Lists.List.
-Require Import Coq.Program.Basics.
+From Stdlib Require List.
+From Stdlib Require Import Basics.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Section LogicFacts.

@@ -1,9 +1,9 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Definition of a parse-tree-returning CFG parser-recognizer *)
-Require Import Coq.Lists.List.
-Require Import Coq.Arith.EqNat.
-Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import List.
+Require Import Stdlib.Arith.EqNat.
+Require Import Stdlib.Arith.Compare_dec Stdlib.Arith.Wf_nat.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.

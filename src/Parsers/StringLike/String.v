@@ -1,9 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Definitions of some specific string-like types *)
-Require Import Coq.Strings.Ascii.
-Require Import Coq.Strings.String.
-Require Import Coq.ZArith.ZArith.
-Require Import Coq.Arith.PeanoNat.
+From Stdlib Require Import Ascii String ZArith PeanoNat.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
 Require Import Fiat.Parsers.StringLike.Core.

@@ -1,9 +1,9 @@
 Set Implicit Arguments.
 
-Require Import Coq.Lists.List
+Require Import Stdlib.Lists.List
         Coq.Program.Program
         Coq.Arith.Arith
-        Coq.Strings.String.
+        Stdlib.Strings.String.
 Require Import
         Fiat.ADT
         Fiat.ADT.ComputationalADT

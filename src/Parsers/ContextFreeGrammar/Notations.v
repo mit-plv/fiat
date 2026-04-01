@@ -1,13 +1,13 @@
 (** * Convenience Notations for Describing Context Free Grammars *)
-Require Import Coq.Strings.String Coq.Lists.List.
+From Stdlib Require Import String List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Export Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.Notations.
 
-Export Coq.NArith.BinNatDef.
-Export Coq.Strings.Ascii.
-Export Coq.Strings.String.
+Export Stdlib.NArith.BinNatDef.
+Export Stdlib.Strings.Ascii.
+Export Stdlib.Strings.String.
 Export Fiat.Parsers.ContextFreeGrammar.Core.
 
 (** ** Generic setup *)

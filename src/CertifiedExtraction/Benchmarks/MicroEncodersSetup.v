@@ -12,7 +12,7 @@ Require Export
         Fiat.CertifiedExtraction.Extraction.BinEncoders.BinEncoders.
 
 Require Import
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Vectors.Vector.
 
 Require Export

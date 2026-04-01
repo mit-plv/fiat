@@ -1,6 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Build a table for the next binop at a given level *)
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.

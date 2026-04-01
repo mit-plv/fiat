@@ -1,5 +1,5 @@
-Require Import Coq.Strings.Ascii.
-Require Import Coq.MSets.MSetPositive.
+Require Import Stdlib.Strings.Ascii.
+Require Import Stdlib.MSets.MSetPositive.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Common.MSetBoundedLattice.
 Require Import Fiat.Common.MSetExtensions.

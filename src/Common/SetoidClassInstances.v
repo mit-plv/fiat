@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq.Classes.Morphisms.
+From Stdlib Require Import List Setoid RelationClasses Morphisms.
 Require Import Fiat.Common.Tactics.SplitInContext.
 
 Set Implicit Arguments.

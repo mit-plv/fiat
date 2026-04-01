@@ -1,8 +1,8 @@
 Require Import Fiat.Narcissus.Examples.NetworkStack.IPv4Header.
 Require Import Fiat.Narcissus.Examples.NetworkStack.TCP_Packet.
 Require Import Bedrock.Word.
-Require Import Coq.Arith.Arith.
-Require Import Coq.Lists.List.
+Require Import Stdlib.Arith.Arith.
+From Stdlib Require Import List.
 Require Import Fiat.QueryStructure.Automation.MasterPlan.
 Require Import Fiat.Common.Ensembles.IndexedEnsembles.
 Require Import Fiat.Narcissus.Examples.Guard.Core.

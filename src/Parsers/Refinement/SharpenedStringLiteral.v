@@ -27,7 +27,7 @@ Require Export Fiat.Parsers.ExtrOcamlParsers.
 Export Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 Require Export Fiat.Parsers.StringLike.OcamlString.
 
-Definition string_parser (str : Coq.Strings.String.string) : bool.
+Definition string_parser (str : Stdlib.Strings.String.string) : bool.
 Proof.
   Time make_parser (@ComputationalSplitter _ String.string_stringlike _ _). (* 0.82 s *)
 Defined.
@@ -44,7 +44,7 @@ Recursive Extraction string_parser_ocaml.
 Definition main_string := premain string_parser.
 Definition main_string_ocaml := premain_ocaml string_parser_ocaml.
 (*
-Parameter reference_string_parser : Coq.Strings.String.string -> bool.
+Parameter reference_string_parser : Stdlib.Strings.String.string -> bool.
 Parameter reference_string_parser_ocaml : Ocaml.Ocaml.string -> bool.
 Extract Constant reference_string_parser
 => "fun str ->

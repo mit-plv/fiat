@@ -1,5 +1,5 @@
 Require Export
-        Coq.Strings.String
+        Stdlib.Strings.String
         CertifiedExtraction.FacadeNotations
         CertifiedExtraction.Extraction.External.External.
 Require Import

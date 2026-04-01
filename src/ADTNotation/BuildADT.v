@@ -1,7 +1,5 @@
-Require Import Coq.Sets.Ensembles
-        Coq.Lists.List
-        Coq.Strings.String
-        Fiat.Common
+From Stdlib Require Import Ensembles List String.
+Require Import Fiat.Common
         Fiat.Computation
         Fiat.ADT.ADTSig
         Fiat.ADT.Core

@@ -1,5 +1,5 @@
 Require Export BinNat.
-Require Export Coq.Lists.List.
+Require Export Stdlib.Lists.List.
 Export ListNotations.
 
 Require Export Bedrock.Word.

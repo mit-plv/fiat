@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (* Make [omega] work for [N] *)
 
-Require Import Coq.Arith.Arith Coq.ZArith.ZArith Coq.NArith.NArith.
+Require Import Stdlib.Arith.Arith Stdlib.ZArith.ZArith Stdlib.NArith.NArith.
 
 Local Open Scope N_scope.
 

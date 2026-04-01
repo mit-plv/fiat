@@ -2,7 +2,7 @@
 (** This allows for something between [bool] and [Prop], where we can
     computationally reduce things like [True /\ True], but can still
     express equality of types. *)
-Require Import Coq.Setoids.Setoid.
+From Stdlib Require Import Setoid.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Delimit Scope pointed_prop_scope with pointed_prop.

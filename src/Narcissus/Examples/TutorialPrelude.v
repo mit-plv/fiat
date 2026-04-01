@@ -1,6 +1,6 @@
 Require Export
         Coq.ZArith.ZArith
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Vectors.Vector.
 Require Export
         Fiat.Computation

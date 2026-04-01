@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List
-        Coq.Strings.String
+Require Import Stdlib.Lists.List
+        Stdlib.Strings.String
         Coq.Sets.Ensembles
         Coq.Sorting.Permutation
         Fiat.Computation.Core
@@ -108,7 +108,7 @@ Definition foldOption {A: Type} (f : A -> A -> A) seq :=
 
 (* Specs for the min and the max of lists of values. *)
 
-Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
+Require Import Stdlib.NArith.NArith Stdlib.ZArith.ZArith.
 
 Definition FoldAggregateOption {A} (updater: A -> A -> A) (rows: Comp (list A)) :=
   l <- rows;

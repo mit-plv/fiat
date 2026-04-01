@@ -1,6 +1,5 @@
-Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        Coq.Sorting.Permutation
-        Fiat.Computation
+From Stdlib Require Import String ZArith List FunctionalExtensionality Ensembles Permutation.
+Require Import Fiat.Computation
         Fiat.ADT
         Fiat.ADTRefinement
         Fiat.ADTNotation

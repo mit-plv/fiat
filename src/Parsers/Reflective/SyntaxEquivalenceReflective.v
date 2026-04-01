@@ -1,6 +1,6 @@
 (** * Equivalence on syntax *)
-Require Import Coq.Lists.List.
-Require Import Coq.Arith.EqNat Coq.Logic.Eqdep_dec.
+From Stdlib Require Import List.
+Require Import Stdlib.Arith.EqNat Stdlib.Logic.Eqdep_dec.
 Require Import Fiat.Parsers.Reflective.Syntax.
 Require Import Fiat.Parsers.Reflective.SyntaxEquality.
 Require Import Fiat.Parsers.Reflective.SyntaxEquivalence.

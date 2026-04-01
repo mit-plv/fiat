@@ -1,4 +1,4 @@
-Require Export Coq.NArith.NArith.
+Require Export Stdlib.NArith.NArith.
 
 Require Export Bedrock.Memory Bedrock.Word.
 Require Export

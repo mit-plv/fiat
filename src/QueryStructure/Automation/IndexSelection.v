@@ -1,9 +1,9 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Sorting.Mergesort
+Require Import Stdlib.Sorting.Mergesort
         Coq.Structures.Orders
         Coq.Arith.Arith
         Coq.Structures.OrderedType Coq.Structures.OrderedTypeEx
-        Coq.Strings.String Coq.FSets.FMapAVL
+        Stdlib.Strings.String Coq.FSets.FMapAVL
         Fiat.Common.String_as_OT
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations

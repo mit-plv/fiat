@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Strings.String Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+Require Import Stdlib.Lists.List Stdlib.Strings.String Stdlib.Logic.FunctionalExtensionality Stdlib.Sets.Ensembles
         Fiat.Common.ilist Fiat.Common.StringBound Coq.Program.Program
         Fiat.QueryStructure.Specification.Representation.Notations.
 

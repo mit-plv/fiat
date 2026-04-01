@@ -133,7 +133,7 @@ Require Export Fiat.Parsers.ExtrOcamlParsers.
 Export Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 Require Export Fiat.Parsers.StringLike.OcamlString.
 
-Definition json_parser (str : Coq.Strings.String.string) : bool.
+Definition json_parser (str : Stdlib.Strings.String.string) : bool.
 Proof.
   (*Start Profiling.*)
   Time make_parser (@ComputationalSplitter(* _ String.string_stringlike _ _*)). (* 75 seconds *)
@@ -150,7 +150,7 @@ Defined.*)
 Definition main_json := premain json_parser.
 Definition main_json_ocaml := premain_ocaml json_parser_ocaml.
 
-Parameter reference_json_parser : Coq.Strings.String.string -> bool.
+Parameter reference_json_parser : Stdlib.Strings.String.string -> bool.
 Parameter reference_json_parser_ocaml : Ocaml.Ocaml.string -> bool.
 Extract Constant reference_json_parser
 => "fun str ->

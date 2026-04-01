@@ -1,4 +1,4 @@
-Require Export Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii.
+Require Export Stdlib.Bool.Bool Stdlib.Strings.String Stdlib.Strings.Ascii.
 Require Export Fiat.Common.DecideableEnsembles
         Fiat.Common.List.ListFacts
         Fiat.Common.BoolFacts
@@ -33,7 +33,7 @@ Require Export Fiat.Common.DecideableEnsembles
         Fiat.QueryStructure.Automation.Common
         Fiat.QueryStructure.Implementation.Operations.
 
-Require Import Coq.Logic.Eqdep_dec
+Require Import Stdlib.Logic.Eqdep_dec
         Fiat.ADT.ComputationalADT
         Fiat.ADTNotation.BuildComputationalADT
         Fiat.ADTRefinement.GeneralBuildADTRefinements.

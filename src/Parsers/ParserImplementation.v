@@ -1,6 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Implementation of simply-typed interface of the parser *)
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import ZArith.
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.

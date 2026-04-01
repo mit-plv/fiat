@@ -3,7 +3,7 @@ Require Import
         Bedrock.Word
         Coq.ZArith.ZArith
         Coq.Strings.Ascii
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Logic.Eqdep_dec.
 
 Require Import

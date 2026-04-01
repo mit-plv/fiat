@@ -5,8 +5,8 @@ Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=
   Eval simpl in projT1 SharpenedBookStore.
 
 Require Import Fiat.Computation.Core Fiat.ADT Fiat.ADTRefinement Fiat.ADTNotation Fiat.ADTRefinement.BuildADTRefinements.
-Require Import Fiat.Common.String_as_OT Coq.Structures.OrderedTypeEx.
-Require Import Coq.extraction.ExtrOcamlBasic Coq.extraction.ExtrOcamlNatInt Coq.extraction.ExtrOcamlZInt Coq.extraction.ExtrOcamlString.
+Require Import Fiat.Common.String_as_OT Stdlib.Structures.OrderedTypeEx.
+Require Import Stdlib.extraction.ExtrOcamlBasic Stdlib.extraction.ExtrOcamlNatInt Stdlib.extraction.ExtrOcamlZInt Stdlib.extraction.ExtrOcamlString.
 
 Extract Inlined Constant fst => fst.
 Extract Inlined Constant snd => snd.

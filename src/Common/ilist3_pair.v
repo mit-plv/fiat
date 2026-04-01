@@ -1,11 +1,8 @@
 Generalizable All Variables.
 Set Implicit Arguments.
 
-Require Import Coq.Lists.List
-        Coq.Strings.String
-        Coq.Arith.Arith
-        Fiat.Common.ilist
-        Fiat.Common.ilist3.
+From Stdlib Require Import List String Arith.
+Require Import Fiat.Common.ilist Fiat.Common.ilist3.
 
 Section ilist3_pair.
 

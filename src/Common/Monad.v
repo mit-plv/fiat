@@ -1,4 +1,4 @@
-Require Import Coq.Program.Program.
+From Stdlib Require Import Program.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.

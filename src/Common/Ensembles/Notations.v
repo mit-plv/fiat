@@ -1,4 +1,4 @@
-Require Export Coq.Sets.Ensembles.
+From Stdlib Require Export Ensembles.
 Require Export Fiat.Common.ReservedNotations.
 
 Delimit Scope Ensemble_scope with ensemble.

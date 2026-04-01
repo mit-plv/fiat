@@ -1,5 +1,5 @@
 (** Reference implementation of a splitter and parser based on that splitter *)
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 Require Import Fiat.Common.BoundedLookup.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.

@@ -1,5 +1,7 @@
-Require Export Coq.Sorting.Permutation Fiat.Common.
-Require Import Coq.Lists.List Fiat.Common.List.ListFacts.
+From Stdlib Require Export Permutation.
+Require Export Fiat.Common.
+From Stdlib Require Import List.
+Require Import Fiat.Common.List.ListFacts.
 
 Unset Implicit Arguments.
 
@@ -190,7 +192,7 @@ Proof.
   repeat rewrite <- Permutation_middle; eauto.
 Qed.
 
-Require Import Coq.Program.Program.
+From Stdlib Require Import Program.
 
 Lemma permutation_map_cons :
   forall {A} {B} (f: B -> A) {x1 l2} {shuffled: list A},
@@ -220,7 +222,7 @@ Proof.
   apply Permutation_length_1 in H; congruence.
 Qed.
 
-From Coq Require Import SetoidList.
+From Stdlib Require Import SetoidList.
 
 Lemma InA_app_swap {A} eqA :
   Equivalence eqA

@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Export Coq.Lists.List Coq.Program.Program
+Require Export Stdlib.Lists.List Stdlib.Program.Program
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.Common.ilist2
@@ -7,8 +7,8 @@ Require Export Coq.Lists.List Coq.Program.Program
         Fiat.Common.ilist3
         Fiat.Common.i3list.
 
-Require Import Coq.Bool.Bool
-        Coq.Strings.String
+Require Import Stdlib.Bool.Bool
+        Stdlib.Strings.String
         Coq.Structures.OrderedTypeEx
         Coq.Arith.Arith
         Fiat.Common.String_as_OT

@@ -1,6 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.ZArith.ZArith.
-Require Import Coq.Classes.Morphisms.
+From Stdlib Require Import ZArith.
+Require Import Stdlib.Classes.Morphisms.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
 Require Import Fiat.Parsers.Reflective.SyntaxEquivalence.

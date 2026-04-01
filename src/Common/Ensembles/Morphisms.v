@@ -1,7 +1,7 @@
-Require Export Coq.Sets.Ensembles.
+From Stdlib Require Export Ensembles.
 Require Import Fiat.Common.Ensembles.Equivalence.
 Require Import Fiat.Common.Ensembles.Tactics.
-Require Import Coq.Classes.RelationClasses.
+From Stdlib Require Import RelationClasses.
 
 Set Implicit Arguments.
 Require Import Fiat.Common.

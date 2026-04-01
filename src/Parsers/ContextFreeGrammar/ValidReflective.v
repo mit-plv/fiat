@@ -1,6 +1,6 @@
 (** * Definition of Context Free Grammars *)
-Require Import Coq.Strings.String Coq.Lists.List.
-Require Import Coq.Arith.PeanoNat.
+From Stdlib Require Import String List.
+Require Import Stdlib.Arith.PeanoNat.
 Require Export Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.

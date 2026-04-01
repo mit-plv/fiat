@@ -6,7 +6,7 @@ Require Import
 
 Opaque Transformer.transform_id.
 Opaque EncodeAndPad. (* FIXME move *)
-Require Import Coq.Program.Program.
+From Stdlib Require Import Program.
 
 Definition PacketAsCollectionOfVariables
            {av} vid vmask vquestion vanswer vauthority vadditional (p: packet_t)

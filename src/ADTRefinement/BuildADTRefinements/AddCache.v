@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Fiat.Common
+Require Import Stdlib.Lists.List Fiat.Common
         Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
         Fiat.Common.ilist Fiat.Common.BoundedLookup

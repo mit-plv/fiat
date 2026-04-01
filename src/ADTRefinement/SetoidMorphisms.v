@@ -1,4 +1,5 @@
-Require Import Fiat.Common Fiat.Computation Coq.Sets.Ensembles.
+Require Import Fiat.Common Fiat.Computation.
+From Stdlib Require Import Ensembles.
 Require Import Fiat.ADT.ADTSig Fiat.ADT.Core Fiat.ADTRefinement.Core.
 
 (** Definitions for integrating [refineADT] into the setoid rewriting

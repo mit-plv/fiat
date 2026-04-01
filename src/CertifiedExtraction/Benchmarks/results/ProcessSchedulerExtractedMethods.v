@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 Require Import Bedrock.Platform.Facade.DFacade.
 Require Import Bedrock.Platform.Cito.SyntaxExpr.
 

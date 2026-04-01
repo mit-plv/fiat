@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Export Coq.MSets.MSetInterface.
-Require Import Coq.MSets.MSetFacts.
-Require Import Coq.MSets.MSetProperties.
+From Stdlib Require Export MSetInterface.
+From Stdlib Require Import MSetFacts.
+From Stdlib Require Import MSetProperties.
 Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.LogicFacts.
 Require Import Fiat.Common.Instances.

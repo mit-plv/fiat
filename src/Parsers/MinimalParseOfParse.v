@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Every parse tree has a corresponding minimal parse tree *)
-Require Import Coq.Strings.String Coq.Lists.List.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import String List.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Parsers.CorrectnessBaseTypes Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.StringLike.Properties.

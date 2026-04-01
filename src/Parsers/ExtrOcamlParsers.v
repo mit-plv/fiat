@@ -1,16 +1,16 @@
 Require Import Fiat.Common.Equality Fiat.Parsers.ParserFromParserADT.
-Require Import Coq.ZArith.BinInt.
+Require Import Stdlib.ZArith.BinInt.
 Require Export Fiat.Parsers.Refinement.Tactics.
 Require Export Fiat.Common.BoolFacts.
 Require Export Fiat.ADTNotation.BuildComputationalADT.
 Require Export Fiat.Common.NatFacts.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
-Require Export Coq.Strings.Ascii.
-Require Export Coq.extraction.ExtrOcamlBasic.
-Require Export Coq.extraction.ExtrOcamlNatInt.
-Require Export Coq.extraction.ExtrOcamlZInt.
-Require Export Coq.extraction.ExtrOcamlString.
-Require Export Coq.extraction.ExtrOcamlIntConv.
+Require Export Stdlib.Strings.Ascii.
+Require Export Stdlib.extraction.ExtrOcamlBasic.
+Require Export Stdlib.extraction.ExtrOcamlNatInt.
+Require Export Stdlib.extraction.ExtrOcamlZInt.
+Require Export Stdlib.extraction.ExtrOcamlString.
+Require Export Stdlib.extraction.ExtrOcamlIntConv.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 
 Import ExtrOcamlPrimitives.Ocaml.
@@ -185,5 +185,5 @@ Definition line : string := Ocaml.explode line_ocaml.
 Definition premain_ocaml (parse : Ocaml.string -> bool) : unit
   := premain' line_ocaml 10 10 parse.
 
-Definition premain (parse : Coq.Strings.String.string -> bool) : unit
+Definition premain (parse : Stdlib.Strings.String.string -> bool) : unit
   := premain' line 10 10 parse.

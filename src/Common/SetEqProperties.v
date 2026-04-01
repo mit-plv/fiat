@@ -1,5 +1,5 @@
-Require Import Coq.Setoids.Setoid Coq.Lists.List Coq.Sorting.Permutation
-        Fiat.Common.List.FlattenList
+From Stdlib Require Import Setoid List Permutation.
+Require Import Fiat.Common.List.FlattenList
         Fiat.Common.SetEq.
 
 Definition IsSetEqSafe {A B: Type} (proc: list A -> list B) :=

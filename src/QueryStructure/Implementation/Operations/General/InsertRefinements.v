@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List
+From Stdlib Require Import String ZArith List
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         Fiat.Computation
         Fiat.Computation.Refinements.Iterate_Decide_Comp

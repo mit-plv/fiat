@@ -1,9 +1,9 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.Ascii
+Require Import Stdlib.Strings.Ascii
         Coq.Bool.Bool
         Coq.Lists.List.
 
-Require Export Coq.Vectors.Vector
+Require Export Stdlib.Vectors.Vector
         Coq.ZArith.ZArith
         Coq.Strings.Ascii
         Coq.Bool.Bool

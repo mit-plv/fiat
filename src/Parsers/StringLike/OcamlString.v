@@ -1,8 +1,8 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.ZArith.ZArith.
-Require Import Coq.Strings.Ascii.
-Require Import Coq.Strings.String.
-Require Import Coq.ZArith.BinInt.
+From Stdlib Require Import ZArith.
+Require Import Stdlib.Strings.Ascii.
+From Stdlib Require Import String.
+Require Import Stdlib.ZArith.BinInt.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations.
 Require Import Fiat.Common.StringFacts.
@@ -22,18 +22,18 @@ Local Ltac t' :=
     | [ |- is_true false ] => exfalso
     | _ => progress autorewrite with ocaml in *
     | [ s : Ocaml.string |- _ ] => generalize dependent (Ocaml.explode s); clear s
-    | [ |- Coq.Strings.String.get _ (string_of_list _) = List.nth_error _ _ ]
+    | [ |- Stdlib.Strings.String.get _ (string_of_list _) = List.nth_error _ _ ]
       => apply get_string_of_list
     | _ => progress simpl in *
     | _ => progress subst
     | [ H : context[string_eq_dec ?x ?y] |- _ ] => destruct (string_eq_dec x y)
     | [ H : context[ascii_eq_dec ?x ?y] |- _ ] => destruct (ascii_eq_dec x y)
-    | [ H : Coq.Strings.String.String _ _ = Coq.Strings.String.String _ _ |- _ ] => inversion H; clear H
+    | [ H : Stdlib.Strings.String.String _ _ = Stdlib.Strings.String.String _ _ |- _ ] => inversion H; clear H
     | [ H : is_true false |- _ ] => exfalso; clear -H; hnf in H; discriminate
     | _ => progress unfold beq in *
     | _ => rewrite string_dec_refl
     | [ |- RelationClasses.Equivalence _ ] => split
-    | [ H : Coq.Strings.String.length ?s = 0 |- _ ] => atomic s; destruct s
+    | [ H : Stdlib.Strings.String.length ?s = 0 |- _ ] => atomic s; destruct s
     | _ => exfalso; congruence
     | _ => rewrite substring_length
     | _ => rewrite <- plus_n_O
@@ -63,19 +63,19 @@ Local Ltac t' :=
     | [ |- context[string_eq_dec ?x ?y] ] => destruct (string_eq_dec x y)
     | [ H : _ <> _ |- False ] => apply H; clear H
     | _ => apply Nat.max_case_strong; intro; apply substring_correct4; omega
-    | [ H : Coq.Strings.String.length ?s = 1 |- _ ] => is_var s; destruct s
-    | [ H : S (Coq.Strings.String.length ?s) = 1 |- _ ] => is_var s; destruct s
+    | [ H : Stdlib.Strings.String.length ?s = 1 |- _ ] => is_var s; destruct s
+    | [ H : S (Stdlib.Strings.String.length ?s) = 1 |- _ ] => is_var s; destruct s
     | _ => eexists; rewrite (ascii_lb eq_refl); reflexivity
     | [ |- _ <-> _ ] => split
-    | [ H : Coq.Strings.String.get 0 ?s = _ |- _ ] => is_var s; destruct s
-    | [ |- Coq.Strings.String.get 0 ?s = _ ] => is_var s; destruct s
+    | [ H : Stdlib.Strings.String.get 0 ?s = _ |- _ ] => is_var s; destruct s
+    | [ |- Stdlib.Strings.String.get 0 ?s = _ ] => is_var s; destruct s
     | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
-    | [ |- context[Coq.Strings.String.get ?p (Coq.Strings.String.substring _ ?m _)] ]
+    | [ |- context[Stdlib.Strings.String.get ?p (Stdlib.Strings.String.substring _ ?m _)] ]
       => destruct (Compare_dec.lt_dec p m);
         [ rewrite substring_correct1 by omega
         | rewrite substring_correct2 by omega ]
     | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
-    | [ H : forall n, Coq.Strings.String.get n _ = Coq.Strings.String.get n _ |- _ ] => apply get_correct in H
+    | [ H : forall n, Stdlib.Strings.String.get n _ = Stdlib.Strings.String.get n _ |- _ ] => apply get_correct in H
     | [ H : Nat.eqb _ _ = true |- _ ] => apply (proj1 (Nat.eqb_eq _ _)) in H
     | [ H : Nat.eqb _ _ = false |- _ ] => apply (proj1 (Nat.eqb_neq _ _)) in H
     | [ H : context[Nat.eqb ?x ?y] |- _ ] => destruct (Nat.eqb x y) eqn:?
@@ -100,7 +100,7 @@ Local Ltac t' :=
     | [ H' : Strings.String.get ?n (Ocaml.explode ?s) = Some _ |- context[String.get ?s ?n] ]
       => rewrite (proj2 (@StringProperties.get_correct s n _) H')
     | [ H : forall n, String.safe_get ?str n = String.safe_get ?str' n |- _ ]
-      => assert (forall n, Coq.Strings.String.get n (Ocaml.explode str) = Coq.Strings.String.get n (Ocaml.explode str'))
+      => assert (forall n, Stdlib.Strings.String.get n (Ocaml.explode str) = Stdlib.Strings.String.get n (Ocaml.explode str'))
         by (intro n; specialize (H n); autorewrite with ocaml in H; exact H);
         clear H
     | [ |- String.substring ?n ?m ?s = String.substring ?n ?m' ?s ]

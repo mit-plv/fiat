@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List
-        Coq.Strings.String
+Require Import Stdlib.Lists.List
+        Stdlib.Strings.String
         Coq.Logic.FunctionalExtensionality
         Coq.Sets.Ensembles
         Coq.Arith.Arith

@@ -1,10 +1,10 @@
 Require Export
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Specification.Operations.Query.
-Require Import Coq.Lists.List
+Require Import Stdlib.Lists.List
         Coq.Arith.Compare_dec
         Coq.Bool.Bool
-        Coq.Strings.String
+        Stdlib.Strings.String
         Fiat.Common.BoolFacts
         Fiat.Common.List.PermutationFacts
         Fiat.Common.List.ListMorphisms

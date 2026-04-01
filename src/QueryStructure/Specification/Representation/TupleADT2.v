@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List
-        Coq.Strings.String
+Require Import Stdlib.Lists.List
+        Stdlib.Strings.String
         Coq.Arith.Arith
         Coq.ZArith.ZArith
         Fiat.Common.ilist2

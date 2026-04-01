@@ -1,8 +1,6 @@
 (** * Common facts about [≤] *)
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.ZArith.ZArith.
-Require Import Coq.Classes.Morphisms.
-Require Import Coq.Program.Basics.
+From Stdlib Require Import ZArith Morphisms Program.Basics.
 
 Set Implicit Arguments.
 

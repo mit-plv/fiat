@@ -1,4 +1,4 @@
-Require Export Coq.Strings.String.
+Require Export Stdlib.Strings.String.
 Require Export Computation.Core ADTRefinement.
 Require Export Bedrock.Platform.Facade.DFacade Bedrock.Platform.Cito.StringMap.
 

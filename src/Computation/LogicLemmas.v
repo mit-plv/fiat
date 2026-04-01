@@ -1,4 +1,4 @@
-Require Import Coq.Program.Program.
+From Stdlib Require Import Program.
 Require Import Fiat.Common.
 (** * Various useful lemmas about logic *)
 

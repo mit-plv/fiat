@@ -1,11 +1,11 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.micromega.Lia.
-Require Import Coq.PArith.BinPos.
-Require Import Coq.Lists.List.
-Require Import Coq.Sorting.Mergesort.
-Require Import Coq.Structures.OrdersEx.
-Require Import Coq.Strings.Ascii.
-Require Import Coq.Strings.String.
+Require Import Stdlib.micromega.Lia.
+Require Import Stdlib.PArith.BinPos.
+From Stdlib Require Import List.
+Require Import Stdlib.Sorting.Mergesort.
+Require Import Stdlib.Structures.OrdersEx.
+Require Import Stdlib.Strings.Ascii.
+From Stdlib Require Import String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.

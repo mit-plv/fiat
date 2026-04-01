@@ -1,7 +1,7 @@
 Require Export Bedrock.Platform.Cito.StringMap Bedrock.Platform.Cito.StringMapFacts.
 Require Export Bedrock.Platform.Cito.SyntaxExpr Bedrock.Platform.Facade.DFacade.
 Require Import Bedrock.Platform.Facade.DFacadeFacts2.
-Require Import Coq.Setoids.Setoid.
+From Stdlib Require Import Setoid.
 
 Add Parametric Morphism {av} : (@eval av)
     with signature (StringMap.Equal ==> eq ==> eq)

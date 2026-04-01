@@ -1,5 +1,5 @@
 Require Import Fiat.Common.ilist Fiat.Common.BoundedLookup Fiat.ADT.ADTSig.
-Require Import Coq.Lists.List Coq.Strings.String.
+From Stdlib Require Import List String.
 
 (* Notation for ADT Signatures. *)
 
@@ -102,7 +102,7 @@ Delimit Scope ADTSig_scope with ADTSig.
 
 (* Notation for ADT signatures utilizing [BuildADTSig]. *)
 
-Require Import Coq.Vectors.Vector.
+From Stdlib Require Import Vector.
 Import Vectors.Vector.VectorNotations.
 
 Delimit Scope vector_scope with vector.

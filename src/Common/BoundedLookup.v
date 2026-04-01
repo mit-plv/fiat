@@ -1,11 +1,7 @@
-Require Import Coq.Lists.List
-        Coq.Strings.String
-        Coq.Arith.Arith
-        Coq.Logic.Eqdep_dec
-        Fiat.Common.ilist
-        Fiat.Common.ilist2.
+From Stdlib Require Import List String Arith Eqdep_dec.
+Require Import Fiat.Common.ilist Fiat.Common.ilist2.
 
-Require Coq.Vectors.Vector.
+From Stdlib Require Vector.
 Global Set Asymmetric Patterns.
 
 (* Typeclasses for ensuring that a string is included

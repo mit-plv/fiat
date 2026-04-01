@@ -1,5 +1,5 @@
 Require Export Fiat.Common Fiat.Computation Fiat.ADT.ADTSig.
-Require Import Coq.Sets.Ensembles.
+From Stdlib Require Import Ensembles.
 
 Generalizable All Variables.
 Set Implicit Arguments.

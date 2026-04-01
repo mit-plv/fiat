@@ -1,4 +1,4 @@
-Require Export Coq.NArith.BinNat.
+Require Export Stdlib.NArith.BinNat.
 Require Export Fiat.ADTRefinement.
 Require Export Fiat.ADTNotation.BuildADT.
 Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.

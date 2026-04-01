@@ -23,7 +23,7 @@ Proof.
   destruct (encode1 _); simpl; destruct (encode2 _); reflexivity.
 Qed.
 
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 Require Import Bedrock.Word.
 
 Theorem exist_irrel : forall A (P : A -> Prop) x1 pf1 x2 pf2,

@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.Sets.Ensembles.
+From Stdlib Require Import String Ensembles.
 Require Import Fiat.Common.
 Require Export Fiat.Computation.Notations.
 

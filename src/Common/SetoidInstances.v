@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq.Classes.Morphisms.
+From Stdlib Require Import List Setoid RelationClasses Morphisms.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.

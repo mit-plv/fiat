@@ -1,6 +1,6 @@
-Require Import Coq.Init.Wf Coq.Numbers.BinNums.
-Require Import Coq.Arith.Arith.
-Require Import Coq.FSets.FMapPositive.
+Require Import Stdlib.Init.Wf Stdlib.Numbers.BinNums.
+Require Import Stdlib.Arith.Arith.
+Require Import Stdlib.FSets.FMapPositive.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.Splitters.RDPList.

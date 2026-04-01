@@ -1,5 +1,5 @@
 Require Import
-        Coq.Strings.String
+        Stdlib.Strings.String
         Fiat.Common.String_as_OT
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Specification.SearchTerms.ListInclusion

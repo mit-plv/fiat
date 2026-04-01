@@ -1,5 +1,5 @@
 (** * Properties about Context Free Grammars *)
-Require Import Coq.Lists.List Coq.Arith.PeanoNat.
+From Stdlib Require Import List PeanoNat.
 Require Import Fiat.Common Fiat.Common.UIP.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
