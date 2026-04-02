@@ -1,4 +1,4 @@
-Require Import Coq.Classes.Morphisms Coq.Relations.Relation_Definitions.
+From Stdlib Require Import Morphisms Relation_Definitions.
 Require Import Fiat.Common.Tactics.GetGoal.
 Require Import Fiat.Common.Notations.
 

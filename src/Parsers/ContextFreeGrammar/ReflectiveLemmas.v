@@ -1,5 +1,5 @@
 (** * Leamms for reflective notations for context free grammars *)
-Require Import Coq.Strings.Ascii Coq.Classes.Morphisms Coq.Relations.Relation_Definitions.
+Require Import Stdlib.Strings.Ascii Stdlib.Classes.Morphisms Stdlib.Relations.Relation_Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
 

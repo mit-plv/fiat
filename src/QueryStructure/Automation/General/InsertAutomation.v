@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List
+From Stdlib Require Import String ZArith List
         Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         Fiat.Computation
         Fiat.ADT

@@ -1,4 +1,4 @@
-Require Import Coq.Strings.Ascii
+Require Import Stdlib.Strings.Ascii
         Coq.Bool.Bool
         Coq.Lists.List
         Coq.Structures.OrderedType.
@@ -34,7 +34,7 @@ Require Import
 
 Require Import Bedrock.Word.
 
-Require Import Coq.extraction.ExtrOcamlBasic Coq.extraction.ExtrOcamlNatInt Coq.extraction.ExtrOcamlZInt Coq.extraction.ExtrOcamlString.
+Require Import Stdlib.extraction.ExtrOcamlBasic Stdlib.extraction.ExtrOcamlNatInt Stdlib.extraction.ExtrOcamlZInt Stdlib.extraction.ExtrOcamlString.
 
 Extract Inductive bool => bool [ true false ].
 Extract Inductive list => "list" [ "[]" "(::)" ].

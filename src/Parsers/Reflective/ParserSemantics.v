@@ -3,7 +3,7 @@ Require Import Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.GenericRecognizer.
 Require Import Fiat.Common.Wf Fiat.Common.Wf2.
-Require Import Coq.Arith.PeanoNat.
+Require Import Stdlib.Arith.PeanoNat.
 Set Implicit Arguments.
 
 Definition step_option_rec

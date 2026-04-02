@@ -1,4 +1,4 @@
-Require Import Coq.Arith.Compare_dec
+Require Import Stdlib.Arith.Compare_dec
         Coq.ZArith.ZArith
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 

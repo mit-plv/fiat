@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 Require Import Fiat.Parsers.GenericBaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.

@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Lists.List.
-Require Import Coq.Arith.Compare_dec.
-Require Import Coq.Arith.PeanoNat.
+From Stdlib Require Import List.
+Require Import Stdlib.Arith.Compare_dec.
+Require Import Stdlib.Arith.PeanoNat.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.GenericBaseTypes.

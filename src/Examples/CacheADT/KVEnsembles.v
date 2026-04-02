@@ -1,4 +1,4 @@
-Require Import Coq.Sets.Ensembles.
+From Stdlib Require Import Ensembles.
 
 (* Definitions of basic operations on Ensembles of Key/Value pairs. *)
 

@@ -1,4 +1,4 @@
-Require Export Coq.FSets.FMapInterface.
+Require Export Stdlib.FSets.FMapInterface.
 Require Import Fiat.Common.Wf.
 Require Export Fiat.Common.FMapExtensions.
 Require Export Fiat.Common.FMapExtensions.LiftRelationInstances.

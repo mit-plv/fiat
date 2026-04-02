@@ -1,6 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** Refinement rules for disjoint rules *)
-Require Import Coq.ZArith.ZArith Coq.Lists.List.
+From Stdlib Require Import ZArith List.
 Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.StringLike.Properties.

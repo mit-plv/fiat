@@ -1,5 +1,4 @@
-Require Import Coq.Classes.Morphisms
-        Coq.Classes.SetoidTactics.
+From Stdlib Require Import Morphisms SetoidTactics.
 Require Import Fiat.Computation.
 
 Section FueledFix.

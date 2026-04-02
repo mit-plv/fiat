@@ -1,4 +1,4 @@
-Require Import Coq.Sets.Ensembles.
+From Stdlib Require Import Ensembles.
 Require Import Fiat.Common.
 
 Create HintDb ensembles discriminated.

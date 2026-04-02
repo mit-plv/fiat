@@ -1,5 +1,5 @@
 (* Definition of the finite set spec *)
-Require Import Coq.Strings.String
+From Stdlib Require Import String
   Coq.Sets.Ensembles
   Coq.Sets.Finite_sets
   Coq.Lists.List

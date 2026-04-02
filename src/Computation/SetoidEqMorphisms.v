@@ -1,4 +1,4 @@
-Require Import Coq.Classes.Morphisms.
+Require Import Stdlib.Classes.Morphisms.
 Require Import Fiat.Computation.Core.
 
 Global Instance ret_Proper_eq {A}

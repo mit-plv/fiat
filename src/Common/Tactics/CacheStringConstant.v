@@ -1,6 +1,5 @@
-Require Import
-        Coq.Strings.String
-        Fiat.Common.BoundedLookup
+From Stdlib Require Import String.
+Require Import Fiat.Common.BoundedLookup
         Fiat.Common.Tactics.HintDbExtra
         Fiat.Common.Tactics.TransparentAbstract.
 

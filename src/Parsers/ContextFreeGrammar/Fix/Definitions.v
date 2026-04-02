@@ -1,6 +1,6 @@
-Require Import Coq.PArith.BinPos Coq.PArith.Pnat.
-Require Import Coq.Arith.Arith.
-Require Import Coq.Classes.RelationClasses Coq.Classes.Morphisms.
+Require Import Stdlib.PArith.BinPos Stdlib.PArith.Pnat.
+Require Import Stdlib.Arith.Arith.
+Require Import Stdlib.Classes.RelationClasses Stdlib.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Tactics.SplitInContext.
 Require Import Fiat.Common.Notations.

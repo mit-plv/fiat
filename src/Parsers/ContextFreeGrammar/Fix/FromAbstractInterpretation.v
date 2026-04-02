@@ -1,4 +1,4 @@
-Require Import Coq.Sets.Ensembles.
+From Stdlib Require Import Ensembles.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.

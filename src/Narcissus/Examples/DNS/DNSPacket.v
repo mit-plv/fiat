@@ -2,7 +2,7 @@ Require Import
         Coq.Vectors.Vector
         Coq.ZArith.ZArith
         Coq.Strings.Ascii
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Bool.Bool
         Coq.Vectors.Vector
         Coq.Lists.List.

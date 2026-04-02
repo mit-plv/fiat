@@ -1,5 +1,5 @@
 (** * Specification of what it means for a simple_parse_of to be correct *)
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 
 (** We currently have two versions, one defined by [Fixpoint], and another as an inductive.  I suspect the fixpoint will be easier to reason with, but I leave both in for now in case this is not the case. *)

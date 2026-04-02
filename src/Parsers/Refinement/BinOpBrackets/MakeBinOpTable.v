@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** * Build a table for the next binop at a given level *)
-Require Import Coq.Lists.List.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import List.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.

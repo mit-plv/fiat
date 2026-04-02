@@ -4,7 +4,7 @@ Require Import
         Bedrock.Platform.Cito.StringMap
         Bedrock.Platform.Cito.SyntaxExpr
         Bedrock.Memory.
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 
 Notation "A ; B" := (Seq A B) (at level 201,
                                B at level 201,

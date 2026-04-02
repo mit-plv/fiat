@@ -1,6 +1,6 @@
 Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
 (* TODO: Clean out these imports. *)
-Require Import Coq.Lists.List Coq.Arith.Arith
+Require Import Stdlib.Lists.List Stdlib.Arith.Arith
         Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.ADT.ComputationalADT
         Fiat.Common.BoundedLookup

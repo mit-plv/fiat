@@ -1,4 +1,4 @@
-Require Export Coq.Program.Program.
+Require Export Stdlib.Program.Program.
 Require Export CertifiedExtraction.Extraction.QueryStructures.Basics.
 Require Export CertifiedExtraction.Extraction.QueryStructures.TupleToListW.
 Require Export CertifiedExtraction.Extraction.QueryStructures.EnsemblesOfTuplesAndListW.

@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Relations.Relation_Definitions Coq.Classes.Morphisms.
+From Stdlib Require Import Relation_Definitions Morphisms.
 Global Set Asymmetric Patterns.
 
 Module Export Telescope.

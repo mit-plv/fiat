@@ -1,5 +1,5 @@
-Require Import Coq.Arith.Compare_dec.
-Require Import Coq.Lists.List.
+Require Import Stdlib.Arith.Compare_dec.
+From Stdlib Require Import List.
 Require Import Fiat.Common.UIP.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.

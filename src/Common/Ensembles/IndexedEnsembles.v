@@ -1,11 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Lists.List
-        Coq.Strings.String
-        Coq.ZArith.ZArith
-        Coq.Logic.FunctionalExtensionality
-        Coq.Sorting.Permutation Coq.Sets.Ensembles
-        Fiat.Common.DecideableEnsembles
-        Fiat.Common.List.PermutationFacts
+From Stdlib Require Import List String ZArith FunctionalExtensionality Permutation Ensembles.
+Require Import Fiat.Common.DecideableEnsembles Fiat.Common.List.PermutationFacts
         Fiat.Common.List.ListMorphisms
         Fiat.Common.List.ListFacts.
 

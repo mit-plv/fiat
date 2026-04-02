@@ -1,7 +1,4 @@
-Require Import
-        SetoidClass
-        Coq.Classes.Morphisms
-        Coq.Arith.PeanoNat.
+From Stdlib Require Import SetoidClass Morphisms PeanoNat.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Generalizable All Variables.

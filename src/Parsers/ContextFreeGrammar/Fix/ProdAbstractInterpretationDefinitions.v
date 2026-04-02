@@ -1,4 +1,4 @@
-Require Import Coq.Sets.Ensembles.
+From Stdlib Require Import Ensembles.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.

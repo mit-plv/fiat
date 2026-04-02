@@ -1,10 +1,10 @@
 (** * Miscellaneous Well-Foundedness Facts *)
-From Coq Require Import Setoid.
-From Coq.Program Require Import Program Wf.
-From Coq Require Import Wf_nat Morphisms.
-From Coq.Init Require Import Wf.
-From Coq Require Import SetoidList.
-Require Import Coq.Arith.PeanoNat.
+From Stdlib Require Import Setoid.
+From Stdlib.Program Require Import Program Wf.
+From Stdlib Require Import Wf_nat Morphisms.
+From Stdlib Require Import Init.Wf.
+From Stdlib Require Import SetoidList.
+From Stdlib Require Import PeanoNat.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.

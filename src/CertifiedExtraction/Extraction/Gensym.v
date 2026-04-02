@@ -1,6 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Numbers.Natural.Peano.NPeano
-        Coq.Strings.String
+Require Import Stdlib.Numbers.Natural.Peano.NPeano
+        Stdlib.Strings.String
         Coq.Arith.Lt
         Coq.Arith.Compare_dec
         Coq.Lists.List

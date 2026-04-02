@@ -1,4 +1,4 @@
-Require Export Coq.Sets.Ensembles.
+From Stdlib Require Export Ensembles.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.

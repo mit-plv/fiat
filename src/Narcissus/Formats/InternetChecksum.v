@@ -318,7 +318,7 @@ Hint Rewrite <- Z.lt_add_lt_sub_l : normalizeZ.
 Hint Rewrite <- Z.lt_add_lt_sub_r : normalizeZ.
 Hint Rewrite @gt_minus_one_ge_zero : normalizeZ.
 
-Require Import Coq.micromega.Psatz.
+Require Import Stdlib.micromega.Psatz.
 
 Notation OneC_InRange p z := ((- Z.of_N (Npow2 p)) < z < Z.of_N (Npow2 p)).
 

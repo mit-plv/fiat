@@ -1,6 +1,4 @@
-Require Import Coq.Lists.List.
-Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
-Require Import Coq.Sorting.Permutation.
+From Stdlib Require Import List Setoid Morphisms Permutation.
 Require Import Fiat.Common.Ensembles.EnsembleListEquivalence
         Fiat.Common.List.ListFacts
         Fiat.Common.List.Operations

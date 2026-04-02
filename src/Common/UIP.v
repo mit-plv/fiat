@@ -1,6 +1,6 @@
 (** * Common facts about UIP and proof irrelevance *)
-Require Coq.Strings.String.
-Require Import Coq.Logic.EqdepFacts.
+From Stdlib Require String.
+From Stdlib Require Import EqdepFacts.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.

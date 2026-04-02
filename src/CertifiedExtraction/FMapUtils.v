@@ -1,4 +1,4 @@
-Require Import Coq.FSets.FMaps.
+Require Import Stdlib.FSets.FMaps.
 Require Import CertifiedExtraction.PureUtils.
 
 Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).

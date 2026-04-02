@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
+From Stdlib Require Import String ZArith List FunctionalExtensionality Ensembles
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements
         KVEnsembles.
 

@@ -1,5 +1,5 @@
 (** * Extensionality of boolean recognizer *)
-Require Import Coq.Classes.Morphisms.
+Require Import Stdlib.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BooleanRecognizer.

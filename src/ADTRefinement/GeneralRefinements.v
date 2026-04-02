@@ -1,6 +1,5 @@
-Require Import Coq.Lists.List
-        Coq.Strings.String
-        Fiat.Common
+From Stdlib Require Import List String.
+Require Import Fiat.Common
         Fiat.Common.ilist
         Fiat.Common.BoundedLookup
         Fiat.ADT.Core

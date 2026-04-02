@@ -1,6 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Lists.List.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import List ZArith.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.StringFacts.

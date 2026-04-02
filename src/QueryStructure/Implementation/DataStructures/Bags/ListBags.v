@@ -63,7 +63,7 @@ Section ListBags.
     firstorder.
   Qed.
 
-  Require Import Coq.ZArith.ZArith.
+  From Stdlib Require Import ZArith.
   Lemma List_BagCountCorrect_aux :
     forall (container: list TItem) (search_term: TSearchTerm) default,
       length (List.filter (bfind_matcher search_term) container) + default =

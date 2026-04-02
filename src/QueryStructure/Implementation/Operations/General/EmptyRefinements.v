@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String
+From Stdlib Require Import String
         Coq.ZArith.ZArith
         Coq.Lists.List
         Coq.Logic.FunctionalExtensionality

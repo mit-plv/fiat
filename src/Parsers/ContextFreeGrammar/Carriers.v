@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.List.Operations.

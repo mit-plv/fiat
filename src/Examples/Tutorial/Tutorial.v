@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.Ascii
+Require Import Stdlib.Strings.Ascii
         Coq.Bool.Bool
         Coq.Lists.List.
 
@@ -9,7 +9,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
 
-Export Coq.Vectors.Vector
+Export Stdlib.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
         Coq.Bool.Bvector

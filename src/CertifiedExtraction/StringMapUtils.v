@@ -27,7 +27,7 @@ Hint Resolve urgh : typeclass_instances.
 (*   (* Inifinite loop unless `urgh' is added as a hint *) *)
 (* Abort. *)
 
-Require Import Coq.Setoids.Setoid.
+From Stdlib Require Import Setoid.
 
 Add Parametric Morphism {av} : (@StringMap.find av)
     with signature (eq ==> StringMap.Equal ==> eq)

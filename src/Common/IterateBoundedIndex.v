@@ -1,8 +1,5 @@
-Require Import Coq.Arith.Arith
-        Coq.Lists.List
-        Coq.Sets.Ensembles
-        Coq.Strings.String
-        Fiat.Common
+From Stdlib Require Import Arith List Ensembles String.
+Require Import Fiat.Common
         Fiat.Common.ilist
         Fiat.Common.BoundedLookup
         Fiat.Common.DecideableEnsembles.

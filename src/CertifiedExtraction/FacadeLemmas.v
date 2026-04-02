@@ -3,7 +3,7 @@ Require Import
         CertifiedExtraction.PureUtils
         CertifiedExtraction.StringMapUtils
         CertifiedExtraction.FacadeUtils.
-Require Import Coq.Setoids.Setoid.
+From Stdlib Require Import Setoid.
 
 Lemma NotIn_not_mapsto_adt :
   forall {av} var (state: StringMap.t (Value av)),

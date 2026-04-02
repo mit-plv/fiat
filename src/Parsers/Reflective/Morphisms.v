@@ -1,4 +1,4 @@
-Require Import Coq.Classes.Morphisms Coq.Relations.Relation_Definitions.
+Require Import Stdlib.Classes.Morphisms Stdlib.Relations.Relation_Definitions.
 Require Import Fiat.Parsers.Reflective.Syntax.
 Require Import Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Common.List.ListMorphisms.

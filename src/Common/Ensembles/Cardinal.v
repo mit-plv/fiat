@@ -1,6 +1,6 @@
 (** * Miscellaneous definitions about ensembles *)
-Require Import Coq.Lists.List.
-Require Export Coq.Sets.Ensembles.
+From Stdlib Require Import List.
+From Stdlib Require Export Ensembles.
 Require Import Fiat.Common Fiat.Common.List.PermutationFacts
         Fiat.Common.Ensembles.EnsembleListEquivalence.
 (** Coq's [cardinal] is stupid, and not total.  For example, it

@@ -4,7 +4,7 @@ Require Import
 Require Import
         Bedrock.Word
         Coq.Strings.Ascii
-        Coq.Strings.String.
+        Stdlib.Strings.String.
 
 Section String.
   (* this has an exact idential structure to _FixList_ *)

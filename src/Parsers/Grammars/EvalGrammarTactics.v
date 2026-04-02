@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List.
-Require Import Coq.Strings.String.
+From Stdlib Require Import List.
+From Stdlib Require Import String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 

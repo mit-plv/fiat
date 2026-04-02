@@ -1,6 +1,6 @@
 (* Definition of the finite set spec *)
 Require Export Fiat.FiniteSetADTs.FiniteSetADT.
-Require Import Coq.Strings.String Coq.Sets.Ensembles
+From Stdlib Require Import String Ensembles
   Coq.Sets.Finite_sets Coq.Lists.List
   Coq.Sorting.Permutation Coq.MSets.MSetInterface
   Coq.MSets.MSetAVL Coq.MSets.MSetList Coq.MSets.MSetRBT

@@ -1,15 +1,14 @@
-Require Export Coq.FSets.FMapInterface.
-Require Import Coq.FSets.FMapFacts
-        Coq.Program.Program
-        Coq.Structures.OrderedTypeEx
-        Fiat.Common
+From Stdlib Require Export FMapInterface.
+From Stdlib Require Import FMapFacts Program OrderedTypeEx.
+Require Import Fiat.Common
         Fiat.Common.SetEq
         Fiat.Common.SetEqProperties
         Fiat.Common.List.ListFacts
         Fiat.Common.List.ListMorphisms
         Fiat.Common.LogicFacts
         Fiat.Common.SetoidClassInstances.
-Require Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
+From Stdlib Require Permutation.
+Require Fiat.Common.List.PermutationFacts.
 
 Unset Implicit Arguments.
 
@@ -399,7 +398,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       intuition eauto.
   Qed.
 
-  Import Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
+  Import Stdlib.Sorting.Permutation Fiat.Common.List.PermutationFacts.
 
   Lemma InA_mapsto_add {Value} :
     forall bag' kv k' (v' : Value),

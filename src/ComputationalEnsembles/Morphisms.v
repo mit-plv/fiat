@@ -1,4 +1,4 @@
-Require Import Coq.Sets.Ensembles.
+From Stdlib Require Import Ensembles.
 Require Import Fiat.Computation Fiat.Common.Ensembles
         Fiat.ComputationalEnsembles.Core Fiat.ComputationalEnsembles.Laws.
 Require Import Fiat.Common.

@@ -1,6 +1,6 @@
 Require Import
         Coq.ZArith.ZArith
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Vectors.Vector.
 
 Require Import

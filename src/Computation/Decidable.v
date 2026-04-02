@@ -1,4 +1,4 @@
-Require Import Coq.Arith.Compare_dec.
+From Stdlib Require Import Compare_dec.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Generalizable All Variables.
@@ -131,15 +131,15 @@ End DecidableLogic.
 
 Local Ltac t' tac := t; apply tac; assumption.
 
-Require Import Coq.Bool.Bool.
+From Stdlib Require Import Bool.
 
 Global Program Instance bool_eq_Decidable {n m : bool} : Decidable (n = m) := {
   Decidable_witness := eqb n m
 }.
 Obligation 1. t' eqb_true_iff. Qed.
 
-Require Import Coq.Strings.Ascii.
-From Coq Require Import Sumbool.
+Require Import Stdlib.Strings.Ascii.
+From Stdlib Require Import Sumbool.
 
 Global Program Instance ascii_eq_Decidable {n m : Ascii.ascii} :
   Decidable (n = m) := {
@@ -147,7 +147,7 @@ Global Program Instance ascii_eq_Decidable {n m : Ascii.ascii} :
 }.
 Obligation 1. t; destruct (Ascii.ascii_dec n m); auto; discriminate. Qed.
 
-Require Import Coq.Arith.Arith.
+Require Import Stdlib.Arith.Arith.
 
 Global Program Instance nat_eq_Decidable {n m : nat} : Decidable (n = m) := {
   Decidable_witness := Nat.eqb n m
@@ -161,7 +161,7 @@ Obligation 1. t' leb_iff. Qed.
 
 Global Instance lt_Decidable {n m} : Decidable (lt n m) := le_Decidable.
 
-Require Import Coq.NArith.NArith.
+Require Import Stdlib.NArith.NArith.
 
 Global Program Instance N_eq_Decidable {n m : N} : Decidable (n = m) := {
   Decidable_witness := N.eqb n m
@@ -178,7 +178,7 @@ Global Program Instance Nlt_Decidable {n m} : Decidable (N.lt n m) := {
 }.
 Obligation 1. t' N.ltb_lt. Qed.
 
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import ZArith.
 
 Global Program Instance Z_eq_Decidable {n m : Z} : Decidable (n = m) := {
   Decidable_witness := Z.eqb n m
@@ -195,7 +195,7 @@ Global Program Instance Zlt_Decidable {n m} : Decidable (Z.lt n m) := {
 }.
 Obligation 1. t' Z.ltb_lt. Qed.
 
-Require Import Coq.QArith.QArith.
+Require Import Stdlib.QArith.QArith.
 
 Global Program Instance Q_eq_Decidable {n m : Q} : Decidable (n == m) := {
   Decidable_witness := Qeq_bool n m

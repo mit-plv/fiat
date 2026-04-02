@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 Require Import Fiat.Parsers.Reflective.Syntax.
 Require Import Fiat.Parsers.Reflective.Syntactify.
 Require Import Fiat.Common.NatFacts.

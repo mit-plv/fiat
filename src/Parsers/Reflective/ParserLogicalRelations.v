@@ -1,4 +1,4 @@
-Require Import Coq.Classes.Morphisms.
+Require Import Stdlib.Classes.Morphisms.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
 Require Import Fiat.Parsers.Reflective.ParserSyntax Fiat.Parsers.Reflective.ParserSemantics.

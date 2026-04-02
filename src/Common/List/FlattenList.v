@@ -1,6 +1,6 @@
-From Coq Require Import List SetoidList.
+From Stdlib Require Import List SetoidList.
 Require Import Fiat.Common.
-Require Import Coq.Arith.Arith.
+From Stdlib Require Import Arith.
 
 Unset Implicit Arguments.
 

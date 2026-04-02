@@ -2,7 +2,7 @@ Require Import
         Coq.Lists.List
         Coq.Program.Program
         Coq.Bool.Bool
-        Coq.Strings.String
+        Stdlib.Strings.String
         Fiat.Common.ilist
         Fiat.Common.ilist2
         Fiat.Common.ilist3

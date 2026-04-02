@@ -4,7 +4,7 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedDecodeMonad
         Fiat.Narcissus.BinLib.AlignedEncodeMonad.
 
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 Open Scope string_scope.
 
 Require Import Fiat.Common.EnumType.

@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** Fixed precision machine words *)
 
-Require Import Coq.Arith.Arith
+Require Import Stdlib.Arith.Arith
         Coq.NArith.NArith
         Coq.Bool.Bool
         Coq.ZArith.ZArith.
@@ -283,7 +283,7 @@ Qed.
 
 Hint Resolve shatter_word_0.
 
-Require Import Coq.Logic.Eqdep_dec.
+Require Import Stdlib.Logic.Eqdep_dec.
 
 Definition weq : forall sz (x y : word sz), {x = y} + {x <> y}.
   refine (fix weq sz (x : word sz) : forall y : word sz, {x = y} + {x <> y} :=
@@ -369,7 +369,7 @@ Theorem split2_combine : forall sz1 sz2 (w : word sz1) (z : word sz2),
   induction sz1; shatterer.
 Qed.
 
-Require Import Coq.Logic.Eqdep_dec.
+Require Import Stdlib.Logic.Eqdep_dec.
 
 
 Theorem combine_assoc : forall n1 (w1 : word n1) n2 n3 (w2 : word n2) (w3 : word n3) Heq,

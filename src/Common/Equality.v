@@ -1,9 +1,5 @@
-From Coq Require Import List SetoidList.
-Require Import Coq.Bool.Bool.
-Require Import Coq.Arith.PeanoNat.
-Require Import Coq.Strings.Ascii.
-Require Import Coq.Strings.String.
-Require Import Coq.Logic.Eqdep_dec.
+From Stdlib Require Import List SetoidList.
+From Stdlib Require Import Bool PeanoNat Ascii String Eqdep_dec.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.

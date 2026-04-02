@@ -1,6 +1,6 @@
-Require Import Coq.Lists.List.
-Require Export Coq.Sets.Ensembles.
-Require Import Coq.Sorting.Permutation.
+From Stdlib Require Import List.
+From Stdlib Require Export Ensembles.
+From Stdlib Require Import Permutation.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.PermutationFacts.
 

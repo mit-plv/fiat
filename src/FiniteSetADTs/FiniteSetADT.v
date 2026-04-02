@@ -1,5 +1,5 @@
 (* Definition of the finite set spec *)
-Require Import Coq.Sets.Ensembles
+Require Import Stdlib.Sets.Ensembles
     Fiat.ADT.Core
     Fiat.Common.Ensembles
     Fiat.ADT.ComputationalADT

@@ -7,13 +7,13 @@ Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
 Require Import Fiat.Parsers.StringLike.String.
 
-(*Require Coq.micromega.Lia.
-Require Coq.PArith.BinPos.
-Require Coq.Lists.List.
-Require Coq.Sorting.Mergesort.
-Require Coq.Structures.OrdersEx.
-Require Coq.Strings.Ascii.
-Require Coq.Strings.String.
+(*Require Stdlib.micromega.Lia.
+Require Stdlib.PArith.BinPos.
+Require Stdlib.Lists.List.
+Require Stdlib.Sorting.Mergesort.
+Require Stdlib.Structures.OrdersEx.
+Require Stdlib.Strings.Ascii.
+Require Stdlib.Strings.String.
 Require Fiat.Parsers.ContextFreeGrammar.Core.
 Require Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Fiat.Parsers.ContextFreeGrammar.Reflective.
@@ -310,7 +310,7 @@ Require Export Fiat.Parsers.ExtrOcamlParsers.
 Export Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 Require Export Fiat.Parsers.StringLike.OcamlString.
 
-Definition json_parser (str : Coq.Strings.String.string) : bool.
+Definition json_parser (str : Stdlib.Strings.String.string) : bool.
 Proof.
   Reset Ltac Profiling.
   Time make_parser (@ComputationalSplitter(* _ String.string_stringlike _ _*)). (* 75 seconds *)
@@ -329,7 +329,7 @@ Recursive Extraction json_parser(*_ocaml*).
 Definition main_json := premain json_parser.
 Definition main_json_ocaml := premain_ocaml json_parser_ocaml.
 
-Parameter reference_json_parser : Coq.Strings.String.string -> bool.
+Parameter reference_json_parser : Stdlib.Strings.String.string -> bool.
 Parameter reference_json_parser_ocaml : Ocaml.Ocaml.string -> bool.
 Extract Constant reference_json_parser
 => "fun str ->

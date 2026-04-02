@@ -7,7 +7,7 @@ Require Export
         Fiat.CertifiedExtraction.Extraction.BinEncoders.RewriteRules.
 Unset Implicit Arguments.
 
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 
 Ltac _compile_decide_padding_0 :=
   repeat first [ reflexivity |

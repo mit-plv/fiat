@@ -1,6 +1,6 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.Morphisms.
-Require Import Coq.ZArith.ZArith.
+Require Import Stdlib.Lists.List Stdlib.Setoids.Setoid Stdlib.Classes.Morphisms.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.

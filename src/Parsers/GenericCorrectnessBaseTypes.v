@@ -1,6 +1,5 @@
 (** * Definition of the generic part of the interface of the correctness proof of the CFG parser *)
-Require Import Coq.Classes.Morphisms.
-Require Import Coq.Arith.EqNat.
+From Stdlib Require Import Morphisms EqNat.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.GenericBaseTypes.
 Require Import Fiat.Parsers.BaseTypes.

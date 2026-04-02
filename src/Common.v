@@ -1,7 +1,5 @@
-Require Import Coq.Lists.List.
-From Coq Require Import ZArith.ZArith SetoidList.
-Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
-        Coq.Program.Program Coq.Classes.Morphisms.
+From Stdlib Require Import List ZArith SetoidList.
+From Stdlib Require Export Setoid RelationClasses Program Morphisms.
 Require Export Fiat.Common.Tactics.SplitInContext.
 Require Export Fiat.Common.Tactics.Combinators.
 Require Export Fiat.Common.Tactics.FreeIn.

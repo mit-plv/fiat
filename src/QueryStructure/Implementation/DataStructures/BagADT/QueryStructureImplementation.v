@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List Coq.Program.Program
-        Coq.Bool.Bool Coq.Strings.String
+Require Import Stdlib.Lists.List Stdlib.Program.Program
+        Coq.Bool.Bool Stdlib.Strings.String
         Coq.Structures.OrderedTypeEx Coq.Arith.Arith
         Fiat.Common.ilist3
         Fiat.Common.i3list

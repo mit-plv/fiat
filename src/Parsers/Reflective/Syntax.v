@@ -1,5 +1,5 @@
-Require Import Coq.Classes.Morphisms. (* for reserved [-->] notation *)
-Require Import Coq.Strings.String Coq.Strings.Ascii.
+Require Import Stdlib.Classes.Morphisms. (* for reserved [-->] notation *)
+From Stdlib Require Import String Ascii.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Import Fiat.Common.Notations.
 

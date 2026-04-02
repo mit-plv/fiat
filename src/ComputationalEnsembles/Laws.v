@@ -1,4 +1,4 @@
-Require Import Coq.Classes.Morphisms Coq.Lists.List.
+Require Import Stdlib.Classes.Morphisms Stdlib.Lists.List.
 Require Import Fiat.ComputationalEnsembles.Core Fiat.Computation.
 Require Import Fiat.Common.Ensembles.Tactics Fiat.Common.Ensembles.
 

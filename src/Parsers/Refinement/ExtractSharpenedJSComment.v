@@ -14,7 +14,7 @@ Print js_comment_parser_ocaml.
 Recursive Extraction js_comment_parser_ocaml.
 
 (*
-Parameter reference_js_comment_parser : Coq.Strings.String.string -> bool.
+Parameter reference_js_comment_parser : Stdlib.Strings.String.string -> bool.
 Parameter reference_js_comment_parser_ocaml : Ocaml.Ocaml.string -> bool.
 Extract Constant reference_js_comment_parser
 => "fun str ->

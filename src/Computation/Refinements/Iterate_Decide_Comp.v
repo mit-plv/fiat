@@ -1,11 +1,5 @@
-Require Import
-        Coq.Lists.List
-        Coq.Arith.Compare_dec
-        Coq.Arith.Arith
-        Coq.Bool.Bool
-        Coq.Strings.String
-        Coq.Sets.Ensembles
-        Fiat.Common.BoolFacts
+From Stdlib Require Import List Compare_dec Arith Bool String Ensembles.
+Require Import Fiat.Common.BoolFacts
         Fiat.Common.List.PermutationFacts
         Fiat.Common.List.ListMorphisms
         Fiat.Common.IterateBoundedIndex

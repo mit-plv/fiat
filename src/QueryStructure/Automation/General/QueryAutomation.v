@@ -1,7 +1,5 @@
-Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
-        Coq.Bool.Bool Coq.Sets.Ensembles
-        Coq.Logic.FunctionalExtensionality
-        Fiat.ADTNotation Fiat.Common
+From Stdlib Require Import String List Permutation Bool Coq.Sets.Ensembles FunctionalExtensionality.
+Require Import Fiat.ADTNotation Fiat.Common
         Fiat.Common.List.ListFacts
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.DecideableEnsembles

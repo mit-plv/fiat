@@ -1,8 +1,8 @@
-Require Export Coq.extraction.ExtrOcamlIntConv.
+Require Export Stdlib.extraction.ExtrOcamlIntConv.
 
-Require Import Coq.ZArith.BinInt.
+Require Import Stdlib.ZArith.BinInt.
 
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Module Import Ocaml.
@@ -141,10 +141,10 @@ Module Export OcamlProperties.
   Module Import StringProperties.
     Axiom explode_implode : forall s, Ocaml.explode (Ocaml.implode s) = s.
     Axiom implode_explode : forall s, Ocaml.implode (Ocaml.explode s) = s.
-    Axiom length_correct : forall s, String.length s = Coq.Strings.String.length (Ocaml.explode s).
-    Axiom get_correct : forall s n ch, (String.get s n = ch) <-> (Coq.Strings.String.get n (Ocaml.explode s) = Some ch).
-    Axiom safe_get_correct : forall s n, String.safe_get s n = Coq.Strings.String.get n (Ocaml.explode s).
-    Axiom sub_correct : forall s start len, String.sub s start len = Ocaml.implode (Coq.Strings.String.substring start len (Ocaml.explode s)).
+    Axiom length_correct : forall s, String.length s = Stdlib.Strings.String.length (Ocaml.explode s).
+    Axiom get_correct : forall s n ch, (String.get s n = ch) <-> (Stdlib.Strings.String.get n (Ocaml.explode s) = Some ch).
+    Axiom safe_get_correct : forall s n, String.safe_get s n = Stdlib.Strings.String.get n (Ocaml.explode s).
+    Axiom sub_correct : forall s start len, String.sub s start len = Ocaml.implode (Stdlib.Strings.String.substring start len (Ocaml.explode s)).
     Axiom compare_eq : forall s s', (z_of_int (String.compare s s') = 0%Z) <-> s = s'.
     Definition compare_eq' s s' (H : s = s')
     : z_of_int (String.compare s s') = 0%Z

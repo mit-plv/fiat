@@ -1,5 +1,5 @@
-Require Import Coq.Strings.String Coq.Lists.List.
-Require Export Coq.Classes.RelationPairs.
+From Stdlib Require Import String List.
+From Stdlib Require Export RelationPairs.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.

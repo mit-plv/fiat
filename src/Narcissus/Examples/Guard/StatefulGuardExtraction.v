@@ -29,7 +29,7 @@ Extract Inlined Constant AlignedDecodeMonad.Vector_nth_opt => "ListVector.nth_op
 Extract Inlined Constant ith => "ListVector.ith".
 Extract Inlined Constant ith2 => "ListVector.ith2".
 
-Require Import Coq.extraction.ExtrOcamlZInt.
+Require Import Stdlib.extraction.ExtrOcamlZInt.
 
 Print ADTImplMethods.
 Print guard_init.

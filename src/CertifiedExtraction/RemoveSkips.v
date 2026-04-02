@@ -5,7 +5,7 @@ Require Import
         Fiat.CertifiedExtraction.FacadeUtils
         Fiat.CertifiedExtraction.FacadeNotations.
 
-Require Import Coq.Program.Program.
+From Stdlib Require Import Program.
 
 Definition Is_Skip : forall p, { p = Skip } + { p <> Skip }.
   destruct p;

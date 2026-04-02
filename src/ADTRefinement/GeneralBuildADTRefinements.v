@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List Coq.Arith.Arith
-        Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
+From Stdlib Require Import List Arith.
+Require Import Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.ADT.ComputationalADT
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
@@ -16,7 +16,7 @@ Require Import Coq.Lists.List Coq.Arith.Arith
 
 Section BuildADTRefinements.
 
-  Require Import Coq.Strings.String.
+  From Stdlib Require Import String.
   Local Hint Resolve string_dec.
 
   Lemma refineADT_BuildADT_ReplaceConstructor

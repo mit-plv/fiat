@@ -1,7 +1,7 @@
-Require Import Coq.PArith.BinPos Coq.PArith.Pnat.
-Require Import Coq.Arith.Arith.
-Require Import Coq.FSets.FMapInterface.
-Require Import Coq.FSets.FMapPositive.
+Require Import Stdlib.PArith.BinPos Stdlib.PArith.Pnat.
+Require Import Stdlib.Arith.Arith.
+Require Import Stdlib.FSets.FMapInterface.
+Require Import Stdlib.FSets.FMapPositive.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.List.ListMorphisms.

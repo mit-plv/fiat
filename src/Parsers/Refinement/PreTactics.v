@@ -1,10 +1,10 @@
 Require Export Fiat.Parsers.ContextFreeGrammar.Core.
 Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
-Require Export Coq.Strings.String.
-Require Export Coq.Arith.PeanoNat.
+Require Export Stdlib.Strings.String.
+Require Export Stdlib.Arith.PeanoNat.
 Require Export Fiat.Computation.Core.
-Require Export Coq.Program.Program.
+Require Export Stdlib.Program.Program.
 Require Export Fiat.Computation.ApplyMonad.
 Require Export Fiat.Computation.SetoidMorphisms.
 Require Export Fiat.Common.
@@ -15,7 +15,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.NatFacts.
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 
 Export Common.opt2.Notations.
 

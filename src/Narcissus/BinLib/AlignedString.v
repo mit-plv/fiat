@@ -2,7 +2,7 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import
         Coq.ZArith.ZArith
         Coq.Strings.Ascii
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Arith.Mult
         Coq.Vectors.Vector.
 

@@ -4,7 +4,7 @@ Require Export
         CertifiedExtraction.Utils
         CertifiedExtraction.StringMapUtils.
 
-Require Export Coq.Setoids.Setoid.
+Require Export Stdlib.Setoids.Setoid.
 
 Local Open Scope map_scope.
 Local Open Scope telescope_scope.

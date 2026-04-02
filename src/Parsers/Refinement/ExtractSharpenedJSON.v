@@ -20,7 +20,7 @@ Print json_parser(*_ocaml*).
 Definition main_json := premain json_parser.
 Definition main_json_ocaml := premain_ocaml json_parser_ocaml.
 
-Parameter reference_json_parser : Coq.Strings.String.string -> bool.
+Parameter reference_json_parser : Stdlib.Strings.String.string -> bool.
 Parameter reference_json_parser_ocaml : Ocaml.Ocaml.string -> bool.
 Extract Constant reference_json_parser
 => "fun str ->

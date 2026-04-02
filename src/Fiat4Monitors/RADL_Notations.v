@@ -1,5 +1,5 @@
 Require Import
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Bool.Bool
         Coq.Lists.List
         Coq.Arith.Arith

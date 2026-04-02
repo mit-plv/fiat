@@ -1,5 +1,5 @@
-Require Import Coq.Sets.Ensembles.
-Require Import Coq.Classes.Morphisms.
+From Stdlib Require Import Ensembles.
+Require Import Stdlib.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.

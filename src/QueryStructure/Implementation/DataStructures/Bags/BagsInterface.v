@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Export Coq.Program.Program Coq.Sorting.Permutation.
+Require Export Stdlib.Program.Program Stdlib.Sorting.Permutation.
 
 Unset Implicit Arguments.
 Global Set Asymmetric Patterns.

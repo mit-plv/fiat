@@ -6,7 +6,7 @@ Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterf
         Fiat.QueryStructure.Specification.Representation.Heading
         Coq.Lists.List Coq.Program.Program
         Fiat.Common.ilist.
-Require Import Coq.Bool.Bool Coq.Strings.String
+Require Import Stdlib.Bool.Bool Stdlib.Strings.String
         Coq.Structures.OrderedTypeEx Coq.NArith.BinNat
         Coq.ZArith.ZArith_dec Coq.Arith.Arith
         Coq.FSets.FMapAVL

@@ -1,4 +1,4 @@
-Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Classes.RelationClasses Coq.Program.Basics.
+From Stdlib Require Import Setoid Morphisms RelationClasses Program.Basics.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Instance arrow2_1_Proper {A B RA RB X Y}

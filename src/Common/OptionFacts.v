@@ -1,4 +1,4 @@
-Require Import Coq.Classes.Morphisms Coq.Relations.Relation_Definitions.
+From Stdlib Require Import Morphisms Relation_Definitions.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.

@@ -1,5 +1,5 @@
 (** * Proof that SimpleRecognizer outputs correct parse trees *)
-Require Import Coq.Classes.Morphisms Coq.Arith.PeanoNat.
+Require Import Stdlib.Classes.Morphisms Stdlib.Arith.PeanoNat.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.

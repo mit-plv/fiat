@@ -1,5 +1,5 @@
 (* Tactics for extracting Query Structure Implementations. *)
-Require Import Coq.Strings.String
+From Stdlib Require Import String
 Fiat.ADTRefinement.GeneralBuildADTTactics
 Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
 Fiat.QueryStructure.Specification.Representation.QueryStructureNotations

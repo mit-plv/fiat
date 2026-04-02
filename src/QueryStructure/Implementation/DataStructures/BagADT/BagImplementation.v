@@ -7,7 +7,7 @@ Require Export
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.Common.ilist.
-Require Import Coq.Bool.Bool Coq.Strings.String
+Require Import Stdlib.Bool.Bool Stdlib.Strings.String
         Coq.Arith.Arith Coq.Structures.OrderedTypeEx
         Fiat.Common.String_as_OT
         Fiat.Common.i2list

@@ -176,7 +176,7 @@ Hint Rewrite
      @EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv_Characterisation
   : EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv.
 
-Require Import Coq.Strings.String.
+From Stdlib Require Import String.
 
 Lemma EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv:
   forall (n : nat) (lst : list (FiatWTuple n)) (ens : FiatWBag n),

@@ -1,6 +1,6 @@
 (** * Miscellaneous Well-Foundedness Facts *)
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
+From Stdlib Require Import Setoid Program Program.Wf Wf_nat Morphisms Init.Wf.
 Require Import Fiat.Common.Telescope.Core.
 Require Import Fiat.Common.Telescope.Instances.
 Require Import Fiat.Common.Telescope.Equality.

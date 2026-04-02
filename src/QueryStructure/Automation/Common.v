@@ -1,5 +1,5 @@
 Require Import
-        Coq.Strings.String
+        Stdlib.Strings.String
         Fiat.Common
         Fiat.Common.StringBound
         Fiat.Common.Tactics.CacheStringConstant

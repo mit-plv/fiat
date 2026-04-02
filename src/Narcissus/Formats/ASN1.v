@@ -1,5 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Lists.List.
+From Stdlib Require Import List.
 Inductive ty : Set :=
 | base : ty
 | arr : list ty -> ty -> ty.
@@ -23,7 +23,7 @@ Inductive ty_Prop' : ty -> Prop :=
 
 Require Import
         Coq.Strings.Ascii
-        Coq.Strings.String
+        Stdlib.Strings.String
         Coq.Numbers.BinNums
         Fiat.Common
         Fiat.Computation.Notations

@@ -7,7 +7,7 @@ Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Fiat.ADT.ComputationalADT Fiat.ADTRefinement.GeneralBuildADTRefinements.
 
-Require Import Coq.Bool.Bool Coq.ZArith.ZArith.
+Require Import Stdlib.Bool.Bool Stdlib.ZArith.ZArith.
 
 Export ADTNotation.BuildADT ADTNotation.BuildComputationalADT ADTNotation.BuildADTSig.
 Export ADTRefinement.GeneralRefinements ADT.ComputationalADT Core.

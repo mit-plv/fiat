@@ -1,7 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 (** Refinement rules for binary operations *)
-Require Import Coq.Lists.List.
-Require Import Coq.ZArith.ZArith.
+From Stdlib Require Import List.
+From Stdlib Require Import ZArith.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.

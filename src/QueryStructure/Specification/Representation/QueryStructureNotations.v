@@ -1,4 +1,4 @@
-Require Export Coq.Strings.String
+Require Export Stdlib.Strings.String
         Coq.ZArith.ZArith
         Coq.Lists.List
         Coq.Logic.FunctionalExtensionality

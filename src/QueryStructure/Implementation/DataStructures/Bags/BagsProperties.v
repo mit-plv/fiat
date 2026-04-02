@@ -1,4 +1,4 @@
-Require Import Coq.Arith.Arith
+Require Import Stdlib.Arith.Arith
         Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
         Fiat.Common.List.ListFacts
         Fiat.Common.List.ListMorphisms.

@@ -1,5 +1,5 @@
-Require Import Coq.Strings.String Coq.ZArith.ZArith Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
-        Fiat.Common.List.ListFacts
+From Stdlib Require Import wString ZArith List FunctionalExtensionality Ensembles.
+Require Import Fiat.Common.List.ListFacts
         Fiat.Computation
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.ADT

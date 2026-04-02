@@ -1,5 +1,5 @@
 (** * Reflective notations for context free grammars *)
-Require Import Coq.Strings.Ascii.
+From Stdlib Require Import Ascii.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Common.Equality.
 

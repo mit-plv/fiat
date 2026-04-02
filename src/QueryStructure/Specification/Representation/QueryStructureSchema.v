@@ -1,5 +1,5 @@
-Require Import Coq.Lists.List
-        Coq.Strings.String
+Require Import Stdlib.Lists.List
+        Stdlib.Strings.String
         Fiat.Common
         Coq.Arith.Arith
         Coq.Logic.FunctionalExtensionality
@@ -172,7 +172,7 @@ Instance Query_eq_list {A : Type}
 : Query_eq (list A) :=
   {| A_eq_dec := list_eq_dec (@A_eq_dec A a_eq_dec) |}.
 
-Require Import Coq.NArith.NArith Coq.ZArith.ZArith.
+Require Import Stdlib.NArith.NArith Stdlib.ZArith.ZArith.
 #[global]
 Instance AN_eq : Query_eq N := {| A_eq_dec := N.eq_dec |}.
 #[global]

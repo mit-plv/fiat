@@ -1,5 +1,5 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat Coq.Bool.Bool.
-Require Import Coq.Classes.Morphisms.
+From Stdlib Require Import String Ascii Arith BinInt BinNat Bool.
+From Stdlib Require Import Morphisms.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Local Coercion is_true : bool >-> Sortclass.
