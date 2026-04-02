@@ -303,8 +303,8 @@ Definition getcMethDef
   cMethBody (ith methDefs idx).
 
 (* Always simplify method lookup when the index is specified. *)
-Arguments getcConsDef [_] {n} [_] _ idx%string / .
-Arguments getcMethDef [_] {n} [_] _ idx%string / _ .
+Arguments getcConsDef [_] {n} [_] _ idx%_string / .
+Arguments getcMethDef [_] {n} [_] _ idx%_string / _ .
 
 (* [BuildcADT] constructs an computational ADT from a single constructor
    definition and a list of method signatures,

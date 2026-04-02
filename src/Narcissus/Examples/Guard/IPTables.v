@@ -201,13 +201,13 @@ Delimit Scope addr_scope with addr.
 Definition cond_srcaddr (spec: address_spec)
   : condition ipv4_input_pkt :=
   fun pkt => match_address spec pkt.(ipv4_source).
-Arguments cond_srcaddr spec%addr.
+Arguments cond_srcaddr spec%_addr.
 
 (* Check if the packet's destination address is in a subnet *)
 Definition cond_dstaddr (spec: address_spec)
   : condition ipv4_input_pkt :=
   fun pkt => match_address spec pkt.(ipv4_dest).
-Arguments cond_dstaddr spec%addr.
+Arguments cond_dstaddr spec%_addr.
 
 Require Import Coq.Vectors.Vector.
 Import VectorNotations.

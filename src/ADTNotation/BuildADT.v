@@ -340,8 +340,8 @@ Definition getMethDef
   methBody (ith methDefs idx).
 
 (* Always simplify method lookup when the index is specified. *)
-Arguments getConsDef [_] {n} [_] _ idx%string / .
-Arguments getMethDef [_] {n} [_] _ idx%string / _ .
+Arguments getConsDef [_] {n} [_] _ idx%_string / .
+Arguments getMethDef [_] {n} [_] _ idx%_string / _ .
 
 (* [BuildADT] constructs an ADT from a single constructor
    definition and a list of method signatures,

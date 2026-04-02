@@ -26,4 +26,4 @@ Coercion EnumType_inj_BoundedIndex : EnumType >-> BoundedIndex.
 
 Notation "``` idx" := (BoundedIndex_inj_EnumType ``idx) (at level 0).
 
-Global Arguments EnumType {len} {A} ta%vector_scope.
+Global Arguments EnumType {len} {A} ta%_vector_scope.

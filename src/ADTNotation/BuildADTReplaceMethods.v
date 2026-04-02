@@ -49,8 +49,8 @@ End ReplaceMethods.
 (* Always simplify method replacement when the index and new
    body are specified. *)
 
-Arguments replaceConsDef [_ _ _] _ idx%string newDef%consDef / .
-Arguments ADTReplaceConsDef [_ _ _ _ _] _ _ idx%string newDef%consDef / .
+Arguments replaceConsDef [_ _ _] _ idx%_string newDef%_consDef / .
+Arguments ADTReplaceConsDef [_ _ _ _ _] _ _ idx%_string newDef%_consDef / .
 
-Arguments replaceMethDef [_ _ _] _ idx%string newDef%methDef / .
-Arguments ADTReplaceMethDef [_ _ _ _ _] _ _ idx%string newDef%methDef / .
+Arguments replaceMethDef [_ _ _] _ idx%_string newDef%_methDef / .
+Arguments ADTReplaceMethDef [_ _ _ _ _] _ _ idx%_string newDef%_methDef / .
