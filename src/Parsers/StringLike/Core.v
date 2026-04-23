@@ -8,6 +8,7 @@ Local Coercion is_true : bool >-> Sortclass.
 
 Global Set Keyed Unification. (* Makes [rewrite] faster in 8.5 / 8.6; we put it hear to not have to deal with compatibility issues in other files *)
 Global Set Asymmetric Patterns.
+#[warning="-unknown-option"] Global Set Asymmetric Patterns No Implicits.
 
 Set Implicit Arguments.
 Generalizable All Variables.

@@ -3,6 +3,7 @@ Require Import Fiat.Common.ilist Fiat.Common.ilist2.
 
 From Stdlib Require Vector.
 Global Set Asymmetric Patterns.
+#[warning="-unknown-option"] Global Set Asymmetric Patterns No Implicits.
 
 (* Typeclasses for ensuring that a string is included
    in a list (i.e. a set of method names). This allows
