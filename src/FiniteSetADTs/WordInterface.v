@@ -5,6 +5,7 @@ Require Import Stdlib.Classes.Morphisms.
 
 Set Implicit Arguments.
 Global Set Asymmetric Patterns.
+#[warning="-unknown-option"] Global Set Asymmetric Patterns No Implicits.
 
 Module Type BedrockWordT.
   Axiom W : Type.

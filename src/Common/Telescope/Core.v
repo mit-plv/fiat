@@ -1,6 +1,7 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 From Stdlib Require Import Relation_Definitions Morphisms.
 Global Set Asymmetric Patterns.
+#[warning="-unknown-option"] Global Set Asymmetric Patterns No Implicits.
 
 Module Export Telescope.
   Inductive Telescope := bottom | tele (A : Type) (B : A -> Telescope).

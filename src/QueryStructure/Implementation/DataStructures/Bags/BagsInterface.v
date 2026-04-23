@@ -3,6 +3,7 @@ Require Export Stdlib.Program.Program Stdlib.Sorting.Permutation.
 
 Unset Implicit Arguments.
 Global Set Asymmetric Patterns.
+#[warning="-unknown-option"] Global Set Asymmetric Patterns No Implicits.
 
 (* Enumerating the items of a Bag resulting from inserting
    an item [inserted] into a bag [container] is a permutation

@@ -9,6 +9,7 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.
 Set Asymmetric Patterns.
+#[warning="-unknown-option"] Set Asymmetric Patterns No Implicits.
 
 Scheme Induction for Acc Sort Prop.
 Scheme Induction for Acc Sort Set.
