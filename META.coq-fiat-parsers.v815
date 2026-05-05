@@ -1,0 +1,19 @@
+package "hint_db_extra_plugin" (
+  description = "Coq Hint Db Extra Plugin"
+  requires = "coq-core.plugins.ltac"
+  archive(byte) = "hint_db_extra_plugin.cma"
+  archive(native) = "hint_db_extra_plugin.cmxa"
+  plugin(byte) = "hint_db_extra_plugin.cma"
+  plugin(native) = "hint_db_extra_plugin.cmxs"
+  directory = "src/Common/Tactics"
+)
+package "transparent_abstract_plugin" (
+  description = "Coq Transparent Abstract Plugin"
+  requires = "coq-core.plugins.ltac"
+  archive(byte) = "transparent_abstract_plugin.cma"
+  archive(native) = "transparent_abstract_plugin.cmxa"
+  plugin(byte) = "transparent_abstract_plugin.cma"
+  plugin(native) = "transparent_abstract_plugin.cmxs"
+  directory = "src/Common/Tactics"
+)
+directory = "."

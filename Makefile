@@ -237,7 +237,7 @@ endif
 endif
 endif
 
-ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml src/Common/Tactics/TransparentAbstract.v src/Common/Tactics/HintDbExtra.v
+ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml src/Common/Tactics/TransparentAbstract.v src/Common/Tactics/HintDbExtra.v META.coq-fiat-parsers
 
 ML_COMPATIBILITY_FILES := $(subst @ML4_OR_MLG@,$(ML4_OR_MLG),$(ML_COMPATIBILITY_FILES_PATTERN))
 
@@ -466,6 +466,7 @@ $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugi
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_tactics.ml,$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/TransparentAbstract.v,$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/HintDbExtra.v,$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,META.coq-fiat-parsers,$(EXPECTED_EXT)))
 endif
 
 
