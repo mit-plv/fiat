@@ -29,6 +29,7 @@
 /.coqdeps.d
 /ADT-Synthesis-Submitted.tiff
 /CoqMakefile.conf
+/META.coq-fiat-parsers
 /Makefile.coq
 /Makefile.coq-old.conf
 /_CoqProject

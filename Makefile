@@ -190,6 +190,13 @@ OTHERFLAGS += -w "-notation-overridden"
 ML4_OR_MLG := mlg
 EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
 else
+ifneq (,$(filter 9.3%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v93
+ML_DESCRIPTION := "Coq v9.3"
+OTHERFLAGS += -w "-notation-overridden"
+ML4_OR_MLG := mlg
+EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
+else
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
 
@@ -200,8 +207,8 @@ ML4_OR_MLG := ml4
 else
 ifdef COQ_VERSION # if not, we're just going to remake the relevant Makefile to include anyway, so we shouldn't error
 $(warning Unrecognized Coq version $(COQ_VERSION))
-EXPECTED_EXT:=.v92
-ML_DESCRIPTION := "Coq v9.2"
+EXPECTED_EXT:=.v93
+ML_DESCRIPTION := "Coq v9.3"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 ML4_OR_MLG := mlg
 EXTRA_PIPE_SED_FOR_COQPROJECT += | sed 's/@META@/META.coq-fiat-parsers/g'
@@ -228,8 +235,9 @@ endif
 endif
 endif
 endif
+endif
 
-ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml src/Common/Tactics/TransparentAbstract.v src/Common/Tactics/HintDbExtra.v
+ML_COMPATIBILITY_FILES_PATTERN := src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@ src/Common/Tactics/transparent_abstract_tactics.ml src/Common/Tactics/TransparentAbstract.v src/Common/Tactics/HintDbExtra.v META.coq-fiat-parsers
 
 ML_COMPATIBILITY_FILES := $(subst @ML4_OR_MLG@,$(ML4_OR_MLG),$(ML_COMPATIBILITY_FILES_PATTERN))
 
@@ -458,6 +466,7 @@ $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugi
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_tactics.ml,$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/TransparentAbstract.v,$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/HintDbExtra.v,$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,META.coq-fiat-parsers,$(EXPECTED_EXT)))
 endif
 
 
