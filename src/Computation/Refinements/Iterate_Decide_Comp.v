@@ -79,6 +79,7 @@ Section Iterate_Decide_Comp.
     unfold not; intros; eapply Comp_v; eapply equiv_P'_P; eauto.
   Qed.
 
+  Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
   Corollary Iterate_Ensemble_filter_neq
             {n}
     : forall (P : Ensemble (Fin.t n))
@@ -104,6 +105,7 @@ Section Iterate_Decide_Comp.
         (filter_dec := {|dec_decides_P := filter_dec' |});
       unfold dec; eauto using string_dec.
   Qed.
+  Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
   Lemma refine_Iterate_Equiv_Ensemble {n n'}
     : forall (P : Ensemble (Fin.t n))
