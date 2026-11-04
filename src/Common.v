@@ -353,7 +353,7 @@ Definition If_Then_Else {A}
 
 Notation "'If' c 'Then' t 'Else' e" :=
   (If_Then_Else c t e)
-    (at level 70).
+    (at level 69, e at level 69).
 
 Definition If_Opt_Then_Else {A B}
            (c : option A)

@@ -387,7 +387,7 @@ Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn 
              _ _
              (icons cons1%consDef .. (icons consn%consDef (@inil _ (@consDef r))) ..)
              (icons meth1%methDefParsing .. (icons methn%methDefParsing (@inil _ (@methDef r))) ..))
-    (no associativity, at level 96, r at level 0,
+    (no associativity, at level 96, r at level 200,
      format "'Def'  'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADTParsing_scope.
 
 Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn } " :=
@@ -396,7 +396,7 @@ Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn 
              _ _
              (icons cons1%consDef .. (icons consn%consDef (@inil _ (@consDef r))) ..)
              (icons meth1%methDef .. (icons methn%methDef (@inil _ (@methDef r))) ..))
-    (no associativity, at level 96, r at level 0,
+    (no associativity, at level 96, r at level 200,
      format "'Def'  'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
@@ -484,6 +484,6 @@ Section NotationExample.
          { r' | (SubEnsembleInsert (k, v) r (fst r')) /\
                 ((usedKey r k /\ snd r' = false) \/
                  (~ usedKey r k /\ snd r' = true))}
-     }%ADTParsing) : ADT _.
+     })%ADTParsing : ADT _.
 
 End NotationExample.

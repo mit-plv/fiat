@@ -132,7 +132,7 @@ Definition Refinement_Of {A} (c : Comp A) :=
 
 Notation "'Refinement' 'of' c" :=
   {c' | refine c c'}
-    (at level 0, no associativity,
+    (at level 0, c at level 0, no associativity,
      format "'Refinement'  'of' '/' '[v'    c ']' " )
   : comp_scope.
 
