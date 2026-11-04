@@ -341,7 +341,7 @@ Definition BoundedString_eq_dec
 Notation "x ++ y" := (Vector.append x y) : vector_scope.
 
 Notation "`` A" :=
-  ({| bindex := A%string |}) (at level 0, format "`` A").
+  ({| bindex := A%string |}) (at level 0, A at level 0, format "`` A").
 
 Arguments BoundedString {n} _%_vector_scope.
 

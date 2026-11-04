@@ -236,7 +236,7 @@ Definition BoundedString_eq_dec
   BoundedIndex_eq_dec string_dec  bidx bidx'.
 
 Notation "`` A" :=
-  ({| bindex := A%string |}) (at level 0, format "`` A").
+  ({| bindex := A%string |}) (at level 0, A at level 0, format "`` A").
 
 Section ithIndexBound.
 

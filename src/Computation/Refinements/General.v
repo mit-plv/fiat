@@ -336,7 +336,7 @@ and gives you the computational hypothesis for the second *)
   Qed.
 
   Definition decides (b : bool) (P : Prop)
-    := If b Then P Else ~ P.
+    := If b Then P Else (~ P).
 
   Lemma refine_iff_P A :
     forall (Pc : Prop) (Pt Pa : Ensemble A),
