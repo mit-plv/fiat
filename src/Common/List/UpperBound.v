@@ -19,12 +19,14 @@ Section Upperbound.
     {x | (forall x', x = Some x' -> List.In x' xs /\ upperbound x' xs)}%comp.
 
   (* an inefficient way to implement pick_upperbound *)
+  Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
   Fixpoint check_upperbound_ineff (v : A) (xs : list A) : bool :=
     match xs with
       | [ ] => true
       | x :: xs' => andb (if R_dec (f v) (f' x) then true else false)
                          (check_upperbound_ineff v xs')
     end.
+  Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
   Fixpoint choose_upperbound_ineff' (xs : list A) (ys : list A) : option A :=
     match ys with

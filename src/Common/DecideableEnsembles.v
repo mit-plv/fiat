@@ -16,6 +16,7 @@ Proof.
     apply dec_decides_P in H0; intuition.
 Qed.
 
+Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 #[global]
 Program Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
   : DecideableEnsemble (fun a => f a > f' a) :=
@@ -23,6 +24,7 @@ Program Instance DecideableEnsemble_gt {A} (f f' : A -> nat)
 Next Obligation.
   intros; find_if_inside; intuition; auto with *.
 Defined.
+Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
 #[global]
 Program Instance DecideableEnsemble_And
@@ -58,6 +60,7 @@ Instance Query_eq_list {A}
   : Query_eq (list A) :=
   {| A_eq_dec := List.list_eq_dec A_eq_dec |}.
 
+Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 #[global]
 Program Instance DecideableEnsemble_NEqDec
          {A B : Type}
@@ -68,7 +71,9 @@ Program Instance DecideableEnsemble_NEqDec
 Next Obligation.
   intros; find_if_inside; intuition; auto with *.
 Defined.
+Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
+Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 #[global]
 Program Instance DecideableEnsemble_EqDec {A B : Type}
          (B_eq_dec : Query_eq B)
@@ -78,6 +83,7 @@ Program Instance DecideableEnsemble_EqDec {A B : Type}
 Next Obligation.
   intros; find_if_inside; split; congruence.
 Defined.
+Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
 #[global]
 Program Instance DecideableEnsemble_Not

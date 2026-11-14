@@ -835,6 +835,7 @@ Section recursive_descent_parser.
                       -> parse_nt_is_correct (substring offset (len0 - len0_minus_len) str) nt (str_matches_nonterminal nt) (str_matches_nonterminal' nt))
                   (it : item Char).
 
+          Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
           Definition parse_item'
           : dec (minimal_parse_of_item (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) it).
           Proof.
@@ -854,6 +855,7 @@ Section recursive_descent_parser.
               clear str_matches_nonterminal Hmatches;
               abstract (t_item str_matches_nonterminal').
           Defined.
+          Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
           Definition parse_item'_correct
           : parse_item_is_correct (substring offset (len0 - len0_minus_len) str) it parse_item' (GenericRecognizer.parse_item' str str_matches_nonterminal' offset (len0 - len0_minus_len) it).

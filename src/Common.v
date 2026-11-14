@@ -80,8 +80,10 @@ Definition bool_of_sum_inl {A B} x : @bool_of_sum A B (inl x) = true := eq_refl.
 Definition bool_of_sum_inr {A B} x : @bool_of_sum A B (inr x) = false := eq_refl.
 Definition bool_of_sumbool_left {A B} x : @bool_of_sumbool A B (left x) = true := eq_refl.
 Definition bool_of_sumbool_right {A B} x : @bool_of_sumbool A B (right x) = false := eq_refl.
+Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 Definition bool_of_sum_eta {A B} (x : sum A B) : (if x then true else false) = bool_of_sum x := eq_refl.
 Definition bool_of_sumbool_eta {A B} (x : sumbool A B) : (if x then true else false) = bool_of_sumbool x := eq_refl.
+Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 Definition bool_of_sum_orb_true_l {A B} (x : sum A B) b
   : (match x with inl _ => true | inr _ => b end)
     = orb (bool_of_sum x) b.

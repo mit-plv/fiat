@@ -32,6 +32,7 @@ pb = pb' '+' 0
 >>
 *)
 
+  Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
   Definition compute_next_bin_op'_step
     := (fun ch next level
         => if is_bin_op ch
@@ -45,6 +46,7 @@ pb = pb' '+' 0
                           then option_map S (next (pred level))
                           else None
                      else option_map S (next level)).
+  Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
   Definition compute_next_bin_op' (str : String) (level : nat)
   : option nat

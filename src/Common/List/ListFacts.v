@@ -2225,6 +2225,7 @@ Section ListFacts.
              => unique pose proof (transitivity H H')
            end.
 
+  Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
   Lemma removeA_length {A eqA} {_ : @Symmetric A eqA} {_ : @Transitive A eqA} {dec} x ls
         (HD : NoDupA eqA ls)
     : let postlen := List.length (@removeA A eqA dec x ls) in
@@ -2239,6 +2240,7 @@ Section ListFacts.
       { exfalso; apply IHys.
         eapply InA_R_InA; try eassumption; symmetry; eassumption. } }
   Qed.
+  Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
   Lemma removeA_length_In {A eqA} {_ : @Symmetric A eqA} {_ : @Transitive A eqA} {dec} x ls
         (HD : NoDupA eqA ls)
         (Hin : InA eqA x ls)

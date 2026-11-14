@@ -1131,8 +1131,10 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intros; eapply elements_in_iff'; eauto.
   Qed.
 
+  Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
   Definition KeyBasedPartitioningFunction BagType reference :=
     fun key (_: BagType) => if E.eq_dec key reference then true else false.
+  Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
   Lemma KeyBasedPartitioningFunction_Proper :
     forall BagType reference,
@@ -1160,12 +1162,14 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     intros; destruct (E.eq_dec _ _); eauto using E.eq_refl.
   Qed.
 
+  Set Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
   Lemma eq_dec_comm :
     forall x y,
       (if E.eq_dec x y then true else false) = (if E.eq_dec y x then true else false).
   Proof.
     intros; destruct (E.eq_dec x y), (E.eq_dec y x); intuition; auto with *.
   Qed.
+  Unset Old IfThen Without Bool Coercion.  (* to handle when requiring Rocq >= 9.4 *)
 
   Lemma KeyBasedPartitioningFunction_eq_true :
     forall TValue k k' v,
